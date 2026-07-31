@@ -7,7 +7,7 @@ pub type lfs_size_t = u32;
 /// uint32_t
 pub type lfs_off_t = u32;
 /// int32_t (signed size)
-pub type lfs_ssize_t = i32;
+// pub type lfs_ssize_t = i32;
 /// int32_t (signed offset)
 pub type lfs_soff_t = i32;
 /// uint32_t (block index)

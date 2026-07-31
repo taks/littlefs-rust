@@ -129,7 +129,7 @@ pub fn lfs_ctz_index(lfs: *const crate::fs::Lfs, off: *mut lfs_off_t) -> i32 {
 /// }
 /// ```
 pub fn lfs_ctz_find(
-    lfs: *mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs,
     pcache: *const crate::bd::LfsCache,
     rcache: *mut crate::bd::LfsCache,
     head: lfs_block_t,
@@ -147,7 +147,7 @@ pub fn lfs_ctz_find(
             *block = LFS_BLOCK_NULL;
             *off = 0;
         }
-        return 0;
+        return Ok(());
     }
 
     unsafe {
@@ -258,12 +258,12 @@ pub fn lfs_ctz_traverse(
     size: lfs_size_t,
     cb: Option<unsafe extern "C" fn(*mut core::ffi::c_void, lfs_block_t) -> i32>,
     data: *mut core::ffi::c_void,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::util::lfs_fromle32;
 
     if size == 0 || cb.is_none() {
-        return 0;
+        return Ok(());
     }
     let cb = cb.unwrap();
 
@@ -300,7 +300,7 @@ pub fn lfs_ctz_traverse(
             let count = (2 - (index & 1)) as usize;
             let mut heads = [0u32; 2];
             let read_size = (count * core::mem::size_of::<lfs_block_t>()) as u32;
-            let err = lfs_bd_read(
+            lfs_bd_read(
                 lfs,
                 pcache,
                 &mut *rcache,
@@ -309,10 +309,8 @@ pub fn lfs_ctz_traverse(
                 0,
                 heads.as_mut_ptr() as *mut u8,
                 read_size,
-            );
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            )?;
+
             heads[0] = lfs_fromle32(heads[0]);
             heads[1] = lfs_fromle32(heads[1]);
 

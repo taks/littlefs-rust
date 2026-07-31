@@ -229,20 +229,19 @@ pub fn lfs_file_opencfg_(
 
         let mut path_ptr = path_u8;
         let mut tag = lfs_dir_find(lfs, &mut file_ref.m, &mut path_ptr, &mut file_ref.id);
-        if tag < 0 && !(tag == LFS_ERR_NOENT && lfs_path_islast(lfs_path_slice_from_cstr(path_ptr)))
+        if let Err(err) = tag && !(err == Error::NoEntry && lfs_path_islast(lfs_path_slice_from_cstr(path_ptr)))
         {
-            let err = tag;
             lfs_file_close_(lfs, file);
-            return crate::lfs_pass_err!(err);
+            return crate::lfs_pass_err!(Err(err));
         }
 
         file_ref.type_ = LFS_TYPE_REG as u8;
         lfs_mlist_append(lfs, file as *mut crate::dir::LfsMlist);
 
-        if tag == LFS_ERR_NOENT {
+        if tag == Err(Error::NoEntry) {
             if (flags & LFS_O_CREAT) == 0 {
                 lfs_file_close_(lfs, file);
-                return crate::lfs_err!(LFS_ERR_NOENT);
+                return crate::lfs_err!(Err(Error::NoEntry));
             }
             if lfs_path_isdir(lfs_path_slice_from_cstr(path_ptr)) {
                 lfs_file_close_(lfs, file);
@@ -594,13 +593,13 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                     &data,
                     1,
                 );
-                if err != 0 {
-                    if err == LFS_ERR_CORRUPT {
+                if let Err(err) = err {
+                    if err == Error::Corrupt {
                         lfs_alloc_lookahead(lfs, nblock);
-                        lfs_cache_drop(lfs, &mut (*lfs).pcache as *mut _);
+                        lfs_cache_drop(lfs, &mut (*lfs).pcache);
                         continue 'relocate;
                     }
-                    return crate::lfs_pass_err!(err);
+                    return crate::lfs_pass_err!(Err(err));
                 }
             }
 

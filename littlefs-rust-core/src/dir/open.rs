@@ -61,9 +61,9 @@ use crate::util::{lfs_min, lfs_pair_cmp, lfs_pair_fromle32};
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8) -> Result<_, Error> {
+pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8) -> Result<(), Error> {
     if lfs.is_null() || dir.is_null() || path.is_null() {
-        return crate::error::LFS_ERR_INVAL;
+        return Err(Error::Invalid);
     }
     unsafe {
         let dir_ref = &mut *dir;
@@ -178,9 +178,9 @@ pub fn lfs_dir_close_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir) -> Result<(), 
 ///     return true;
 /// }
 /// ```
-pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsInfo) -> i32 {
+pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsInfo) -> Result<i32, Error> {
     if lfs.is_null() || dir.is_null() || info.is_null() {
-        return crate::error::LFS_ERR_INVAL;
+        return Err(Error::Invalid);
     }
     unsafe {
         let dir_ref = &mut *dir;
@@ -195,7 +195,7 @@ pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsI
             info_ref.name[0] = b'.';
             info_ref.name[1] = 0;
             dir_ref.pos += 1;
-            return 1;
+            return Ok(1);
         }
         if dir_ref.pos == 1 {
             info_ref.type_ = LFS_TYPE_DIR as u8;
@@ -203,7 +203,7 @@ pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsI
             info_ref.name[1] = b'.';
             info_ref.name[2] = 0;
             dir_ref.pos += 1;
-            return 1;
+            return Ok(1);
         }
 
         #[cfg(feature = "loop_limits")]
@@ -223,7 +223,7 @@ pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsI
             }
             if dir_ref.id == dir_ref.m.count {
                 if !dir_ref.m.split {
-                    return 0;
+                    return Ok(0);
                 }
                 lfs_dir_fetch(lfs, &mut dir_ref.m, &dir_ref.m.tail)?;
 
@@ -231,17 +231,17 @@ pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsI
             }
 
             let err = lfs_dir_getinfo(lfs, &dir_ref.m, dir_ref.id, info);
-            if err != 0 && err != crate::error::LFS_ERR_NOENT {
+            if err.is_err() && err != Err(Error::NoEntry) {
                 return crate::lfs_pass_err!(err);
             }
             dir_ref.id += 1;
-            if err != crate::error::LFS_ERR_NOENT {
+            if err != Err(Error::NoEntry) {
                 break;
             }
         }
 
         dir_ref.pos += 1;
-        1
+        Ok(1)
     }
 }
 

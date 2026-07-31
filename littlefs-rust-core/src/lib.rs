@@ -266,7 +266,7 @@ pub fn lfs_dir_close(lfs: *mut Lfs, dir: *mut LfsDir) -> i32 {
 
 /// Read an entry in the directory. Per lfs.h lfs_dir_read.
 #[inline(never)]
-pub fn lfs_dir_read(lfs: *mut Lfs, dir: *mut LfsDir, info: *mut LfsInfo) -> i32 {
+pub fn lfs_dir_read(lfs: *mut Lfs, dir: *mut LfsDir, info: *mut LfsInfo) -> Result<i32, Error> {
     crate::dir::open::lfs_dir_read_(lfs, dir, info)
 }
 
@@ -323,7 +323,7 @@ pub fn lfs_fs_gc(lfs: *mut Lfs) -> i32 {
 
 /// Force consistency (deorphan, demove, desuperblock). For testing.
 #[doc(hidden)]
-pub fn lfs_fs_forceconsistency(lfs: *mut Lfs) -> i32 {
+pub fn lfs_fs_forceconsistency(lfs: *mut Lfs) -> Result<(), Error> {
     crate::fs::superblock::lfs_fs_forceconsistency(lfs)
 }
 

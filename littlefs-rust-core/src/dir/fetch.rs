@@ -457,11 +457,11 @@ pub fn lfs_dir_fetchmatch(
                         dcrc_buf.as_mut_ptr(),
                         4,
                     );
-                    if err != 0 {
-                        if err == LFS_ERR_CORRUPT {
+                    if let Err(err) = err {
+                        if err == Error::Corrupt {
                             break;
                         }
-                        return err as lfs_stag_t;
+                        return Err(err);
                     }
                     let dcrc = u32::from_le_bytes(dcrc_buf);
 
@@ -501,7 +501,7 @@ pub fn lfs_dir_fetchmatch(
                     if err == Error::Corrupt {
                         break;
                     }
-                    return err as lfs_stag_t;
+                    return Err(err);
                 }
                 crc = crc_val;
 
@@ -540,11 +540,11 @@ pub fn lfs_dir_fetchmatch(
                         tail_buf.as_mut_ptr(),
                         8,
                     );
-                    if err != 0 {
-                        if err == LFS_ERR_CORRUPT {
+                    if let Err(err) = err {
+                        if err == Error::Corrupt {
                             break;
                         }
-                        return err as lfs_stag_t;
+                        return Err(err);
                     }
                     temptail[0] = u32::from_le_bytes(tail_buf[0..4].try_into().unwrap());
                     temptail[1] = u32::from_le_bytes(tail_buf[4..8].try_into().unwrap());

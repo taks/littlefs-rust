@@ -11,7 +11,7 @@ pub type lfs_read_t =
 
 /// Prog callback: (cfg, block, off, buffer, size) -> 0 or negative error
 pub type lfs_prog_t =
-    unsafe extern "C" fn(*const LfsConfig, lfs_block_t, lfs_off_t, *const u8, lfs_size_t) -> i32;
+    unsafe extern "C" fn(*const LfsConfig, lfs_block_t, lfs_off_t, *const u8, lfs_size_t) -> Result<(), Error>;
 
 /// Erase callback: (cfg, block) -> 0 or negative error
 pub type lfs_erase_t = unsafe extern "C" fn(*const LfsConfig, lfs_block_t) -> Result<(), Error>;

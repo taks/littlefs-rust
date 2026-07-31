@@ -9,7 +9,7 @@ use crate::error::Error;
 use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::LFS_TYPE_USERATTR;
 use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_size};
-use crate::types::{lfs_size_t, lfs_ssize_t};
+use crate::types::{lfs_size_t};
 use crate::util::lfs_min;
 
 /// Per lfs.c lfs_getattr_ (lines 4107-4135)
@@ -57,9 +57,9 @@ pub fn lfs_getattr_(
     r#type: u8,
     buffer: *mut core::ffi::c_void,
     size: lfs_size_t,
-) -> lfs_ssize_t {
+) -> Result<lfs_size_t, Error> {
     if lfs.is_null() || path.is_null() {
-        return crate::lfs_err!(LFS_ERR_INVAL);
+        return crate::lfs_err!(Err(Error::Invalid));
     }
     unsafe {
         let mut cwd = LfsMdir {
@@ -74,18 +74,12 @@ pub fn lfs_getattr_(
         };
 
         let mut path_ptr = path;
-        let mut tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, core::ptr::null_mut());
-        if tag < 0 {
-            return tag;
-        }
+        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, core::ptr::null_mut())?;
 
         let mut id = lfs_tag_id(tag as u32) as u16;
         if id == 0x3ff {
             id = 0;
-            let err = lfs_dir_fetch(lfs, &mut cwd, &(*lfs).root);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_dir_fetch(lfs, &mut cwd, &(*lfs).root)?;
         }
 
         let gtag = lfs_mktag(
@@ -93,15 +87,15 @@ pub fn lfs_getattr_(
             id as u32,
             lfs_min(size, (*lfs).attr_max),
         );
-        tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer);
-        if tag < 0 {
-            if tag == LFS_ERR_NOENT {
-                return crate::lfs_err!(LFS_ERR_NOATTR);
+        let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer);
+        if let Err(err) = tag {
+            if err == Error::NoEntry {
+                return crate::lfs_err!(Err(Error::NoAttribute));
             }
             return tag;
         }
 
-        lfs_tag_size(tag as u32) as lfs_ssize_t
+        Ok(lfs_tag_size(tag.unwrap()))
     }
 }
 

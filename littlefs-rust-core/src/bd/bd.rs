@@ -134,7 +134,7 @@ pub fn lfs_cache_zero(lfs: &Lfs, pcache: &mut LfsCache) {
 /// }
 /// ```
 pub fn lfs_bd_read(
-    lfs: &mut Lfs,
+    lfs: &Lfs,
     pcache: *const LfsCache,
     rcache: *mut LfsCache,
     hint: lfs_size_t,
@@ -281,7 +281,7 @@ pub fn lfs_bd_read(
 /// }
 /// ```
 pub fn lfs_bd_cmp(
-    lfs: *mut Lfs,
+    lfs: &mut Lfs,
     pcache: *const LfsCache,
     rcache: *mut LfsCache,
     hint: lfs_size_t,
@@ -351,7 +351,7 @@ pub fn lfs_bd_cmp(
 /// }
 /// ```
 pub fn lfs_bd_crc(
-    lfs: *mut Lfs,
+    lfs: &mut Lfs,
     pcache: *const LfsCache,
     rcache: *mut LfsCache,
     hint: lfs_size_t,
@@ -426,7 +426,7 @@ pub fn lfs_bd_crc(
 /// #endif
 /// ```
 pub fn lfs_bd_flush(
-    lfs: &Lfs,
+    lfs: &mut Lfs,
     pcache: *mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
@@ -458,8 +458,7 @@ pub fn lfs_bd_flush(
                 pcache.buffer,
                 diff,
             );
-            crate::lfs_assert!(err <= 0);
-            if err != 0 {
+            if err.is_err() {
                 crate::lfs_trace!("bd_prog block={} -> CORRUPT", pcache.block);
                 return crate::lfs_pass_err!(err);
             }
@@ -467,7 +466,7 @@ pub fn lfs_bd_flush(
             if validate {
                 lfs_cache_drop(lfs, rcache);
                 let res = lfs_bd_cmp(
-                    lfs as *mut Lfs,
+                    lfs,
                     core::ptr::null(),
                     rcache,
                     diff,
@@ -512,7 +511,7 @@ pub fn lfs_bd_flush(
 /// #endif
 /// ```
 pub fn lfs_bd_sync(
-    lfs: *const Lfs,
+    lfs: &mut Lfs,
     pcache: *mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
@@ -584,7 +583,7 @@ pub fn lfs_bd_sync(
 /// #endif
 /// ```
 pub fn lfs_bd_prog(
-    lfs: &Lfs,
+    lfs: &mut Lfs,
     pcache: *mut LfsCache,
     rcache: *mut LfsCache,
     validate: bool,

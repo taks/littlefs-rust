@@ -1,5 +1,6 @@
 //! Stat. Per lfs.c lfs_stat_, lfs_fs_stat_, lfs_fs_size_.
 
+use crate::error::Error;
 use crate::fs::traverse::lfs_fs_traverse_;
 use crate::types::{lfs_block_t, lfs_size_t, lfs_ssize_t};
 
@@ -188,13 +189,13 @@ pub fn lfs_fs_stat_(lfs: *mut super::lfs::Lfs, fsinfo: *mut crate::lfs_info::Lfs
 ///     return 0;
 /// }
 /// ```
-pub unsafe extern "C" fn lfs_fs_size_count(p: *mut core::ffi::c_void, _block: lfs_block_t) -> i32 {
+pub unsafe extern "C" fn lfs_fs_size_count(p: *mut core::ffi::c_void, _block: lfs_block_t) -> Result<(), Error> {
     if p.is_null() {
-        return 0;
+        return Ok(());
     }
     let size = p as *mut lfs_size_t;
     unsafe { *size = (*size).saturating_add(1) };
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_fs_size_ (lines 5179-5188)
@@ -211,16 +212,14 @@ pub unsafe extern "C" fn lfs_fs_size_count(p: *mut core::ffi::c_void, _block: lf
 ///     return size;
 /// }
 /// ```
-pub fn lfs_fs_size_(lfs: *mut super::lfs::Lfs) -> lfs_ssize_t {
+pub fn lfs_fs_size_(lfs: *mut super::lfs::Lfs) -> Result<lfs_ssize_t, Error> {
     let mut size: lfs_size_t = 0;
-    let err = lfs_fs_traverse_(
+    lfs_fs_traverse_(
         lfs,
         Some(lfs_fs_size_count),
         &mut size as *mut _ as *mut core::ffi::c_void,
         false,
-    );
-    if err != 0 {
-        return crate::lfs_pass_err!(err);
-    }
-    size as lfs_ssize_t
+    )?;
+
+    Ok(size as lfs_ssize_t)
 }

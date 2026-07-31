@@ -182,10 +182,7 @@ pub fn lfs_fs_traverse_(
 
             // iterate through ids in directory
             crate::lfs_trace!("fs_traverse: fetch tail={:?} count={}", dir.tail, dir.count);
-            let err = lfs_dir_fetch(lfs, &mut dir, &dir.tail);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_dir_fetch(lfs, &mut dir, &dir.tail)?;
 
             for id in 0..dir.count {
                 let mut raw: [lfs_block_t; 2] = [0, 0];

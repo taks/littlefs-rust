@@ -428,8 +428,8 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
 /// Caller must ensure `lfs` points to valid (e.g. zeroed) `Lfs` and `cfg` to valid
 /// `LfsConfig` for the duration of the call.
 pub unsafe fn test_format_minimal_superblock(
-    lfs: *mut super::lfs::Lfs,
-    cfg: *const crate::lfs_config::LfsConfig,
+    lfs: &mut super::lfs::Lfs,
+    cfg: &crate::lfs_config::LfsConfig,
 ) -> i32 {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_sync};
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
@@ -480,8 +480,8 @@ pub unsafe fn test_format_minimal_superblock(
         // Write to block 1 (compact-style), skip traverse. pair is [1,0] or [0,1]
         // depending on alloc order; use pair[1] which receives the first compact write.
         let block = root.pair[1];
-        err = lfs_bd_erase(lfs, block);
-        if err != 0 {
+        let err = lfs_bd_erase(lfs, block);
+        if err.is_err() {
             lfs_deinit(lfs as *mut _);
             return crate::lfs_pass_err!(err);
         }
@@ -498,43 +498,43 @@ pub unsafe fn test_format_minimal_superblock(
 
         let rev = 1u32;
         let rev_le = lfs_tole32(rev);
-        err = lfs_dir_commitprog(lfs, &mut commit, &rev_le as *const _ as *const _, 4);
-        if err != 0 {
+        let err = lfs_dir_commitprog(lfs, &mut commit, &rev_le as *const _ as *const _, 4);
+        if err.is_err() {
             lfs_deinit(lfs as *mut _);
             return crate::lfs_pass_err!(err);
         }
         commit.ptag = rev & 0x7fff_ffff;
 
         let magic = b"littlefs";
-        err = lfs_dir_commitattr(
+        let err = lfs_dir_commitattr(
             lfs,
             &mut commit,
             lfs_mktag(LFS_TYPE_CREATE, 0, 0),
             core::ptr::null(),
         );
-        if err != 0 {
+        if err.is_err() {
             lfs_deinit(lfs as *mut _);
             return crate::lfs_pass_err!(err);
         }
-        err = lfs_dir_commitattr(
+        let err = lfs_dir_commitattr(
             lfs,
             &mut commit,
             lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
             magic.as_ptr() as *const core::ffi::c_void,
         );
-        if err != 0 {
+        if err.is_err() {
             lfs_deinit(lfs as *mut _);
             return crate::lfs_pass_err!(err);
         }
 
-        err = lfs_dir_commitcrc(lfs, &mut commit);
-        if err != 0 {
+        let err = lfs_dir_commitcrc(lfs, &mut commit);
+        if err.is_err() {
             lfs_deinit(lfs as *mut _);
             return crate::lfs_pass_err!(err);
         }
 
-        err = lfs_bd_sync(lfs, &mut lfs.pcache, &mut lfs.rcache, false);
-        if err != 0 {
+        let err = lfs_bd_sync(lfs, &mut lfs.pcache, &mut lfs.rcache, false);
+        if err.is_err() {
             lfs_deinit(lfs as *mut _);
             return crate::lfs_pass_err!(err);
         }
