@@ -1,6 +1,6 @@
 //! CTZ operations. Per lfs.c lfs_ctz_index, lfs_ctz_find, lfs_ctz_extend, lfs_ctz_traverse.
 
-use crate::error::LFS_ERR_CORRUPT;
+use crate::error::Error;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 
 #[repr(C)]
@@ -137,7 +137,7 @@ pub fn lfs_ctz_find(
     pos: lfs_size_t,
     block: *mut lfs_block_t,
     off: *mut lfs_off_t,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::types::LFS_BLOCK_NULL;
     use crate::util::{lfs_ctz, lfs_fromle32, lfs_min, lfs_npw2};
@@ -190,7 +190,7 @@ pub fn lfs_ctz_find(
                 4 * skip,
                 &mut head_buf as *mut u32 as *mut u8,
                 4,
-            );
+            )?;
             if err != 0 {
                 return crate::lfs_pass_err!(err);
             }

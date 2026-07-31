@@ -3,11 +3,11 @@
 
 #![allow(non_camel_case_types)]
 
-use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
+use crate::{error::Error, types::{lfs_block_t, lfs_off_t, lfs_size_t}};
 
 /// Read callback: (cfg, block, off, buffer, size) -> 0 or negative error
 pub type lfs_read_t =
-    unsafe extern "C" fn(*const LfsConfig, lfs_block_t, lfs_off_t, *mut u8, lfs_size_t) -> i32;
+    unsafe extern "C" fn(*const LfsConfig, lfs_block_t, lfs_off_t, *mut u8, lfs_size_t) -> Result<(), Error>;
 
 /// Prog callback: (cfg, block, off, buffer, size) -> 0 or negative error
 pub type lfs_prog_t =

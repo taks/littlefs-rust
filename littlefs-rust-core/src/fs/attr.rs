@@ -5,7 +5,7 @@ use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::LfsMdir;
-use crate::error::{LFS_ERR_INVAL, LFS_ERR_NOATTR, LFS_ERR_NOENT, LFS_ERR_NOSPC};
+use crate::error::Error;
 use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::LFS_TYPE_USERATTR;
 use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_size};

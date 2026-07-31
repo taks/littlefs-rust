@@ -6,7 +6,7 @@ use crate::dir::lfs_fcrc::lfs_fcrc_fromle32;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::LfsFcrc;
 use crate::dir::LfsMdir;
-use crate::error::LFS_ERR_CORRUPT;
+use crate::error::{Error, LFS_ERR_CORRUPT};
 use crate::file::lfs_ctz::{lfs_ctz_fromle32, LfsCtz};
 use crate::lfs_gstate::LfsGstate;
 use crate::lfs_gstate::{lfs_gstate_fromle32, lfs_gstate_hasmovehere, lfs_gstate_xor};
@@ -319,7 +319,7 @@ pub fn lfs_dir_fetchmatch(
         unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> i32,
     >,
     _data: *mut core::ffi::c_void,
-) -> lfs_stag_t {
+) -> Result<lfs_stag_t, Error> {
     // Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2
     const LFS_CMP_EQ: i32 = 0;
     const LFS_CMP_LT: i32 = 1;
@@ -336,7 +336,7 @@ pub fn lfs_dir_fetchmatch(
 
         // block_count check (C: lines 1117-1120)
         if lfs.block_count != 0 && (pair[0] >= lfs.block_count || pair[1] >= lfs.block_count) {
-            return crate::lfs_err!(LFS_ERR_CORRUPT as lfs_stag_t);
+            return crate::lfs_err!(Err(Error::Corrupt));
         }
 
         // find the block with the most recent revision (C: lines 1123-1138)
@@ -697,7 +697,7 @@ pub fn lfs_dir_fetchmatch(
 ///             (lfs_tag_t)-1, (lfs_tag_t)-1, NULL, NULL, NULL);
 /// }
 /// ```
-pub fn lfs_dir_fetch(lfs: *mut crate::fs::Lfs, dir: *mut LfsMdir, pair: &[lfs_block_t; 2]) -> i32 {
+pub fn lfs_dir_fetch(lfs: *mut crate::fs::Lfs, dir: *mut LfsMdir, pair: &[lfs_block_t; 2]) -> Result<(), Error> {
     let res = lfs_dir_fetchmatch(
         lfs as *mut _ as *const core::ffi::c_void,
         dir,
@@ -708,10 +708,10 @@ pub fn lfs_dir_fetch(lfs: *mut crate::fs::Lfs, dir: *mut LfsMdir, pair: &[lfs_bl
         None,
         core::ptr::null_mut(),
     );
-    if res < 0 {
-        res
+    if let Err(e) = res {
+        Err(e)
     } else {
-        0
+        Ok(())
     }
 }
 

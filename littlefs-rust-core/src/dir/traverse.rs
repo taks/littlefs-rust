@@ -2,6 +2,7 @@
 
 use crate::bd::LfsCache;
 use crate::dir::LfsMdir;
+use crate::error::Error;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
 
 /// Per lfs.c lfs_dir_getslice (lines 719-784)
@@ -83,7 +84,7 @@ pub fn lfs_dir_getslice(
     goff: lfs_off_t,
     gbuffer: *mut core::ffi::c_void,
     gsize: lfs_size_t,
-) -> lfs_stag_t {
+) -> Result<lfs_stag_t, Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::tag::{
         lfs_mktag, lfs_tag_dsize, lfs_tag_id, lfs_tag_isdelete, lfs_tag_size, lfs_tag_type1,
@@ -248,13 +249,12 @@ pub fn lfs_dir_getread(
     off: lfs_off_t,
     buffer: *mut core::ffi::c_void,
     size: lfs_size_t,
-) -> i32 {
-    use crate::error::LFS_ERR_CORRUPT;
+) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
 
     if buffer.is_null() {
-        return 0;
+        return Ok(());
     }
     let data = buffer as *mut u8;
 
@@ -262,7 +262,7 @@ pub fn lfs_dir_getread(
         let lfs_ref = &*lfs;
         let cfg = lfs_ref.cfg.as_ref().expect("cfg");
         if off + size > cfg.block_size {
-            return crate::lfs_err!(LFS_ERR_CORRUPT);
+            return crate::lfs_err!(Err(Error::Corrupt));
         }
 
         let mut off = off;

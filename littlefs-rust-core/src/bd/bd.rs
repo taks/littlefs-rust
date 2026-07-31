@@ -18,10 +18,8 @@ use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_cache_drop(_lfs: *const Lfs, rcache: *mut LfsCache) {
-    unsafe {
-        (*rcache).block = crate::types::LFS_BLOCK_NULL;
-    }
+pub fn lfs_cache_drop(_lfs: *const Lfs, rcache: &mut LfsCache) {
+    (*rcache).block = crate::types::LFS_BLOCK_NULL;
 }
 
 /// Per lfs.c lfs_cache_zero (lines 38-42)
@@ -35,7 +33,7 @@ pub fn lfs_cache_drop(_lfs: *const Lfs, rcache: *mut LfsCache) {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_cache_zero(lfs: *const Lfs, pcache: *mut LfsCache) {
+pub fn lfs_cache_zero(lfs: &Lfs, pcache: *mut LfsCache) {
     unsafe {
         let cfg = (*lfs).cfg;
         let cache_size = (*cfg).cache_size as usize;
@@ -208,8 +206,7 @@ pub fn lfs_bd_read(
                 diff = lfs_aligndown(diff, cfg.read_size);
                 crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
                 let err = read(cfg as *const _, block, off, data, diff);
-                crate::lfs_assert!(err <= 0);
-                if err != 0 {
+                if err.is_err() {
                     crate::lfs_trace!("bd_read block={} -> CORRUPT", block);
                     return crate::lfs_pass_err!(err);
                 }
@@ -240,8 +237,7 @@ pub fn lfs_bd_read(
                 rcache.buffer,
                 rcache.size,
             );
-            crate::lfs_assert!(err <= 0);
-            if err != 0 {
+            if err.is_err() {
                 crate::lfs_trace!("bd_read block={} -> CORRUPT", rcache.block);
                 // Don't leave rcache claiming to have this block when the buffer wasn't filled.
                 // A retry (e.g. after bad-block clear) would otherwise serve stale data.
@@ -483,10 +479,10 @@ pub fn lfs_bd_flush(
                     pcache.buffer,
                     diff,
                 );
-                if res < 0 {
-                    return res;
+                if let Err(e) = res {
+                    return Err(e);
                 }
-                if res != 0 {
+                if let Ok(res) = res && res != 0 {
                     return crate::lfs_err!(LFS_ERR_CORRUPT);
                 }
             }
@@ -494,7 +490,7 @@ pub fn lfs_bd_flush(
             lfs_cache_zero(lfs, pcache);
         }
 
-        0
+        Ok(())
     }
 }
 

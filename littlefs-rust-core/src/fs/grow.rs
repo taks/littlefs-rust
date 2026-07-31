@@ -4,7 +4,7 @@ use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::LfsMdir;
-use crate::error::LFS_ERR_NOTEMPTY;
+use crate::error::{Error, LFS_ERR_NOTEMPTY};
 use crate::lfs_superblock::{lfs_superblock_fromle32, lfs_superblock_tole32, LfsSuperblock};
 use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use crate::tag::{lfs_mattr, lfs_mktag};
@@ -93,16 +93,14 @@ unsafe extern "C" fn lfs_shrink_checkblock(
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_fs_grow_(lfs: *mut super::lfs::Lfs, block_count: lfs_size_t) -> i32 {
+pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Result<(), Error> {
     unsafe {
-        let lfs_ref = &mut *lfs;
-
-        if block_count == lfs_ref.block_count {
-            return 0;
+        if block_count == lfs.block_count {
+            return Ok(());
         }
 
         // LFS_SHRINKNONRELOCATING path: check no blocks above threshold in use
-        if block_count < lfs_ref.block_count {
+        if block_count < lfs.block_count {
             let mut threshold = block_count;
             let err = super::traverse::lfs_fs_traverse_(
                 lfs,
@@ -115,11 +113,11 @@ pub fn lfs_fs_grow_(lfs: *mut super::lfs::Lfs, block_count: lfs_size_t) -> i32 {
             }
         }
 
-        lfs_ref.block_count = block_count;
+        lfs.block_count = block_count;
 
         // fetch the root
         let mut root = core::mem::MaybeUninit::<LfsMdir>::zeroed();
-        let err = lfs_dir_fetch(lfs, root.as_mut_ptr(), &lfs_ref.root);
+        let err = lfs_dir_fetch(lfs, root.as_mut_ptr(), &lfs.root);
         if err != 0 {
             return err;
         }
@@ -144,7 +142,7 @@ pub fn lfs_fs_grow_(lfs: *mut super::lfs::Lfs, block_count: lfs_size_t) -> i32 {
         let sb = &mut *superblock.as_mut_ptr();
         lfs_superblock_fromle32(sb);
 
-        sb.block_count = lfs_ref.block_count;
+        sb.block_count = lfs.block_count;
 
         lfs_superblock_tole32(sb);
         // C: lfs_dir_commit(lfs, &root, LFS_MKATTRS({tag, &superblock}))

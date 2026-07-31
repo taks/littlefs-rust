@@ -1,6 +1,7 @@
 //! Initialization. Per lfs.c lfs_init, lfs_deinit.
 
 use crate::bd::bd::lfs_cache_zero;
+use crate::error::Error;
 use crate::types::{LFS_ATTR_MAX, LFS_BLOCK_NULL, LFS_FILE_MAX, LFS_NAME_MAX};
 use crate::util::{lfs_min, lfs_npw2};
 
@@ -182,11 +183,8 @@ use crate::util::{lfs_min, lfs_npw2};
 /// }
 /// ```
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn lfs_init(lfs: *mut super::lfs::Lfs, cfg: *const crate::lfs_config::LfsConfig) -> i32 {
+pub fn lfs_init(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(), Error> {
     unsafe {
-        let lfs = &mut *lfs;
-        let cfg = &*cfg;
-
         // check that bool is a truthy-preserving type (C: (bool)0x80000000)
         crate::lfs_assert!(0x8000_0000u32 != 0);
 
@@ -290,7 +288,7 @@ pub fn lfs_init(lfs: *mut super::lfs::Lfs, cfg: *const crate::lfs_config::LfsCon
             pair: [0, 0],
         };
     }
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_deinit (lines 4371-4389)

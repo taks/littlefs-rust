@@ -3,6 +3,7 @@
 use crate::bd::bd::{lfs_bd_read, lfs_cache_drop, lfs_cache_zero};
 use crate::dir::traverse::lfs_dir_getread;
 use crate::dir::LfsMdir;
+use crate::error::Error;
 use crate::file::ctz::lfs_ctz_find;
 use crate::file::LfsFile;
 use crate::lfs_info::LfsFileConfig;
@@ -762,7 +763,7 @@ pub fn lfs_file_outline(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> i32 {
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_file_flush(lfs: *const core::ffi::c_void, file: *mut LfsFile) -> i32 {
+pub fn lfs_file_flush(lfs: *const core::ffi::c_void, file: &mut LfsFile) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_flush;
     use crate::error::LFS_ERR_CORRUPT;
     use crate::util::lfs_max;

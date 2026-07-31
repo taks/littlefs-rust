@@ -1,4 +1,6 @@
 //! FS traverse. Per lfs.c lfs_fs_traverse_.
+
+use crate::error::Error;
 //
 /// Per lfs.c lfs_fs_traverse_ (lines 4693-4794)
 ///
@@ -114,13 +116,12 @@
 /// C: lfs.c:4693-4794
 pub fn lfs_fs_traverse_(
     lfs: *mut super::lfs::Lfs,
-    cb: Option<unsafe extern "C" fn(*mut core::ffi::c_void, crate::types::lfs_block_t) -> i32>,
+    cb: Option<unsafe extern "C" fn(*mut core::ffi::c_void, crate::types::lfs_block_t) -> Result<(), Error>>,
     data: *mut core::ffi::c_void,
     includeorphans: bool,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::dir::traverse::lfs_dir_get;
-    use crate::error::LFS_ERR_CORRUPT;
     use crate::file::ctz::lfs_ctz_traverse;
     use crate::fs::mount::{lfs_tortoise_detectcycles, LfsTortoise};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CTZSTRUCT, LFS_TYPE_DIRSTRUCT};
@@ -129,7 +130,7 @@ pub fn lfs_fs_traverse_(
     use crate::util::{lfs_pair_fromle32, lfs_pair_isnull};
 
     if cb.is_none() {
-        return 0;
+        return Ok(());
     }
     let cb = cb.unwrap();
 
@@ -172,14 +173,11 @@ pub fn lfs_fs_traverse_(
             }
             let err = lfs_tortoise_detectcycles(&dir, &mut tortoise);
             if err < 0 {
-                return crate::lfs_err!(LFS_ERR_CORRUPT);
+                return Err(Error::Corrupt);
             }
 
             for i in 0..2 {
-                let err = cb(data, dir.tail[i]);
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+                cb(data, dir.tail[i])?;
             }
 
             // iterate through ids in directory
@@ -199,7 +197,7 @@ pub fn lfs_fs_traverse_(
                     raw.as_mut_ptr() as *mut core::ffi::c_void,
                 );
                 if tag < 0 {
-                    if tag == crate::error::LFS_ERR_NOENT {
+                    if tag == crate::error::Error::NoEntry {
                         continue;
                     }
                     return tag;

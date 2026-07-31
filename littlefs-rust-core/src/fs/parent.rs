@@ -1,5 +1,7 @@
 //! FS parent. Per lfs.c lfs_fs_pred, lfs_fs_parent.
 
+use core::fmt::Error;
+
 /// Per lfs.c lfs_fs_pred (lines 4796-4833)
 ///
 /// C:
@@ -39,7 +41,7 @@ pub fn lfs_fs_pred(
     lfs: *mut crate::fs::Lfs,
     pair: &[crate::types::lfs_block_t; 2],
     pdir: *mut crate::dir::LfsMdir,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::fs::mount::{lfs_tortoise_detectcycles, LfsTortoise};
     use crate::types::LFS_BLOCK_NULL;
@@ -78,12 +80,10 @@ pub fn lfs_fs_pred(
                 if !have_fetched {
                     // Matched before any fetch: tail [0,1] == pair (root).
                     // The root has no predecessor.
-                    let err = lfs_dir_fetch(lfs, pdir, &(*pdir).tail);
-                    if err != 0 {
-                        return crate::lfs_pass_err!(err);
-                    }
+                    lfs_dir_fetch(lfs, pdir, &(*pdir).tail)?;
+
                     if lfs_pair_isnull(&(*pdir).tail) {
-                        return crate::error::LFS_ERR_NOENT;
+                        return Err(crate::error::Error::NoEntry);
                     }
                 }
                 return 0;

@@ -1,5 +1,7 @@
 //! Superblock and consistency. Per lfs.c lfs_fs_prepsuperblock, lfs_fs_deorphan, etc.
 
+use core::fmt::Error;
+
 use crate::types::lfs_block_t;
 
 /// Per lfs.c lfs_fs_prepsuperblock (lines 4888-4892)
@@ -69,7 +71,7 @@ pub fn lfs_fs_prepmove(lfs: *mut super::lfs::Lfs, id: u16, pair: *const [lfs_blo
 /// Translation docs: Rewrite superblock when needssuperblock is set (older minor version on disk).
 ///
 /// C: lfs.c:4916-4953
-pub fn lfs_fs_desuperblock(lfs: *mut super::lfs::Lfs) -> i32 {
+pub fn lfs_fs_desuperblock(lfs: *mut super::lfs::Lfs) -> Result<(), Error> {
     crate::lfs_trace!("desuperblock: start");
     use crate::dir::commit::lfs_dir_commit;
     use crate::dir::fetch::lfs_dir_fetch;
@@ -82,15 +84,13 @@ pub fn lfs_fs_desuperblock(lfs: *mut super::lfs::Lfs) -> i32 {
     unsafe {
         if !lfs_gstate_needssuperblock(&(*lfs).gstate) {
             crate::lfs_trace!("desuperblock: no need, return 0");
-            return 0;
+            return Ok(());
         }
         crate::lfs_trace!("desuperblock: need superblock, fetching root");
 
         let mut root = core::mem::zeroed();
-        let err = lfs_dir_fetch(lfs, &mut root, &(*lfs).root);
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        let err = lfs_dir_fetch(lfs, &mut root, &(*lfs).root)?;
+
 
         // write a new superblock
         let mut superblock = LfsSuperblock {
@@ -332,7 +332,7 @@ pub fn lfs_fs_demove(lfs: *mut super::lfs::Lfs) -> i32 {
 /// Two passes: pass 0 for half-orphans, pass 1 for full-orphans.
 ///
 /// C: lfs.c:4991-5120
-pub fn lfs_fs_deorphan(lfs: *mut super::lfs::Lfs, powerloss: bool) -> i32 {
+pub fn lfs_fs_deorphan(lfs: *mut super::lfs::Lfs, powerloss: bool) -> Result<(), Error> {
     crate::lfs_trace!("deorphan: start powerloss={}", powerloss);
     use crate::dir::commit::{lfs_dir_commit, lfs_dir_orphaningcommit};
     use crate::dir::fetch::lfs_dir_fetch;
@@ -348,7 +348,7 @@ pub fn lfs_fs_deorphan(lfs: *mut super::lfs::Lfs, powerloss: bool) -> i32 {
 
     unsafe {
         if !crate::lfs_gstate::lfs_gstate_hasorphans(&(*lfs).gstate) {
-            return 0;
+            return Ok(());
         }
 
         let mut pass: i32 = 0;
@@ -389,10 +389,7 @@ pub fn lfs_fs_deorphan(lfs: *mut super::lfs::Lfs, powerloss: bool) -> i32 {
                     }
                     iter += 1;
                 }
-                let err = lfs_dir_fetch(lfs, &mut dir, &pdir.tail);
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+                lfs_dir_fetch(lfs, &mut dir, &pdir.tail)?;
 
                 if !pdir.split {
                     let mut parent = core::mem::zeroed();
@@ -496,7 +493,7 @@ pub fn lfs_fs_deorphan(lfs: *mut super::lfs::Lfs, powerloss: bool) -> i32 {
 /// demove, and deorphan in sequence.
 ///
 /// C: lfs.c:5122-5140
-pub fn lfs_fs_forceconsistency(lfs: *mut super::lfs::Lfs) -> i32 {
+pub fn lfs_fs_forceconsistency(lfs: *mut super::lfs::Lfs) -> Result<(), Error> {
     crate::lfs_trace!("forceconsistency: start");
     let err = lfs_fs_desuperblock(lfs);
     crate::lfs_trace!("forceconsistency: after desuperblock err={}", err);

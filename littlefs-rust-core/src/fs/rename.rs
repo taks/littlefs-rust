@@ -5,10 +5,7 @@ use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::{LfsMdir, LfsMlist};
-use crate::error::{
-    LFS_ERR_INVAL, LFS_ERR_ISDIR, LFS_ERR_NAMETOOLONG, LFS_ERR_NOENT, LFS_ERR_NOTDIR,
-    LFS_ERR_NOTEMPTY,
-};
+use crate::error::Error;
 use crate::fs::parent::lfs_fs_pred;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_prepmove, lfs_fs_preporphans};
 use crate::lfs_gstate::{lfs_gstate_hasmove, lfs_gstate_hasorphans};
@@ -235,7 +232,7 @@ fn slice_until_nul(ptr: *const u8) -> &'static [u8] {
     }
 }
 
-pub fn lfs_rename_(lfs: *mut super::lfs::Lfs, oldpath: *const u8, newpath: *const u8) -> i32 {
+pub fn lfs_rename_(lfs: *mut super::lfs::Lfs, oldpath: *const u8, newpath: *const u8) -> Result<(), Error> {
     let err = lfs_fs_forceconsistency(lfs);
     if err != 0 {
         return crate::lfs_pass_err!(err);
@@ -325,12 +322,10 @@ pub fn lfs_rename_(lfs: *mut super::lfs::Lfs, oldpath: *const u8, newpath: *cons
             }
             lfs_pair_fromle32(&mut prevpair);
 
-            let err = lfs_dir_fetch(lfs, &mut prevdir.m, &prevpair);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_dir_fetch(lfs, &mut prevdir.m, &prevpair)?;
+
             if prevdir.m.count > 0 || prevdir.m.split {
-                return crate::lfs_err!(LFS_ERR_NOTEMPTY);
+                return crate::lfs_err!(Err(Error::NotEmpty));
             }
             let err = lfs_fs_preporphans(lfs, 1);
             if err != 0 {

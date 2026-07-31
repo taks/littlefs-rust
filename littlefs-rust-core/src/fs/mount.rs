@@ -1,5 +1,7 @@
 //! Mount/unmount. Per lfs.c lfs_mount_, lfs_unmount_.
 
+use crate::error::Error;
+
 /// Per lfs.c lfs_tortoise_t and lfs_tortoise_detectcycles (lines 4464-4480)
 #[repr(C)]
 pub struct LfsTortoise {
@@ -12,18 +14,18 @@ pub struct LfsTortoise {
 pub fn lfs_tortoise_detectcycles(
     dir: *const crate::dir::LfsMdir,
     tortoise: *mut LfsTortoise,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_NULL;
     use crate::util::lfs_pair_issync;
 
     if tortoise.is_null() {
-        return 0;
+        return Ok(());
     }
     unsafe {
         let dir_ref = &*dir;
         let tortoise_ref = &mut *tortoise;
         if lfs_pair_issync(&dir_ref.tail, &tortoise_ref.pair) {
-            return crate::error::LFS_ERR_CORRUPT;
+            return Err(crate::error::Error::Corrupt);
         }
         if tortoise_ref.i == tortoise_ref.period {
             tortoise_ref.pair = dir_ref.tail;
@@ -32,7 +34,7 @@ pub fn lfs_tortoise_detectcycles(
         }
         tortoise_ref.i += 1;
     }
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_mount_ (lines 4482-4645)
@@ -209,7 +211,6 @@ pub fn lfs_mount_(lfs: *mut super::lfs::Lfs, cfg: *const crate::lfs_config::LfsC
     use crate::dir::fetch::{lfs_dir_fetchmatch, lfs_dir_getgstate};
     use crate::dir::find::{lfs_dir_find_match, LfsDirFindMatch};
     use crate::dir::traverse::lfs_dir_get;
-    use crate::error::LFS_ERR_INVAL;
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::fs::superblock::lfs_fs_prepsuperblock;
     use crate::lfs_gstate::lfs_gstate_iszero;
