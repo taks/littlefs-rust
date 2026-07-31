@@ -533,42 +533,35 @@ pub fn lfs_file_close_(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> i32 {
 ///     }
 /// }
 /// ```
-pub fn lfs_file_relocate(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> i32 {
+pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_prog, lfs_bd_read, lfs_cache_drop, lfs_cache_zero};
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
-    use crate::error::LFS_ERR_CORRUPT;
 
     'relocate: loop {
         unsafe {
             let mut nblock: lfs_block_t = 0;
-            let err = lfs_alloc(lfs, &mut nblock);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_alloc(lfs, &mut nblock)?;
 
-            let err = lfs_bd_erase(lfs as *const crate::fs::Lfs, nblock);
-            if err != 0 {
-                if err == LFS_ERR_CORRUPT {
+            let err = lfs_bd_erase(lfs, nblock);
+            if let Err(e) = err {
+                if e == Error::Corrupt {
                     lfs_alloc_lookahead(lfs, nblock);
-                    lfs_cache_drop(lfs, &mut (*lfs).pcache as *mut _);
+                    lfs_cache_drop(lfs, &mut (*lfs).pcache);
                     continue 'relocate;
                 }
                 return crate::lfs_pass_err!(err);
             }
 
-            let file_ref = &mut *file;
-            let lfs_ref = &mut *lfs;
-
-            for i in 0..file_ref.off {
+            for i in 0..file.off {
                 let mut data: u8 = 0;
-                let err = if (file_ref.flags as i32 & LFS_F_INLINE) != 0 {
-                    let gtag = lfs_mktag(LFS_TYPE_INLINESTRUCT, file_ref.id as u32, 0);
+                let err = if (file.flags as i32 & LFS_F_INLINE) != 0 {
+                    let gtag = lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0);
                     lfs_dir_getread(
                         lfs,
-                        &file_ref.m,
+                        &file.m,
                         core::ptr::null(),
-                        &mut file_ref.cache,
-                        file_ref.off - i,
+                        &mut file.cache,
+                        file.off - i,
                         lfs_mktag(0xfff, 0x1ff, 0),
                         gtag,
                         i,
@@ -578,23 +571,23 @@ pub fn lfs_file_relocate(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> i32 {
                 } else {
                     lfs_bd_read(
                         lfs,
-                        &file_ref.cache,
-                        &mut lfs_ref.rcache,
-                        file_ref.off - i,
-                        file_ref.block,
+                        &file.cache,
+                        &mut lfs.rcache,
+                        file.off - i,
+                        file.block,
                         i,
                         &mut data,
                         1,
                     )
                 };
-                if err != 0 {
+                if err.is_err() {
                     return crate::lfs_pass_err!(err);
                 }
 
                 let err = lfs_bd_prog(
-                    lfs as *const crate::fs::Lfs,
-                    &mut lfs_ref.pcache,
-                    &mut lfs_ref.rcache,
+                    lfs,
+                    &mut lfs.pcache,
+                    &mut lfs.rcache,
                     true,
                     nblock,
                     i,
@@ -630,7 +623,7 @@ pub fn lfs_file_relocate(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> i32 {
                 file_ref.flags |= LFS_F_WRITING as u32;
             }
             lfs_cache_zero(lfs, &mut (*lfs).pcache as *mut _);
-            return 0;
+            return Ok(());
         }
     }
 }

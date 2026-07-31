@@ -251,7 +251,7 @@ pub fn lfs_ctz_find(
 /// }
 /// ```
 pub fn lfs_ctz_traverse(
-    lfs: *const crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs,
     pcache: *const crate::bd::LfsCache,
     rcache: *mut crate::bd::LfsCache,
     head: lfs_block_t,
@@ -271,7 +271,6 @@ pub fn lfs_ctz_traverse(
         let mut index_off = size - 1;
         let mut index = lfs_ctz_index(lfs, &mut index_off) as u32;
         let mut current_head = head;
-        let lfs = lfs as *mut crate::fs::Lfs;
         #[cfg(feature = "loop_limits")]
         let block_count = (*lfs).block_count;
         #[cfg(feature = "loop_limits")]
@@ -446,7 +445,7 @@ pub fn lfs_ctz_extend(
     size: lfs_size_t,
     block: *mut lfs_block_t,
     off: *mut lfs_off_t,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_prog, lfs_bd_read, lfs_cache_drop};
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
     use crate::util::{lfs_ctz, lfs_fromle32, lfs_tole32};
@@ -456,12 +455,10 @@ pub fn lfs_ctz_extend(
             let block_size = lfs.cfg.as_ref().expect("cfg").block_size;
 
             let mut nblock: lfs_block_t = 0;
-            let err = lfs_alloc(lfs, &mut nblock);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_alloc(lfs, &mut nblock)?;
 
-            let err = lfs_bd_erase(lfs as *const crate::fs::Lfs, nblock);
+
+            let err = lfs_bd_erase(lfs, nblock);
             if err != 0 {
                 if err == LFS_ERR_CORRUPT {
                     lfs_alloc_lookahead(lfs, nblock);
@@ -474,7 +471,7 @@ pub fn lfs_ctz_extend(
             if size == 0 {
                 *block = nblock;
                 *off = 0;
-                return 0;
+                return Ok(());
             }
 
             let mut noff = size - 1;

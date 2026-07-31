@@ -534,7 +534,7 @@ pub unsafe fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: *mut LfsMdir) -> Resu
         dir_ref.erased = false;
         dir_ref.split = false;
 
-        0
+        Ok(())
     }
 }
 
@@ -2303,7 +2303,7 @@ pub fn lfs_dir_orphaningcommit(
                         buffer: ldir.pair.as_ptr() as *const core::ffi::c_void,
                     },
                 ];
-                state = lfs_dir_relocatingcommit(
+                let state = lfs_dir_relocatingcommit(
                     lfs,
                     &mut pdir,
                     &ppair,
@@ -2315,7 +2315,7 @@ pub fn lfs_dir_orphaningcommit(
                 if state.is_err() {
                     return state;
                 }
-                if state == crate::error::LFS_OK_RELOCATED {
+                if state.unwrap() == crate::error::LFS_OK_RELOCATED {
                     lpair = ppair;
                     ldir = pdir;
                     orphans = true;

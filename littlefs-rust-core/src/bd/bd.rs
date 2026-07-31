@@ -33,7 +33,7 @@ pub fn lfs_cache_drop(_lfs: &Lfs, rcache: &mut LfsCache) {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_cache_zero(lfs: &Lfs, pcache: *mut LfsCache) {
+pub fn lfs_cache_zero(lfs: &Lfs, pcache: &mut LfsCache) {
     unsafe {
         let cfg = (*lfs).cfg;
         let cache_size = (*cfg).cache_size as usize;
@@ -134,7 +134,7 @@ pub fn lfs_cache_zero(lfs: &Lfs, pcache: *mut LfsCache) {
 /// }
 /// ```
 pub fn lfs_bd_read(
-    lfs: *mut Lfs,
+    lfs: &mut Lfs,
     pcache: *const LfsCache,
     rcache: *mut LfsCache,
     hint: lfs_size_t,
@@ -144,7 +144,6 @@ pub fn lfs_bd_read(
     size: lfs_size_t,
 ) -> Result<(), Error> {
     unsafe {
-        let lfs = &mut *lfs;
         let cfg = &*lfs.cfg;
         let read = match cfg.read {
             Some(f) => f,
@@ -427,17 +426,15 @@ pub fn lfs_bd_crc(
 /// #endif
 /// ```
 pub fn lfs_bd_flush(
-    lfs: *const Lfs,
+    lfs: &Lfs,
     pcache: *mut LfsCache,
-    rcache: *mut LfsCache,
+    rcache: &mut LfsCache,
     validate: bool,
 ) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::lfs_alignup;
 
     unsafe {
-        let lfs_ptr = lfs;
-        let lfs = &*lfs;
         let pcache = &mut *pcache;
         let cfg = &*lfs.cfg;
 
@@ -470,7 +467,7 @@ pub fn lfs_bd_flush(
             if validate {
                 lfs_cache_drop(lfs, rcache);
                 let res = lfs_bd_cmp(
-                    lfs_ptr as *mut Lfs,
+                    lfs as *mut Lfs,
                     core::ptr::null(),
                     rcache,
                     diff,

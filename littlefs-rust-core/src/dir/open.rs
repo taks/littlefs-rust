@@ -286,12 +286,9 @@ pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsI
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_seek_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, off: lfs_off_t) -> Result<(), Error> {
+pub fn lfs_dir_seek_(lfs: *mut crate::fs::Lfs, dir: &mut LfsDir, off: lfs_off_t) -> Result<(), Error> {
     unsafe {
-        let err = lfs_dir_rewind_(lfs, dir);
-        if err != 0 {
-            return err;
-        }
+        lfs_dir_rewind_(lfs, dir)?;
 
         let dir_ref = &mut *dir;
 
@@ -319,7 +316,7 @@ pub fn lfs_dir_seek_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, off: lfs_off_t)
             off -= diff;
         }
 
-        0
+        Ok(())
     }
 }
 
