@@ -1,7 +1,7 @@
 //! Block device operations. Per lfs.c lfs_bd_read, lfs_bd_prog, lfs_bd_crc, etc.
 
 use crate::bd::LfsCache;
-use crate::error::LFS_ERR_CORRUPT;
+use crate::error::{Error, LFS_ERR_CORRUPT};
 use crate::fs::Lfs;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
@@ -144,13 +144,13 @@ pub fn lfs_bd_read(
     off: lfs_off_t,
     buffer: *mut u8,
     size: lfs_size_t,
-) -> i32 {
+) -> Result<(), Error> {
     unsafe {
         let lfs = &mut *lfs;
         let cfg = &*lfs.cfg;
         let read = match cfg.read {
             Some(f) => f,
-            None => return LFS_ERR_CORRUPT,
+            None => return Err(Error::Corrupt),
         };
 
         if off + size > cfg.block_size || (lfs.block_count != 0 && block >= lfs.block_count) {
@@ -250,7 +250,7 @@ pub fn lfs_bd_read(
             }
         }
 
-        0
+        Ok(())
     }
 }
 
@@ -294,7 +294,7 @@ pub fn lfs_bd_cmp(
     off: lfs_off_t,
     buffer: *const u8,
     size: lfs_size_t,
-) -> i32 {
+) -> Result<i32, Error> {
     // Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2 (positive = not error)
     const LFS_CMP_EQ: i32 = 0;
     const LFS_CMP_LT: i32 = 1;
@@ -313,10 +313,8 @@ pub fn lfs_bd_cmp(
             off + i,
             dat.as_mut_ptr(),
             diff as lfs_size_t,
-        );
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        )?;
+
         let res = unsafe {
             let disk = &dat[..diff];
             let expected = core::slice::from_raw_parts(buffer.add(i as usize), diff);
@@ -324,12 +322,12 @@ pub fn lfs_bd_cmp(
         };
         match res {
             core::cmp::Ordering::Equal => {}
-            core::cmp::Ordering::Less => return LFS_CMP_LT,
-            core::cmp::Ordering::Greater => return LFS_CMP_GT,
+            core::cmp::Ordering::Less => return Ok(LFS_CMP_LT),
+            core::cmp::Ordering::Greater => return Ok(LFS_CMP_GT),
         }
         i += diff as lfs_off_t;
     }
-    LFS_CMP_EQ
+    Ok(LFS_CMP_EQ)
 }
 
 /// Per lfs.c lfs_bd_crc (lines 155-175)
@@ -366,7 +364,7 @@ pub fn lfs_bd_crc(
     off: lfs_off_t,
     size: lfs_size_t,
     crc: *mut u32,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::crc::lfs_crc;
     use crate::util::lfs_min;
 
@@ -383,16 +381,14 @@ pub fn lfs_bd_crc(
             off + i,
             dat.as_mut_ptr(),
             diff as lfs_size_t,
-        );
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        )?;
+
         unsafe {
             *crc = lfs_crc(*crc, dat.as_ptr(), diff);
         }
         i += diff as lfs_off_t;
     }
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_bd_flush (lines 177-210)
@@ -439,7 +435,7 @@ pub fn lfs_bd_flush(
     pcache: *mut LfsCache,
     rcache: *mut LfsCache,
     validate: bool,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::lfs_alignup;
 
@@ -692,9 +688,8 @@ pub fn lfs_bd_prog(
 /// }
 /// #endif
 /// ```
-pub fn lfs_bd_erase(lfs: *const Lfs, block: lfs_block_t) -> i32 {
+pub fn lfs_bd_erase(lfs: &Lfs, block: lfs_block_t) -> Result<(), Error> {
     unsafe {
-        let lfs = &*lfs;
         crate::lfs_assert!(block < lfs.block_count);
         let erase = match (*lfs.cfg).erase {
             Some(f) => f,
