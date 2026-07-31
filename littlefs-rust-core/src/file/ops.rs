@@ -198,15 +198,11 @@ pub fn lfs_file_opencfg_(
     path: *const i8,
     flags: i32,
     cfg: *const LfsFileConfig,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
     use crate::dir::find::lfs_dir_find;
     use crate::dir::lfs_mlist::lfs_mlist_append;
     use crate::dir::traverse::lfs_dir_get;
-    use crate::error::{
-        LFS_ERR_EXIST, LFS_ERR_ISDIR, LFS_ERR_NAMETOOLONG, LFS_ERR_NOENT, LFS_ERR_NOMEM,
-        LFS_ERR_NOSPC,
-    };
     use crate::file::lfs_ctz::lfs_ctz_fromle32;
     use crate::fs::superblock::lfs_fs_forceconsistency;
     use crate::lfs_info::LfsAttr;
@@ -221,10 +217,7 @@ pub fn lfs_file_opencfg_(
     let path_u8 = path as *const u8;
     unsafe {
         if (flags & 2) != 0 {
-            let err = lfs_fs_forceconsistency(lfs);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_fs_forceconsistency(lfs)?;
         }
 
         let file_ref = &mut *file;

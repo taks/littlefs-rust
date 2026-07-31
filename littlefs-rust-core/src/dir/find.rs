@@ -4,7 +4,7 @@ use crate::bd::bd::lfs_bd_cmp;
 use crate::dir::fetch::lfs_dir_fetchmatch;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::LfsMdir;
-use crate::error::{LFS_ERR_INVAL, LFS_ERR_NOENT, LFS_ERR_NOTDIR};
+use crate::error::Error;
 use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_NAME, LFS_TYPE_STRUCT};
 use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
@@ -63,7 +63,7 @@ pub unsafe extern "C" fn lfs_dir_find_match(
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
-) -> i32 {
+) -> Result<i32, Error> {
     if data.is_null() || buffer.is_null() {
         return LFS_CMP_LT;
     }
@@ -83,17 +83,17 @@ pub unsafe extern "C" fn lfs_dir_find_match(
             name.name,
             diff,
         );
-        if res != LFS_CMP_EQ {
+        if res != Ok(LFS_CMP_EQ) {
             return res;
         }
         if name.size != lfs_tag_size(tag) {
             return if name.size < lfs_tag_size(tag) {
-                LFS_CMP_LT
+                Ok(LFS_CMP_LT)
             } else {
-                LFS_CMP_GT
+                Ok(LFS_CMP_GT)
             };
         }
-        LFS_CMP_EQ
+        Ok(LFS_CMP_EQ)
     }
 }
 
@@ -215,16 +215,16 @@ pub fn lfs_dir_find(
     dir: *mut LfsMdir,
     path: *mut *const u8,
     id: *mut u16,
-) -> crate::types::lfs_stag_t {
+) -> Result<crate::types::lfs_stag_t, Error> {
     if lfs.is_null() || dir.is_null() || path.is_null() {
-        return crate::lfs_err!(LFS_ERR_INVAL as crate::types::lfs_stag_t);
+        return crate::lfs_err!(Err(Error::Invalid));
     }
     unsafe {
         let lfs_ref = &mut *lfs;
         let dir_ref = &mut *dir;
         let mut name = *path;
         if name.is_null() {
-            return crate::lfs_err!(LFS_ERR_INVAL as crate::types::lfs_stag_t);
+            return crate::lfs_err!(Err(Error::Invalid));
         }
 
         // C: lfs.c:1488-1491
@@ -234,7 +234,7 @@ pub fn lfs_dir_find(
 
         // C: lfs.c:1494-1495
         if *name == 0 {
-            return crate::lfs_err!(LFS_ERR_INVAL as crate::types::lfs_stag_t);
+            return crate::lfs_err!(Err(Error::Invalid));
         }
 
         'nextname: loop {
@@ -253,7 +253,7 @@ pub fn lfs_dir_find(
 
             // C: lfs.c:1522-1524 - error on '..' at top level
             if namelen == 2 && *name == b'.' && *name.add(1) == b'.' {
-                return crate::lfs_err!(LFS_ERR_INVAL as crate::types::lfs_stag_t);
+                crate::lfs_err!(Err(Error::Invalid));
             }
 
             // C: lfs.c:1527-1541 - skip if matched by '..' in path
@@ -370,7 +370,7 @@ pub fn lfs_dir_find(
                     break;
                 }
                 if !dir_ref.split {
-                    return crate::lfs_err!(LFS_ERR_NOENT as crate::types::lfs_stag_t);
+                    return crate::lfs_err!(Err(Error::NoEntry));
                 }
             }
 

@@ -92,17 +92,12 @@ pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8
                     8,
                 ),
                 pair.as_mut_ptr() as *mut core::ffi::c_void,
-            );
-            if res < 0 {
-                return res;
-            }
+            )?;
+
             lfs_pair_fromle32(&mut pair);
         }
 
-        let err = lfs_dir_fetch(lfs, &mut dir_ref.m, &pair);
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        lfs_dir_fetch(lfs, &mut dir_ref.m, &pair)?;
 
         dir_ref.head[0] = dir_ref.m.pair[0];
         dir_ref.head[1] = dir_ref.m.pair[1];

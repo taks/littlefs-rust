@@ -84,7 +84,7 @@ pub fn lfs_dir_getslice(
     goff: lfs_off_t,
     gbuffer: *mut core::ffi::c_void,
     gsize: lfs_size_t,
-) -> Result<lfs_stag_t, Error> {
+) -> Result<lfs_tag_t, Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::tag::{
         lfs_mktag, lfs_tag_dsize, lfs_tag_id, lfs_tag_isdelete, lfs_tag_size, lfs_tag_type1,
@@ -101,7 +101,7 @@ pub fn lfs_dir_getslice(
             && lfs_tag_id(gmask) != 0
         {
             if lfs_tag_id((*lfs).gdisk.tag) == lfs_tag_id(gtag) {
-                return crate::error::LFS_ERR_NOENT;
+                return Err(Error::NoEntry);
             } else if lfs_tag_id((*lfs).gdisk.tag) < lfs_tag_id(gtag) {
                 gdiff = gdiff.wrapping_sub(lfs_mktag(0, 1, 0) as i32);
             }
@@ -203,7 +203,7 @@ pub fn lfs_dir_get(
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
     buffer: *mut core::ffi::c_void,
-) -> lfs_stag_t {
+) -> Result<lfs_tag_t, Error> {
     lfs_dir_getslice(
         lfs,
         dir,
@@ -239,7 +239,7 @@ pub fn lfs_dir_get(
 /// }
 /// ```
 pub fn lfs_dir_getread(
-    lfs: *mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs,
     dir: *const LfsMdir,
     pcache: *const LfsCache,
     rcache: *mut LfsCache,
@@ -259,8 +259,7 @@ pub fn lfs_dir_getread(
     let data = buffer as *mut u8;
 
     unsafe {
-        let lfs_ref = &*lfs;
-        let cfg = lfs_ref.cfg.as_ref().expect("cfg");
+        let cfg = lfs.cfg.as_ref().expect("cfg");
         if off + size > cfg.block_size {
             return crate::lfs_err!(Err(Error::Corrupt));
         }
@@ -323,13 +322,10 @@ pub fn lfs_dir_getread(
                 rcache_ref.off,
                 rcache_ref.buffer as *mut core::ffi::c_void,
                 rcache_ref.size,
-            );
-            if res < 0 {
-                return res as i32;
-            }
+            )?;
         }
     }
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_dir_traverse_filter (lines 852-910)

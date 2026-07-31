@@ -600,7 +600,7 @@ pub fn lfs_bd_prog(
     off: lfs_off_t,
     buffer: *const u8,
     size: lfs_size_t,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_aligndown, lfs_max, lfs_min};
 
@@ -651,10 +651,7 @@ pub fn lfs_bd_prog(
 
                 pcache.size = lfs_max(pcache.size, off - pcache.off);
                 if pcache.size == cfg.cache_size {
-                    let err = lfs_bd_flush(lfs, pcache, rcache, validate);
-                    if err != 0 {
-                        return crate::lfs_pass_err!(err);
-                    }
+                    lfs_bd_flush(lfs, pcache, rcache, validate)?;
                 }
 
                 continue;
@@ -667,7 +664,7 @@ pub fn lfs_bd_prog(
             pcache.size = 0;
         }
 
-        0
+        Ok(())
     }
 }
 

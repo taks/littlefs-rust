@@ -1,7 +1,6 @@
 //! Superblock and consistency. Per lfs.c lfs_fs_prepsuperblock, lfs_fs_deorphan, etc.
 
-use core::fmt::Error;
-
+use crate::error::Error;
 use crate::types::lfs_block_t;
 
 /// Per lfs.c lfs_fs_prepsuperblock (lines 4888-4892)

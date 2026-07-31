@@ -6,7 +6,7 @@ use crate::dir::lfs_fcrc::lfs_fcrc_fromle32;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::LfsFcrc;
 use crate::dir::LfsMdir;
-use crate::error::{Error, LFS_ERR_CORRUPT};
+use crate::error::Error;
 use crate::file::lfs_ctz::{lfs_ctz_fromle32, LfsCtz};
 use crate::lfs_gstate::LfsGstate;
 use crate::lfs_gstate::{lfs_gstate_fromle32, lfs_gstate_hasmovehere, lfs_gstate_xor};
@@ -356,8 +356,8 @@ pub fn lfs_dir_fetchmatch(
                 4,
             );
             revs[i] = u32::from_le_bytes(rev_buf);
-            if err != 0 && err != LFS_ERR_CORRUPT {
-                return err as lfs_stag_t;
+            if let Err(err) = err && err != LFS_ERR_CORRUPT {
+                return Err(err);
             }
             if err != LFS_ERR_CORRUPT && lfs_scmp(revs[i], revs[(i + 1) % 2]) > 0 {
                 r = i;
@@ -812,9 +812,9 @@ pub fn lfs_dir_getinfo(
     dir: *const LfsMdir,
     id: u16,
     info: *mut LfsInfo,
-) -> i32 {
+) -> Result<(), Error> {
     if lfs.is_null() || dir.is_null() || info.is_null() {
-        return crate::error::LFS_ERR_INVAL;
+        return Err(Error::Invalid);
     }
     unsafe {
         let info = &mut *info;
@@ -826,7 +826,7 @@ pub fn lfs_dir_getinfo(
             info.type_ = LFS_TYPE_DIR as u8;
             info.name[0] = b'/';
             info.name[1] = 0;
-            return 0;
+            return Ok(());
         }
 
         // C: lfs.c:1422-1426
@@ -838,11 +838,11 @@ pub fn lfs_dir_getinfo(
             lfs_mktag(LFS_TYPE_NAME, id as u32, name_max + 1),
             info.name.as_mut_ptr() as *mut core::ffi::c_void,
         );
-        if tag < 0 {
-            return tag;
+        if let Err(err) = tag {
+            return Err(err);
         }
 
-        info.type_ = lfs_tag_type3(tag as u32) as u8;
+        info.type_ = lfs_tag_type3(tag.unwrap() as _) as u8;
 
         // C: lfs.c:1430-1441
         let mut ctz = LfsCtz { head: 0, size: 0 };
