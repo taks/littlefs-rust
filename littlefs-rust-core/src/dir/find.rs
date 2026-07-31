@@ -65,7 +65,7 @@ pub unsafe extern "C" fn lfs_dir_find_match(
     buffer: *const core::ffi::c_void,
 ) -> Result<i32, Error> {
     if data.is_null() || buffer.is_null() {
-        return LFS_CMP_LT;
+        return Ok(LFS_CMP_LT);
     }
     unsafe {
         let name = &*(data as *const LfsDirFindMatch);
@@ -215,7 +215,7 @@ pub fn lfs_dir_find(
     dir: *mut LfsMdir,
     path: *mut *const u8,
     id: *mut u16,
-) -> Result<crate::types::lfs_stag_t, Error> {
+) -> Result<crate::types::lfs_tag_t, Error> {
     if lfs.is_null() || dir.is_null() || path.is_null() {
         return crate::lfs_err!(Err(Error::Invalid));
     }
@@ -228,7 +228,7 @@ pub fn lfs_dir_find(
         }
 
         // C: lfs.c:1488-1491
-        let mut tag = lfs_mktag(LFS_TYPE_DIR, 0x3ff, 0) as i32;
+        let mut tag = lfs_mktag(LFS_TYPE_DIR, 0x3ff, 0);
         dir_ref.tail[0] = lfs_ref.root[0];
         dir_ref.tail[1] = lfs_ref.root[1];
 
@@ -296,7 +296,7 @@ pub fn lfs_dir_find(
 
             // C: lfs.c:1544-1546 - found path
             if *name == 0 {
-                return tag;
+                return Ok(tag);
             }
 
             // C: lfs.c:1549
@@ -304,7 +304,7 @@ pub fn lfs_dir_find(
 
             // C: lfs.c:1652-1654
             if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
-                return crate::lfs_err!(LFS_ERR_NOTDIR as crate::types::lfs_stag_t);
+                return crate::lfs_err!(Err(Error::NotDir));
             }
 
             // C: lfs.c:1557-1564
@@ -362,10 +362,8 @@ pub fn lfs_dir_find(
                     id,
                     Some(lfs_dir_find_match),
                     &mut match_data as *mut _ as *mut core::ffi::c_void,
-                );
-                if tag < 0 {
-                    return tag;
-                }
+                )?;
+
                 if tag != 0 {
                     break;
                 }

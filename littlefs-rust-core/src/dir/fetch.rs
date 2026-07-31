@@ -319,7 +319,7 @@ pub fn lfs_dir_fetchmatch(
         unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> i32,
     >,
     _data: *mut core::ffi::c_void,
-) -> Result<lfs_stag_t, Error> {
+) -> Result<lfs_tag_t, Error> {
     // Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2
     const LFS_CMP_EQ: i32 = 0;
     const LFS_CMP_LT: i32 = 1;
@@ -356,10 +356,10 @@ pub fn lfs_dir_fetchmatch(
                 4,
             );
             revs[i] = u32::from_le_bytes(rev_buf);
-            if let Err(err) = err && err != LFS_ERR_CORRUPT {
+            if let Err(err) = err && err != Error::Corrupt {
                 return Err(err);
             }
-            if err != LFS_ERR_CORRUPT && lfs_scmp(revs[i], revs[(i + 1) % 2]) > 0 {
+            if err != Err(Error::Corrupt) && lfs_scmp(revs[i], revs[(i + 1) % 2]) > 0 {
                 r = i;
             }
         }
@@ -425,11 +425,11 @@ pub fn lfs_dir_fetchmatch(
                     tag_buf.as_mut_ptr(),
                     4,
                 );
-                if err != 0 {
-                    if err == LFS_ERR_CORRUPT {
+                if let Err(err) = err{
+                    if err == Error::Corrupt {
                         break;
                     }
-                    return err as lfs_stag_t;
+                    return Err(err);
                 }
 
                 crc = lfs_crc(crc, tag_buf.as_ptr(), 4);
@@ -497,8 +497,8 @@ pub fn lfs_dir_fetchmatch(
                     entry_size,
                     &mut crc_val,
                 );
-                if err != 0 {
-                    if err == LFS_ERR_CORRUPT {
+                if let Err(err) = err{
+                    if err == Error::Corrupt {
                         break;
                     }
                     return err as lfs_stag_t;
@@ -623,8 +623,8 @@ pub fn lfs_dir_fetchmatch(
                     fcrc.size,
                     &mut fcrc_,
                 );
-                if err != 0 && err != LFS_ERR_CORRUPT {
-                    return err as lfs_stag_t;
+                if let Err(err) = err && err != Error::Corrupt {
+                    return Err(err);
                 }
                 dir.erased = fcrc_ == fcrc.crc;
             }
@@ -666,7 +666,7 @@ pub fn lfs_dir_fetchmatch(
                     dir.tail[0],
                     dir.tail[1]
                 );
-                return crate::error::LFS_ERR_NOENT as lfs_stag_t;
+                return Err(Error::NoEntry);
             } else {
                 crate::lfs_trace!(
                     "fetchmatch: CONTINUE pair=[{},{}] count={} split={} tail=[{},{}]",
@@ -681,7 +681,7 @@ pub fn lfs_dir_fetchmatch(
             }
         }
 
-        LFS_ERR_CORRUPT as lfs_stag_t
+        Err(Error::Corrupt)
     }
 }
 
@@ -741,7 +741,7 @@ pub fn lfs_dir_getgstate(
     lfs: *mut crate::fs::Lfs,
     dir: *const LfsMdir,
     gstate: *mut LfsGstate,
-) -> i32 {
+) -> Result<_, Error> {
     unsafe {
         let mut temp = crate::lfs_gstate::LfsGstate {
             tag: 0,
@@ -758,14 +758,14 @@ pub fn lfs_dir_getgstate(
             ),
             &mut temp as *mut _ as *mut core::ffi::c_void,
         );
-        if res < 0 && res != crate::error::LFS_ERR_NOENT {
-            return res;
+        if let Err(err) = res && err != Error::NoEntry {
+            return Err(err);
         }
-        if res != crate::error::LFS_ERR_NOENT {
+        if res != Err(Error::NoEntry) {
             lfs_gstate_fromle32(&mut temp);
             lfs_gstate_xor(&mut *gstate, &temp);
         }
-        0
+        Ok(())
     }
 }
 
@@ -852,10 +852,8 @@ pub fn lfs_dir_getinfo(
             lfs_mktag(0x700, 0x3ff, 0),
             lfs_mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>() as u32),
             &mut ctz as *mut _ as *mut core::ffi::c_void,
-        );
-        if tag < 0 {
-            return tag;
-        }
+        )?;
+
         lfs_ctz_fromle32(&mut ctz);
 
         if u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_CTZSTRUCT {
@@ -864,6 +862,6 @@ pub fn lfs_dir_getinfo(
             info.size = lfs_tag_size(tag as u32);
         }
 
-        0
+        Ok(())
     }
 }

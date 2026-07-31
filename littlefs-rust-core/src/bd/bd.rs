@@ -18,7 +18,7 @@ use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_cache_drop(_lfs: *const Lfs, rcache: &mut LfsCache) {
+pub fn lfs_cache_drop(_lfs: &Lfs, rcache: &mut LfsCache) {
     (*rcache).block = crate::types::LFS_BLOCK_NULL;
 }
 
@@ -517,25 +517,20 @@ pub fn lfs_bd_flush(
 pub fn lfs_bd_sync(
     lfs: *const Lfs,
     pcache: *mut LfsCache,
-    rcache: *mut LfsCache,
+    rcache: &mut LfsCache,
     validate: bool,
-) -> i32 {
+) -> Result<(), Error> {
     unsafe {
         lfs_cache_drop(lfs, rcache);
 
-        let err = lfs_bd_flush(lfs, pcache, rcache, validate);
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        lfs_bd_flush(lfs, pcache, rcache, validate)?;
 
         let cfg = &*(*lfs).cfg;
         let sync = match cfg.sync {
             Some(f) => f,
-            None => return LFS_ERR_CORRUPT,
+            None => return Err(Error::Corrupt),
         };
-        let err = sync(cfg as *const _);
-        crate::lfs_assert!(err <= 0);
-        err
+        sync(cfg as *const _)
     }
 }
 
@@ -592,7 +587,7 @@ pub fn lfs_bd_sync(
 /// #endif
 /// ```
 pub fn lfs_bd_prog(
-    lfs: *const Lfs,
+    lfs: &Lfs,
     pcache: *mut LfsCache,
     rcache: *mut LfsCache,
     validate: bool,
@@ -605,7 +600,6 @@ pub fn lfs_bd_prog(
     use crate::util::{lfs_aligndown, lfs_max, lfs_min};
 
     unsafe {
-        let lfs = &*lfs;
         let cfg = &*lfs.cfg;
         let pcache = &mut *pcache;
 

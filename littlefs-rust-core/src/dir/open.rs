@@ -6,6 +6,7 @@ use crate::dir::lfs_mlist::lfs_mlist_append;
 use crate::dir::lfs_mlist::lfs_mlist_remove;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::LfsDir;
+use crate::error::Error;
 use crate::lfs_info::LfsInfo;
 use crate::lfs_type::lfs_type::LFS_TYPE_DIR;
 use crate::tag::{lfs_mktag, lfs_tag_id, lfs_tag_type3};
@@ -60,7 +61,7 @@ use crate::util::{lfs_min, lfs_pair_cmp, lfs_pair_fromle32};
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8) -> i32 {
+pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8) -> Result<_, Error> {
     if lfs.is_null() || dir.is_null() || path.is_null() {
         return crate::error::LFS_ERR_INVAL;
     }
@@ -68,13 +69,10 @@ pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8
         let dir_ref = &mut *dir;
         let mut path_ptr = path;
 
-        let tag = lfs_dir_find(lfs, &mut dir_ref.m, &mut path_ptr, core::ptr::null_mut());
-        if tag < 0 {
-            return tag;
-        }
+        let tag = lfs_dir_find(lfs, &mut dir_ref.m, &mut path_ptr, core::ptr::null_mut())?;
 
         if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
-            return crate::error::LFS_ERR_NOTDIR;
+            return Err(Error::NotDir);
         }
 
         let mut pair = [0u32; 2];
@@ -106,7 +104,7 @@ pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8
         dir_ref.type_ = LFS_TYPE_DIR as u8;
         lfs_mlist_append(lfs, dir as *mut crate::dir::lfs_mlist::LfsMlist);
 
-        0
+        Ok(())
     }
 }
 
@@ -121,14 +119,14 @@ pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_close_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir) -> i32 {
+pub fn lfs_dir_close_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir) -> Result<(), Error> {
     if lfs.is_null() || dir.is_null() {
-        return crate::error::LFS_ERR_INVAL;
+        return Err(Error::Invalid);
     }
     unsafe {
         lfs_mlist_remove(lfs, dir as *mut crate::dir::lfs_mlist::LfsMlist);
     }
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_dir_read_ (lines 2772-2815)
@@ -227,10 +225,8 @@ pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsI
                 if !dir_ref.m.split {
                     return 0;
                 }
-                let err = lfs_dir_fetch(lfs, &mut dir_ref.m, &dir_ref.m.tail);
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+                lfs_dir_fetch(lfs, &mut dir_ref.m, &dir_ref.m.tail)?;
+
                 dir_ref.id = 0;
             }
 
@@ -290,7 +286,7 @@ pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsI
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_seek_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, off: lfs_off_t) -> i32 {
+pub fn lfs_dir_seek_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, off: lfs_off_t) -> Result<(), Error> {
     unsafe {
         let err = lfs_dir_rewind_(lfs, dir);
         if err != 0 {
@@ -312,12 +308,9 @@ pub fn lfs_dir_seek_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, off: lfs_off_t)
         while off > 0 {
             if dir_ref.id == dir_ref.m.count {
                 if !dir_ref.m.split {
-                    return crate::error::LFS_ERR_INVAL;
+                    return Err(Error::Invalid);
                 }
-                let err = lfs_dir_fetch(lfs, &mut dir_ref.m, &dir_ref.m.tail);
-                if err != 0 {
-                    return err;
-                }
+                lfs_dir_fetch(lfs, &mut dir_ref.m, &dir_ref.m.tail)?;
                 dir_ref.id = 0;
             }
             let diff = lfs_min((dir_ref.m.count - dir_ref.id) as u32, off);
@@ -359,15 +352,9 @@ pub fn lfs_dir_tell_(_lfs: *mut crate::fs::Lfs, dir: *const LfsDir) -> crate::ty
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_rewind_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir) -> i32 {
-    unsafe {
-        let dir_ref = &mut *dir;
-        let err = lfs_dir_fetch(lfs, &mut dir_ref.m, &dir_ref.head);
-        if err != 0 {
-            return err;
-        }
-        dir_ref.id = 0;
-        dir_ref.pos = 0;
-        0
-    }
+pub fn lfs_dir_rewind_(lfs: *mut crate::fs::Lfs, dir: &mut LfsDir) -> Result<(), Error> {
+    lfs_dir_fetch(lfs, &mut dir.m, &dir.head)?;
+    dir.id = 0;
+    dir.pos = 0;
+    Ok(())
 }

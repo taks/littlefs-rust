@@ -1,6 +1,6 @@
 //! FS parent. Per lfs.c lfs_fs_pred, lfs_fs_parent.
 
-use core::fmt::Error;
+use crate::error::Error;
 
 /// Per lfs.c lfs_fs_pred (lines 4796-4833)
 ///
@@ -72,8 +72,8 @@ pub fn lfs_fs_pred(
                 iter += 1;
             }
             let err = lfs_tortoise_detectcycles(pdir, &mut tortoise);
-            if err < 0 {
-                return crate::error::LFS_ERR_CORRUPT;
+            if err.is_err() {
+                return Err(Error::Corrupt);
             }
 
             if lfs_pair_cmp(&(*pdir).tail, pair) == 0 {
@@ -86,17 +86,14 @@ pub fn lfs_fs_pred(
                         return Err(crate::error::Error::NoEntry);
                     }
                 }
-                return 0;
+                return Ok(());
             }
 
-            let err = lfs_dir_fetch(lfs, pdir, &(*pdir).tail);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_dir_fetch(lfs, pdir, &(*pdir).tail)?;
             have_fetched = true;
         }
 
-        crate::error::LFS_ERR_NOENT
+        Err(Error::NoEntry)
     }
 }
 
@@ -204,7 +201,7 @@ pub fn lfs_fs_parent(
     lfs: *mut crate::fs::Lfs,
     pair: *const [crate::types::lfs_block_t; 2],
     parent: *mut crate::dir::LfsMdir,
-) -> crate::types::lfs_stag_t {
+) -> Result<crate::types::lfs_tag_t, Error> {
     use crate::dir::fetch::lfs_dir_fetchmatch;
     use crate::fs::mount::{lfs_tortoise_detectcycles, LfsTortoise};
     use crate::lfs_type::lfs_type::LFS_TYPE_DIRSTRUCT;
@@ -235,10 +232,7 @@ pub fn lfs_fs_parent(
                 }
                 iter += 1;
             }
-            let err = lfs_tortoise_detectcycles(parent, &mut tortoise);
-            if err < 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_tortoise_detectcycles(parent, &mut tortoise)?;
 
             let find_match = LfsFsParentMatch {
                 lfs,
@@ -260,6 +254,6 @@ pub fn lfs_fs_parent(
             }
         }
 
-        crate::error::LFS_ERR_NOENT
+        Err(Error::NoEntry)
     }
 }

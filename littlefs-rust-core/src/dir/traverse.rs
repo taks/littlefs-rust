@@ -125,7 +125,7 @@ pub fn lfs_dir_getslice(
             off -= lfs_tag_dsize(ntag);
             let tag = ntag;
             let mut ntag_buf: lfs_tag_t = 0;
-            let err = lfs_bd_read(
+            lfs_bd_read(
                 lfs,
                 core::ptr::null_mut(),
                 unsafe { &mut (*lfs).rcache },
@@ -134,10 +134,8 @@ pub fn lfs_dir_getslice(
                 off,
                 &mut ntag_buf as *mut _ as *mut u8,
                 4,
-            );
-            if err != 0 {
-                return err as lfs_stag_t;
-            }
+            )?;
+
             ntag = (lfs_frombe32(ntag_buf) ^ tag) & 0x7fff_ffff;
 
             if lfs_tag_id(gmask) != 0
@@ -713,7 +711,7 @@ pub fn lfs_dir_traverse(
         unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> i32,
     >,
     data: *mut core::ffi::c_void,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::lfs_type::lfs_type::LFS_FROM_NOOP;
     use crate::tag::{lfs_mktag, lfs_tag_dsize, lfs_tag_id, lfs_tag_type3};
@@ -722,7 +720,7 @@ pub fn lfs_dir_traverse(
 
     let cb = match cb {
         Some(c) => c,
-        None => return 0,
+        None => return Ok(()),
     };
 
     let mut stack: [core::mem::MaybeUninit<LfsDirTraverseStack>; LFS_DIR_TRAVERSE_DEPTH - 1] =

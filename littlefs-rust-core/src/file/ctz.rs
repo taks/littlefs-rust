@@ -181,7 +181,7 @@ pub fn lfs_ctz_find(
             );
 
             let mut head_buf: u32 = 0;
-            let err = lfs_bd_read(
+            lfs_bd_read(
                 lfs,
                 pcache,
                 rcache,
@@ -191,9 +191,7 @@ pub fn lfs_ctz_find(
                 &mut head_buf as *mut u32 as *mut u8,
                 4,
             )?;
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+
             head_val = lfs_fromle32(head_buf);
 
             current -= 1 << skip;
@@ -202,7 +200,7 @@ pub fn lfs_ctz_find(
         *block = head_val;
         *off = target_off;
     }
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_ctz_traverse (lines 3020-3063)
@@ -441,7 +439,7 @@ pub fn lfs_ctz_traverse(
 /// #endif
 /// ```
 pub fn lfs_ctz_extend(
-    lfs: *mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs,
     pcache: &mut crate::bd::LfsCache,
     rcache: *mut crate::bd::LfsCache,
     head: lfs_block_t,
@@ -455,8 +453,7 @@ pub fn lfs_ctz_extend(
 
     'relocate: loop {
         unsafe {
-            let lfs_ref = &*lfs;
-            let block_size = lfs_ref.cfg.as_ref().expect("cfg").block_size;
+            let block_size = lfs.cfg.as_ref().expect("cfg").block_size;
 
             let mut nblock: lfs_block_t = 0;
             let err = lfs_alloc(lfs, &mut nblock);
@@ -499,7 +496,7 @@ pub fn lfs_ctz_extend(
                     )?;
 
                     let err = lfs_bd_prog(
-                        lfs as *const crate::fs::Lfs,
+                        lfs,
                         pcache,
                         rcache,
                         true,
@@ -509,7 +506,7 @@ pub fn lfs_ctz_extend(
                         1,
                     );
                     if let Err(err) = err {
-                        if err == LFS_ERR_CORRUPT {
+                        if err == Error::Corrupt {
                             lfs_alloc_lookahead(lfs, nblock);
                             lfs_cache_drop(lfs, pcache);
                             continue 'relocate;
@@ -528,7 +525,7 @@ pub fn lfs_ctz_extend(
             for i in 0..skips {
                 let nhead_le = lfs_tole32(nhead);
                 let err = lfs_bd_prog(
-                    lfs as *const crate::fs::Lfs,
+                    lfs,
                     pcache,
                     rcache,
                     true,
@@ -549,7 +546,7 @@ pub fn lfs_ctz_extend(
 
                 if i != skips - 1 {
                     let mut nhead_buf: u32 = 0;
-                    let err = lfs_bd_read(
+                    lfs_bd_read(
                         lfs,
                         core::ptr::null(),
                         rcache,
@@ -558,10 +555,8 @@ pub fn lfs_ctz_extend(
                         4 * i,
                         &mut nhead_buf as *mut u32 as *mut u8,
                         4,
-                    );
-                    if err != 0 {
-                        return crate::lfs_pass_err!(err);
-                    }
+                    )?;
+
                     nhead = lfs_fromle32(nhead_buf);
                 }
             }

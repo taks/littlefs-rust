@@ -14,10 +14,10 @@ pub type lfs_prog_t =
     unsafe extern "C" fn(*const LfsConfig, lfs_block_t, lfs_off_t, *const u8, lfs_size_t) -> i32;
 
 /// Erase callback: (cfg, block) -> 0 or negative error
-pub type lfs_erase_t = unsafe extern "C" fn(*const LfsConfig, lfs_block_t) -> i32;
+pub type lfs_erase_t = unsafe extern "C" fn(*const LfsConfig, lfs_block_t) -> Result<(), Error>;
 
 /// Sync callback: (cfg) -> 0 or negative error
-pub type lfs_sync_t = unsafe extern "C" fn(*const LfsConfig) -> i32;
+pub type lfs_sync_t = unsafe extern "C" fn(*const LfsConfig) -> Result<(), Error>;
 
 /// Per lfs.h struct lfs_config.
 /// Layout matches C for potential FFI. Callbacks use Option to allow null.

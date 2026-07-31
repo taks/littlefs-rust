@@ -3,6 +3,7 @@
 use crate::dir::fetch::lfs_dir_getgstate;
 use crate::dir::LfsCommit;
 use crate::dir::LfsMdir;
+use crate::error::Error;
 use crate::fs::stat::lfs_fs_size_;
 use crate::fs::Lfs;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
@@ -27,36 +28,31 @@ use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
 /// }
 /// ```
 pub fn lfs_dir_commitprog(
-    lfs: *mut crate::fs::Lfs,
-    commit: *mut LfsCommit,
+    lfs: &mut crate::fs::Lfs,
+    commit: &mut LfsCommit,
     buffer: *const core::ffi::c_void,
     size: lfs_size_t,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_prog;
     use crate::crc::lfs_crc;
 
     unsafe {
-        let lfs_ref = &mut *lfs;
-        let commit_ref = &mut *commit;
         let buf = buffer as *const u8;
 
-        let err = lfs_bd_prog(
-            lfs_ref,
-            &mut lfs_ref.pcache,
-            &mut lfs_ref.rcache,
+        lfs_bd_prog(
+            lfs,
+            &mut lfs.pcache,
+            &mut lfs.rcache,
             false,
-            commit_ref.block,
-            commit_ref.off,
+            commit.block,
+            commit.off,
             buf,
             size,
-        );
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        )?;
 
-        commit_ref.crc = lfs_crc(commit_ref.crc, buf, size as usize);
-        commit_ref.off += size;
-        0
+        commit.crc = lfs_crc(commit.crc, buf, size as usize);
+        commit.off += size;
+        Ok(())
     }
 }
 
@@ -103,21 +99,19 @@ pub fn lfs_dir_commitprog(
 /// }
 /// ```
 pub fn lfs_dir_commitattr(
-    lfs: *mut crate::fs::Lfs,
-    commit: *mut LfsCommit,
+    lfs: &mut crate::fs::Lfs,
+    commit: &mut LfsCommit,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
-    use crate::error::LFS_ERR_NOSPC;
     use crate::tag::{lfs_tag_dsize, lfs_tag_isvalid};
     use crate::util::lfs_tobe32;
 
     unsafe {
-        let commit_ref = &mut *commit;
         let dsize = lfs_tag_dsize(tag);
 
-        if commit_ref.off + dsize > commit_ref.end {
+        if commit.off + dsize > commit.end {
             crate::lfs_trace!(
                 "lfs_dir_commitattr NOSPC: off+dsize>end off={} dsize={} end={} block={}",
                 commit_ref.off,
@@ -125,14 +119,11 @@ pub fn lfs_dir_commitattr(
                 commit_ref.end,
                 commit_ref.block
             );
-            return crate::lfs_err!(LFS_ERR_NOSPC);
+            return crate::lfs_err!(Err(Error::NoSpace));
         }
 
-        let ntag = lfs_tobe32((tag & 0x7fff_ffff) ^ commit_ref.ptag);
-        let mut err = lfs_dir_commitprog(lfs, commit, &ntag as *const _ as *const _, 4);
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        let ntag = lfs_tobe32((tag & 0x7fff_ffff) ^ commit.ptag);
+        lfs_dir_commitprog(lfs, commit, &ntag as *const _ as *const _, 4)?;
 
         if u32::from(crate::tag::lfs_tag_type1(tag))
             == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK
@@ -153,17 +144,14 @@ pub fn lfs_dir_commitattr(
         }
 
         if lfs_tag_isvalid(tag) {
-            err = lfs_dir_commitprog(lfs, commit, buffer, dsize.saturating_sub(4));
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_dir_commitprog(lfs, commit, buffer, dsize.saturating_sub(4))?;
         } else {
             let disk = buffer as *const crate::tag::lfs_diskoff;
             let disk_ref = &*disk;
             let data_size = dsize.saturating_sub(4);
             for i in 0..data_size {
                 let mut dat: u8 = 0;
-                err = lfs_bd_read(
+                lfs_bd_read(
                     lfs,
                     core::ptr::null(),
                     &mut (*lfs).rcache,
@@ -172,19 +160,14 @@ pub fn lfs_dir_commitattr(
                     disk_ref.off + i,
                     &mut dat as *mut u8,
                     1,
-                );
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
-                err = lfs_dir_commitprog(lfs, commit, &dat as *const _ as *const _, 1);
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+                )?;
+
+                lfs_dir_commitprog(lfs, commit, &dat as *const _ as *const _, 1)?;
             }
         }
 
-        commit_ref.ptag = tag & 0x7fff_ffff;
-        0
+        commit.ptag = tag & 0x7fff_ffff;
+        Ok(())
     }
 }
 
@@ -337,16 +320,14 @@ pub fn lfs_dir_commitattr(
 /// }
 /// #endif
 /// ```
-pub fn lfs_dir_commitcrc(lfs: *mut crate::fs::Lfs, commit: *mut LfsCommit) -> i32 {
+pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: *mut LfsCommit) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_crc, lfs_bd_prog, lfs_bd_sync};
     use crate::crc::lfs_crc;
-    use crate::error::LFS_ERR_CORRUPT;
     use crate::tag::lfs_mktag;
     use crate::util::{lfs_alignup, lfs_min, lfs_tobe32, lfs_tole32};
 
     unsafe {
-        let lfs_ref = &*lfs;
-        let cfg = lfs_ref.cfg.as_ref().unwrap();
+        let cfg = lfs.cfg.as_ref().unwrap();
         let block_size = cfg.block_size;
         let prog_size = cfg.prog_size;
 
@@ -365,7 +346,7 @@ pub fn lfs_dir_commitcrc(lfs: *mut crate::fs::Lfs, commit: *mut LfsCommit) -> i3
 
             let mut eperturb: u8 = 0xff;
             if noff >= end && noff <= block_size - prog_size {
-                let err = crate::bd::bd::lfs_bd_read(
+                let ret = crate::bd::bd::lfs_bd_read(
                     lfs,
                     core::ptr::null_mut(),
                     &mut (*lfs).rcache,
@@ -375,8 +356,8 @@ pub fn lfs_dir_commitcrc(lfs: *mut crate::fs::Lfs, commit: *mut LfsCommit) -> i3
                     &mut eperturb,
                     1,
                 );
-                if err != 0 && err != crate::error::LFS_ERR_CORRUPT {
-                    return crate::lfs_pass_err!(err);
+                if let Err(err) = ret && err != Error::Corrupt {
+                    return crate::lfs_pass_err!(ret);
                 }
             }
 
@@ -398,7 +379,7 @@ pub fn lfs_dir_commitcrc(lfs: *mut crate::fs::Lfs, commit: *mut LfsCommit) -> i3
                 4,
             );
 
-            let err = lfs_bd_prog(
+            lfs_bd_prog(
                 lfs,
                 &mut (*lfs).pcache,
                 &mut (*lfs).rcache,
@@ -407,10 +388,7 @@ pub fn lfs_dir_commitcrc(lfs: *mut crate::fs::Lfs, commit: *mut LfsCommit) -> i3
                 (*commit).off,
                 ccrc.as_ptr(),
                 8,
-            );
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            )?;
 
             if off1 == 0 {
                 off1 = (*commit).off + 4;
@@ -422,15 +400,12 @@ pub fn lfs_dir_commitcrc(lfs: *mut crate::fs::Lfs, commit: *mut LfsCommit) -> i3
             (*commit).crc = 0xffff_ffff;
 
             if noff >= end || noff >= (*lfs).pcache.off + cfg.cache_size {
-                let err = lfs_bd_sync(lfs, &mut (*lfs).pcache, &mut (*lfs).rcache, false);
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+                lfs_bd_sync(lfs, &mut (*lfs).pcache, &mut (*lfs).rcache, false)?;
             }
         }
 
         let mut crc: u32 = 0xffff_ffff;
-        let err = lfs_bd_crc(
+        lfs_bd_crc(
             lfs,
             core::ptr::null(),
             &mut (*lfs).rcache,
@@ -439,15 +414,13 @@ pub fn lfs_dir_commitcrc(lfs: *mut crate::fs::Lfs, commit: *mut LfsCommit) -> i3
             (*commit).begin,
             off1 - (*commit).begin,
             &mut crc,
-        );
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        )?;
+
         if crc != crc1 {
-            return crate::lfs_err!(LFS_ERR_CORRUPT);
+            return crate::lfs_err!(Err(Error::Corrupt));
         }
 
-        let err = lfs_bd_crc(
+        lfs_bd_crc(
             lfs,
             core::ptr::null(),
             &mut (*lfs).rcache,
@@ -456,15 +429,13 @@ pub fn lfs_dir_commitcrc(lfs: *mut crate::fs::Lfs, commit: *mut LfsCommit) -> i3
             off1,
             4,
             &mut crc,
-        );
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        )?;
+
         if crc != 0 {
-            return crate::lfs_err!(LFS_ERR_CORRUPT);
+            return crate::lfs_err!(Err(Error::Corrupt));
         }
 
-        0
+        Ok(())
     }
 }
 
@@ -518,7 +489,7 @@ pub fn lfs_dir_commitcrc(lfs: *mut crate::fs::Lfs, commit: *mut LfsCommit) -> i3
 /// # Safety
 ///
 /// `lfs` and `dir` must be valid, properly initialized pointers.
-pub unsafe fn lfs_dir_alloc(lfs: *mut crate::fs::Lfs, dir: *mut LfsMdir) -> i32 {
+pub unsafe fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: *mut LfsMdir) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::block_alloc::alloc::lfs_alloc;
     use crate::types::LFS_BLOCK_NULL;
@@ -530,10 +501,7 @@ pub unsafe fn lfs_dir_alloc(lfs: *mut crate::fs::Lfs, dir: *mut LfsMdir) -> i32 
 
         for i in 0..2 {
             let out_block = &mut dir_ref.pair[(i + 1) % 2];
-            let err = lfs_alloc(lfs, out_block);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_alloc(lfs, out_block)?;
         }
 
         dir_ref.rev = 0;
@@ -593,16 +561,13 @@ pub unsafe fn lfs_dir_alloc(lfs: *mut crate::fs::Lfs, dir: *mut LfsMdir) -> i32 
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_drop(lfs: *mut crate::fs::Lfs, dir: *mut LfsMdir, tail: *const LfsMdir) -> i32 {
+pub fn lfs_dir_drop(lfs: &mut crate::fs::Lfs, dir: *mut LfsMdir, tail: *const LfsMdir) -> Result<(), Error> {
     use crate::lfs_type::lfs_type::LFS_TYPE_TAIL;
     use crate::tag::lfs_mktag;
     use crate::util::lfs_pair_tole32;
 
     unsafe {
-        let err = lfs_dir_getgstate(lfs, tail, &mut (*lfs).gdelta);
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        lfs_dir_getgstate(lfs, tail, &mut (*lfs).gdelta)?;
 
         let tail_ref = &*tail;
         let mut tail_pair = tail_ref.tail;
@@ -657,14 +622,14 @@ pub fn lfs_dir_drop(lfs: *mut crate::fs::Lfs, dir: *mut LfsMdir, tail: *const Lf
 /// }
 /// ```
 pub fn lfs_dir_split(
-    lfs: *mut Lfs,
+    lfs: &mut Lfs,
     dir: *mut LfsMdir,
     attrs: *const core::ffi::c_void,
     attrcount: i32,
     source: *const LfsMdir,
     split: u16,
     end: u16,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::util::lfs_pair_cmp;
 
     unsafe {
@@ -679,10 +644,7 @@ pub fn lfs_dir_split(
             tail: [0, 0],
         };
 
-        let err = lfs_dir_alloc(lfs, &mut tail);
-        if err != 0 {
-            return crate::lfs_pass_err!(err);
-        }
+        lfs_dir_alloc(lfs, &mut tail)?;
 
         let dir_ref = &mut *dir;
         tail.split = dir_ref.split;
@@ -718,7 +680,7 @@ pub fn lfs_dir_split(
             (*lfs).root[1] = tail.pair[1];
         }
 
-        0
+        Ok(())
     }
 }
 
@@ -761,12 +723,12 @@ pub fn lfs_dir_commit_commit(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
-) -> i32 {
+) -> Result<(), Error> {
     if p.is_null() {
-        return crate::error::LFS_ERR_INVAL;
+        return Err(Error::Invalid);
     }
     unsafe {
-        let commit_commit = &*(p as *const (*mut Lfs, *mut LfsCommit));
+        let commit_commit = &*(p as *const (&mut Lfs, &mut LfsCommit));
         let (lfs, commit) = *commit_commit;
         lfs_dir_commitattr(lfs, commit, tag, buffer)
     }
@@ -978,18 +940,17 @@ pub fn lfs_dir_needsrelocation(lfs: *const Lfs, dir: *const LfsMdir) -> bool {
 /// }
 /// ```
 pub fn lfs_dir_compact(
-    lfs: *mut Lfs,
+    lfs: &mut Lfs,
     dir: *mut LfsMdir,
     attrs: *const core::ffi::c_void,
     attrcount: i32,
     source: *const LfsMdir,
     begin: u16,
     end: u16,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_cache_drop};
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
     use crate::dir::traverse::lfs_dir_traverse;
-    use crate::error::{LFS_ERR_CORRUPT, LFS_ERR_NOSPC};
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_tole32, lfs_gstate_xor};
     use crate::tag::lfs_mktag;
     use crate::types::LFS_BLOCK_NULL;
@@ -1009,7 +970,7 @@ pub fn lfs_dir_compact(
 
         if tired && lfs_pair_cmp(&dir_ref.pair, &superblock_pair) != 0 {
             relocated = true;
-            lfs_cache_drop(lfs, &mut (*lfs).pcache as *mut _);
+            lfs_cache_drop(lfs, &mut (*lfs).pcache);
             let err = lfs_alloc(lfs, &mut dir_ref.pair[1]);
             if err != 0 && (err != LFS_ERR_NOSPC || !tired) {
                 crate::lfs_trace!(
@@ -1068,10 +1029,10 @@ pub fn lfs_dir_compact(
                     lfs_cache_drop(lfs, &mut (*lfs).pcache as *mut _);
                     if lfs_pair_cmp(&dir_ref.pair, &superblock_pair) == 0 {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT bd_erase");
-                        return crate::lfs_err!(LFS_ERR_NOSPC);
+                        return crate::lfs_err!(Err(Error::NoSpace));
                     }
                     let err2 = lfs_alloc(lfs, &mut dir_ref.pair[1]);
-                    if err2 != 0 && (err2 != LFS_ERR_NOSPC || !tired) {
+                    if err2.is_err() && (err2 != Err(Error::NoSpace) || !tired) {
                         crate::lfs_trace!(
                             "lfs_dir_compact NOSPC: alloc failed after bd_erase err={}",
                             err2
@@ -1166,7 +1127,7 @@ pub fn lfs_dir_compact(
                 lfs_pair_tole32(&mut dir_ref.tail);
                 err = lfs_dir_commitattr(
                     lfs,
-                    &mut commit as *mut _,
+                    &mut commit,
                     lfs_mktag(
                         crate::lfs_type::lfs_type::LFS_TYPE_TAIL
                             + if dir_ref.split { 1 } else { 0 },
@@ -1217,16 +1178,13 @@ pub fn lfs_dir_compact(
             lfs_gstate_xor(&mut delta, &(*lfs).gdelta);
             delta.tag &= !lfs_mktag(0, 0, 0x3ff);
 
-            err = lfs_dir_getgstate(lfs, dir, &mut delta);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_dir_getgstate(lfs, dir, &mut delta)?;
 
             if !lfs_gstate_iszero(&delta) {
                 lfs_gstate_tole32(&mut delta);
                 err = lfs_dir_commitattr(
                     lfs,
-                    &mut commit as *mut _,
+                    &mut commit,
                     lfs_mktag(
                         crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
                         0x3ff,
@@ -1234,8 +1192,8 @@ pub fn lfs_dir_compact(
                     ),
                     &delta as *const _ as *const _,
                 );
-                if err != 0 {
-                    if err == LFS_ERR_CORRUPT {
+                if let Err(err) = err {
+                    if err == Error::Corrupt {
                         relocated = true;
                         relocate_count += 1;
                         crate::lfs_trace!(
@@ -1244,13 +1202,13 @@ pub fn lfs_dir_compact(
                             dir_ref.pair
                         );
                         lfs_alloc_lookahead(lfs, dir_ref.pair[1]);
-                        lfs_cache_drop(lfs, &mut (*lfs).pcache as *mut _);
+                        lfs_cache_drop(lfs, &mut (*lfs).pcache);
                         if lfs_pair_cmp(&dir_ref.pair, &superblock_pair) == 0 {
                             crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT movestate");
-                            return crate::lfs_err!(LFS_ERR_NOSPC);
+                            return crate::lfs_err!(Err(Error::NoSpace));
                         }
                         let err2 = lfs_alloc(lfs, &mut dir_ref.pair[1]);
-                        if err2 != 0 && (err2 != LFS_ERR_NOSPC || !tired) {
+                        if err2.is_err() && (err2 != Err(Error::NoSpace) || !tired) {
                             crate::lfs_trace!(
                                 "lfs_dir_compact NOSPC: alloc failed after movestate err={}",
                                 err2
@@ -1275,13 +1233,13 @@ pub fn lfs_dir_compact(
                         dir_ref.pair
                     );
                     lfs_alloc_lookahead(lfs, dir_ref.pair[1]);
-                    lfs_cache_drop(lfs, &mut (*lfs).pcache as *mut _);
+                    lfs_cache_drop(lfs, &mut (*lfs).pcache);
                     if lfs_pair_cmp(&dir_ref.pair, &superblock_pair) == 0 {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT commitcrc");
-                        return crate::lfs_err!(LFS_ERR_NOSPC);
+                        return crate::lfs_err!(Err(Error::NoSpace));
                     }
                     let err2 = lfs_alloc(lfs, &mut dir_ref.pair[1]);
-                    if err2 != 0 && (err2 != LFS_ERR_NOSPC || !tired) {
+                    if err2.is_err() && (err2 != Err(Error::NoSpace) || !tired) {
                         crate::lfs_trace!(
                             "lfs_dir_compact NOSPC: alloc failed after commitcrc err={}",
                             err2
@@ -1431,14 +1389,14 @@ pub fn lfs_dir_compact(
 /// }
 /// ```
 pub fn lfs_dir_splittingcompact(
-    lfs: *mut Lfs,
+    lfs: &mut Lfs,
     dir: *mut LfsMdir,
     attrs: *const core::ffi::c_void,
     attrcount: i32,
     source: *const LfsMdir,
     begin: u16,
     end: u16,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::dir::traverse::lfs_dir_traverse;
     use crate::tag::lfs_mktag;
     use crate::types::lfs_size_t;
@@ -1466,10 +1424,8 @@ pub fn lfs_dir_splittingcompact(
                     -(split as i16),
                     Some(lfs_dir_commit_size_raw),
                     &mut size_ptr as *mut _ as *mut core::ffi::c_void,
-                );
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+                )?;
+
                 size = size_ptr;
 
                 let metadata_max = (*lfs).cfg.as_ref().map_or(0, |c| c.metadata_max);
@@ -1733,16 +1689,15 @@ unsafe extern "C" fn lfs_dir_commit_size_raw(
 /// }
 /// ```
 pub fn lfs_dir_relocatingcommit(
-    lfs: *mut Lfs,
+    lfs: &mut Lfs,
     dir: *mut LfsMdir,
     pair: *const [lfs_block_t; 2],
     attrs: *const core::ffi::c_void,
     attrcount: i32,
     pdir: *mut LfsMdir,
-) -> i32 {
+) -> Result<i32, Error> {
     use crate::bd::bd::lfs_cache_drop;
     use crate::dir::traverse::lfs_dir_traverse;
-    use crate::error::{LFS_ERR_CORRUPT, LFS_ERR_NOSPC};
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_tole32, lfs_gstate_xor};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_DELETE, LFS_TYPE_TAIL};
     use crate::tag::{lfs_mktag, lfs_tag_type1, lfs_tag_type3};
@@ -1784,7 +1739,7 @@ pub fn lfs_dir_relocatingcommit(
         if hasdelete && dir_ref.count == 0 {
             crate::lfs_assert!(!pdir.is_null());
             let err = crate::fs::parent::lfs_fs_pred(lfs, &dir_ref.pair, pdir);
-            if err != 0 && err != crate::error::LFS_ERR_NOENT {
+            if let Err(err) = err && err != Error::NoEntry {
                 return crate::lfs_pass_err!(err);
             }
             if err != crate::error::LFS_ERR_NOENT && (*pdir).split {
@@ -1834,7 +1789,7 @@ pub fn lfs_dir_relocatingcommit(
                 &mut commit_commit as *mut _ as *mut core::ffi::c_void,
             );
             lfs_pair_fromle32(&mut dir_ref.tail);
-            if err == 0 {
+            if err.is_ok() {
                 do_compact = false;
                 let mut delta = crate::lfs_gstate::LfsGstate {
                     tag: 0,
@@ -1845,10 +1800,8 @@ pub fn lfs_dir_relocatingcommit(
                 lfs_gstate_xor(&mut delta, &(*lfs).gdelta);
                 delta.tag &= !lfs_mktag(0, 0, 0x3ff);
                 if !lfs_gstate_iszero(&delta) {
-                    let err2 = lfs_dir_getgstate(lfs, dir, &mut delta);
-                    if err2 != 0 {
-                        return err2;
-                    }
+                    let err2 = lfs_dir_getgstate(lfs, dir, &mut delta)?;
+
                     lfs_gstate_tole32(&mut delta);
                     let movestate_tag = lfs_mktag(
                         crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
@@ -1857,12 +1810,12 @@ pub fn lfs_dir_relocatingcommit(
                     );
                     let err2 = lfs_dir_commitattr(
                         lfs,
-                        &mut commit as *mut _,
+                        &mut commit,
                         movestate_tag,
                         &delta as *const _ as *const _,
                     );
-                    if err2 != 0 {
-                        if err2 == LFS_ERR_NOSPC || err2 == LFS_ERR_CORRUPT {
+                    if let Err(err2) = err2 {
+                        if err2 == Error::NoSpace || err2 == Error::Corrupt {
                             do_compact = true;
                         } else {
                             return err2;
@@ -1871,8 +1824,8 @@ pub fn lfs_dir_relocatingcommit(
                 }
                 if !do_compact {
                     let err2 = lfs_dir_commitcrc(lfs, &mut commit);
-                    if err2 != 0 {
-                        if err2 == LFS_ERR_NOSPC || err2 == LFS_ERR_CORRUPT {
+                    if let Err(err2) = err2 {
+                        if err2 == Error::NoSpace || err2 == Error::Corrupt {
                             do_compact = true;
                         } else {
                             return err2;
@@ -1887,7 +1840,7 @@ pub fn lfs_dir_relocatingcommit(
                         };
                     }
                 }
-            } else if err == LFS_ERR_NOSPC || err == LFS_ERR_CORRUPT {
+            } else if err == Err(Error::NoSpace) || err == Err(Error::Corrupt) {
                 do_compact = true;
             } else {
                 return crate::lfs_pass_err!(err);
@@ -1895,7 +1848,7 @@ pub fn lfs_dir_relocatingcommit(
         }
 
         if do_compact {
-            lfs_cache_drop(lfs, &mut (*lfs).pcache as *mut _);
+            lfs_cache_drop(lfs, &mut (*lfs).pcache);
             state = lfs_dir_splittingcompact(lfs, dir, attrs, attrcount, dir, 0, (*dir).count);
             if state < 0 {
                 return state;
@@ -2003,7 +1956,7 @@ unsafe extern "C" fn lfs_dir_commit_commit_raw(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
-) -> i32 {
+) -> Result<(), Error> {
     crate::lfs_trace!(
         "commit_commit_raw: tag=0x{:08x} type1={} buffer={:p}",
         tag,
@@ -2022,7 +1975,7 @@ unsafe extern "C" fn lfs_dir_commit_commit_raw(
             preview
         );
     }
-    let commit_commit = &*(p as *const (*mut Lfs, *mut LfsCommit));
+    let commit_commit = &*(p as *const (&mut Lfs, &mut LfsCommit));
     let (lfs, commit) = *commit_commit;
     lfs_dir_commitattr(lfs, commit, tag, buffer)
 }
@@ -2223,11 +2176,11 @@ unsafe extern "C" fn lfs_dir_commit_commit_raw(
 /// }
 /// ```
 pub fn lfs_dir_orphaningcommit(
-    lfs: *mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs,
     dir: *mut LfsMdir,
     attrs: *const core::ffi::c_void,
     attrcount: i32,
-) -> i32 {
+) -> Result<i32, Error> {
     use crate::error::LFS_OK_ORPHANED;
     use crate::util::{lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_tole32};
 
@@ -2237,20 +2190,15 @@ pub fn lfs_dir_orphaningcommit(
         let mut pdir = core::mem::zeroed();
 
         let state =
-            lfs_dir_relocatingcommit(lfs, &mut ldir, &(*dir).pair, attrs, attrcount, &mut pdir);
-        if state < 0 {
-            return state;
-        }
+            lfs_dir_relocatingcommit(lfs, &mut ldir, &(*dir).pair, attrs, attrcount, &mut pdir)?;
 
         if lfs_pair_cmp(&(*dir).pair, &lpair) == 0 {
             *dir = ldir;
         }
 
         if state == crate::error::LFS_OK_DROPPED {
-            let err = lfs_dir_getgstate(lfs, dir, &mut (*lfs).gdelta);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_dir_getgstate(lfs, dir, &mut (*lfs).gdelta)?;
+
             let plpair = [pdir.pair[0], pdir.pair[1]];
             lfs_pair_tole32(&mut (*dir).tail);
             let tail_attrs = [crate::tag::lfs_mattr {
@@ -2317,8 +2265,8 @@ pub fn lfs_dir_orphaningcommit(
 
             // C: lfs.c:2500-2547 — find parent and update
             let mut tag = crate::fs::parent::lfs_fs_parent(lfs, &lpair, &mut pdir);
-            if tag < 0 && tag != crate::error::LFS_ERR_NOENT {
-                return tag;
+            if let Err(err) = tag && err != Error::NoEntry {
+                return Err(err);
             }
 
             let hasparent = tag != crate::error::LFS_ERR_NOENT;
@@ -2364,7 +2312,7 @@ pub fn lfs_dir_orphaningcommit(
                     core::ptr::null_mut(),
                 );
                 lfs_pair_fromle32(&mut ldir.pair);
-                if state < 0 {
+                if state.is_err() {
                     return state;
                 }
                 if state == crate::error::LFS_OK_RELOCATED {
@@ -2377,12 +2325,12 @@ pub fn lfs_dir_orphaningcommit(
 
             // C: lfs.c:2549-2593 — find pred and update tail (INSIDE the while loop)
             let err = crate::fs::parent::lfs_fs_pred(lfs, &lpair, &mut pdir);
-            if err != 0 && err != crate::error::LFS_ERR_NOENT {
+            if err.is_err() && err != Err(Error::NoEntry) {
                 return crate::lfs_pass_err!(err);
             }
             crate::lfs_assert!(!(hasparent && err == crate::error::LFS_ERR_NOENT));
 
-            if err != crate::error::LFS_ERR_NOENT {
+            if err != Err(Error::NoEntry) {
                 if crate::lfs_gstate::lfs_gstate_hasorphans(&(*lfs).gstate) {
                     let deorphan_delta = if hasparent { -1 } else { 0 };
                     let err2 = crate::fs::superblock::lfs_fs_preporphans(lfs, deorphan_delta);
@@ -2420,7 +2368,7 @@ pub fn lfs_dir_orphaningcommit(
                         buffer: ldir.pair.as_ptr() as *const core::ffi::c_void,
                     },
                 ];
-                state = lfs_dir_relocatingcommit(
+                let state = lfs_dir_relocatingcommit(
                     lfs,
                     &mut pdir,
                     &lpair,
@@ -2429,7 +2377,7 @@ pub fn lfs_dir_orphaningcommit(
                     core::ptr::null_mut(),
                 );
                 lfs_pair_fromle32(&mut ldir.pair);
-                if state < 0 {
+                if state.is_err() {
                     return state;
                 }
 
@@ -2438,9 +2386,9 @@ pub fn lfs_dir_orphaningcommit(
         }
 
         if orphans {
-            LFS_OK_ORPHANED
+            Ok(LFS_OK_ORPHANED)
         } else {
-            0
+            Ok(0)
         }
     }
 }
@@ -2465,27 +2413,21 @@ pub fn lfs_dir_orphaningcommit(
 /// }
 /// ```
 pub fn lfs_dir_commit(
-    lfs: *mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs,
     dir: *mut LfsMdir,
     attrs: *const core::ffi::c_void,
     attrcount: i32,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::error::LFS_OK_ORPHANED;
     use crate::fs::superblock::lfs_fs_deorphan;
 
     unsafe {
-        let orphans = lfs_dir_orphaningcommit(lfs, dir, attrs, attrcount);
-        if orphans < 0 {
-            return orphans;
-        }
+        let orphans = lfs_dir_orphaningcommit(lfs, dir, attrs, attrcount)?;
 
         if orphans == LFS_OK_ORPHANED {
-            let err = lfs_fs_deorphan(lfs, false);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_fs_deorphan(lfs, false)?;
         }
 
-        0
+        Ok(())
     }
 }

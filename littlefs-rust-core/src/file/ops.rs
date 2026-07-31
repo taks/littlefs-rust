@@ -362,7 +362,7 @@ pub fn lfs_file_opencfg_(
             }
             if file_ref.cache.buffer.is_null() {
                 lfs_file_close_(lfs, file);
-                return crate::lfs_err!(LFS_ERR_NOMEM);
+                return crate::lfs_err!(Err(Error::NoMemory));
             }
         }
 
@@ -422,7 +422,7 @@ pub fn lfs_file_open_(
     file: *mut LfsFile,
     path: *const i8,
     flags: i32,
-) -> i32 {
+) -> Result<(), Error> {
     lfs_file_opencfg_(lfs, file, path, flags, &LFS_FILE_DEFAULTS)
 }
 

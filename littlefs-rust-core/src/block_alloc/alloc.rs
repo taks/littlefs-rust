@@ -1,5 +1,6 @@
 //! Block allocator. Per lfs.c lfs_alloc, lfs_alloc_scan, lfs_alloc_lookahead, etc.
 
+use crate::error::Error;
 use crate::fs::Lfs;
 use crate::types::lfs_block_t;
 
@@ -59,13 +60,12 @@ pub fn lfs_alloc_drop(lfs: *mut Lfs) {
 unsafe extern "C" fn lfs_alloc_lookahead_cb(
     data: *mut core::ffi::c_void,
     block: lfs_block_t,
-) -> i32 {
-    lfs_alloc_lookahead(data as *mut Lfs, block)
+) -> Result<(), Error> {
+    lfs_alloc_lookahead(data as &mut Lfs, block)
 }
 
-pub fn lfs_alloc_lookahead(p: *mut Lfs, block: lfs_block_t) -> i32 {
+pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Error> {
     unsafe {
-        let lfs = &mut *p;
         // off = ((block - start) + block_count) % block_count
         let off = (block.wrapping_sub(lfs.lookahead.start)).wrapping_add(lfs.block_count)
             % lfs.block_count;
@@ -79,7 +79,7 @@ pub fn lfs_alloc_lookahead(p: *mut Lfs, block: lfs_block_t) -> i32 {
                 *buf.add(byte_idx) |= bit;
             }
         }
-        0
+        Ok(())
     }
 }
 
@@ -112,7 +112,7 @@ pub fn lfs_alloc_lookahead(p: *mut Lfs, block: lfs_block_t) -> i32 {
 /// }
 /// #endif
 /// ```
-pub fn lfs_alloc_scan(lfs: *mut Lfs) -> i32 {
+pub fn lfs_alloc_scan(lfs: *mut Lfs) -> Result<(), Error> {
     use crate::fs::traverse::lfs_fs_traverse_;
     use crate::util::lfs_min;
 
@@ -122,7 +122,7 @@ pub fn lfs_alloc_scan(lfs: *mut Lfs) -> i32 {
         let cfg = lfs_ref.cfg.as_ref().expect("cfg");
         let buf = lfs_ref.lookahead.buffer;
         if buf.is_null() {
-            return crate::error::LFS_ERR_NOSPC;
+            return Err(Error::NoSpace);
         }
 
         // move lookahead buffer to the first unused block
@@ -142,13 +142,13 @@ pub fn lfs_alloc_scan(lfs: *mut Lfs) -> i32 {
             lfs as *mut core::ffi::c_void,
             true,
         );
-        if err != 0 {
+        if err.is_err() {
             crate::lfs_trace!("alloc_scan: traverse err={}", err);
             lfs_alloc_drop(lfs);
             return crate::lfs_pass_err!(err);
         }
         crate::lfs_trace!("alloc_scan: done");
-        0
+        Ok(())
     }
 }
 
@@ -209,11 +209,9 @@ pub fn lfs_alloc_scan(lfs: *mut Lfs) -> i32 {
 /// }
 /// #endif
 /// ```
-pub fn lfs_alloc(lfs: *mut Lfs, block: *mut lfs_block_t) -> i32 {
-    use crate::error::LFS_ERR_NOSPC;
+pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
 
     unsafe {
-        let lfs = &mut *lfs;
         let buf = lfs.lookahead.buffer;
         if buf.is_null() {
             return crate::lfs_err!(LFS_ERR_NOSPC);
