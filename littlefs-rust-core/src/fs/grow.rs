@@ -27,12 +27,12 @@ use crate::types::{lfs_block_t, lfs_size_t};
 unsafe extern "C" fn lfs_shrink_checkblock(
     data: *mut core::ffi::c_void,
     block: lfs_block_t,
-) -> i32 {
+) -> Result<i32, Error> {
     let threshold = *(data as *const lfs_size_t);
     if block >= threshold {
-        return LFS_ERR_NOTEMPTY;
+        return Err(Error::NotEmpty);
     }
-    0
+    Ok(0)
 }
 
 /// Translation docs: Grow or shrink the filesystem to a new block_count.

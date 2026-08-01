@@ -128,19 +128,19 @@ pub unsafe extern "C" fn lfs_fs_parent_match(
     data: *mut core::ffi::c_void,
     _tag: crate::types::lfs_tag_t,
     buffer: *const core::ffi::c_void,
-) -> i32 {
+) -> Result<i32, Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::tag::lfs_diskoff;
     use crate::util::{lfs_pair_cmp, lfs_pair_fromle32};
 
     if data.is_null() || buffer.is_null() {
-        return LFS_CMP_LT;
+        return Ok(LFS_CMP_LT);
     }
     let find = &*(data as *const LfsFsParentMatch);
     let disk = &*(buffer as *const lfs_diskoff);
 
     let mut child: [crate::types::lfs_block_t; 2] = [0, 0];
-    let err = lfs_bd_read(
+    lfs_bd_read(
         find.lfs,
         core::ptr::null(),
         &mut (*find.lfs).rcache,
@@ -149,15 +149,13 @@ pub unsafe extern "C" fn lfs_fs_parent_match(
         disk.off,
         child.as_mut_ptr() as *mut u8,
         8,
-    );
-    if err != 0 {
-        return crate::lfs_pass_err!(err);
-    }
+    )?;
+
     lfs_pair_fromle32(&mut child);
     if lfs_pair_cmp(&child, &find.pair) == 0 {
-        LFS_CMP_EQ
+        Ok(LFS_CMP_EQ)
     } else {
-        LFS_CMP_LT
+        Ok(LFS_CMP_LT)
     }
 }
 
@@ -239,7 +237,7 @@ pub fn lfs_fs_parent(
                 pair: [(*pair)[0], (*pair)[1]],
             };
             let tag = lfs_dir_fetchmatch(
-                lfs as *mut _ as *const core::ffi::c_void,
+                lfs,
                 parent,
                 &(*parent).tail as *const _,
                 lfs_mktag(0x7ff, 0, 0x3ff),
@@ -249,7 +247,7 @@ pub fn lfs_fs_parent(
                 &find_match as *const _ as *mut core::ffi::c_void,
             );
 
-            if tag != 0 && tag != crate::error::LFS_ERR_NOENT {
+            if let Err(err) = tag && err != Error::NoEntry {
                 return tag;
             }
         }
