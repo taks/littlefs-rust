@@ -54,25 +54,25 @@ impl TestContext {
         &self.config
     }
 
-    pub fn lfs_mut(&mut self) -> *mut Lfs {
-        self.lfs.as_mut_ptr()
+    pub fn lfs_mut(&mut self) -> &mut Lfs {
+        unsafe { self.lfs.as_mut_ptr().as_mut().unwrap() }
     }
 
     /// Format the filesystem. Panics on error.
     pub fn format(&mut self) {
         let err = lfs_format(self.lfs_mut(), self.config());
-        assert_eq!(err, 0, "lfs_format failed: {}", err);
+        assert_eq!(err, Ok(()), "lfs_format failed: {}", err);
     }
 
     /// Mount the filesystem. Panics on error.
     pub fn mount(&mut self) {
         let err = lfs_mount(self.lfs_mut(), self.config());
-        assert_eq!(err, 0, "lfs_mount failed: {}", err);
+        assert_eq!(err, Ok(()), "lfs_mount failed: {}", err);
     }
 
     /// Unmount. Panics on error.
     pub fn unmount(&mut self) {
         let err = lfs_unmount(self.lfs_mut());
-        assert_eq!(err, 0, "lfs_unmount failed: {}", err);
+        assert_eq!(err, Ok(()), "lfs_unmount failed: {}", err);
     }
 }

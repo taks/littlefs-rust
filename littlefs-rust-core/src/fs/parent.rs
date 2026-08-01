@@ -1,6 +1,6 @@
 //! FS parent. Per lfs.c lfs_fs_pred, lfs_fs_parent.
 
-use crate::error::Error;
+use crate::{borrow_unchecked::borrow_unchecked, error::Error};
 
 /// Per lfs.c lfs_fs_pred (lines 4796-4833)
 ///
@@ -38,9 +38,9 @@ use crate::error::Error;
 /// #endif
 /// ```
 pub fn lfs_fs_pred(
-    lfs: *mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs,
     pair: &[crate::types::lfs_block_t; 2],
-    pdir: *mut crate::dir::LfsMdir,
+    pdir: &mut crate::dir::LfsMdir,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::fs::mount::{lfs_tortoise_detectcycles, LfsTortoise};
@@ -80,7 +80,8 @@ pub fn lfs_fs_pred(
                 if !have_fetched {
                     // Matched before any fetch: tail [0,1] == pair (root).
                     // The root has no predecessor.
-                    lfs_dir_fetch(lfs, pdir, &(*pdir).tail)?;
+                    let pdir_tail = borrow_unchecked(&pdir.tail);
+                    lfs_dir_fetch(lfs, pdir, pdir_tail)?;
 
                     if lfs_pair_isnull(&(*pdir).tail) {
                         return Err(crate::error::Error::NoEntry);
@@ -89,7 +90,8 @@ pub fn lfs_fs_pred(
                 return Ok(());
             }
 
-            lfs_dir_fetch(lfs, pdir, &(*pdir).tail)?;
+            let pdir_tail = borrow_unchecked(&pdir.tail);
+            lfs_dir_fetch(lfs, pdir, pdir_tail)?;
             have_fetched = true;
         }
 
@@ -142,7 +144,7 @@ pub unsafe extern "C" fn lfs_fs_parent_match(
     let mut child: [crate::types::lfs_block_t; 2] = [0, 0];
     lfs_bd_read(
         find.lfs,
-        core::ptr::null(),
+        None,
         &mut (*find.lfs).rcache,
         (*find.lfs).cfg.as_ref().expect("cfg").block_size,
         disk.block,
@@ -196,9 +198,9 @@ pub unsafe extern "C" fn lfs_fs_parent_match(
 /// #endif
 /// ```
 pub fn lfs_fs_parent(
-    lfs: *mut crate::fs::Lfs,
-    pair: *const [crate::types::lfs_block_t; 2],
-    parent: *mut crate::dir::LfsMdir,
+    lfs: &mut crate::fs::Lfs,
+    pair: &[crate::types::lfs_block_t; 2],
+    parent: &mut crate::dir::LfsMdir,
 ) -> Result<crate::types::lfs_tag_t, Error> {
     use crate::dir::fetch::lfs_dir_fetchmatch;
     use crate::fs::mount::{lfs_tortoise_detectcycles, LfsTortoise};
@@ -236,13 +238,14 @@ pub fn lfs_fs_parent(
                 lfs,
                 pair: [(*pair)[0], (*pair)[1]],
             };
+            let parent_tail = borrow_unchecked(&parent.tail);
             let tag = lfs_dir_fetchmatch(
                 lfs,
                 parent,
-                &(*parent).tail as *const _,
+                parent_tail,
                 lfs_mktag(0x7ff, 0, 0x3ff),
                 lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
-                core::ptr::null_mut(),
+                None,
                 Some(lfs_fs_parent_match),
                 &find_match as *const _ as *mut core::ffi::c_void,
             );

@@ -1,5 +1,7 @@
 //! Consistency. Per lfs.c lfs_fs_mkconsistent_, lfs_fs_gc_.
 
+use crate::Lfs;
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::LfsMdir;
 use crate::error::Error;
@@ -40,7 +42,7 @@ use crate::error::Error;
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_mkconsistent_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_fs_mkconsistent_(lfs: &mut Lfs) -> Result<(), Error> {
     use crate::dir::commit::lfs_dir_commit;
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_xor};
 
@@ -56,9 +58,10 @@ pub fn lfs_fs_mkconsistent_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 
         if !lfs_gstate_iszero(&delta) {
             let mut root = core::mem::zeroed::<LfsMdir>();
-            lfs_dir_fetch(lfs, &mut root, &(*lfs).root)?;
 
-            lfs_dir_commit(lfs, &mut root, core::ptr::null(), 0)?;
+            let lfs_root = borrow_unchecked(&mut lfs.root);
+            lfs_dir_fetch(lfs, &mut root, lfs_root)?;
+            lfs_dir_commit(lfs, &mut root, &[])?;
         }
     }
 
@@ -166,7 +169,8 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
                     }
                     iter += 1;
                 }
-                lfs_dir_fetch(lfs, &mut mdir, &mdir.tail)?;
+                let mdir_tail = borrow_unchecked(&mdir.tail);
+                lfs_dir_fetch(lfs, &mut mdir, mdir_tail)?;
 
                 let should_compact = !mdir.erased
                     || if compact_thresh == 0 {
@@ -178,7 +182,7 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
                 if should_compact {
                     let mdir_ref = &mut mdir;
                     mdir_ref.erased = false;
-                    lfs_dir_commit(lfs, mdir_ref, core::ptr::null(), 0)?;
+                    lfs_dir_commit(lfs, mdir_ref, &[])?;
                 }
             }
         }

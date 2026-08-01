@@ -9,7 +9,7 @@ pub mod dump;
 pub mod powerloss;
 
 use core::cell::RefCell;
-use littlefs_rust_core::{LfsConfig, LFS_ERR_CORRUPT};
+use littlefs_rust_core::{LFS_ERR_CORRUPT, LfsConfig, error::Error};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
@@ -73,13 +73,13 @@ unsafe extern "C" fn ram_read(
     off: u32,
     buffer: *mut u8,
     size: u32,
-) -> i32 {
+) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut RamStorage;
     let ram = &mut *ctx;
     let size = size as usize;
     let buf = core::slice::from_raw_parts_mut(buffer, size);
     ram.read(block, off, buf);
-    0
+    Ok(())
 }
 
 unsafe extern "C" fn ram_prog(
@@ -88,13 +88,13 @@ unsafe extern "C" fn ram_prog(
     off: u32,
     buffer: *const u8,
     size: u32,
-) -> i32 {
+) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut RamStorage;
     let ram = &mut *ctx;
     let size = size as usize;
     let buf = core::slice::from_raw_parts(buffer, size);
     ram.prog(block, off, buf);
-    0
+    Ok(())
 }
 
 unsafe extern "C" fn ram_erase(cfg: *const LfsConfig, block: u32) -> i32 {
@@ -507,8 +507,8 @@ where
 }
 
 /// Panic if result is not 0.
-pub fn assert_ok(result: i32) {
-    if result != 0 {
+pub fn assert_ok(result: Result<(), Error>) {
+    if result.is_err() {
         panic!("expected 0, got {}", result);
     }
 }

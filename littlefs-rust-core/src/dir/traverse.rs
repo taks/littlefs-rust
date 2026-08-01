@@ -1,6 +1,7 @@
 //! Directory traverse. Per lfs.c lfs_dir_traverse, lfs_dir_getslice, lfs_dir_get, lfs_dir_getread.
 
 use crate::bd::LfsCache;
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
 use crate::error::Error;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
@@ -124,10 +125,11 @@ pub fn lfs_dir_getslice(
             off -= lfs_tag_dsize(ntag);
             let tag = ntag;
             let mut ntag_buf: lfs_tag_t = 0;
+            let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
             lfs_bd_read(
                 lfs,
-                core::ptr::null_mut(),
-                unsafe { &mut (*lfs).rcache },
+                None,
+                lfs_rcache,
                 4,
                 dir.pair[0],
                 off,
@@ -696,8 +698,7 @@ pub fn lfs_dir_traverse(
     dir: *const LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
-    attrs: *const core::ffi::c_void,
-    attrcount: i32,
+    attrs_slice: &[crate::tag::lfs_mattr],
     tmask: lfs_tag_t,
     ttag: lfs_tag_t,
     begin: u16,
@@ -736,14 +737,6 @@ pub fn lfs_dir_traverse(
     let mut cb = cb;
     let mut data = data;
     let mut use_empty_attrs = false;
-
-    let attrs_slice = if attrcount > 0 && !attrs.is_null() {
-        unsafe {
-            core::slice::from_raw_parts(attrs as *const crate::tag::lfs_mattr, attrcount as usize)
-        }
-    } else {
-        &[]
-    };
 
     let mut disk = crate::tag::lfs_diskoff { block: 0, off: 0 };
 
@@ -785,7 +778,7 @@ pub fn lfs_dir_traverse(
                         let mut tag_raw: lfs_tag_t = 0;
                         lfs_bd_read(
                             lfs,
-                            core::ptr::null_mut(),
+                            None,
                             unsafe { &mut (*lfs).rcache },
                             core::mem::size_of::<lfs_tag_t>() as u32,
                             dir_ref.pair[0],

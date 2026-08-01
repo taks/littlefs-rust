@@ -1,6 +1,7 @@
 //! Directory find. Per lfs.c lfs_dir_find, lfs_dir_find_match.
 
 use crate::bd::bd::lfs_bd_cmp;
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::fetch::lfs_dir_fetchmatch;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::LfsMdir;
@@ -74,8 +75,8 @@ pub unsafe extern "C" fn lfs_dir_find_match(
 
         let diff = lfs_min(name.size, lfs_tag_size(tag));
         let res = lfs_bd_cmp(
-            name.lfs,
-            core::ptr::null(),
+            name.lfs.as_mut().unwrap(),
+            None,
             &mut lfs.rcache,
             diff,
             disk.block,
@@ -214,7 +215,7 @@ pub fn lfs_dir_find(
     lfs: *mut Lfs,
     dir: *mut LfsMdir,
     path: *mut *const u8,
-    id: *mut u16,
+    id: Option<&mut u16>,
 ) -> Result<crate::types::lfs_tag_t, Error> {
     if lfs.is_null() || dir.is_null() || path.is_null() {
         return crate::lfs_err!(Err(Error::Invalid));
@@ -309,12 +310,13 @@ pub fn lfs_dir_find(
 
             // C: lfs.c:1557-1564
             if lfs_tag_id(tag as u32) != 0x3ff {
+                let dir_tail = borrow_unchecked(&mut dir.tail);
                 let res = lfs_dir_get(
                     lfs,
                     dir,
                     lfs_mktag(0x700, 0x3ff, 0),
                     lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
-                    dir.tail.as_mut_ptr() as *mut core::ffi::c_void,
+                    dir_tail.as_mut_ptr() as *mut core::ffi::c_void,
                 );
                 if let Err(err) = res {
                     return Err(err);
@@ -353,13 +355,14 @@ pub fn lfs_dir_find(
                     name,
                     size: namelen,
                 };
+                let dir_tail = borrow_unchecked(&dir.tail);
                 tag = lfs_dir_fetchmatch(
                     lfs,
                     dir,
-                    &dir.tail,
+                    dir_tail,
                     lfs_mktag(0x780, 0, 0),
                     lfs_mktag(LFS_TYPE_NAME, 0, namelen),
-                    id,
+                    &id,
                     Some(lfs_dir_find_match),
                     &mut match_data as *mut _ as *mut core::ffi::c_void,
                 )?;

@@ -1,7 +1,9 @@
 //! Initialization. Per lfs.c lfs_init, lfs_deinit.
 
 use crate::bd::bd::lfs_cache_zero;
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
+use crate::fs::lfs;
 use crate::types::{LFS_ATTR_MAX, LFS_BLOCK_NULL, LFS_FILE_MAX, LFS_NAME_MAX};
 use crate::util::{lfs_min, lfs_npw2};
 
@@ -230,8 +232,11 @@ pub fn lfs_init(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig) -
 
         lfs.rcache.buffer = cfg.read_buffer as *mut u8;
         lfs.pcache.buffer = cfg.prog_buffer as *mut u8;
-        lfs_cache_zero(lfs, &mut lfs.rcache);
-        lfs_cache_zero(lfs, &mut lfs.pcache);
+
+        let lfs_rchache = borrow_unchecked(&mut lfs.rcache);
+        let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
+        lfs_cache_zero(lfs, lfs_rchache);
+        lfs_cache_zero(lfs, lfs_pcache);
 
         crate::lfs_assert!(cfg.lookahead_size > 0);
         lfs.lookahead.buffer = cfg.lookahead_buffer as *mut u8;
@@ -315,7 +320,7 @@ pub fn lfs_init(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig) -
 ///
 ///
 /// ```
-pub fn lfs_deinit(_lfs: *mut super::lfs::Lfs) -> i32 {
+pub fn lfs_deinit(_lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     // With provided buffers (read_buffer, prog_buffer, lookahead_buffer), no free needed
-    0
+    Ok(())
 }

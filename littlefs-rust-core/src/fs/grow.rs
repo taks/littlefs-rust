@@ -4,7 +4,7 @@ use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::LfsMdir;
-use crate::error::{Error, LFS_ERR_NOTEMPTY};
+use crate::error::{Error};
 use crate::lfs_superblock::{lfs_superblock_fromle32, lfs_superblock_tole32, LfsSuperblock};
 use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use crate::tag::{lfs_mattr, lfs_mktag};
@@ -102,31 +102,26 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
         // LFS_SHRINKNONRELOCATING path: check no blocks above threshold in use
         if block_count < lfs.block_count {
             let mut threshold = block_count;
-            let err = super::traverse::lfs_fs_traverse_(
+            super::traverse::lfs_fs_traverse_(
                 lfs,
                 Some(lfs_shrink_checkblock),
                 &mut threshold as *mut _ as *mut core::ffi::c_void,
                 true,
-            );
-            if err != 0 {
-                return err;
-            }
+            )?;
         }
 
         lfs.block_count = block_count;
 
         // fetch the root
         let mut root = core::mem::MaybeUninit::<LfsMdir>::zeroed();
-        let err = lfs_dir_fetch(lfs, root.as_mut_ptr(), &lfs.root);
-        if err != 0 {
-            return err;
-        }
+        let root = root.assume_init_mut();
+        lfs_dir_fetch(lfs, root, &lfs.root)?;
 
         // update the superblock
         let mut superblock = core::mem::MaybeUninit::<LfsSuperblock>::zeroed();
         let tag = lfs_dir_get(
             lfs,
-            root.as_ptr(),
+            root,
             lfs_mktag(0x7ff, 0x3ff, 0),
             lfs_mktag(
                 LFS_TYPE_INLINESTRUCT,
@@ -134,10 +129,7 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
                 core::mem::size_of::<LfsSuperblock>() as u32,
             ),
             superblock.as_mut_ptr() as *mut core::ffi::c_void,
-        );
-        if tag < 0 {
-            return tag;
-        }
+        )?;
 
         let sb = &mut *superblock.as_mut_ptr();
         lfs_superblock_fromle32(sb);
@@ -152,14 +144,10 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
         }];
         let err = lfs_dir_commit(
             lfs,
-            root.as_mut_ptr(),
-            attrs.as_ptr() as *const core::ffi::c_void,
-            1,
-        );
-        if err != 0 {
-            return err;
-        }
+            root,
+            &attrs
+        )?;
 
-        0
+        Ok(())
     }
 }

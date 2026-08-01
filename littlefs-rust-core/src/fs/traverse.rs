@@ -1,6 +1,6 @@
 //! FS traverse. Per lfs.c lfs_fs_traverse_.
 
-use crate::{error::Error, tag};
+use crate::{borrow_unchecked::borrow_unchecked, error::Error, tag};
 //
 /// Per lfs.c lfs_fs_traverse_ (lines 4693-4794)
 ///
@@ -182,7 +182,8 @@ pub fn lfs_fs_traverse_(
 
             // iterate through ids in directory
             crate::lfs_trace!("fs_traverse: fetch tail={:?} count={}", dir.tail, dir.count);
-            lfs_dir_fetch(lfs, &mut dir, &dir.tail)?;
+            let dir_tail = borrow_unchecked(&dir.tail);
+            lfs_dir_fetch(lfs, &mut dir, dir_tail)?;
 
             for id in 0..dir.count {
                 let mut raw: [lfs_block_t; 2] = [0, 0];
@@ -203,10 +204,11 @@ pub fn lfs_fs_traverse_(
 
                 let tag = tag.unwrap();
                 if u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_CTZSTRUCT {
+                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     lfs_ctz_traverse(
                         lfs,
-                        core::ptr::null(),
-                        &mut (*lfs).rcache,
+                        None,
+                        lfs_rcache,
                         raw[0],
                         raw[1],
                         Some(cb),
@@ -249,10 +251,11 @@ pub fn lfs_fs_traverse_(
                 if (f_ref.flags as i32 & LFS_F_DIRTY) != 0
                     && (f_ref.flags as i32 & LFS_F_INLINE) == 0
                 {
+                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     lfs_ctz_traverse(
                         lfs,
-                        &(*f).cache,
-                        &mut (*lfs).rcache,
+                        Some(&(*f).cache),
+                        lfs_rcache,
                         f_ref.ctz.head,
                         f_ref.ctz.size,
                         Some(cb),
@@ -262,10 +265,11 @@ pub fn lfs_fs_traverse_(
                 if (f_ref.flags as i32 & LFS_F_WRITING) != 0
                     && (f_ref.flags as i32 & LFS_F_INLINE) == 0
                 {
+                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     lfs_ctz_traverse(
                         lfs,
-                        &(*f).cache,
-                        &mut (*lfs).rcache,
+                        Some(&(*f).cache),
+                        lfs_rcache,
                         f_ref.block,
                         f_ref.pos,
                         Some(cb),

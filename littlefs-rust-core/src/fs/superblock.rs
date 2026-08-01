@@ -1,5 +1,6 @@
 //! Superblock and consistency. Per lfs.c lfs_fs_prepsuperblock, lfs_fs_deorphan, etc.
 
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::types::lfs_block_t;
 
@@ -12,13 +13,11 @@ use crate::types::lfs_block_t;
 ///             | (uint32_t)needssuperblock << 9;
 /// }
 /// ```
-pub fn lfs_fs_prepsuperblock(lfs: *mut super::lfs::Lfs, needssuperblock: bool) {
+pub fn lfs_fs_prepsuperblock(lfs: &mut super::lfs::Lfs, needssuperblock: bool) {
     use crate::tag::lfs_mktag;
-    unsafe {
-        let lfs = &mut *lfs;
-        lfs.gstate.tag =
-            (lfs.gstate.tag & !lfs_mktag(0, 0, 0x200)) | ((needssuperblock as u32) << 9);
-    }
+    lfs.gstate.tag =
+        (lfs.gstate.tag & !lfs_mktag(0, 0, 0x200)) | ((needssuperblock as u32) << 9);
+
 }
 
 /// Translation docs: Prepend orphan count delta to gstate before a commit that may create orphans.
@@ -87,8 +86,8 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         crate::lfs_trace!("desuperblock: need superblock, fetching root");
 
         let mut root = core::mem::zeroed();
-        let err = lfs_dir_fetch(lfs, &mut root, &(*lfs).root)?;
-
+        let lfs_root = borrow_unchecked(&mut lfs.root);
+        let err = lfs_dir_fetch(lfs, &mut root, lfs_root)?;
 
         // write a new superblock
         let mut superblock = LfsSuperblock {
@@ -109,7 +108,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
             ),
             buffer: &superblock as *const _ as *const _,
         }];
-        lfs_dir_commit(lfs, &mut root, attrs.as_ptr() as *const _, 1)?;
+        lfs_dir_commit(lfs, &mut root, &attrs)?;
 
         lfs_fs_prepsuperblock(lfs, false);
         Ok(())
@@ -173,7 +172,8 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         crate::lfs_assert!(u32::from(lfs_tag_type3((*lfs).gdisk.tag)) == LFS_TYPE_DELETE);
 
         let mut movedir = core::mem::zeroed();
-        lfs_dir_fetch(lfs, &mut movedir, &(*lfs).gdisk.pair)?;
+        let lfs_gdisk = borrow_unchecked(&lfs.gdisk);
+        lfs_dir_fetch(lfs, &mut movedir, &lfs_gdisk.pair)?;
 
         let moveid = lfs_tag_id((*lfs).gdisk.tag);
         lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
@@ -182,7 +182,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
             tag: lfs_mktag(LFS_TYPE_DELETE, moveid as u32, 0),
             buffer: core::ptr::null(),
         }];
-        lfs_dir_commit(lfs, &mut movedir, attrs.as_ptr() as *const _, 1)
+        lfs_dir_commit(lfs, &mut movedir, &attrs)
     }
 }
 
@@ -428,8 +428,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                             let state = lfs_dir_orphaningcommit(
                                 lfs,
                                 &mut pdir,
-                                attrs.as_ptr() as *const _,
-                                2,
+                                &attrs
                             );
                             lfs_pair_fromle32(&mut pair);
                             if let Err(err) = state {
@@ -453,7 +452,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                             buffer: dir_tail.as_ptr() as *const core::ffi::c_void,
                         }];
                         let state =
-                            lfs_dir_orphaningcommit(lfs, &mut pdir, attrs.as_ptr() as *const _, 1);
+                            lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
                         lfs_pair_fromle32(&mut dir_tail);
                         if let Err(err) = state {
                             return Err(err);

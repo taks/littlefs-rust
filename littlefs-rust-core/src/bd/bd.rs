@@ -135,8 +135,8 @@ pub fn lfs_cache_zero(lfs: &Lfs, pcache: &mut LfsCache) {
 /// ```
 pub fn lfs_bd_read(
     lfs: &Lfs,
-    pcache: *const LfsCache,
-    rcache: *mut LfsCache,
+    pcache: Option<&LfsCache>,
+    rcache: &mut LfsCache,
     hint: lfs_size_t,
     block: lfs_block_t,
     off: lfs_off_t,
@@ -161,8 +161,7 @@ pub fn lfs_bd_read(
         while size > 0 {
             let mut diff = size;
 
-            if !pcache.is_null() {
-                let pcache = &*pcache;
+            if let Some(pcache) = pcache {
                 if block == pcache.block && off < pcache.off + pcache.size {
                     if off >= pcache.off {
                         diff = lfs_min(diff, pcache.size - (off - pcache.off));
@@ -282,8 +281,8 @@ pub fn lfs_bd_read(
 /// ```
 pub fn lfs_bd_cmp(
     lfs: &mut Lfs,
-    pcache: *const LfsCache,
-    rcache: *mut LfsCache,
+    pcache: Option<&LfsCache>,
+    rcache: &mut LfsCache,
     hint: lfs_size_t,
     block: lfs_block_t,
     off: lfs_off_t,
@@ -352,8 +351,8 @@ pub fn lfs_bd_cmp(
 /// ```
 pub fn lfs_bd_crc(
     lfs: &mut Lfs,
-    pcache: *const LfsCache,
-    rcache: *mut LfsCache,
+    pcache: Option<&LfsCache>,
+    rcache: &mut LfsCache,
     hint: lfs_size_t,
     block: lfs_block_t,
     off: lfs_off_t,
@@ -467,7 +466,7 @@ pub fn lfs_bd_flush(
                 lfs_cache_drop(lfs, rcache);
                 let res = lfs_bd_cmp(
                     lfs,
-                    core::ptr::null(),
+                    None,
                     rcache,
                     diff,
                     pcache.block,

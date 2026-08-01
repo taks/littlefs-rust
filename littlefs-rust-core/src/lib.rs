@@ -17,7 +17,7 @@ mod dir;
 #[cfg(feature = "alloc")]
 mod lfs_alloc_module;
 
-mod error;
+pub mod error;
 mod file;
 mod fs;
 mod lfs_config;
@@ -32,6 +32,7 @@ mod macros;
 mod tag;
 mod types;
 mod util;
+mod borrow_unchecked;
 
 use core::ffi::c_void;
 use core::future::Ready;
@@ -86,7 +87,7 @@ pub use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_tole32};
 /// Format a block device with littlefs.
 /// Per lfs.h lfs_format. Calls lfs_format_ (lfs.c:4391).
 #[inline(never)]
-pub fn lfs_format(lfs: *mut Lfs, config: *const LfsConfig) -> i32 {
+pub fn lfs_format(lfs: &mut Lfs, config: &LfsConfig) -> Result<(), Error> {
     crate::lfs_trace!("lfs_format({:p}, {:p})", lfs, config);
     let err = crate::fs::lfs_format_(lfs, config);
     crate::lfs_trace!("lfs_format -> {}", err);
@@ -96,7 +97,7 @@ pub fn lfs_format(lfs: *mut Lfs, config: *const LfsConfig) -> i32 {
 /// Mount a littlefs.
 /// Per lfs.h lfs_mount. Calls lfs_mount_ (lfs.c:4482).
 #[inline(never)]
-pub fn lfs_mount(lfs: *mut Lfs, config: *const LfsConfig) -> i32 {
+pub fn lfs_mount(lfs: &mut Lfs, config: &LfsConfig) -> Result<(), Error> {
     crate::lfs_trace!("lfs_mount({:p}, {:p})", lfs, config);
     crate::fs::lfs_mount_(lfs, config)
 }
@@ -104,13 +105,13 @@ pub fn lfs_mount(lfs: *mut Lfs, config: *const LfsConfig) -> i32 {
 /// Unmount a littlefs.
 /// Per lfs.h lfs_unmount. Calls lfs_unmount_ (lfs.c:4647).
 #[inline(never)]
-pub fn lfs_unmount(lfs: *mut Lfs) -> i32 {
+pub fn lfs_unmount(lfs: &mut Lfs) -> Result<(), Error> {
     crate::fs::lfs_unmount_(lfs)
 }
 
 /// Remove a file or directory. Per lfs.h lfs_remove (lfs.c:6193-6195).
 #[inline(never)]
-pub fn lfs_remove(lfs: *mut Lfs, path: *const u8) -> i32 {
+pub fn lfs_remove(lfs: &mut Lfs, path: *const u8) -> Result<(), Error> {
     crate::fs::remove::lfs_remove_(lfs, path)
 }
 
@@ -287,7 +288,7 @@ pub fn lfs_dir_rewind(lfs: &mut Lfs, dir: &mut LfsDir) -> Result<(), Error> {
 
 /// Find on-disk info about the filesystem. Per lfs.h lfs_fs_stat (lfs.c:6449-6453).
 #[inline(never)]
-pub fn lfs_fs_stat(lfs: *mut Lfs, fsinfo: *mut LfsFsinfo) -> i32 {
+pub fn lfs_fs_stat(lfs: &mut Lfs, fsinfo: &mut LfsFsinfo) -> Result<(), Error> {
     crate::fs::lfs_fs_stat_(lfs, fsinfo)
 }
 
@@ -314,7 +315,7 @@ pub fn lfs_fs_mkconsistent(lfs: &mut Lfs) -> Result<(), Error> {
 
 /// Attempt any janitorial work. Per lfs.h lfs_fs_gc (lfs.c:6495-6499).
 #[inline(never)]
-pub fn lfs_fs_gc(lfs: *mut Lfs) -> i32 {
+pub fn lfs_fs_gc(lfs: &mut Lfs) -> Result<(), Error> {
     crate::fs::consistent::lfs_fs_gc_(lfs)
 }
 

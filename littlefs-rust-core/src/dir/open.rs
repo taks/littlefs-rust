@@ -1,5 +1,6 @@
 //! Directory open/read. Per lfs.c lfs_dir_open_, lfs_dir_close_, lfs_dir_read_, etc.
 
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::fetch::{lfs_dir_fetch, lfs_dir_getinfo};
 use crate::dir::find::lfs_dir_find;
 use crate::dir::lfs_mlist::lfs_mlist_append;
@@ -70,7 +71,7 @@ pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8
         let dir = &mut *dir;
         let mut path_ptr = path;
 
-        let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, core::ptr::null_mut())?;
+        let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, None)?;
 
         if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
             return Err(Error::NotDir);
@@ -83,7 +84,7 @@ pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8
         } else {
             let res = lfs_dir_get(
                 lfs,
-                &dir.m as *const _,
+                &dir.m,
                 lfs_mktag(0x700, 0x3ff, 0),
                 lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
@@ -227,7 +228,8 @@ pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsI
                 if !dir.m.split {
                     return Ok(0);
                 }
-                lfs_dir_fetch(lfs, &mut dir.m, &dir.m.tail)?;
+                let dir_m_tail = borrow_unchecked(&dir.m.tail);
+                lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
 
                 dir.id = 0;
             }

@@ -2,9 +2,11 @@
 
 use core::f32::consts::E;
 
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::types::lfs_block_t;
+use crate::util::as_void_ptr;
 
 /// Per lfs.c lfs_alloc_ckpoint (lines 614-616)
 ///
@@ -134,10 +136,11 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
         // find mask of free blocks from tree
         core::ptr::write_bytes(buf, 0, cfg.lookahead_size as usize);
 
+        let lfs_ptr = lfs as *mut _ as *mut core::ffi::c_void;
         let err = lfs_fs_traverse_(
             lfs,
             Some(lfs_alloc_lookahead_cb),
-            lfs as *mut core::ffi::c_void,
+            lfs_ptr,
             true,
         );
         if err.is_err() {

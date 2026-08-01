@@ -1,5 +1,6 @@
 //! attr. Per lfs.c attr_.
 
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
@@ -62,6 +63,8 @@ pub fn lfs_getattr_(
         return crate::lfs_err!(Err(Error::Invalid));
     }
     unsafe {
+        let lfs = &mut *lfs;
+
         let mut cwd = LfsMdir {
             pair: [0, 0],
             rev: 0,
@@ -74,12 +77,13 @@ pub fn lfs_getattr_(
         };
 
         let mut path_ptr = path;
-        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, core::ptr::null_mut())?;
+        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, None)?;
 
         let mut id = lfs_tag_id(tag as u32) as u16;
         if id == 0x3ff {
             id = 0;
-            lfs_dir_fetch(lfs, &mut cwd, &(*lfs).root)?;
+            let lfs_root = borrow_unchecked(&lfs.root);
+            lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
 
         let gtag = lfs_mktag(
@@ -153,19 +157,20 @@ pub fn lfs_commitattr(
         };
 
         let mut path_ptr = path;
-        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, core::ptr::null_mut())?;
+        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, None)?;
 
         let mut id = lfs_tag_id(tag as u32) as u16;
         if id == 0x3ff {
             id = 0;
-            lfs_dir_fetch(lfs, &mut cwd, &(*lfs).root)?;
+            let lfs_root = borrow_unchecked(&lfs.root);
+            lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
 
         let attrs = [lfs_mattr {
             tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size),
             buffer,
         }];
-        lfs_dir_commit(lfs, &mut cwd, attrs.as_ptr() as *const _, 1)
+        lfs_dir_commit(lfs, &mut cwd, &attrs)
     }
 }
 

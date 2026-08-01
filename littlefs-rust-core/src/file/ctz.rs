@@ -130,8 +130,8 @@ pub fn lfs_ctz_index(lfs: *const crate::fs::Lfs, off: *mut lfs_off_t) -> i32 {
 /// ```
 pub fn lfs_ctz_find(
     lfs: &mut crate::fs::Lfs,
-    pcache: *const crate::bd::LfsCache,
-    rcache: *mut crate::bd::LfsCache,
+    pcache: Option<&crate::bd::LfsCache>,
+    rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
     size: lfs_size_t,
     pos: lfs_size_t,
@@ -252,7 +252,7 @@ pub fn lfs_ctz_find(
 /// ```
 pub fn lfs_ctz_traverse(
     lfs: &mut crate::fs::Lfs,
-    pcache: *const crate::bd::LfsCache,
+    pcache: Option<&crate::bd::LfsCache>,
     rcache: *mut crate::bd::LfsCache,
     head: lfs_block_t,
     size: lfs_size_t,
@@ -475,7 +475,7 @@ pub fn lfs_ctz_extend(
                     let mut data: u8 = 0;
                     let err = lfs_bd_read(
                         lfs,
-                        core::ptr::null(),
+                        None,
                         rcache,
                         noff - i,
                         head,
@@ -537,7 +537,7 @@ pub fn lfs_ctz_extend(
                     let mut nhead_buf: u32 = 0;
                     lfs_bd_read(
                         lfs,
-                        core::ptr::null(),
+                        None,
                         rcache,
                         4,
                         nhead,
