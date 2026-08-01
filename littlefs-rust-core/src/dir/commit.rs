@@ -518,7 +518,7 @@ pub unsafe fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: *mut LfsMdir) -> Resu
             core::mem::size_of::<u32>() as u32,
         );
         dir_ref.rev = lfs_fromle32(rev_buf);
-        if err != 0 && err != crate::error::LFS_ERR_CORRUPT {
+        if err.is_err() && err != Err(Error::Corrupt) {
             return crate::lfs_pass_err!(err);
         }
 
@@ -1818,7 +1818,7 @@ pub fn lfs_dir_relocatingcommit(
                         if err2 == Error::NoSpace || err2 == Error::Corrupt {
                             do_compact = true;
                         } else {
-                            return err2;
+                            return Err(err2);
                         }
                     }
                 }
@@ -1828,7 +1828,7 @@ pub fn lfs_dir_relocatingcommit(
                         if err2 == Error::NoSpace || err2 == Error::Corrupt {
                             do_compact = true;
                         } else {
-                            return err2;
+                            return Err(err2);
                         }
                     } else {
                         dir_ref.off = commit.off;
@@ -1940,15 +1940,12 @@ fn relocatingcommit_fixmlist(
                     if lfs_pair_cmp(&d_ref.m.tail, &(*lfs).root) != 0 {
                         d_ref.id -= d_ref.m.count;
                     }
-                    let err = lfs_dir_fetch(lfs, &mut d_ref.m, &d_ref.m.tail);
-                    if err != 0 {
-                        return crate::lfs_pass_err!(err);
-                    }
+                    lfs_dir_fetch(lfs, &mut d_ref.m, &d_ref.m.tail)?;
                 }
             }
             d = d_ref.next;
         }
-        state
+        Ok(state)
     }
 }
 
@@ -2218,7 +2215,7 @@ pub fn lfs_dir_orphaningcommit(
                 core::ptr::null_mut(),
             );
             lfs_pair_fromle32(&mut (*dir).tail);
-            if tail_state < 0 {
+            if tail_state.is_err() {
                 return tail_state;
             }
             ldir = pdir;

@@ -1,7 +1,7 @@
 //! Block device operations. Per lfs.c lfs_bd_read, lfs_bd_prog, lfs_bd_crc, etc.
 
 use crate::bd::LfsCache;
-use crate::error::{Error, LFS_ERR_CORRUPT};
+use crate::error::Error;
 use crate::fs::Lfs;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
@@ -151,7 +151,7 @@ pub fn lfs_bd_read(
         };
 
         if off + size > cfg.block_size || (lfs.block_count != 0 && block >= lfs.block_count) {
-            return crate::lfs_err!(LFS_ERR_CORRUPT);
+            return crate::lfs_err!(Err(Error::Corrupt));
         }
 
         let mut data = buffer;

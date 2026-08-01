@@ -285,13 +285,13 @@ pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
                     "No more free space 0x{:08x} (ckpoint==0)",
                     (lfs.lookahead.start + lfs.lookahead.next) % lfs.block_count
                 );
-                return crate::lfs_err!(LFS_ERR_NOSPC);
+                return crate::lfs_err!(Err(Error::NoSpace));
             }
 
             // No blocks in our lookahead buffer, we need to scan the filesystem for
             // unused blocks in the next lookahead window.
             let err = lfs_alloc_scan(lfs);
-            if err != 0 {
+            if err.is_err() {
                 crate::lfs_trace!(
                     "lfs_alloc NOSPC: alloc_scan returned {} start={} next={}",
                     err,

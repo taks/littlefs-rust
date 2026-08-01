@@ -77,7 +77,7 @@ use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
 /// }
 /// ```
 pub fn lfs_dir_getslice(
-    lfs: *mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs,
     dir: *const LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
@@ -146,7 +146,7 @@ pub fn lfs_dir_getslice(
                     == (lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_CREATE, 0, 0)
                         | (lfs_mktag(0, 0x3ff, 0) & (gtag as i32 - gdiff) as u32))
                 {
-                    return crate::error::LFS_ERR_NOENT;
+                    return Err(Error::NoEntry);
                 }
                 gdiff = gdiff
                     .wrapping_add(lfs_mktag(0, crate::tag::lfs_tag_splice(tag) as u32, 0) as i32);
@@ -154,10 +154,10 @@ pub fn lfs_dir_getslice(
 
             if (gmask & tag) == (gmask & ((gtag as i32 - gdiff) as u32)) {
                 if lfs_tag_isdelete(tag) {
-                    return crate::error::LFS_ERR_NOENT;
+                    return Err(Error::NoEntry);
                 }
                 let diff = lfs_min(lfs_tag_size(tag), gsize);
-                let err = lfs_bd_read(
+                lfs_bd_read(
                     lfs,
                     core::ptr::null_mut(),
                     unsafe { &mut (*lfs).rcache },
@@ -166,10 +166,7 @@ pub fn lfs_dir_getslice(
                     off + 4 + goff,
                     gbuffer as *mut u8,
                     diff,
-                );
-                if err != 0 {
-                    return err as lfs_stag_t;
-                }
+                )?;
                 if !gbuffer.is_null() && diff < gsize {
                     core::ptr::write_bytes(
                         (gbuffer as *mut u8).add(diff as usize),
@@ -180,7 +177,7 @@ pub fn lfs_dir_getslice(
                 return (tag as i32).wrapping_add(gdiff);
             }
         }
-        crate::error::LFS_ERR_NOENT
+        Err(Error::NoEntry)
     }
 }
 
