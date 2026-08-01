@@ -1,6 +1,6 @@
 //! RAM block device for unit tests. Erase = 0xff; prog = copy; read = copy.
 
-use crate::LfsConfig;
+use crate::{LfsConfig, error::Error};
 
 /// Magic string "littlefs" in superblock blocks. Per lfs.h.
 pub const MAGIC: &[u8; 8] = b"littlefs";
@@ -56,12 +56,11 @@ impl RamStorage {
 pub const BLOCK_SIZE: u32 = 512;
 
 unsafe extern "C" fn ram_read(
-    cfg: *const LfsConfig,
+    cfg: &LfsConfig,
     block: u32,
     off: u32,
-    buffer: *mut u8,
-    size: u32,
-) -> i32 {
+    buffer: &mut [u8],
+) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut RamStorage;
     assert!(!ctx.is_null(), "ram_read: config.context is null");
     let ram = &mut *ctx;
@@ -69,36 +68,31 @@ unsafe extern "C" fn ram_read(
         !ram.data.is_empty(),
         "ram_read: RamStorage.data is empty; config.context may be invalid"
     );
-    let size = size as usize;
-    let buf = core::slice::from_raw_parts_mut(buffer, size);
-    ram.read(block, off, buf);
-    0
+    ram.read(block, off, buffer);
+    Ok(())
 }
 
 unsafe extern "C" fn ram_prog(
-    cfg: *const LfsConfig,
+    cfg: &LfsConfig,
     block: u32,
     off: u32,
-    buffer: *const u8,
-    size: u32,
-) -> i32 {
-    let ctx = (*cfg).context as *mut RamStorage;
+    buffer: &[u8]
+) -> Result<(), Error> {
+    let ctx = unsafe { (*cfg).context as *mut RamStorage };
     let ram = &mut *ctx;
-    let size = size as usize;
-    let buf = core::slice::from_raw_parts(buffer, size);
-    ram.prog(block, off, buf);
-    0
+    ram.prog(block, off, buffer);
+    Ok(())
 }
 
-unsafe extern "C" fn ram_erase(cfg: *const LfsConfig, block: u32) -> i32 {
+unsafe extern "C" fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut RamStorage;
     let ram = &mut *ctx;
     ram.erase(block);
-    0
+    Ok(())
 }
 
-unsafe extern "C" fn ram_sync(_cfg: *const LfsConfig) -> i32 {
-    0
+unsafe extern "C" fn ram_sync(_cfg: *const LfsConfig) -> Result<(), Error> {
+    Ok(())
 }
 
 /// Builds LfsConfig for the given RAM storage. Caller must set context after moving.

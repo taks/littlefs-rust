@@ -158,10 +158,11 @@ pub fn lfs_dir_getslice(
                     return Err(Error::NoEntry);
                 }
                 let diff = lfs_min(lfs_tag_size(tag), gsize);
+                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 lfs_bd_read(
                     lfs,
-                    core::ptr::null_mut(),
-                    unsafe { &mut (*lfs).rcache },
+                    None,
+                    lfs_rcache,
                     diff,
                     dir.pair[0],
                     off + 4 + goff,

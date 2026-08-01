@@ -1,5 +1,6 @@
 //! FS grow/shrink. Per lfs.c lfs_fs_grow_, lfs_shrink_checkblock.
 
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::traverse::lfs_dir_get;
@@ -27,12 +28,12 @@ use crate::types::{lfs_block_t, lfs_size_t};
 unsafe extern "C" fn lfs_shrink_checkblock(
     data: *mut core::ffi::c_void,
     block: lfs_block_t,
-) -> Result<i32, Error> {
-    let threshold = *(data as *const lfs_size_t);
+) -> Result<(), Error> {
+    let threshold = unsafe { *(data as *const lfs_size_t) };
     if block >= threshold {
         return Err(Error::NotEmpty);
     }
-    Ok(0)
+    Ok(())
 }
 
 /// Translation docs: Grow or shrink the filesystem to a new block_count.
@@ -115,7 +116,8 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
         // fetch the root
         let mut root = core::mem::MaybeUninit::<LfsMdir>::zeroed();
         let root = root.assume_init_mut();
-        lfs_dir_fetch(lfs, root, &lfs.root)?;
+        let lfs_root = borrow_unchecked(&lfs.root);
+        lfs_dir_fetch(lfs, root, lfs_root)?;
 
         // update the superblock
         let mut superblock = core::mem::MaybeUninit::<LfsSuperblock>::zeroed();

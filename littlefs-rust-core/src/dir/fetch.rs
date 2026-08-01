@@ -1,6 +1,7 @@
 //! Directory fetch. Per lfs.c lfs_dir_fetch, lfs_dir_getgstate, lfs_dir_getinfo.
 
 use crate::bd::bd::{lfs_bd_crc, lfs_bd_read};
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::crc::lfs_crc;
 use crate::dir::lfs_fcrc::lfs_fcrc_fromle32;
 use crate::dir::traverse::lfs_dir_get;
@@ -343,10 +344,11 @@ pub fn lfs_dir_fetchmatch(
         for i in 0..2 {
             crate::lfs_trace!("fetchmatch: reading rev for pair[{}]={}", i, pair[i]);
             let mut rev_buf = [0u8; 4];
+            let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
             let err = lfs_bd_read(
                 lfs,
                 None,
-                &mut lfs.rcache,
+                lfs_rcache,
                 4,
                 pair[i],
                 0,
@@ -611,10 +613,11 @@ pub fn lfs_dir_fetchmatch(
             dir.erased = false;
             if maybeerased && dir.off.is_multiple_of(cfg.prog_size) && hasfcrc {
                 let mut fcrc_ = 0xffff_ffffu32;
+                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 let err = lfs_bd_crc(
                     lfs,
                     None,
-                    &mut lfs.rcache,
+                    lfs_rcache,
                     cfg.block_size,
                     dir.pair[0],
                     dir.off,
@@ -638,7 +641,7 @@ pub fn lfs_dir_fetchmatch(
             }
 
             if let Some(_id) = _id {
-                *_id = lfs_min(lfs_tag_id(besttag as lfs_tag_t) as u32, dir.count as u32) as u16;
+                **_id = lfs_min(lfs_tag_id(besttag as lfs_tag_t) as u32, dir.count as u32) as u16;
             }
 
             if lfs_tag_isvalid(besttag as lfs_tag_t) {
@@ -652,7 +655,7 @@ pub fn lfs_dir_fetchmatch(
                     dir.tail[0],
                     dir.tail[1]
                 );
-                return besttag;
+                return Ok(besttag as _);
             } else if lfs_tag_id(besttag as lfs_tag_t) < dir.count {
                 crate::lfs_trace!(
                     "fetchmatch: NOENT pair=[{},{}] count={} besttag_id={} split={} tail=[{},{}]",
@@ -675,7 +678,7 @@ pub fn lfs_dir_fetchmatch(
                     dir.tail[0],
                     dir.tail[1]
                 );
-                return 0;
+                return Ok(0);
             }
         }
 
@@ -738,7 +741,7 @@ pub fn lfs_dir_fetch(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir, pair: &[lfs_bl
 pub fn lfs_dir_getgstate(
     lfs: &mut crate::fs::Lfs,
     dir: &LfsMdir,
-    gstate: *mut LfsGstate,
+    gstate: &mut LfsGstate,
 ) -> Result<(), Error> {
     unsafe {
         let mut temp = crate::lfs_gstate::LfsGstate {
@@ -761,7 +764,7 @@ pub fn lfs_dir_getgstate(
         }
         if res != Err(Error::NoEntry) {
             lfs_gstate_fromle32(&mut temp);
-            lfs_gstate_xor(&mut *gstate, &temp);
+            lfs_gstate_xor(gstate, &temp);
         }
         Ok(())
     }

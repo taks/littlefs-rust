@@ -3,6 +3,7 @@
 #[cfg(test)]
 extern crate std;
 
+use crate::error::Error;
 use crate::test::ram::MAGIC_OFFSET;
 use crate::LfsConfig;
 
@@ -15,25 +16,19 @@ pub struct SuperblockSnapshot {
 
 impl SuperblockSnapshot {
     /// Read blocks 0 and 1 from config. root_pair from mounted Lfs.
-    pub fn capture(config: *const LfsConfig, root_pair: [u32; 2]) -> Result<Self, i32> {
+    pub fn capture(config: &LfsConfig, root_pair: [u32; 2]) -> Result<Self, Error> {
         let block_size = unsafe { (*config).block_size } as usize;
         let mut block0 = alloc::vec![0u8; block_size];
         let mut block1 = alloc::vec![0u8; block_size];
 
-        let err0 = unsafe {
+        unsafe {
             let read = (*config).read.expect("read callback");
-            read(config, 0, 0, block0.as_mut_ptr(), block_size as u32)
+            read(config, 0, 0, &mut block0)?
         };
-        let err1 = unsafe {
+        unsafe {
             let read = (*config).read.expect("read callback");
-            read(config, 1, 0, block1.as_mut_ptr(), block_size as u32)
+            read(config, 1, 0, &mut block1)?
         };
-        if err0 != 0 {
-            return Err(err0);
-        }
-        if err1 != 0 {
-            return Err(err1);
-        }
 
         Ok(Self {
             block0,

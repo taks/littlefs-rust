@@ -143,7 +143,7 @@ pub unsafe extern "C" fn lfs_fs_parent_match(
 
     let mut child: [crate::types::lfs_block_t; 2] = [0, 0];
     lfs_bd_read(
-        find.lfs,
+        unsafe { find.lfs.as_ref().unwrap() },
         None,
         &mut (*find.lfs).rcache,
         (*find.lfs).cfg.as_ref().expect("cfg").block_size,
@@ -245,7 +245,7 @@ pub fn lfs_fs_parent(
                 parent_tail,
                 lfs_mktag(0x7ff, 0, 0x3ff),
                 lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
-                None,
+                &None,
                 Some(lfs_fs_parent_match),
                 &find_match as *const _ as *mut core::ffi::c_void,
             );

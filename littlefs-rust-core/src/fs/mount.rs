@@ -277,7 +277,7 @@ pub fn lfs_mount_(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig)
                 dir_tail,
                 lfs_mktag(0x7ff, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-                None,
+                &None,
                 Some(lfs_dir_find_match),
                 &find_match as *const _ as *mut core::ffi::c_void,
             );
@@ -357,7 +357,8 @@ pub fn lfs_mount_(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig)
             }
 
             crate::lfs_trace!("mount: before getgstate");
-            err_inner = lfs_dir_getgstate(lfs, &dir, &mut lfs.gstate);
+            let lfs_gstate = borrow_unchecked(&mut lfs.gstate);
+            err_inner = lfs_dir_getgstate(lfs, &dir, lfs_gstate);
             crate::lfs_trace!(
                 "mount: after getgstate err={} tail={:?}",
                 err_inner,

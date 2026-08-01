@@ -525,7 +525,7 @@ pub fn lfs_bd_sync(
             Some(f) => f,
             None => return Err(Error::Corrupt),
         };
-        sync(cfg as *const _)
+        sync(cfg)
     }
 }
 
@@ -678,7 +678,7 @@ pub fn lfs_bd_erase(lfs: &Lfs, block: lfs_block_t) -> Result<(), Error> {
             None => return Err(Error::Corrupt),
         };
         crate::lfs_trace!("bd_erase block={}", block);
-        let err = erase(lfs.cfg, block);
+        let err = erase(lfs.cfg.as_ref().unwrap(), block);
         if err.is_err() {
             crate::lfs_trace!("bd_erase block={} -> CORRUPT", block);
         }

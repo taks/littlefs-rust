@@ -10,7 +10,7 @@ fn read_magic_region(config: *const LfsConfig, block: u32) -> Option<[u8; 8]> {
         let read = (*config).read.expect("read callback");
         read(config, block, 0, buf.as_mut_ptr(), buf.len() as u32)
     };
-    if err != 0 {
+    if err.is_err() {
         return None;
     }
     Some(buf[MAGIC_OFFSET as usize..][..8].try_into().unwrap())

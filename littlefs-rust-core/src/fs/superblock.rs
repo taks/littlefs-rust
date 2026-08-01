@@ -442,8 +442,8 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                     }
 
                     if pass == 1 && tag == Err(Error::NoEntry) && powerloss {
-
-                        crate::dir::fetch::lfs_dir_getgstate(lfs, &dir, &mut (*lfs).gdelta)?;
+                        let lfs_gdelta = borrow_unchecked(&mut lfs.gdelta);
+                        crate::dir::fetch::lfs_dir_getgstate(lfs, &dir, lfs_gdelta)?;
 
                         let mut dir_tail = dir.tail;
                         lfs_pair_tole32(&mut dir_tail);

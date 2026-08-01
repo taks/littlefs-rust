@@ -142,7 +142,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: *const u8) -> Result<(), Err
             lfs_dir_fetch(lfs, &mut dir.m, &pair)?;
 
             if dir.m.count > 0 || dir.m.split {
-                return crate::lfs_err!(LFS_ERR_NOTEMPTY);
+                return crate::lfs_err!(Err(Error::NotEmpty));
             }
 
             lfs_fs_preporphans(lfs, 1)?;

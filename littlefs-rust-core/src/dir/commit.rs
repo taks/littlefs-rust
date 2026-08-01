@@ -1066,7 +1066,8 @@ pub fn lfs_dir_compact(
                         dir_ref.pair
                     );
                     lfs_alloc_lookahead(lfs, dir.pair[1]);
-                    lfs_cache_drop(lfs, &mut (*lfs).pcache);
+                    let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
+                    lfs_cache_drop(lfs, lfs_pcache);
                     if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT commitprog");
                         return crate::lfs_err!(Err(Error::NoSpace));
@@ -1210,7 +1211,8 @@ pub fn lfs_dir_compact(
                             dir_ref.pair
                         );
                         lfs_alloc_lookahead(lfs, dir.pair[1]);
-                        lfs_cache_drop(lfs, &mut (*lfs).pcache);
+                        let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
+                        lfs_cache_drop(lfs, lfs_pcache);
                         if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                             crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT movestate");
                             return crate::lfs_err!(Err(Error::NoSpace));
@@ -1241,7 +1243,8 @@ pub fn lfs_dir_compact(
                         dir_ref.pair
                     );
                     lfs_alloc_lookahead(lfs, dir.pair[1]);
-                    lfs_cache_drop(lfs, &mut (*lfs).pcache);
+                    let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
+                    lfs_cache_drop(lfs, lfs_pcache);
                     if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT commitcrc");
                         return crate::lfs_err!(Err(Error::NoSpace));
@@ -2286,7 +2289,7 @@ pub fn lfs_dir_orphaningcommit(
                     &mut pdir,
                     &ppair,
                     &relocate_attrs,
-                    core::ptr::null_mut(),
+                    None,
                 );
                 lfs_pair_fromle32(&mut ldir.pair);
                 if state.is_err() {

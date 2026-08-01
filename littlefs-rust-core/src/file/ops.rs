@@ -542,7 +542,8 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
             if let Err(e) = err {
                 if e == Error::Corrupt {
                     lfs_alloc_lookahead(lfs, nblock);
-                    lfs_cache_drop(lfs, &mut (*lfs).pcache);
+                    let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
+                    lfs_cache_drop(lfs, lfs_pcache);
                     continue 'relocate;
                 }
                 return crate::lfs_pass_err!(err);
@@ -595,7 +596,8 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                 if let Err(err) = err {
                     if err == Error::Corrupt {
                         lfs_alloc_lookahead(lfs, nblock);
-                        lfs_cache_drop(lfs, &mut (*lfs).pcache);
+                        let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
+                        lfs_cache_drop(lfs, lfs_pcache);
                         continue 'relocate;
                     }
                     return crate::lfs_pass_err!(Err(err));
@@ -915,7 +917,9 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
             let cfg = lfs_ref.cfg.as_ref().expect("cfg");
 
             if (file.flags as i32 & LFS_F_INLINE) == 0 {
-                crate::bd::bd::lfs_bd_sync(lfs, &mut (*lfs).pcache, &mut (*lfs).rcache, false)?;
+                let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
+                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
+                crate::bd::bd::lfs_bd_sync(lfs, lfs_pcache, lfs_rcache, false)?;
             }
 
             // C: copy ctz so alloc will work during a relocate
