@@ -234,7 +234,7 @@ pub fn lfs_dir_get(
 /// ```
 pub fn lfs_dir_getread(
     lfs: &mut crate::fs::Lfs,
-    dir: *const LfsMdir,
+    dir: &LfsMdir,
     pcache: *const LfsCache,
     rcache: *mut LfsCache,
     hint: lfs_size_t,
@@ -1085,7 +1085,7 @@ pub unsafe extern "C" fn lfs_dir_traverse_test_cb(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
-) -> i32 {
+) -> Result<i32, Error> {
     use crate::tag::lfs_tag_type3;
 
     let out = p as *mut TraverseTestOut;

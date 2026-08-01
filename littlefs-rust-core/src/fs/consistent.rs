@@ -120,7 +120,7 @@ pub fn lfs_fs_mkconsistent_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_gc_(lfs: *mut super::lfs::Lfs) -> i32 {
+pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_scan;
     use crate::dir::commit::lfs_dir_commit;
     use crate::util::{lfs_min, lfs_pair_isnull};
@@ -128,13 +128,12 @@ pub fn lfs_fs_gc_(lfs: *mut super::lfs::Lfs) -> i32 {
     crate::lfs_trace!("lfs_fs_gc: start");
     let err = super::superblock::lfs_fs_forceconsistency(lfs);
     crate::lfs_trace!("lfs_fs_gc: after forceconsistency err={}", err);
-    if err != 0 {
+    if err.is_err() {
         return crate::lfs_pass_err!(err);
     }
 
     unsafe {
-        let lfs_ref = &*lfs;
-        let cfg = lfs_ref.cfg.as_ref().expect("cfg");
+        let cfg = lfs.cfg.as_ref().expect("cfg");
         let block_size = cfg.block_size;
         let prog_size = cfg.prog_size;
         let compact_thresh = cfg.compact_thresh;
@@ -167,10 +166,7 @@ pub fn lfs_fs_gc_(lfs: *mut super::lfs::Lfs) -> i32 {
                     }
                     iter += 1;
                 }
-                let err = lfs_dir_fetch(lfs, &mut mdir, &mdir.tail);
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+                lfs_dir_fetch(lfs, &mut mdir, &mdir.tail)?;
 
                 let should_compact = !mdir.erased
                     || if compact_thresh == 0 {
@@ -182,10 +178,7 @@ pub fn lfs_fs_gc_(lfs: *mut super::lfs::Lfs) -> i32 {
                 if should_compact {
                     let mdir_ref = &mut mdir;
                     mdir_ref.erased = false;
-                    let err = lfs_dir_commit(lfs, mdir_ref, core::ptr::null(), 0);
-                    if err != 0 {
-                        return crate::lfs_pass_err!(err);
-                    }
+                    lfs_dir_commit(lfs, mdir_ref, core::ptr::null(), 0)?;
                 }
             }
         }
@@ -197,11 +190,11 @@ pub fn lfs_fs_gc_(lfs: *mut super::lfs::Lfs) -> i32 {
             crate::lfs_trace!("lfs_fs_gc: alloc_scan start");
             let err = lfs_alloc_scan(lfs);
             crate::lfs_trace!("lfs_fs_gc: alloc_scan done err={}", err);
-            if err != 0 {
+            if err.is_err() {
                 return crate::lfs_pass_err!(err);
             }
         }
     }
 
-    0
+    Ok(())
 }

@@ -405,3 +405,8 @@ pub fn lfs_pair_cmp(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> i32 {
 pub fn lfs_pair_issync(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> bool {
     (paira[0] == pairb[0] && paira[1] == pairb[1]) || (paira[0] == pairb[1] && paira[1] == pairb[0])
 }
+
+#[inline]
+pub(crate) unsafe fn as_void_ptr<T>(r: &mut T) -> *mut ::core::ffi::c_void {
+    (r as *mut T).cast()
+}

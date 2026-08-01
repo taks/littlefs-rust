@@ -146,13 +146,13 @@ pub fn lfs_setattr(
     r#type: u8,
     buffer: *const c_void,
     size: lfs_size_t,
-) -> i32 {
+) -> Result<(), Error> {
     crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer, size)
 }
 
 /// Remove a custom attribute. Per lfs.h lfs_removeattr (lfs.c:6487-6491).
 #[inline(never)]
-pub fn lfs_removeattr(lfs: *mut Lfs, path: *const u8, r#type: u8) -> i32 {
+pub fn lfs_removeattr(lfs: *mut Lfs, path: *const u8, r#type: u8) -> Result<(), Error> {
     crate::fs::attr::lfs_removeattr_(lfs, path, r#type)
 }
 
@@ -221,7 +221,7 @@ pub fn lfs_file_seek(
 
 /// Truncate the size of the file. Per lfs.h lfs_file_truncate (lfs.c:6471-6475).
 #[inline(never)]
-pub fn lfs_file_truncate(lfs: *mut Lfs, file: *mut LfsFile, size: lfs_off_t) -> i32 {
+pub fn lfs_file_truncate(lfs: &mut Lfs, file: &mut LfsFile, size: lfs_off_t) -> Result<(), Error> {
     crate::file::ops::lfs_file_truncate_(lfs, file, size)
 }
 
@@ -233,7 +233,7 @@ pub fn lfs_file_tell(_lfs: *mut Lfs, file: *mut LfsFile) -> lfs_soff_t {
 
 /// Change the position to the beginning of the file. Per lfs.h lfs_file_rewind (lfs.c:6487-6491).
 #[inline(never)]
-pub fn lfs_file_rewind(lfs: *mut Lfs, file: *mut LfsFile) -> i32 {
+pub fn lfs_file_rewind(lfs: &mut Lfs, file: &mut LfsFile) -> Result<(), Error> {
     crate::file::ops::lfs_file_rewind_(lfs, file)
 }
 
@@ -245,13 +245,13 @@ pub fn lfs_file_size(lfs: &mut Lfs, file: &mut LfsFile) -> lfs_soff_t {
 
 /// Create a directory. Per lfs.h lfs_mkdir (lfs.c:6503-6507).
 #[inline(never)]
-pub fn lfs_mkdir(lfs: *mut Lfs, path: *const u8) -> i32 {
+pub fn lfs_mkdir(lfs: &mut Lfs, path: *const u8) -> Result<(), Error> {
     crate::fs::mkdir::lfs_mkdir_(lfs, path)
 }
 
 /// Open a directory. Per lfs.h lfs_dir_open (lfs.c:6511-6515).
 #[inline(never)]
-pub fn lfs_dir_open(lfs: *mut Lfs, dir: *mut LfsDir, path: *const u8) -> i32 {
+pub fn lfs_dir_open(lfs: *mut Lfs, dir: *mut LfsDir, path: *const u8) -> Result<(), Error> {
     crate::dir::open::lfs_dir_open_(lfs, dir, path)
 }
 
@@ -293,7 +293,7 @@ pub fn lfs_fs_stat(lfs: *mut Lfs, fsinfo: *mut LfsFsinfo) -> i32 {
 
 /// Find the current size of the filesystem. Per lfs.h lfs_fs_size (lfs.c:6449-6453).
 #[inline(never)]
-pub fn lfs_fs_size(lfs: *mut Lfs) -> lfs_ssize_t {
+pub fn lfs_fs_size(lfs: &mut Lfs) -> Result<lfs_size_t, Error> {
     crate::fs::stat::lfs_fs_size_(lfs)
 }
 
@@ -308,7 +308,7 @@ pub fn lfs_fs_traverse(lfs: &mut Lfs, cb: LfsTraverseCb, data: *mut c_void) -> R
 
 /// Attempt to make the filesystem consistent. Per lfs.h lfs_fs_mkconsistent (lfs.c:6479-6483).
 #[inline(never)]
-pub fn lfs_fs_mkconsistent(lfs: *mut Lfs) -> i32 {
+pub fn lfs_fs_mkconsistent(lfs: &mut Lfs) -> Result<(), Error> {
     crate::fs::consistent::lfs_fs_mkconsistent_(lfs)
 }
 

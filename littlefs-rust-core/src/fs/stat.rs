@@ -209,7 +209,7 @@ pub unsafe extern "C" fn lfs_fs_size_count(p: *mut core::ffi::c_void, _block: lf
 ///     return size;
 /// }
 /// ```
-pub fn lfs_fs_size_(lfs: *mut super::lfs::Lfs) -> Result<lfs_ssize_t, Error> {
+pub fn lfs_fs_size_(lfs: &mut super::lfs::Lfs) -> Result<lfs_size_t, Error> {
     let mut size: lfs_size_t = 0;
     lfs_fs_traverse_(
         lfs,
@@ -218,5 +218,5 @@ pub fn lfs_fs_size_(lfs: *mut super::lfs::Lfs) -> Result<lfs_ssize_t, Error> {
         false,
     )?;
 
-    Ok(size as lfs_ssize_t)
+    Ok(size)
 }

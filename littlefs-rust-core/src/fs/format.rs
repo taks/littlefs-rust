@@ -411,7 +411,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
             Some(lfs_dir_traverse_test_cb),
             out as *mut core::ffi::c_void,
         );
-        if err != 0 {
+        if err.is_err() {
             lfs_deinit(lfs as *mut _);
             return crate::lfs_pass_err!(err);
         }
@@ -472,7 +472,7 @@ pub unsafe fn test_format_minimal_superblock(
             tail: [0, 0],
         };
         err = lfs_dir_alloc(lfs, &mut root);
-        if err != 0 {
+        if err.is_err() {
             lfs_deinit(lfs as *mut _);
             return crate::lfs_pass_err!(err);
         }
