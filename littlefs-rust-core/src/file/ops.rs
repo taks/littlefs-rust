@@ -1,5 +1,6 @@
 //! File operations. Per lfs.c lfs_file_opencfg_, lfs_file_close_, lfs_file_sync_, etc.
 
+use crate::Lfs;
 use crate::bd::bd::{lfs_bd_read, lfs_cache_drop, lfs_cache_zero};
 use crate::dir::traverse::lfs_dir_getread;
 use crate::dir::LfsMdir;
@@ -193,8 +194,8 @@ use crate::util::lfs_min;
 /// }
 /// ```
 pub fn lfs_file_opencfg_(
-    lfs: *mut crate::fs::Lfs,
-    file: *mut LfsFile,
+    lfs: &mut crate::fs::Lfs,
+    file: &mut LfsFile,
     path: *const i8,
     flags: i32,
     cfg: *const LfsFileConfig,
@@ -220,22 +221,21 @@ pub fn lfs_file_opencfg_(
             lfs_fs_forceconsistency(lfs)?;
         }
 
-        let file_ref = &mut *file;
-        file_ref.cfg = cfg;
-        file_ref.flags = flags as u32;
-        file_ref.pos = 0;
-        file_ref.off = 0;
-        file_ref.cache.buffer = core::ptr::null_mut();
+        file.cfg = cfg;
+        file.flags = flags as u32;
+        file.pos = 0;
+        file.off = 0;
+        file.cache.buffer = core::ptr::null_mut();
 
         let mut path_ptr = path_u8;
-        let mut tag = lfs_dir_find(lfs, &mut file_ref.m, &mut path_ptr, &mut file_ref.id);
+        let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, &mut file.id);
         if let Err(err) = tag && !(err == Error::NoEntry && lfs_path_islast(lfs_path_slice_from_cstr(path_ptr)))
         {
             lfs_file_close_(lfs, file);
             return crate::lfs_pass_err!(Err(err));
         }
 
-        file_ref.type_ = LFS_TYPE_REG as u8;
+        file.type_ = LFS_TYPE_REG as u8;
         lfs_mlist_append(lfs, file as *mut crate::dir::LfsMlist);
 
         if tag == Err(Error::NoEntry) {
@@ -245,31 +245,31 @@ pub fn lfs_file_opencfg_(
             }
             if lfs_path_isdir(lfs_path_slice_from_cstr(path_ptr)) {
                 lfs_file_close_(lfs, file);
-                return crate::error::LFS_ERR_NOTDIR;
+                return Err(Error::NotDir);
             }
             let nlen = lfs_path_namelen(lfs_path_slice_from_cstr(path_ptr));
             if nlen > (*lfs).name_max {
                 lfs_file_close_(lfs, file);
-                return crate::lfs_err!(LFS_ERR_NAMETOOLONG);
+                return crate::lfs_err!(Err(Error::NameTooLong));
             }
             unsafe { lfs_alloc_ckpoint(lfs) };
             let attrs = [
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(LFS_TYPE_CREATE, file_ref.id as u32, 0),
+                    tag: lfs_mktag(LFS_TYPE_CREATE, file.id as u32, 0),
                     buffer: core::ptr::null(),
                 },
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(LFS_TYPE_REG, file_ref.id as u32, nlen),
+                    tag: lfs_mktag(LFS_TYPE_REG, file.id as u32, nlen),
                     buffer: path_ptr as *const core::ffi::c_void,
                 },
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(LFS_TYPE_INLINESTRUCT, file_ref.id as u32, 0),
+                    tag: lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0),
                     buffer: core::ptr::null(),
                 },
             ];
             let err = crate::dir::commit::lfs_dir_commit(
                 lfs,
-                &mut file_ref.m,
+                &mut file.m,
                 attrs.as_ptr() as *const _,
                 3,
             );
@@ -284,33 +284,33 @@ pub fn lfs_file_opencfg_(
             }
         } else if (flags & LFS_O_EXCL) != 0 {
             lfs_file_close_(lfs, file);
-            return crate::lfs_err!(LFS_ERR_EXIST);
+            return crate::lfs_err!(Err(Error::Exists));
         } else if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_REG {
             lfs_file_close_(lfs, file);
-            return crate::lfs_err!(LFS_ERR_ISDIR);
+            return crate::lfs_err!(Err(Error::IsDir));
         } else if (flags & LFS_O_TRUNC) != 0 {
             // C: lfs.c:100-104 — truncate if requested
-            tag = Ok(lfs_mktag(LFS_TYPE_INLINESTRUCT, file_ref.id as u32, 0));
-            file_ref.flags |= LFS_F_DIRTY as u32;
+            tag = Ok(lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0));
+            file.flags |= LFS_F_DIRTY as u32;
         } else {
             // C: tag = lfs_dir_get(...) — overwrite tag with STRUCT tag for later use
             let struct_tag = lfs_dir_get(
                 lfs,
-                &file_ref.m as *const _,
+                &file.m,
                 lfs_mktag(0x700, 0x3ff, 0),
                 lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
-                    file_ref.id as u32,
+                    file.id as u32,
                     8,
                 ),
-                &mut file_ref.ctz as *mut _ as *mut core::ffi::c_void,
+                &mut file.ctz as *mut _ as *mut core::ffi::c_void,
             );
             if let Err(err) = struct_tag{
                 lfs_file_close_(lfs, file);
                 return Err(err);
             }
             tag = struct_tag;
-            lfs_ctz_fromle32(&mut file_ref.ctz);
+            lfs_ctz_fromle32(&mut file.ctz);
         }
 
         // C: lfs.c:3162-3187 — fetch attrs
@@ -318,39 +318,39 @@ pub fn lfs_file_opencfg_(
             let attr_count = (*cfg).attr_count as usize;
             for i in 0..attr_count {
                 let attr = &*(*cfg).attrs.add(i);
-                if (file_ref.flags as i32 & LFS_O_RDONLY) == LFS_O_RDONLY {
+                if (file.flags as i32 & LFS_O_RDONLY) == LFS_O_RDONLY {
                     let res = lfs_dir_get(
                         lfs,
-                        &file_ref.m as *const _,
+                        &file.m,
                         lfs_mktag(0x7ff, 0x3ff, 0),
                         lfs_mktag(
                             LFS_TYPE_USERATTR + attr.type_ as u32,
-                            file_ref.id as u32,
+                            file.id as u32,
                             attr.size,
                         ),
                         attr.buffer,
                     );
-                    if res < 0 && res != LFS_ERR_NOENT {
+                    if let Err(err) = res && err != Error::NoEntry {
                         lfs_file_close_(lfs, file);
-                        return res;
+                        return Err(err);
                     }
                 }
-                if (file_ref.flags as i32 & LFS_O_WRONLY) == LFS_O_WRONLY {
+                if (file.flags as i32 & LFS_O_WRONLY) == LFS_O_WRONLY {
                     if attr.size > (*lfs).attr_max {
                         lfs_file_close_(lfs, file);
-                        return crate::lfs_err!(LFS_ERR_NOSPC);
+                        return crate::lfs_err!(Err(Error::NoSpace));
                     }
-                    file_ref.flags |= LFS_F_DIRTY as u32;
+                    file.flags |= LFS_F_DIRTY as u32;
                 }
             }
         }
 
         if !cfg.is_null() && !(*cfg).buffer.is_null() {
-            file_ref.cache.buffer = (*cfg).buffer as *mut u8;
+            file.cache.buffer = (*cfg).buffer as *mut u8;
         } else {
             #[cfg(feature = "alloc")]
             {
-                file_ref.cache.buffer = crate::lfs_alloc_module::lfs_malloc(
+                file.cache.buffer = crate::lfs_alloc_module::lfs_malloc(
                     (*lfs).cfg.as_ref().expect("cfg").cache_size,
                 );
             }
@@ -359,50 +359,50 @@ pub fn lfs_file_opencfg_(
                 lfs_file_close_(lfs, file);
                 return crate::lfs_err!(LFS_ERR_NOMEM);
             }
-            if file_ref.cache.buffer.is_null() {
+            if file.cache.buffer.is_null() {
                 lfs_file_close_(lfs, file);
                 return crate::lfs_err!(Err(Error::NoMemory));
             }
         }
 
-        lfs_cache_zero(lfs as *const crate::fs::Lfs, &mut file_ref.cache);
+        lfs_cache_zero(lfs, &mut file.cache);
 
-        let tag_val = if tag == LFS_ERR_NOENT {
-            lfs_mktag(LFS_TYPE_INLINESTRUCT, 0, 0) as i32
+        let tag_val = if tag == Err(Error::NoEntry) {
+            lfs_mktag(LFS_TYPE_INLINESTRUCT, 0, 0)
         } else {
-            tag
+            tag.unwrap()
         };
         if u32::from(lfs_tag_type3(tag_val as u32)) == LFS_TYPE_INLINESTRUCT {
-            file_ref.ctz.head = LFS_BLOCK_INLINE;
-            file_ref.ctz.size = if tag_val == LFS_ERR_NOENT {
+            file.ctz.head = LFS_BLOCK_INLINE;
+            file.ctz.size = if tag_val == LFS_ERR_NOENT {
                 0
             } else {
                 lfs_tag_size(tag_val as u32)
             };
-            file_ref.flags |= LFS_F_INLINE as u32;
-            file_ref.cache.block = file_ref.ctz.head;
-            file_ref.cache.off = 0;
-            file_ref.cache.size = (*lfs).cfg.as_ref().expect("cfg").cache_size;
-            if file_ref.ctz.size > 0 {
+            file.flags |= LFS_F_INLINE as u32;
+            file.cache.block = file.ctz.head;
+            file.cache.off = 0;
+            file.cache.size = (*lfs).cfg.as_ref().expect("cfg").cache_size;
+            if file.ctz.size > 0 {
                 let res = lfs_dir_get(
                     lfs,
-                    &file_ref.m as *const _,
+                    &file.m,
                     lfs_mktag(0x700, 0x3ff, 0),
                     lfs_mktag(
                         crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
-                        file_ref.id as u32,
-                        lfs_min(file_ref.cache.size, 0x3fe),
+                        file.id as u32,
+                        lfs_min(file.cache.size, 0x3fe),
                     ),
-                    file_ref.cache.buffer as *mut core::ffi::c_void,
+                    file.cache.buffer as *mut core::ffi::c_void,
                 );
-                if res < 0 {
+                if let Err(err) = res {
                     lfs_file_close_(lfs, file);
-                    return res;
+                    return Err(err);
                 }
             }
         }
     }
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_file_open_ (lines 3238-3244)
@@ -417,8 +417,8 @@ static LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
 };
 
 pub fn lfs_file_open_(
-    lfs: *mut crate::fs::Lfs,
-    file: *mut LfsFile,
+    lfs: &mut crate::fs::Lfs,
+    file: &mut LfsFile,
     path: *const i8,
     flags: i32,
 ) -> Result<(), Error> {
@@ -430,13 +430,10 @@ pub fn lfs_file_open_(
 /// Translation docs: Sync if dirty, remove from mlist, free cache buffer if we allocated it.
 ///
 /// C: lfs.c:3246-3264
-pub fn lfs_file_close_(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> i32 {
+pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
     use crate::dir::lfs_mlist::lfs_mlist_remove;
 
     let err = lfs_file_sync_(lfs, file);
-    if err != 0 {
-        return crate::lfs_pass_err!(err);
-    }
 
     unsafe {
         lfs_mlist_remove(lfs, file as *mut crate::dir::LfsMlist);
@@ -746,44 +743,41 @@ pub fn lfs_file_outline(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_file_flush(lfs: *const core::ffi::c_void, file: &mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_flush;
-    use crate::error::LFS_ERR_CORRUPT;
     use crate::util::lfs_max;
 
     unsafe {
-        let lfs = lfs as *mut crate::fs::Lfs;
-        let file_ref = &mut *file;
-        if (file_ref.flags as i32 & LFS_F_READING) != 0 {
-            if (file_ref.flags as i32 & LFS_F_INLINE) == 0 {
-                lfs_cache_drop(lfs as *const crate::fs::Lfs, &mut file_ref.cache);
+        if (file.flags as i32 & LFS_F_READING) != 0 {
+            if (file.flags as i32 & LFS_F_INLINE) == 0 {
+                lfs_cache_drop(lfs, &mut file.cache);
             }
-            file_ref.flags &= !(LFS_F_READING as u32);
+            file.flags &= !(LFS_F_READING as u32);
         }
 
-        if (file_ref.flags as i32 & LFS_F_WRITING) != 0 {
-            let pos = file_ref.pos;
-            if (file_ref.flags as i32 & LFS_F_INLINE) != 0 {
-                file_ref.pos = lfs_max(pos, file_ref.ctz.size);
+        if (file.flags as i32 & LFS_F_WRITING) != 0 {
+            let pos = file.pos;
+            if (file.flags as i32 & LFS_F_INLINE) != 0 {
+                file.pos = lfs_max(pos, file.ctz.size);
             } else {
                 let lfs_ref = &mut *lfs;
                 let mut orig = LfsFile {
                     next: core::ptr::null_mut(),
-                    id: file_ref.id,
-                    type_: file_ref.type_,
+                    id: file.id,
+                    type_: file.type_,
                     m: core::mem::zeroed(),
                     ctz: crate::file::lfs_ctz::LfsCtz {
-                        head: file_ref.ctz.head,
-                        size: file_ref.ctz.size,
+                        head: file.ctz.head,
+                        size: file.ctz.size,
                     },
                     flags: LFS_O_RDONLY as u32,
-                    pos: file_ref.pos,
+                    pos: file.pos,
                     block: 0,
                     off: 0,
                     cache: core::ptr::read(&lfs_ref.rcache),
                     cfg: core::ptr::null(),
                 };
-                lfs_cache_drop(lfs as *const crate::fs::Lfs, &mut (*lfs).rcache);
+                lfs_cache_drop(lfs, &mut (*lfs).rcache);
 
                 #[allow(clippy::while_immutable_condition)] // file.pos updated by flushedwrite
                 while (*file).pos < (*file).ctz.size {
@@ -793,48 +787,42 @@ pub fn lfs_file_flush(lfs: *const core::ffi::c_void, file: &mut LfsFile) -> Resu
                         &mut orig,
                         &mut data as *mut u8 as *mut core::ffi::c_void,
                         1,
-                    );
-                    if res < 0 {
-                        return res as i32;
-                    }
+                    )?;
+
                     let res = lfs_file_flushedwrite(
                         lfs,
                         file,
                         &data as *const u8 as *const core::ffi::c_void,
                         1,
-                    );
-                    if res < 0 {
-                        return res as i32;
-                    }
+                    )?;
+
                     if (*lfs).rcache.block != crate::types::LFS_BLOCK_NULL {
-                        lfs_cache_drop(lfs as *const crate::fs::Lfs, &mut orig.cache);
-                        lfs_cache_drop(lfs as *const crate::fs::Lfs, &mut (*lfs).rcache);
+                        lfs_cache_drop(lfs, &mut orig.cache);
+                        lfs_cache_drop(lfs, &mut (*lfs).rcache);
                     }
                 }
 
                 'flush: loop {
                     let err = lfs_bd_flush(lfs, &mut (*file).cache, &mut (*lfs).rcache, true);
-                    if err != 0 {
-                        if err == LFS_ERR_CORRUPT {
-                            let err = lfs_file_relocate(lfs, file);
-                            if err != 0 {
-                                return crate::lfs_pass_err!(err);
-                            }
+                    if let Err(err) = err {
+                        if err == Error::Corrupt {
+                            lfs_file_relocate(lfs, file)?;
+
                             continue 'flush;
                         }
-                        return crate::lfs_pass_err!(err);
+                        return crate::lfs_pass_err!(Err(err));
                     }
                     break;
                 }
             }
-            file_ref.ctz.head = file_ref.block;
-            file_ref.ctz.size = file_ref.pos;
-            file_ref.flags &= !(LFS_F_WRITING as u32);
-            file_ref.flags |= LFS_F_DIRTY as u32;
-            file_ref.pos = pos;
+            file.ctz.head = file.block;
+            file.ctz.size = file.pos;
+            file.flags &= !(LFS_F_WRITING as u32);
+            file.flags |= LFS_F_DIRTY as u32;
+            file.pos = pos;
         }
     }
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_file_sync_ (lines 3431-3490)
@@ -900,7 +888,7 @@ pub fn lfs_file_flush(lfs: *const core::ffi::c_void, file: &mut LfsFile) -> Resu
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_file_sync_(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
     use crate::dir::commit::lfs_dir_commit;
     use crate::fs::superblock::lfs_fs_deorphan;
     use crate::tag::lfs_mktag;
@@ -908,37 +896,32 @@ pub fn lfs_file_sync_(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> Result<()
     use crate::util::lfs_pair_isnull;
 
     unsafe {
-        let file_ref = &mut *file;
-        if (file_ref.flags as i32 & 0x080000) != 0 {
+        if (file.flags as i32 & 0x080000) != 0 {
             return Ok(());
         }
 
-        let err = lfs_file_flush(lfs as *const core::ffi::c_void, file);
-        if err != 0 {
-            file_ref.flags |= 0x080000;
+        let err = lfs_file_flush(lfs, file);
+        if err.is_err() {
+            file.flags |= 0x080000;
             return crate::lfs_pass_err!(err);
         }
 
-        if (file_ref.flags as i32 & 0x010000) != 0 && !lfs_pair_isnull(&file_ref.m.pair) {
+        if (file.flags as i32 & 0x010000) != 0 && !lfs_pair_isnull(&file.m.pair) {
             let lfs_ref = &*lfs;
             let cfg = lfs_ref.cfg.as_ref().expect("cfg");
 
-            if (file_ref.flags as i32 & LFS_F_INLINE) == 0 {
-                let err =
-                    crate::bd::bd::lfs_bd_sync(lfs, &mut (*lfs).pcache, &mut (*lfs).rcache, false);
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+            if (file.flags as i32 & LFS_F_INLINE) == 0 {
+                crate::bd::bd::lfs_bd_sync(lfs, &mut (*lfs).pcache, &mut (*lfs).rcache, false)?;
             }
 
             // C: copy ctz so alloc will work during a relocate
             // Must live through lfs_dir_commit — declared outside the if/else
-            let mut ctz = file_ref.ctz;
-            let (type_, buffer, size) = if (file_ref.flags as i32 & LFS_F_INLINE) != 0 {
+            let mut ctz = file.ctz;
+            let (type_, buffer, size) = if (file.flags as i32 & LFS_F_INLINE) != 0 {
                 (
                     LFS_TYPE_INLINESTRUCT,
-                    file_ref.cache.buffer as *const core::ffi::c_void,
-                    file_ref.ctz.size,
+                    file.cache.buffer as *const core::ffi::c_void,
+                    file.ctz.size,
                 )
             } else {
                 crate::file::lfs_ctz::lfs_ctz_tole32(&mut ctz);
@@ -951,28 +934,28 @@ pub fn lfs_file_sync_(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> Result<()
 
             let attrs = [
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(type_, file_ref.id as u32, size),
+                    tag: lfs_mktag(type_, file.id as u32, size),
                     buffer,
                 },
                 crate::tag::lfs_mattr {
                     tag: lfs_mktag(
                         crate::lfs_type::lfs_type::LFS_FROM_USERATTRS,
-                        file_ref.id as u32,
-                        file_ref.cfg.as_ref().map_or(0, |c| c.attr_count),
+                        file.id as u32,
+                        file.cfg.as_ref().map_or(0, |c| c.attr_count),
                     ) as u32,
-                    buffer: file_ref.cfg.as_ref().map_or(core::ptr::null(), |c| c.attrs)
+                    buffer: file.cfg.as_ref().map_or(core::ptr::null(), |c| c.attrs)
                         as *const core::ffi::c_void,
                 },
             ];
-            let err = lfs_dir_commit(lfs, &mut file_ref.m, attrs.as_ptr() as *const _, 2);
-            if err != 0 {
-                file_ref.flags |= 0x080000;
+            let err = lfs_dir_commit(lfs, &mut file.m, attrs.as_ptr() as *const _, 2);
+            if err.is_err() {
+                file.flags |= 0x080000;
                 return crate::lfs_pass_err!(err);
             }
-            file_ref.flags &= !0x010000;
+            file.flags &= !0x010000;
         }
     }
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_file_flushedread (lines 3492-3551)
@@ -1079,7 +1062,7 @@ pub fn lfs_file_read_(
 
     unsafe {
         if ((*file).flags as i32 & LFS_F_WRITING) != 0 {
-            lfs_file_flush(lfs as *mut _ as *const core::ffi::c_void, file)?;
+            lfs_file_flush(lfs, file)?;
         }
     }
 
@@ -1193,46 +1176,44 @@ pub fn lfs_file_flushedwrite(
     let data = buffer as *const u8;
 
     unsafe {
-        let file_ref = &mut *file;
-        let lfs_ref = &*lfs;
-        let cfg = lfs_ref.cfg.as_ref().expect("cfg");
+        let cfg = lfs.cfg.as_ref().expect("cfg");
         let block_size = cfg.block_size;
         let mut nsize = size;
 
-        if (file_ref.flags as i32 & LFS_F_INLINE) != 0
-            && crate::util::lfs_max(file_ref.pos + nsize, file_ref.ctz.size) > lfs_ref.inline_max
+        if (file.flags as i32 & LFS_F_INLINE) != 0
+            && crate::util::lfs_max(file.pos + nsize, file.ctz.size) > lfs.inline_max
         {
             let err = lfs_file_outline(lfs, file);
             if let Err(err) = err {
-                file_ref.flags |= LFS_F_ERRED as u32;
+                file.flags |= LFS_F_ERRED as u32;
                 return Err(err);
             }
         }
 
         let mut data = data;
         while nsize > 0 {
-            if (file_ref.flags as i32 & LFS_F_WRITING) == 0 || file_ref.off == block_size {
-                if (file_ref.flags as i32 & LFS_F_INLINE) != 0 {
-                    file_ref.block = LFS_BLOCK_INLINE;
-                    file_ref.off = file_ref.pos;
+            if (file.flags as i32 & LFS_F_WRITING) == 0 || file.off == block_size {
+                if (file.flags as i32 & LFS_F_INLINE) != 0 {
+                    file.block = LFS_BLOCK_INLINE;
+                    file.off = file.pos;
                 } else {
-                    if (file_ref.flags as i32 & LFS_F_WRITING) == 0 && file_ref.pos > 0 {
+                    if (file.flags as i32 & LFS_F_WRITING) == 0 && file.pos > 0 {
                         let mut block_off: lfs_off_t = 0;
                         let err = lfs_ctz_find(
                             lfs,
                             core::ptr::null(),
                             &mut (*lfs).rcache,
-                            file_ref.ctz.head,
-                            file_ref.ctz.size,
-                            file_ref.pos - 1,
-                            &mut file_ref.block,
+                            file.ctz.head,
+                            file.ctz.size,
+                            file.pos - 1,
+                            &mut file.block,
                             &mut block_off,
                         );
-                        if err != 0 {
-                            file_ref.flags |= LFS_F_ERRED as u32;
-                            return err as crate::types::lfs_ssize_t;
+                        if let Err(err) = err {
+                            file.flags |= LFS_F_ERRED as u32;
+                            return Err(err);
                         }
-                        lfs_cache_zero(lfs, &mut file_ref.cache as *mut _);
+                        lfs_cache_zero(lfs, &mut file.cache);
                     }
                     unsafe { lfs_alloc_ckpoint(lfs) };
                     let err = lfs_ctz_extend(
@@ -1244,49 +1225,49 @@ pub fn lfs_file_flushedwrite(
                         &mut (*file).block,
                         &mut (*file).off,
                     );
-                    if err != 0 {
-                        file_ref.flags |= LFS_F_ERRED as u32;
-                        return err as crate::types::lfs_ssize_t;
+                    if let Err(err) = err {
+                        file.flags |= LFS_F_ERRED as u32;
+                        return Err(err);
                     }
                 }
-                file_ref.flags |= LFS_F_WRITING as u32;
+                file.flags |= LFS_F_WRITING as u32;
             }
 
-            let diff = lfs_min(nsize, block_size - file_ref.off);
+            let diff = lfs_min(nsize, block_size - file.off);
             'prog: loop {
                 let err = lfs_bd_prog(
                     lfs,
-                    &mut file_ref.cache,
+                    &mut file.cache,
                     &mut (*lfs).rcache,
                     true,
-                    file_ref.block,
-                    file_ref.off,
+                    file.block,
+                    file.off,
                     data,
                     diff,
                 );
-                if err != 0 {
-                    if err == LFS_ERR_CORRUPT {
+                if let Err(err) = err {
+                    if err == Error::Corrupt {
                         let err = lfs_file_relocate(lfs, file);
-                        if err != 0 {
-                            file_ref.flags |= LFS_F_ERRED as u32;
-                            return err as crate::types::lfs_ssize_t;
+                        if let Err(err) = err {
+                            file.flags |= LFS_F_ERRED as u32;
+                            return Err(err);
                         }
                         continue 'prog;
                     }
-                    file_ref.flags |= LFS_F_ERRED as u32;
-                    return err as crate::types::lfs_ssize_t;
+                    file.flags |= LFS_F_ERRED as u32;
+                    return Err(err);
                 }
                 break;
             }
 
-            file_ref.pos += diff;
-            file_ref.off += diff;
+            file.pos += diff;
+            file.off += diff;
             data = data.add(diff as usize);
             nsize -= diff;
 
             unsafe { lfs_alloc_ckpoint(lfs) };
         }
-        size as crate::types::lfs_ssize_t
+        Ok(size)
     }
 }
 
@@ -1338,25 +1319,22 @@ pub fn lfs_file_flushedwrite(
 /// }
 /// ```
 pub fn lfs_file_write_(
-    lfs: *mut crate::fs::Lfs,
-    file: *mut LfsFile,
+    lfs: &mut crate::fs::Lfs,
+    file: &mut LfsFile,
     buffer: *const core::ffi::c_void,
     size: lfs_size_t,
-) -> crate::types::lfs_ssize_t {
+) -> Result<crate::types::lfs_size_t, Error> {
     crate::lfs_assert!((unsafe { (*file).flags as i32 } & 2) == 2);
 
     unsafe {
         if ((*file).flags as i32 & LFS_F_READING) != 0 {
-            let err = lfs_file_flush(lfs as *const core::ffi::c_void, file);
-            if err != 0 {
-                return err as crate::types::lfs_ssize_t;
-            }
+            lfs_file_flush(lfs, file)?;
         }
         if ((*file).flags as i32 & 0x0800) != 0 && (*file).pos < (*file).ctz.size {
             (*file).pos = (*file).ctz.size;
         }
         if (*file).pos + size > (*lfs).file_max {
-            return crate::error::LFS_ERR_FBIG as crate::types::lfs_ssize_t;
+            return Err(Error::FileTooBig);
         }
 
         // C: lfs.c:3677-3688 — zero-fill gap when writing past end of file
@@ -1371,15 +1349,12 @@ pub fn lfs_file_write_(
                     file,
                     &zero as *const u8 as *const core::ffi::c_void,
                     1,
-                );
-                if res < 0 {
-                    return res;
-                }
+                )?;
             }
         }
 
         let nsize = lfs_file_flushedwrite(lfs, file, buffer, size);
-        if nsize >= 0 {
+        if nsize.is_ok() {
             (*file).flags &= !0x080000;
         }
         nsize
@@ -1393,61 +1368,55 @@ pub fn lfs_file_write_(
 ///
 /// C: lfs.c:3700-3751
 pub fn lfs_file_seek_(
-    lfs: *mut crate::fs::Lfs,
-    file: *mut LfsFile,
+    lfs: &mut crate::fs::Lfs,
+    file: &mut LfsFile,
     off: crate::types::lfs_soff_t,
     whence: i32,
-) -> crate::types::lfs_soff_t {
-    use crate::error::LFS_ERR_INVAL;
+) -> Result<crate::types::lfs_soff_t, Error> {
     use crate::file::ctz::lfs_ctz_index;
     use crate::lfs_type::lfs_whence_flags::{LFS_SEEK_CUR, LFS_SEEK_END, LFS_SEEK_SET};
 
     unsafe {
-        let lfs_ref = &*lfs;
-        let file_ref = &mut *file;
-        let file_max = lfs_ref.file_max;
-        let block_size = lfs_ref.cfg.as_ref().expect("cfg").block_size;
+        let file_max = lfs.file_max;
+        let block_size = lfs.cfg.as_ref().expect("cfg").block_size;
 
-        let mut npos = file_ref.pos;
+        let mut npos = file.pos;
         if whence == LFS_SEEK_SET {
             npos = off as lfs_off_t;
         } else if whence == LFS_SEEK_CUR {
-            npos = (file_ref.pos as i64 + off as i64) as lfs_off_t;
+            npos = (file.pos as i64 + off as i64) as lfs_off_t;
         } else if whence == LFS_SEEK_END {
-            npos = (lfs_file_size_(lfs as *const core::ffi::c_void, file) as i64 + off as i64)
+            npos = (lfs_file_size_(lfs, file) as i64 + off as i64)
                 as lfs_off_t;
         }
 
         if npos > file_max {
-            return crate::lfs_err!(LFS_ERR_INVAL as crate::types::lfs_soff_t);
+            return crate::lfs_err!(Err(Error::Invalid));
         }
 
-        if file_ref.pos == npos {
-            return npos as crate::types::lfs_soff_t;
+        if file.pos == npos {
+            return Ok(npos as _);
         }
 
-        if (file_ref.flags as i32 & LFS_F_READING) != 0 && file_ref.off != block_size {
-            let mut opos = file_ref.pos;
+        if (file.flags as i32 & LFS_F_READING) != 0 && file.off != block_size {
+            let mut opos = file.pos;
             let mut npos_off = npos;
             let oindex = lfs_ctz_index(lfs as *const crate::fs::Lfs, &mut opos);
             let nindex = lfs_ctz_index(lfs as *const crate::fs::Lfs, &mut npos_off);
             if oindex == nindex
-                && npos_off >= file_ref.cache.off
-                && npos_off < file_ref.cache.off + file_ref.cache.size
+                && npos_off >= file.cache.off
+                && npos_off < file.cache.off + file.cache.size
             {
-                file_ref.pos = npos;
-                file_ref.off = npos_off;
-                return npos as crate::types::lfs_soff_t;
+                file.pos = npos;
+                file.off = npos_off;
+                return Ok(npos as _);
             }
         }
 
-        let err = lfs_file_flush(lfs as *const core::ffi::c_void, file);
-        if err != 0 {
-            return err as crate::types::lfs_soff_t;
-        }
+        lfs_file_flush(lfs, file)?;
 
         (*file).pos = npos;
-        npos as crate::types::lfs_soff_t
+        Ok(npos as crate::types::lfs_soff_t)
     }
 }
 
@@ -1540,30 +1509,24 @@ pub fn lfs_file_seek_(
 /// }
 /// #endif
 /// ```
-pub fn lfs_file_truncate_(lfs: *mut crate::fs::Lfs, file: *mut LfsFile, size: lfs_off_t) -> i32 {
-    use crate::error::LFS_ERR_INVAL;
+pub fn lfs_file_truncate_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile, size: lfs_off_t) -> Result<(), Error> {
     use crate::file::ctz::lfs_ctz_find;
     use crate::lfs_type::lfs_whence_flags::{LFS_SEEK_END, LFS_SEEK_SET};
 
     crate::lfs_assert!((unsafe { (*file).flags as i32 } & 2) == 2);
 
     unsafe {
-        let lfs_ref = &*lfs;
-        let file_ref = &mut *file;
-        if size > lfs_ref.file_max {
-            return crate::lfs_err!(LFS_ERR_INVAL);
+        if size > lfs.file_max {
+            return Err(Error::Invalid);
         }
 
-        let pos = file_ref.pos;
-        let oldsize = lfs_file_size_(lfs as *const core::ffi::c_void, file) as lfs_off_t;
+        let pos = file.pos;
+        let oldsize = lfs_file_size_(lfs, file) as lfs_off_t;
 
         if size < oldsize {
-            if size <= lfs_ref.inline_max {
+            if size <= lfs.inline_max {
                 // C: lfs.c:3762-3786 — revert to inline
-                let res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_SET);
-                if res < 0 {
-                    return res as i32;
-                }
+                let res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_SET)?;
 
                 // Read existing data from CTZ blocks into rcache temporarily
                 crate::bd::bd::lfs_cache_drop(lfs, &mut (*lfs).rcache as *mut _);
@@ -1572,75 +1535,57 @@ pub fn lfs_file_truncate_(lfs: *mut crate::fs::Lfs, file: *mut LfsFile, size: lf
                     file,
                     (*lfs).rcache.buffer as *mut core::ffi::c_void,
                     size,
-                );
-                if res < 0 {
-                    return res as i32;
-                }
+                )?;
 
-                file_ref.ctz.head = LFS_BLOCK_INLINE;
-                file_ref.ctz.size = size;
-                file_ref.flags |= (LFS_F_DIRTY | LFS_F_READING | LFS_F_INLINE) as u32;
-                file_ref.cache.block = file_ref.ctz.head;
-                file_ref.cache.off = 0;
-                file_ref.cache.size = lfs_ref.cfg.as_ref().expect("cfg").cache_size;
+                file.ctz.head = LFS_BLOCK_INLINE;
+                file.ctz.size = size;
+                file.flags |= (LFS_F_DIRTY | LFS_F_READING | LFS_F_INLINE) as u32;
+                file.cache.block = file.ctz.head;
+                file.cache.off = 0;
+                file.cache.size = lfs.cfg.as_ref().expect("cfg").cache_size;
 
                 // Copy data from rcache into file cache
                 core::ptr::copy_nonoverlapping(
                     (*lfs).rcache.buffer,
-                    file_ref.cache.buffer,
+                    file.cache.buffer,
                     size as usize,
                 );
             } else {
                 // C: lfs.c:3787-3806 — shrink CTZ
-                let err = lfs_file_flush(lfs as *const core::ffi::c_void, file);
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+                lfs_file_flush(lfs, file)?;
 
                 let mut off_zero: lfs_off_t = 0;
-                let err = lfs_ctz_find(
+                lfs_ctz_find(
                     lfs,
                     core::ptr::null(),
-                    &mut file_ref.cache,
-                    file_ref.ctz.head,
-                    file_ref.ctz.size,
+                    &mut file.cache,
+                    file.ctz.head,
+                    file.ctz.size,
                     size.saturating_sub(1),
-                    &mut file_ref.block,
+                    &mut file.block,
                     &mut off_zero,
-                );
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+                )?;
 
-                file_ref.pos = size;
-                file_ref.ctz.head = file_ref.block;
-                file_ref.ctz.size = size;
-                file_ref.flags |= (LFS_F_DIRTY | LFS_F_READING) as u32;
+                file.pos = size;
+                file.ctz.head = file.block;
+                file.ctz.size = size;
+                file.flags |= (LFS_F_DIRTY | LFS_F_READING) as u32;
             }
         } else if size > oldsize {
             // C: lfs.c:3807-3818 — grow
-            let res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_END);
-            if res < 0 {
-                return res as i32;
-            }
+            let res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_END)?;
 
             let mut zero = 0u8;
             #[allow(clippy::while_immutable_condition)] // file.pos updated by lfs_file_write_
-            while file_ref.pos < size {
+            while file.pos < size {
                 let res =
-                    lfs_file_write_(lfs, file, &zero as *const u8 as *const core::ffi::c_void, 1);
-                if res < 0 {
-                    return res as i32;
-                }
+                    lfs_file_write_(lfs, file, &zero as *const u8 as *const core::ffi::c_void, 1)?;
             }
         }
 
-        let res = lfs_file_seek_(lfs, file, pos as i32, LFS_SEEK_SET);
-        if res < 0 {
-            return res as i32;
-        }
+        let res = lfs_file_seek_(lfs, file, pos as i32, LFS_SEEK_SET)?;
     }
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_file_tell_ (lines 3835-3838)
@@ -1666,17 +1611,14 @@ pub fn lfs_file_tell_(
 /// Translation docs: Seek to start of file.
 ///
 /// C: lfs.c:3840-3850
-pub fn lfs_file_rewind_(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> i32 {
-    let res = lfs_file_seek_(
+pub fn lfs_file_rewind_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
+    lfs_file_seek_(
         lfs,
         file,
         0,
         crate::lfs_type::lfs_whence_flags::LFS_SEEK_SET,
-    );
-    if res < 0 {
-        return res as i32;
-    }
-    0
+    )?;
+    Ok(())
 }
 
 /// Per lfs.c lfs_file_size_ (lines 3849-3858)
@@ -1694,8 +1636,8 @@ pub fn lfs_file_rewind_(lfs: *mut crate::fs::Lfs, file: *mut LfsFile) -> i32 {
 /// }
 /// ```
 pub fn lfs_file_size_(
-    _lfs: *const core::ffi::c_void,
-    file: *const LfsFile,
+    _lfs: &Lfs,
+    file: &LfsFile,
 ) -> crate::types::lfs_soff_t {
     unsafe {
         if ((*file).flags as i32 & LFS_F_WRITING) != 0 {

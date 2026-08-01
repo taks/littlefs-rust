@@ -14,7 +14,7 @@ fn test_context_smoke() {
     // Direct read through callback
     let mut buf = [0u8; 8];
     let err = unsafe { cfg.read.expect("read")(ctx.config(), 0, 0, buf.as_mut_ptr(), 8) };
-    assert_eq!(err, 0);
+    assert_eq!(err, Ok(()));
     assert_eq!(buf, [0u8; 8]);
 }
 
@@ -24,7 +24,7 @@ fn test_context_lfs_init() {
     let mut ctx = TestContext::default_blocks();
     let mut lfs = core::mem::MaybeUninit::<crate::Lfs>::zeroed();
     let err = crate::fs::lfs_init(lfs.as_mut_ptr() as *mut _, ctx.config());
-    assert_eq!(err, 0);
+    assert_eq!(err, Ok(()));
 }
 
 /// Init + lookahead setup + lfs_dir_alloc. Stops before commit.
@@ -37,7 +37,7 @@ fn test_context_format_to_alloc() {
     let mut ctx = TestContext::default_blocks();
     let mut lfs = core::mem::MaybeUninit::<crate::Lfs>::zeroed();
     let err = crate::fs::lfs_init(lfs.as_mut_ptr() as *mut _, ctx.config());
-    assert_eq!(err, 0);
+    assert_eq!(err, Ok(()));
 
     let lfs = unsafe { &mut *lfs.as_mut_ptr() };
     let cfg = unsafe { &*lfs.cfg };
@@ -49,7 +49,7 @@ fn test_context_format_to_alloc() {
     lfs.lookahead.start = 0;
     lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
     lfs.lookahead.next = 0;
-    unsafe { lfs_alloc_ckpoint(lfs as *mut _) };
+    unsafe { lfs_alloc_ckpoint(lfs) };
 
     let mut root = crate::dir::LfsMdir {
         pair: [0, 0],
@@ -61,8 +61,8 @@ fn test_context_format_to_alloc() {
         split: false,
         tail: [0, 0],
     };
-    let err = unsafe { lfs_dir_alloc(lfs as *mut _, &mut root) };
-    assert_eq!(err, 0);
+    let err = unsafe { lfs_dir_alloc(lfs, &mut root) };
+    assert_eq!(err, Ok(()));
 }
 
 /// Verify buffer pointers are writable (lfs_init writes to them).

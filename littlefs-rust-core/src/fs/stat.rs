@@ -28,23 +28,20 @@ pub fn lfs_stat_(
     lfs: *mut super::lfs::Lfs,
     path: *const u8,
     info: *mut crate::lfs_info::LfsInfo,
-) -> i32 {
+) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_getinfo;
     use crate::dir::find::lfs_dir_find;
     use crate::lfs_type::lfs_type::LFS_TYPE_DIR;
     use crate::tag::{lfs_tag_id, lfs_tag_type3};
 
     if lfs.is_null() || path.is_null() || info.is_null() {
-        return crate::error::LFS_ERR_INVAL;
+        return Err(Error::Invalid);
     }
     unsafe {
         let mut cwd = core::mem::zeroed::<crate::dir::LfsMdir>();
         let mut path_ptr = path;
 
-        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, core::ptr::null_mut());
-        if tag < 0 {
-            return tag;
-        }
+        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, core::ptr::null_mut())?;
 
         // C: lfs.c:3872-3875 - only allow trailing slashes on dirs (strchr(path, '/') != NULL)
         let mut p = path_ptr;
@@ -65,7 +62,7 @@ pub fn lfs_stat_(
             }
             if *p == b'/' {
                 if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
-                    return crate::error::LFS_ERR_NOTDIR;
+                    return Err(Error::NotDir);
                 }
                 break;
             }

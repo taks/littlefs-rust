@@ -1,5 +1,7 @@
 //! Block allocator. Per lfs.c lfs_alloc, lfs_alloc_scan, lfs_alloc_lookahead, etc.
 
+use core::f32::consts::E;
+
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::types::lfs_block_t;
@@ -15,8 +17,7 @@ use crate::types::lfs_block_t;
 ///
 /// # Safety
 /// `lfs` must point to a valid, initialized `Lfs` instance.
-pub unsafe fn lfs_alloc_ckpoint(lfs: *mut Lfs) {
-    let lfs = &mut *lfs;
+pub fn lfs_alloc_ckpoint(lfs: &mut Lfs) {
     lfs.lookahead.ckpoint = lfs.block_count;
 }
 
@@ -30,12 +31,10 @@ pub unsafe fn lfs_alloc_ckpoint(lfs: *mut Lfs) {
 ///     lfs_alloc_ckpoint(lfs);
 /// }
 /// ```
-pub fn lfs_alloc_drop(lfs: *mut Lfs) {
-    unsafe {
-        (*lfs).lookahead.size = 0;
-        (*lfs).lookahead.next = 0;
-        unsafe { lfs_alloc_ckpoint(lfs) };
-    }
+pub fn lfs_alloc_drop(lfs: &mut Lfs) {
+    lfs.lookahead.size = 0;
+    lfs.lookahead.next = 0;
+    lfs_alloc_ckpoint(lfs);
 }
 
 /// Per lfs.c lfs_alloc_lookahead (lines 627-637)
@@ -112,26 +111,25 @@ pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Erro
 /// }
 /// #endif
 /// ```
-pub fn lfs_alloc_scan(lfs: *mut Lfs) -> Result<(), Error> {
+pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
     use crate::fs::traverse::lfs_fs_traverse_;
     use crate::util::lfs_min;
 
     crate::lfs_trace!("alloc_scan: start");
     unsafe {
-        let lfs_ref = &mut *lfs;
-        let cfg = lfs_ref.cfg.as_ref().expect("cfg");
-        let buf = lfs_ref.lookahead.buffer;
+        let cfg = lfs.cfg.as_ref().expect("cfg");
+        let buf = lfs.lookahead.buffer;
         if buf.is_null() {
             return Err(Error::NoSpace);
         }
 
         // move lookahead buffer to the first unused block
-        lfs_ref.lookahead.start =
-            (lfs_ref.lookahead.start + lfs_ref.lookahead.next) % lfs_ref.block_count;
-        lfs_ref.lookahead.next = 0;
+        lfs.lookahead.start =
+            (lfs.lookahead.start + lfs.lookahead.next) % lfs.block_count;
+        lfs.lookahead.next = 0;
         // note we limit the lookahead buffer to at most the amount of blocks
         // checkpointed, this prevents the math in lfs_alloc from underflowing
-        lfs_ref.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs_ref.lookahead.ckpoint);
+        lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.lookahead.ckpoint);
 
         // find mask of free blocks from tree
         core::ptr::write_bytes(buf, 0, cfg.lookahead_size as usize);
@@ -214,7 +212,7 @@ pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
     unsafe {
         let buf = lfs.lookahead.buffer;
         if buf.is_null() {
-            return crate::lfs_err!(LFS_ERR_NOSPC);
+            return crate::lfs_err!(Err(Error::NoSpace));
         }
 
         #[cfg(feature = "loop_limits")]
@@ -261,12 +259,12 @@ pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
                         lfs.lookahead.ckpoint = lfs.lookahead.ckpoint.wrapping_sub(1);
 
                         if lfs.lookahead.next >= lfs.lookahead.size {
-                            return 0;
+                            return Ok(());
                         }
                         let next_byte = (lfs.lookahead.next / 8) as usize;
                         let next_bit = 1u8 << (lfs.lookahead.next % 8);
                         if (*buf.add(next_byte)) & next_bit == 0 {
-                            return 0;
+                            return Ok(());
                         }
                     }
                 }

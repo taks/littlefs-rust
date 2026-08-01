@@ -2,6 +2,7 @@
 
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::LfsMdir;
+use crate::error::Error;
 
 /// Translation docs: Deorphan, complete moves, persist gstate. If pending gstate
 /// (delta != 0), fetches root and commits empty to write MOVESTATE.
@@ -39,14 +40,11 @@ use crate::dir::LfsMdir;
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_mkconsistent_(lfs: *mut super::lfs::Lfs) -> i32 {
+pub fn lfs_fs_mkconsistent_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     use crate::dir::commit::lfs_dir_commit;
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_xor};
 
-    let err = super::superblock::lfs_fs_forceconsistency(lfs);
-    if err != 0 {
-        return crate::lfs_pass_err!(err);
-    }
+    super::superblock::lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
         let mut delta = crate::lfs_gstate::LfsGstate {
@@ -58,19 +56,13 @@ pub fn lfs_fs_mkconsistent_(lfs: *mut super::lfs::Lfs) -> i32 {
 
         if !lfs_gstate_iszero(&delta) {
             let mut root = core::mem::zeroed::<LfsMdir>();
-            let err = lfs_dir_fetch(lfs, &mut root, &(*lfs).root);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_dir_fetch(lfs, &mut root, &(*lfs).root)?;
 
-            let err = lfs_dir_commit(lfs, &mut root, core::ptr::null(), 0);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs_dir_commit(lfs, &mut root, core::ptr::null(), 0)?;
         }
     }
 
-    0
+    Ok(())
 }
 
 /// Per lfs.c lfs_fs_gc_ (lines 5191-5240)

@@ -449,7 +449,7 @@ pub fn lfs_bd_flush(
             );
             let prog = match cfg.prog {
                 Some(f) => f,
-                None => return LFS_ERR_CORRUPT,
+                None => return Err(Error::Corrupt),
             };
             let err = prog(
                 cfg as *const _,
@@ -479,7 +479,7 @@ pub fn lfs_bd_flush(
                     return Err(e);
                 }
                 if let Ok(res) = res && res != 0 {
-                    return crate::lfs_err!(LFS_ERR_CORRUPT);
+                    return crate::lfs_err!(Err(Error::Corrupt));
                 }
             }
 
@@ -585,7 +585,7 @@ pub fn lfs_bd_sync(
 pub fn lfs_bd_prog(
     lfs: &mut Lfs,
     pcache: *mut LfsCache,
-    rcache: *mut LfsCache,
+    rcache: &mut LfsCache,
     validate: bool,
     block: lfs_block_t,
     off: lfs_off_t,
@@ -676,12 +676,11 @@ pub fn lfs_bd_erase(lfs: &Lfs, block: lfs_block_t) -> Result<(), Error> {
         crate::lfs_assert!(block < lfs.block_count);
         let erase = match (*lfs.cfg).erase {
             Some(f) => f,
-            None => return LFS_ERR_CORRUPT,
+            None => return Err(Error::Corrupt),
         };
         crate::lfs_trace!("bd_erase block={}", block);
         let err = erase(lfs.cfg, block);
-        crate::lfs_assert!(err <= 0);
-        if err != 0 {
+        if err.is_err() {
             crate::lfs_trace!("bd_erase block={} -> CORRUPT", block);
         }
         err

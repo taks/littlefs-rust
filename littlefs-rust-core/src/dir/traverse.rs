@@ -78,7 +78,7 @@ use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
 /// ```
 pub fn lfs_dir_getslice(
     lfs: &mut crate::fs::Lfs,
-    dir: *const LfsMdir,
+    dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
     goff: lfs_off_t,
@@ -92,12 +92,11 @@ pub fn lfs_dir_getslice(
     use crate::util::{lfs_frombe32, lfs_min};
 
     unsafe {
-        let dir_ref = &*dir;
-        let mut off = dir_ref.off;
-        let mut ntag = dir_ref.etag;
+        let mut off = dir.off;
+        let mut ntag = dir.etag;
         let mut gdiff: lfs_stag_t = 0;
 
-        if crate::lfs_gstate::lfs_gstate_hasmovehere(&(*lfs).gdisk, &dir_ref.pair)
+        if crate::lfs_gstate::lfs_gstate_hasmovehere(&(*lfs).gdisk, &dir.pair)
             && lfs_tag_id(gmask) != 0
         {
             if lfs_tag_id((*lfs).gdisk.tag) == lfs_tag_id(gtag) {
@@ -130,7 +129,7 @@ pub fn lfs_dir_getslice(
                 core::ptr::null_mut(),
                 unsafe { &mut (*lfs).rcache },
                 4,
-                dir_ref.pair[0],
+                dir.pair[0],
                 off,
                 &mut ntag_buf as *mut _ as *mut u8,
                 4,
@@ -162,7 +161,7 @@ pub fn lfs_dir_getslice(
                     core::ptr::null_mut(),
                     unsafe { &mut (*lfs).rcache },
                     diff,
-                    dir_ref.pair[0],
+                    dir.pair[0],
                     off + 4 + goff,
                     gbuffer as *mut u8,
                     diff,
@@ -174,7 +173,7 @@ pub fn lfs_dir_getslice(
                         (gsize - diff) as usize,
                     );
                 }
-                return (tag as i32).wrapping_add(gdiff);
+                return Ok((tag as i32).wrapping_add(gdiff) as u32);
             }
         }
         Err(Error::NoEntry)
@@ -193,8 +192,8 @@ pub fn lfs_dir_getslice(
 /// }
 /// ```
 pub fn lfs_dir_get(
-    lfs: *mut crate::fs::Lfs,
-    dir: *const LfsMdir,
+    lfs: &mut crate::fs::Lfs,
+    dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
     buffer: *mut core::ffi::c_void,
@@ -391,7 +390,7 @@ pub unsafe extern "C" fn lfs_dir_traverse_filter(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     _buffer: *const core::ffi::c_void,
-) -> i32 {
+) -> Result<i32, Error> {
     use crate::lfs_type::lfs_type::{LFS_FROM_NOOP, LFS_TYPE_DELETE, LFS_TYPE_SPLICE};
     use crate::tag::{lfs_mktag, lfs_tag_id, lfs_tag_isdelete, lfs_tag_splice, lfs_tag_type1};
 
@@ -421,7 +420,7 @@ pub unsafe extern "C" fn lfs_dir_traverse_filter(
             ft
         );
         unsafe { *filtertag = lfs_mktag(LFS_FROM_NOOP, 0, 0) };
-        return 1;
+        return Ok(1);
     }
 
     if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_SPLICE && lfs_tag_id(tag) <= lfs_tag_id(ft) {
@@ -430,7 +429,7 @@ pub unsafe extern "C" fn lfs_dir_traverse_filter(
         }
     }
 
-    0
+    Ok(0)
 }
 
 /// Maximum recursive depth. C: LFS_DIR_TRAVERSE_DEPTH 3.
@@ -467,7 +466,7 @@ struct LfsDirTraverseStack {
     begin: u16,
     end: u16,
     diff: i16,
-    cb: unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> i32,
+    cb: unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
@@ -681,19 +680,19 @@ struct LfsDirTraverseStack {
 /// C: `res = cb(data, tag + LFS_MKTAG(0, diff, 0), buffer);`
 #[inline(always)]
 fn dispatch_tag(
-    cb: unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> i32,
+    cb: unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
     diff: i16,
-) -> i32 {
+) -> Result<i32, Error> {
     use crate::tag::lfs_mktag;
     let out_tag = tag.wrapping_add(lfs_mktag(0, diff as u32, 0));
     unsafe { cb(data, out_tag, buffer) }
 }
 
 pub fn lfs_dir_traverse(
-    lfs: *mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs,
     dir: *const LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
@@ -705,7 +704,7 @@ pub fn lfs_dir_traverse(
     end: u16,
     diff: i16,
     cb: Option<
-        unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> i32,
+        unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
     >,
     data: *mut core::ffi::c_void,
 ) -> Result<(), Error> {
@@ -723,7 +722,7 @@ pub fn lfs_dir_traverse(
     let mut stack: [core::mem::MaybeUninit<LfsDirTraverseStack>; LFS_DIR_TRAVERSE_DEPTH - 1] =
         core::array::from_fn(|_| core::mem::MaybeUninit::uninit());
     let mut sp: usize = 0;
-    let mut res: i32 = 0;
+    let mut res: Result<i32, Error> = Ok(0);
 
     let mut dir = dir;
     let mut off = off;
@@ -784,7 +783,7 @@ pub fn lfs_dir_traverse(
                         // Per C: advance off first to skip previous tag's data, then read
                         off += lfs_tag_dsize(ptag);
                         let mut tag_raw: lfs_tag_t = 0;
-                        let err = lfs_bd_read(
+                        lfs_bd_read(
                             lfs,
                             core::ptr::null_mut(),
                             unsafe { &mut (*lfs).rcache },
@@ -793,10 +792,8 @@ pub fn lfs_dir_traverse(
                             off,
                             &mut tag_raw as *mut _ as *mut u8,
                             core::mem::size_of::<lfs_tag_t>() as u32,
-                        );
-                        if err != 0 {
-                            return crate::lfs_pass_err!(err);
-                        }
+                        )?;
+
                         let tag_val = (lfs_frombe32(tag_raw) ^ ptag) | 0x8000_0000;
                         disk = crate::tag::lfs_diskoff {
                             block: dir_ref.pair[0],
@@ -975,15 +972,15 @@ pub fn lfs_dir_traverse(
                                 a.buffer as *const core::ffi::c_void,
                                 diff,
                             );
-                            if res < 0 {
+                            if res.is_err() {
                                 return res;
                             }
-                            if res != 0 {
+                            if res != Ok(0) {
                                 break;
                             }
                             i += 1;
                         }
-                        if res == 0 {
+                        if res == Ok(0) {
                             phase = TraversePhase::GetNextTag;
                         } else if sp > 0 {
                             crate::lfs_trace!(
@@ -1004,10 +1001,10 @@ pub fn lfs_dir_traverse(
                             None => buffer,
                         };
                         res = dispatch_tag(cb, data, tag, actual_buffer, diff);
-                        if res < 0 {
+                        if res.is_err() {
                             return res;
                         }
-                        if res != 0 {
+                        if res != Ok(0) {
                             if sp > 0 {
                                 crate::lfs_trace!(
                                     "traverse ProcessTag: res=1 storing redundant tag=0x{:08x} buffer={:p}",

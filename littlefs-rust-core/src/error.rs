@@ -16,6 +16,7 @@ pub enum Error {
     NoMemory,
     NoAttribute,
     NameTooLong,
+    FileTooBig,
 }
 
 /// Positive return values for commit/orphan machinery. Per lfs.h enum lfs_error.

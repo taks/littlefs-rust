@@ -206,7 +206,7 @@ pub fn lfs_tortoise_detectcycles(
 ///     return err;
 /// }
 /// ```
-pub fn lfs_mount_(lfs: *mut super::lfs::Lfs, cfg: *const crate::lfs_config::LfsConfig) -> i32 {
+pub fn lfs_mount_(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_drop;
     use crate::dir::fetch::{lfs_dir_fetchmatch, lfs_dir_getgstate};
     use crate::dir::find::{lfs_dir_find_match, LfsDirFindMatch};
@@ -220,10 +220,7 @@ pub fn lfs_mount_(lfs: *mut super::lfs::Lfs, cfg: *const crate::lfs_config::LfsC
     use crate::types::{LFS_BLOCK_NULL, LFS_DISK_VERSION_MAJOR, LFS_DISK_VERSION_MINOR};
     use crate::util::{lfs_min, lfs_pair_isnull};
 
-    let mut err = lfs_init(lfs, cfg);
-    if err != 0 {
-        return crate::lfs_pass_err!(err);
-    }
+    lfs_init(lfs, cfg)?;
 
     unsafe {
         let lfs = &mut *lfs;

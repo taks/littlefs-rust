@@ -220,8 +220,8 @@ pub fn lfs_dir_find(
         return crate::lfs_err!(Err(Error::Invalid));
     }
     unsafe {
-        let lfs_ref = &mut *lfs;
-        let dir_ref = &mut *dir;
+        let lfs = &mut *lfs;
+        let dir = &mut *dir;
         let mut name = *path;
         if name.is_null() {
             return crate::lfs_err!(Err(Error::Invalid));
@@ -229,8 +229,8 @@ pub fn lfs_dir_find(
 
         // C: lfs.c:1488-1491
         let mut tag = lfs_mktag(LFS_TYPE_DIR, 0x3ff, 0);
-        dir_ref.tail[0] = lfs_ref.root[0];
-        dir_ref.tail[1] = lfs_ref.root[1];
+        dir.tail[0] = lfs.root[0];
+        dir.tail[1] = lfs.root[1];
 
         // C: lfs.c:1494-1495
         if *name == 0 {
@@ -253,7 +253,7 @@ pub fn lfs_dir_find(
 
             // C: lfs.c:1522-1524 - error on '..' at top level
             if namelen == 2 && *name == b'.' && *name.add(1) == b'.' {
-                crate::lfs_err!(Err(Error::Invalid));
+                return crate::lfs_err!(Err(Error::Invalid));
             }
 
             // C: lfs.c:1527-1541 - skip if matched by '..' in path
@@ -311,15 +311,15 @@ pub fn lfs_dir_find(
             if lfs_tag_id(tag as u32) != 0x3ff {
                 let res = lfs_dir_get(
                     lfs,
-                    dir as *const _,
+                    dir,
                     lfs_mktag(0x700, 0x3ff, 0),
                     lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
-                    dir_ref.tail.as_mut_ptr() as *mut core::ffi::c_void,
+                    dir.tail.as_mut_ptr() as *mut core::ffi::c_void,
                 );
-                if res < 0 {
-                    return res;
+                if let Err(err) = res {
+                    return Err(err);
                 }
-                lfs_pair_fromle32(&mut dir_ref.tail);
+                lfs_pair_fromle32(&mut dir.tail);
             }
 
             // C: lfs.c:1567-1584 - find entry matching name
@@ -334,7 +334,7 @@ pub fn lfs_dir_find(
                     if find_iter > MAX_FIND_ITER {
                         panic!(
                             "loop_limits: MAX_FIND_ITER ({}) exceeded name_len={} tail={:?}",
-                            MAX_FIND_ITER, namelen, dir_ref.tail
+                            MAX_FIND_ITER, namelen, dir.tail
                         );
                     }
                 }
@@ -343,9 +343,9 @@ pub fn lfs_dir_find(
                     "dir_find: iter={} tag={} split={} tail=[{},{}] namelen={}",
                     find_iter,
                     tag,
-                    dir_ref.split,
-                    dir_ref.tail[0],
-                    dir_ref.tail[1],
+                    dir.split,
+                    dir.tail[0],
+                    dir.tail[1],
                     namelen
                 );
                 let mut match_data = LfsDirFindMatch {
@@ -354,9 +354,9 @@ pub fn lfs_dir_find(
                     size: namelen,
                 };
                 tag = lfs_dir_fetchmatch(
-                    lfs as *mut _ as *const core::ffi::c_void,
+                    lfs,
                     dir,
-                    &dir_ref.tail as *const _,
+                    &dir.tail,
                     lfs_mktag(0x780, 0, 0),
                     lfs_mktag(LFS_TYPE_NAME, 0, namelen),
                     id,
@@ -367,7 +367,7 @@ pub fn lfs_dir_find(
                 if tag != 0 {
                     break;
                 }
-                if !dir_ref.split {
+                if !dir.split {
                     return crate::lfs_err!(Err(Error::NoEntry));
                 }
             }

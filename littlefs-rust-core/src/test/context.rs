@@ -50,8 +50,8 @@ impl TestContext {
         Self::new(DEFAULT_BLOCK_COUNT)
     }
 
-    pub fn config(&self) -> *const LfsConfig {
-        &self.config as *const LfsConfig
+    pub fn config(&self) -> &LfsConfig {
+        &self.config
     }
 
     pub fn lfs_mut(&mut self) -> *mut Lfs {

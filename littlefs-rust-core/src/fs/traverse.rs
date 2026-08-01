@@ -1,6 +1,6 @@
 //! FS traverse. Per lfs.c lfs_fs_traverse_.
 
-use crate::error::Error;
+use crate::{error::Error, tag};
 //
 /// Per lfs.c lfs_fs_traverse_ (lines 4693-4794)
 ///
@@ -115,7 +115,7 @@ use crate::error::Error;
 ///
 /// C: lfs.c:4693-4794
 pub fn lfs_fs_traverse_(
-    lfs: *mut super::lfs::Lfs,
+    lfs: &mut super::lfs::Lfs,
     cb: Option<unsafe extern "C" fn(*mut core::ffi::c_void, crate::types::lfs_block_t) -> Result<(), Error>>,
     data: *mut core::ffi::c_void,
     includeorphans: bool,
@@ -172,7 +172,7 @@ pub fn lfs_fs_traverse_(
                 iter += 1;
             }
             let err = lfs_tortoise_detectcycles(&dir, &mut tortoise);
-            if err < 0 {
+            if err.is_err() {
                 return Err(Error::Corrupt);
             }
 
@@ -193,16 +193,17 @@ pub fn lfs_fs_traverse_(
                     lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_STRUCT, id as u32, 8),
                     raw.as_mut_ptr() as *mut core::ffi::c_void,
                 );
-                if tag < 0 {
-                    if tag == crate::error::Error::NoEntry {
+                if let Err(err) = tag {
+                    if err == Error::NoEntry {
                         continue;
                     }
-                    return tag;
+                    return Err(err);
                 }
                 lfs_pair_fromle32(&mut raw);
 
+                let tag = tag.unwrap();
                 if u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_CTZSTRUCT {
-                    let err = lfs_ctz_traverse(
+                    lfs_ctz_traverse(
                         lfs,
                         core::ptr::null(),
                         &mut (*lfs).rcache,
@@ -210,19 +211,13 @@ pub fn lfs_fs_traverse_(
                         raw[1],
                         Some(cb),
                         data,
-                    );
-                    if err != 0 {
-                        return crate::lfs_pass_err!(err);
-                    }
+                    )?;
                 } else if includeorphans
                     && u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_DIRSTRUCT
                 {
                     #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
                     for i in 0..2 {
-                        let err = cb(data, raw[i]);
-                        if err != 0 {
-                            return crate::lfs_pass_err!(err);
-                        }
+                        cb(data, raw[i])?;
                     }
                 }
             }
@@ -254,7 +249,7 @@ pub fn lfs_fs_traverse_(
                 if (f_ref.flags as i32 & LFS_F_DIRTY) != 0
                     && (f_ref.flags as i32 & LFS_F_INLINE) == 0
                 {
-                    let err = lfs_ctz_traverse(
+                    lfs_ctz_traverse(
                         lfs,
                         &(*f).cache,
                         &mut (*lfs).rcache,
@@ -262,15 +257,12 @@ pub fn lfs_fs_traverse_(
                         f_ref.ctz.size,
                         Some(cb),
                         data,
-                    );
-                    if err != 0 {
-                        return crate::lfs_pass_err!(err);
-                    }
+                    )?;
                 }
                 if (f_ref.flags as i32 & LFS_F_WRITING) != 0
                     && (f_ref.flags as i32 & LFS_F_INLINE) == 0
                 {
-                    let err = lfs_ctz_traverse(
+                    lfs_ctz_traverse(
                         lfs,
                         &(*f).cache,
                         &mut (*lfs).rcache,
@@ -278,15 +270,12 @@ pub fn lfs_fs_traverse_(
                         f_ref.pos,
                         Some(cb),
                         data,
-                    );
-                    if err != 0 {
-                        return crate::lfs_pass_err!(err);
-                    }
+                    )?;
                 }
             }
             m = (*m).next;
         }
 
-        0
+        Ok(())
     }
 }

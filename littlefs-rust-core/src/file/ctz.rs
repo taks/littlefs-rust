@@ -256,7 +256,7 @@ pub fn lfs_ctz_traverse(
     rcache: *mut crate::bd::LfsCache,
     head: lfs_block_t,
     size: lfs_size_t,
-    cb: Option<unsafe extern "C" fn(*mut core::ffi::c_void, lfs_block_t) -> i32>,
+    cb: Option<unsafe extern "C" fn(*mut core::ffi::c_void, lfs_block_t) -> Result<(), Error>>,
     data: *mut core::ffi::c_void,
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
@@ -287,13 +287,10 @@ pub fn lfs_ctz_traverse(
                 }
                 iter += 1;
             }
-            let err = cb(data, current_head);
-            if err != 0 {
-                return crate::lfs_pass_err!(err);
-            }
+            cb(data, current_head)?;
 
             if index == 0 {
-                return 0;
+                return Ok(());
             }
 
             // C: count*sizeof(head) as hint
@@ -316,10 +313,7 @@ pub fn lfs_ctz_traverse(
 
             #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
             for i in 0..count - 1 {
-                let err = cb(data, heads[i]);
-                if err != 0 {
-                    return crate::lfs_pass_err!(err);
-                }
+                cb(data, heads[i])?;
             }
 
             current_head = heads[count - 1];
@@ -438,7 +432,7 @@ pub fn lfs_ctz_traverse(
 pub fn lfs_ctz_extend(
     lfs: &mut crate::fs::Lfs,
     pcache: &mut crate::bd::LfsCache,
-    rcache: *mut crate::bd::LfsCache,
+    rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
     size: lfs_size_t,
     block: *mut lfs_block_t,
@@ -457,13 +451,13 @@ pub fn lfs_ctz_extend(
 
 
             let err = lfs_bd_erase(lfs, nblock);
-            if err != 0 {
-                if err == LFS_ERR_CORRUPT {
+            if let Err(err) = err {
+                if err == Error::Corrupt {
                     lfs_alloc_lookahead(lfs, nblock);
                     lfs_cache_drop(lfs, pcache);
                     continue 'relocate;
                 }
-                return crate::lfs_pass_err!(err);
+                return crate::lfs_pass_err!(Err(err));
             }
 
             if size == 0 {
@@ -506,12 +500,12 @@ pub fn lfs_ctz_extend(
                             lfs_cache_drop(lfs, pcache);
                             continue 'relocate;
                         }
-                        return crate::lfs_pass_err!(err);
+                        return crate::lfs_pass_err!(Err(err));
                     }
                 }
                 *block = nblock;
                 *off = noff;
-                return 0;
+                return Ok(());
             }
 
             index += 1;
@@ -529,13 +523,13 @@ pub fn lfs_ctz_extend(
                     &nhead_le as *const u32 as *const u8,
                     4,
                 );
-                if err != 0 {
-                    if err == LFS_ERR_CORRUPT {
+                if let Err(err) = err {
+                    if err == Error::Corrupt {
                         lfs_alloc_lookahead(lfs, nblock);
                         lfs_cache_drop(lfs, pcache);
                         continue 'relocate;
                     }
-                    return crate::lfs_pass_err!(err);
+                    return crate::lfs_pass_err!(Err(err));
                 }
                 nhead = lfs_fromle32(nhead_le);
 
@@ -558,7 +552,7 @@ pub fn lfs_ctz_extend(
 
             *block = nblock;
             *off = 4 * skips;
-            return 0;
+            return Ok(());
         }
     }
 }
