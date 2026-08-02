@@ -516,13 +516,13 @@ pub fn assert_err(expected: Error, actual: Result<(), Error>) {
 }
 
 /// Check if block has "littlefs" at offset 8 or 12 (layout varies by commit path).
-fn block_has_magic(config: *const LfsConfig, block: u32) -> bool {
+fn block_has_magic(config: &LfsConfig, block: u32) -> bool {
     let mut buf = [0u8; 24];
     let err = unsafe {
         let read = (*config).read.expect("read callback");
-        read(config, block, 0, buf.as_mut_ptr(), 24)
+        read(config, block, 0, &mut buf)
     };
-    if err != 0 {
+    if err.is_err() {
         return false;
     }
     &buf[8..16] == MAGIC || &buf[12..20] == MAGIC
