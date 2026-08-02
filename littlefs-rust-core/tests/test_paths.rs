@@ -45,27 +45,26 @@ fn test_paths_simple_dirs() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        &mut lfs,
+        lfs,
         &env.config,
     ));
-    assert_ok(lfs_mount(&mut lfs, &env.config));
+    assert_ok(lfs_mount(lfs, &env.config));
 
     let coffee = path_bytes("coffee");
-    assert_ok(lfs_mkdir(lfs.as_mut_ptr(), coffee.as_ptr()));
+    assert_ok(lfs_mkdir(lfs, coffee.as_ptr()));
 
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
-        assert_ok(lfs_mkdir(&mut lfs, path.as_ptr()));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(&mut lfs, path.as_ptr(), info.as_mut_ptr()));
-        let info = unsafe { info.assume_init() };
+        assert_ok(lfs_mkdir(lfs, path.as_ptr()));
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
         assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     }
-    assert_ok(lfs_unmount(&mut lfs));
+    assert_ok(lfs_unmount(lfs));
 }
 
 // --- test_paths_simple_files ---
@@ -75,7 +74,7 @@ fn test_paths_simple_files() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         &mut lfs,
         &env.config,
@@ -83,26 +82,25 @@ fn test_paths_simple_files() {
     assert_ok(lfs_mount(&mut lfs, &env.config));
 
     let coffee = path_bytes("coffee");
-    assert_ok(lfs_mkdir(lfs.as_mut_ptr(), coffee.as_ptr()));
+    assert_ok(lfs_mkdir(lfs, coffee.as_ptr()));
 
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
-            lfs.as_mut_ptr(),
-            file.as_mut_ptr(),
+            lfs,
+            file,
             path.as_ptr(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
-        assert_ok(lfs_file_close(lfs.as_mut_ptr(), file.as_mut_ptr()));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs.as_mut_ptr(), path.as_ptr(), info.as_mut_ptr()));
-        let info = unsafe { info.assume_init() };
+        assert_ok(lfs_file_close(lfs, file));
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
         assert_eq!(info.type_, LFS_TYPE_REG as u8);
     }
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_unmount(lfs));
 }
 
 // --- test_paths_absolute_files ---
@@ -112,37 +110,36 @@ fn test_paths_absolute_files() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(lfs, &env.config));
 
     let coffee = path_bytes("coffee");
-    assert_ok(lfs_mkdir(lfs.as_mut_ptr(), coffee.as_ptr()));
+    assert_ok(lfs_mkdir(lfs, coffee.as_ptr()));
 
     for name in PATHS {
         let path = path_bytes(&format!("/coffee/{name}"));
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
-            lfs.as_mut_ptr(),
-            file.as_mut_ptr(),
+            lfs,
+            file,
             path.as_ptr(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
-        assert_ok(lfs_file_close(lfs.as_mut_ptr(), file.as_mut_ptr()));
+        assert_ok(lfs_file_close(lfs, file));
     }
     for name in PATHS {
         let path = path_bytes(&format!("/coffee/{name}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs.as_mut_ptr(), path.as_ptr(), info.as_mut_ptr()));
-        let info = unsafe { info.assume_init() };
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
         assert_eq!(info.type_, LFS_TYPE_REG as u8);
     }
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_unmount(lfs));
 }
 
 // --- test_paths_absolute_dirs ---
@@ -152,30 +149,29 @@ fn test_paths_absolute_dirs() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(lfs, &env.config));
 
     let coffee = path_bytes("coffee");
-    assert_ok(lfs_mkdir(lfs.as_mut_ptr(), coffee.as_ptr()));
+    assert_ok(lfs_mkdir(lfs, coffee.as_ptr()));
 
     for name in PATHS {
         let path = path_bytes(&format!("/coffee/{name}"));
-        assert_ok(lfs_mkdir(lfs.as_mut_ptr(), path.as_ptr()));
+        assert_ok(lfs_mkdir(lfs, path.as_ptr()));
     }
     for name in PATHS {
         let path = path_bytes(&format!("/coffee/{name}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs.as_mut_ptr(), path.as_ptr(), info.as_mut_ptr()));
-        let info = unsafe { info.assume_init() };
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
         assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     }
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_unmount(lfs));
 }
 
 // --- test_paths_noent ---
@@ -185,18 +181,18 @@ fn test_paths_noent() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(lfs, &env.config));
 
     let coffee = path_bytes("coffee");
-    assert_ok(lfs_mkdir(lfs.as_mut_ptr(), coffee.as_ptr()));
+    assert_ok(lfs_mkdir(lfs, coffee.as_ptr()));
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
-        assert_ok(lfs_mkdir(lfs.as_mut_ptr(), path.as_ptr()));
+        assert_ok(lfs_mkdir(lfs, path.as_ptr()));
     }
 
     for bad in &[
@@ -208,20 +204,20 @@ fn test_paths_noent() {
         "thai_",
     ] {
         let path = path_bytes(&format!("coffee/{bad}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        let err = lfs_stat(lfs.as_mut_ptr(), path.as_ptr(), info.as_mut_ptr());
-        assert_err(LFS_ERR_NOENT, err);
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        let err = lfs_stat(lfs, path.as_ptr(), info);
+        assert_err(Error::NoEntry, err);
 
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         let err = lfs_file_open(
-            lfs.as_mut_ptr(),
-            file.as_mut_ptr(),
+            lfs,
+            file,
             path.as_ptr(),
             LFS_O_RDONLY,
         );
-        assert_err(LFS_ERR_NOENT, err);
+        assert_err(Error::NoEntry, err);
     }
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_unmount(lfs));
 }
 
 // --- test_paths_root ---
@@ -231,32 +227,32 @@ fn test_paths_root() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(lfs, &env.config));
 
     let root_path = path_bytes("/");
     let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
     assert_ok(lfs_dir_open(
-        lfs.as_mut_ptr(),
-        dir.as_mut_ptr(),
+        lfs,
+        dir,
         root_path.as_ptr(),
     ));
-    assert_ok(lfs_dir_close(lfs.as_mut_ptr(), dir.as_mut_ptr()));
+    assert_ok(lfs_dir_close(lfs, dir));
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(
-        lfs.as_mut_ptr(),
+        lfs,
         root_path.as_ptr(),
-        info.as_mut_ptr(),
+        info,
     ));
     let info = unsafe { info.assume_init() };
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_unmount(lfs));
 }
 
 // --- Deferred edge-case tests (per roadmap 07a) ---
@@ -268,13 +264,13 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
 
     assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr()));
     let create_paths = &[
@@ -290,14 +286,14 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, path.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
 
@@ -319,9 +315,8 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
     ];
     for (path_str, expect) in stat_paths.iter().zip(expect_names) {
         let path = path_bytes(path_str);
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()));
-        let info = unsafe { info.assume_init() };
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         assert_eq!(info_name_str(&info), expect);
         assert_eq!(
             info.type_,
@@ -349,7 +344,7 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
     for path_str in stat_paths {
         let path = path_bytes(path_str);
         assert_err(
-            LFS_ERR_NOENT,
+            Error::NoEntry,
             lfs_stat(lfs, path.as_ptr(), info_dummy.as_mut_ptr()),
         );
     }
@@ -373,13 +368,13 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
 
     assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr()));
     if dir_mode {
@@ -402,12 +397,12 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
             "coffee/vietnamese/////",
             "coffee/thai//////",
         ] {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
-                LFS_ERR_NOTDIR,
+                Error::NotDir,
                 lfs_file_open(
                     lfs,
-                    file.as_mut_ptr(),
+                    file,
                     path_bytes(s).as_ptr(),
                     LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                 ),
@@ -415,14 +410,14 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
         }
         for name in PATHS {
             let path = path_bytes(&format!("coffee/{name}"));
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
 
@@ -436,15 +431,14 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
     ];
     for (i, path_str) in stat_slashes.iter().enumerate() {
         let path = path_bytes(path_str);
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        let err = lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr());
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        let err = lfs_stat(lfs, path.as_ptr(), info);
         if dir_mode {
             assert_ok(err);
-            let info = unsafe { info.assume_init() };
             assert_eq!(info_name_str(&info), PATHS[i]);
             assert_eq!(info.type_, LFS_TYPE_DIR as u8);
         } else {
-            assert_err(LFS_ERR_NOTDIR, err);
+            assert_err(Error::NotDir, err);
         }
     }
 
@@ -486,13 +480,13 @@ fn test_paths_dots(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
 
     assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr()));
     let create_paths = &[
@@ -508,14 +502,14 @@ fn test_paths_dots(#[case] dir_mode: bool) {
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, path.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
 
@@ -537,9 +531,8 @@ fn test_paths_dots(#[case] dir_mode: bool) {
     ];
     for (path_str, expect) in stat_paths.iter().zip(expect_names) {
         let path = path_bytes(path_str);
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()));
-        let info = unsafe { info.assume_init() };
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         assert_eq!(info_name_str(&info), expect);
         assert_eq!(
             info.type_,
@@ -589,13 +582,13 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
 
     assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr()));
     if dir_mode {
@@ -607,7 +600,7 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
             "coffee/vietnamese/././././.",
             "coffee/thai/./././././.",
         ] {
-            assert_err(LFS_ERR_NOENT, lfs_mkdir(lfs, path_bytes(s).as_ptr()));
+            assert_err(Error::NoEntry, lfs_mkdir(lfs, path_bytes(s).as_ptr()));
         }
         for name in PATHS {
             assert_ok(lfs_mkdir(
@@ -624,26 +617,26 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
             "coffee/vietnamese/././././.",
             "coffee/thai/./././././.",
         ] {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
-                LFS_ERR_NOENT,
+                Error::NoEntry,
                 lfs_file_open(
                     lfs,
-                    file.as_mut_ptr(),
+                    file,
                     path_bytes(s).as_ptr(),
                     LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                 ),
             );
         }
         for name in PATHS {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path_bytes(&format!("coffee/{name}")).as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
 
@@ -655,17 +648,17 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
         "coffee/vietnamese/./.",
         "coffee/thai/.",
     ];
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     for (i, path_str) in stat_dots.iter().enumerate() {
         let path = path_bytes(path_str);
-        let err = lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr());
+        let err = lfs_stat(lfs, path.as_ptr(), info);
         if dir_mode {
             assert_ok(err);
-            let info_ref = unsafe { &*info.as_ptr() };
+            let info_ref = unsafe { &*info };
             assert_eq!(info_name_str(info_ref), PATHS[i]);
             assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
         } else {
-            assert_err(LFS_ERR_NOTDIR, err);
+            assert_err(Error::NotDir, err);
         }
     }
 
@@ -707,13 +700,13 @@ fn test_paths_dotdots(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
 
     assert_ok(lfs_mkdir(lfs, path_bytes("no").as_ptr()));
     assert_ok(lfs_mkdir(lfs, path_bytes("no/no").as_ptr()));
@@ -732,14 +725,14 @@ fn test_paths_dotdots(#[case] dir_mode: bool) {
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, path.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
 
@@ -761,9 +754,8 @@ fn test_paths_dotdots(#[case] dir_mode: bool) {
     ];
     for (path_str, expect) in stat_paths.iter().zip(expect_names) {
         let path = path_bytes(path_str);
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()));
-        let info = unsafe { info.assume_init() };
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         assert_eq!(info_name_str(&info), expect);
         assert_eq!(
             info.type_,
@@ -813,39 +805,39 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
 
     assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr()));
 
     if dir_mode {
         assert_err(
-            LFS_ERR_EXIST,
+            Error::Exists,
             lfs_mkdir(lfs, path_bytes("coffee/drip/..").as_ptr()),
         );
         assert_err(
-            LFS_ERR_EXIST,
+            Error::Exists,
             lfs_mkdir(lfs, path_bytes("coffee/coldbrew/../..").as_ptr()),
         );
         assert_err(
-            LFS_ERR_INVAL,
+            Error::Invalid,
             lfs_mkdir(lfs, path_bytes("coffee/turkish/../../..").as_ptr()),
         );
         assert_err(
-            LFS_ERR_INVAL,
+            Error::Invalid,
             lfs_mkdir(lfs, path_bytes("coffee/tubruk/../../../..").as_ptr()),
         );
         assert_err(
-            LFS_ERR_INVAL,
+            Error::Invalid,
             lfs_mkdir(lfs, path_bytes("coffee/vietnamese/../../../../..").as_ptr()),
         );
         assert_err(
-            LFS_ERR_INVAL,
+            Error::Invalid,
             lfs_mkdir(lfs, path_bytes("coffee/thai/../../../../../..").as_ptr()),
         );
         for name in PATHS {
@@ -856,16 +848,16 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
         }
     } else {
         assert_err(
-            LFS_ERR_EXIST,
+            Error::Exists,
             lfs_file_open(
                 lfs,
-                &mut core::mem::MaybeUninit::<LfsFile>::zeroed() as *mut _ as *mut LfsFile,
+                &mut core::mem::MaybeUninit::<LfsFile>::zeroed() as *mut _ as &mut LfsFile,
                 path_bytes("coffee/drip/..").as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
         );
         assert_err(
-            LFS_ERR_EXIST,
+            Error::Exists,
             lfs_file_open(
                 lfs,
                 &mut core::mem::MaybeUninit::<LfsFile>::zeroed() as *mut _ as *mut LfsFile,
@@ -874,7 +866,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             ),
         );
         assert_err(
-            LFS_ERR_INVAL,
+            Error::Invalid,
             lfs_file_open(
                 lfs,
                 &mut core::mem::MaybeUninit::<LfsFile>::zeroed() as *mut _ as *mut LfsFile,
@@ -883,7 +875,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             ),
         );
         assert_err(
-            LFS_ERR_INVAL,
+            Error::Invalid,
             lfs_file_open(
                 lfs,
                 &mut core::mem::MaybeUninit::<LfsFile>::zeroed() as *mut _ as *mut LfsFile,
@@ -892,7 +884,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             ),
         );
         assert_err(
-            LFS_ERR_INVAL,
+            Error::Invalid,
             lfs_file_open(
                 lfs,
                 &mut core::mem::MaybeUninit::<LfsFile>::zeroed() as *mut _ as *mut LfsFile,
@@ -901,7 +893,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             ),
         );
         assert_err(
-            LFS_ERR_INVAL,
+            Error::Invalid,
             lfs_file_open(
                 lfs,
                 &mut core::mem::MaybeUninit::<LfsFile>::zeroed() as *mut _ as *mut LfsFile,
@@ -910,21 +902,21 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             ),
         );
         for name in PATHS {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path_bytes(&format!("coffee/{name}")).as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
 
     // stat paths
     let mut info_err = core::mem::MaybeUninit::<LfsInfo>::zeroed();
     assert_err(
-        LFS_ERR_INVAL,
+        Error::Invalid,
         lfs_stat(
             lfs,
             path_bytes("coffee/drip/../../../../../..").as_ptr(),
@@ -932,7 +924,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_INVAL,
+        Error::Invalid,
         lfs_stat(
             lfs,
             path_bytes("coffee/coldbrew/../../../../..").as_ptr(),
@@ -940,7 +932,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_INVAL,
+        Error::Invalid,
         lfs_stat(
             lfs,
             path_bytes("coffee/turkish/../../../..").as_ptr(),
@@ -948,7 +940,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_INVAL,
+        Error::Invalid,
         lfs_stat(
             lfs,
             path_bytes("coffee/tubruk/../../..").as_ptr(),
@@ -956,13 +948,12 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
         ),
     );
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(
         lfs,
         path_bytes("coffee/vietnamese/../..").as_ptr(),
-        info.as_mut_ptr(),
+        info,
     ));
-    let info = unsafe { info.assume_init() };
     assert_eq!(info_name_str(&info), "/");
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
@@ -986,13 +977,13 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
 
     assert_ok(lfs_mkdir(lfs, path_bytes("no").as_ptr()));
     assert_ok(lfs_mkdir(lfs, path_bytes("no/no").as_ptr()));
@@ -1022,46 +1013,45 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
             path_bytes("/no/no/./.././../no/no/./.././../coffee/thai").as_ptr(),
         ));
     } else {
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
-            file.as_mut_ptr(),
+            file,
             path_bytes("/coffee/drip").as_ptr(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
-        assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+        assert_ok(lfs_file_close(lfs, file));
         assert_ok(lfs_file_open(
             lfs,
-            file.as_mut_ptr(),
+            file,
             path_bytes("/no/./../coffee/coldbrew").as_ptr(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
-        assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+        assert_ok(lfs_file_close(lfs, file));
         for path in [
             "/coffee/no/./../turkish",
             "/no/no/./.././../coffee/tubruk",
             "/no/no/./.././../coffee/no/./../vietnamese",
             "/no/no/./.././../no/no/./.././../coffee/thai",
         ] {
-            let mut f = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let mut f = unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                f.as_mut_ptr(),
+                &mut f,
                 path_bytes(path).as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, f.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, &mut f));
         }
     }
 
     // stat paths
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(
         lfs,
         path_bytes("/no/no/./.././../no/no/./.././../coffee/drip").as_ptr(),
-        info.as_mut_ptr(),
+        info,
     ));
-    let info = unsafe { info.assume_init() };
     assert_eq!(info_name_str(&info), "drip");
     assert_eq!(
         info.type_,
@@ -1098,7 +1088,7 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
     }
 
     if dir_mode {
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         for path in [
             "/coffee/drip",
             "/no/./../coffee/coldbrew",
@@ -1108,35 +1098,35 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
             "/no/no/./.././../no/no/./.././../coffee/thai",
         ] {
             assert_err(
-                LFS_ERR_ISDIR,
+                Error::IsDir,
                 lfs_file_open(
                     lfs,
-                    file.as_mut_ptr(),
+                    file,
                     path_bytes(path).as_ptr(),
                     LFS_O_RDONLY,
                 ),
             );
             assert_err(
-                LFS_ERR_ISDIR,
+                Error::IsDir,
                 lfs_file_open(
                     lfs,
-                    file.as_mut_ptr(),
+                    file,
                     path_bytes(path).as_ptr(),
                     LFS_O_WRONLY | LFS_O_CREAT,
                 ),
             );
             assert_err(
-                LFS_ERR_EXIST,
+                Error::Exists,
                 lfs_file_open(
                     lfs,
-                    file.as_mut_ptr(),
+                    file,
                     path_bytes(path).as_ptr(),
                     LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                 ),
             );
         }
     } else {
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         for path in [
             "/coffee/drip",
             "/no/./../coffee/coldbrew",
@@ -1147,11 +1137,11 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
         ] {
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path_bytes(path).as_ptr(),
                 LFS_O_RDONLY,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
 
@@ -1165,13 +1155,13 @@ fn test_paths_dotdotdots(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr()));
     assert_ok(lfs_mkdir(lfs, path_bytes("coffee/...").as_ptr()));
     for name in PATHS {
@@ -1179,20 +1169,20 @@ fn test_paths_dotdotdots(#[case] dir_mode: bool) {
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, path.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
     for name in PATHS {
         let path = path_bytes(&format!("/coffee/.../{name}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()));
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         let info = unsafe { info.assume_init() };
         assert_eq!(info_name_str(&info), *name);
         assert_eq!(
@@ -1207,7 +1197,7 @@ fn test_paths_dotdotdots(#[case] dir_mode: bool) {
 
 /// Upstream: [cases.test_paths_noent_trailing_slashes]
 /// defines.DIR = [false, true]
-/// Paths with trailing slashes on non-existent entries. C expects exact LFS_ERR_NOENT for stat/dir_open.
+/// Paths with trailing slashes on non-existent entries. C expects exact Error::NoEntry for stat/dir_open.
 #[rstest]
 #[case::dirs(true)]
 #[case::files(false)]
@@ -1215,27 +1205,27 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr()));
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, path.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
     // C: 6 malformed paths with trailing slashes — stat => NOENT
@@ -1249,30 +1239,30 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
     ];
     for bad in bad_stat {
         let path = path_bytes(bad);
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_err(
-            LFS_ERR_NOENT,
-            lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()),
+            Error::NoEntry,
+            lfs_stat(lfs, path.as_ptr(), info),
         );
     }
     // file_open RDONLY => NOENT
     for bad in bad_stat {
         let path = path_bytes(bad);
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
-            LFS_ERR_NOENT,
-            lfs_file_open(lfs, file.as_mut_ptr(), path.as_ptr(), LFS_O_RDONLY),
+            Error::NoEntry,
+            lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY),
         );
     }
     // file_open WRONLY|CREAT => NOTDIR
     for bad in bad_stat {
         let path = path_bytes(bad);
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
-            LFS_ERR_NOTDIR,
+            Error::NotDir,
             lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT,
             ),
@@ -1281,12 +1271,12 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
     // file_open WRONLY|CREAT|EXCL => NOTDIR
     for bad in bad_stat {
         let path = path_bytes(bad);
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
-            LFS_ERR_NOTDIR,
+            Error::NotDir,
             lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
@@ -1297,14 +1287,14 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         let path = path_bytes(bad);
         let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
         assert_err(
-            LFS_ERR_NOENT,
-            lfs_dir_open(lfs, dir.as_mut_ptr(), path.as_ptr()),
+            Error::NoEntry,
+            lfs_dir_open(lfs, dir, path.as_ptr()),
         );
     }
     // rename: bad source
     assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_ptr()));
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_rip//////").as_ptr(),
@@ -1312,7 +1302,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/c_ldbrew/////").as_ptr(),
@@ -1320,7 +1310,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/tu_kish////").as_ptr(),
@@ -1328,7 +1318,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/tub_uk///").as_ptr(),
@@ -1336,7 +1326,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_vietnamese//").as_ptr(),
@@ -1344,7 +1334,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/thai_/").as_ptr(),
@@ -1353,7 +1343,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
     );
     // rename: bad destination (trailing slash on dest)
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_rip").as_ptr(),
@@ -1361,7 +1351,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/c_ldbrew").as_ptr(),
@@ -1369,7 +1359,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/tu_kish").as_ptr(),
@@ -1377,7 +1367,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/tub_uk").as_ptr(),
@@ -1385,7 +1375,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_vietnamese").as_ptr(),
@@ -1393,7 +1383,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/thai_").as_ptr(),
@@ -1402,7 +1392,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
     );
     // rename: bad source and bad destination
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_rip//////").as_ptr(),
@@ -1410,7 +1400,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/c_ldbrew/////").as_ptr(),
@@ -1418,7 +1408,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/tu_kish////").as_ptr(),
@@ -1426,7 +1416,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/tub_uk///").as_ptr(),
@@ -1434,7 +1424,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_vietnamese//").as_ptr(),
@@ -1442,7 +1432,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/thai_/").as_ptr(),
@@ -1451,7 +1441,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
     );
     // rename noop (same bad path both sides) => NOENT
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_rip//////").as_ptr(),
@@ -1459,7 +1449,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/c_ldbrew/////").as_ptr(),
@@ -1467,7 +1457,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/tu_kish////").as_ptr(),
@@ -1475,7 +1465,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/tub_uk///").as_ptr(),
@@ -1483,7 +1473,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_vietnamese//").as_ptr(),
@@ -1491,7 +1481,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/thai_/").as_ptr(),
@@ -1501,7 +1491,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
     // remove => NOENT
     for bad in bad_stat {
         let path = path_bytes(bad);
-        assert_err(LFS_ERR_NOENT, lfs_remove(lfs, path.as_ptr()));
+        assert_err(Error::NoEntry, lfs_remove(lfs, path.as_ptr()));
     }
     // stat espresso/* (renames failed so these don't exist) => NOENT
     for name in [
@@ -1514,19 +1504,19 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         "espresso/mocha",
     ] {
         let path = path_bytes(name);
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        let err = lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr());
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        let err = lfs_stat(lfs, path.as_ptr(), info);
         if name == "espresso" {
             assert_ok(err);
         } else {
-            assert_err(LFS_ERR_NOENT, err);
+            assert_err(Error::NoEntry, err);
         }
     }
     // final stat of valid coffee paths
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()));
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         let info = unsafe { info.assume_init() };
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
@@ -1540,7 +1530,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
 
 /// Upstream: [cases.test_paths_noent_trailing_dots]
 /// defines.DIR = [false, true]
-/// Paths with trailing dots on non-existent entries. Expect LFS_ERR_NOENT.
+/// Paths with trailing dots on non-existent entries. Expect Error::NoEntry.
 #[rstest]
 #[case::dirs(true)]
 #[case::files(false)]
@@ -1548,27 +1538,27 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr()));
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, path.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
     // C: 6 malformed paths with trailing dots — stat => NOENT
@@ -1582,36 +1572,36 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
     ];
     for bad in bad_paths {
         let path = path_bytes(bad);
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_err(
-            LFS_ERR_NOENT,
-            lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()),
+            Error::NoEntry,
+            lfs_stat(lfs, path.as_ptr(), info),
         );
     }
     // file_open RDONLY, WRONLY|CREAT, WRONLY|CREAT|EXCL => NOENT
     for bad in bad_paths {
         let path = path_bytes(bad);
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
-            LFS_ERR_NOENT,
-            lfs_file_open(lfs, file.as_mut_ptr(), path.as_ptr(), LFS_O_RDONLY),
+            Error::NoEntry,
+            lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY),
         );
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
-            LFS_ERR_NOENT,
+            Error::NoEntry,
             lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT,
             ),
         );
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
-            LFS_ERR_NOENT,
+            Error::NoEntry,
             lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
@@ -1622,14 +1612,14 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
         let path = path_bytes(bad);
         let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
         assert_err(
-            LFS_ERR_NOENT,
-            lfs_dir_open(lfs, dir.as_mut_ptr(), path.as_ptr()),
+            Error::NoEntry,
+            lfs_dir_open(lfs, dir, path.as_ptr()),
         );
     }
     // rename: bad source, bad dest, noop; remove; final stat of valid paths
     assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_ptr()));
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_rip/./././././.").as_ptr(),
@@ -1637,7 +1627,7 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_rip").as_ptr(),
@@ -1645,7 +1635,7 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
         ),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_rename(
             lfs,
             path_bytes("coffee/_rip/./././././.").as_ptr(),
@@ -1653,12 +1643,12 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
         ),
     );
     for bad in bad_paths {
-        assert_err(LFS_ERR_NOENT, lfs_remove(lfs, path_bytes(bad).as_ptr()));
+        assert_err(Error::NoEntry, lfs_remove(lfs, path_bytes(bad).as_ptr()));
     }
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()));
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         let info = unsafe { info.assume_init() };
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
@@ -1682,69 +1672,69 @@ fn test_paths_noent_trailing_dotdots(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr()));
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, path.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
     // INVAL above root
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_INVAL,
+        Error::Invalid,
         lfs_stat(
             lfs,
             path_bytes("coffee/drip/../../..").as_ptr(),
-            info.as_mut_ptr(),
+            info,
         ),
     );
     // coffee/_rip/.. resolves to coffee (dir). file_open => ISDIR
     let rip_dotdot = path_bytes("coffee/_rip/..");
-    let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_ISDIR,
-        lfs_file_open(lfs, file.as_mut_ptr(), rip_dotdot.as_ptr(), LFS_O_RDONLY),
+        Error::IsDir,
+        lfs_file_open(lfs, file, rip_dotdot.as_ptr(), LFS_O_RDONLY),
     );
-    let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_ISDIR,
+        Error::IsDir,
         lfs_file_open(
             lfs,
-            file.as_mut_ptr(),
+            file,
             rip_dotdot.as_ptr(),
             LFS_O_WRONLY | LFS_O_CREAT,
         ),
     );
     // dir_open on coffee/_rip/.. => success (resolves to coffee)
     let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
-    assert_ok(lfs_dir_open(lfs, dir.as_mut_ptr(), rip_dotdot.as_ptr()));
-    assert_ok(lfs_dir_close(lfs, dir.as_mut_ptr()));
+    assert_ok(lfs_dir_open(lfs, dir, rip_dotdot.as_ptr()));
+    assert_ok(lfs_dir_close(lfs, dir));
     // stat coffee/_rip/.. => coffee
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, rip_dotdot.as_ptr(), info.as_mut_ptr()));
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+    assert_ok(lfs_stat(lfs, rip_dotdot.as_ptr(), info));
     let info = unsafe { info.assume_init() };
     assert_eq!(info_name_str(&info), "coffee");
     // stat coffee/thai_/.. => coffee
     let thai_dotdot = path_bytes("coffee/thai_/..");
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, thai_dotdot.as_ptr(), info.as_mut_ptr()));
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+    assert_ok(lfs_stat(lfs, thai_dotdot.as_ptr(), info));
     let info = unsafe { info.assume_init() };
     assert_eq!(info_name_str(&info), "coffee");
     // rename: valid coffee/thai_/.. → espresso/mocha (moves coffee to espresso/mocha)
@@ -1761,14 +1751,14 @@ fn test_paths_noent_trailing_dotdots(#[case] dir_mode: bool) {
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, path.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
     // remove: NOTEMPTY (coffee has children)
@@ -1778,7 +1768,7 @@ fn test_paths_noent_trailing_dotdots(#[case] dir_mode: bool) {
     );
     // remove: INVAL (above root)
     assert_err(
-        LFS_ERR_INVAL,
+        Error::Invalid,
         lfs_remove(lfs, path_bytes("coffee/drip/../../..").as_ptr()),
     );
     assert_ok(lfs_unmount(lfs));
@@ -1794,13 +1784,13 @@ fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     let parent = "ˈkɔ.fi";
     let children = [
         "dɹɪpˈkɔ.fi",
@@ -1816,20 +1806,20 @@ fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, path.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
     for name in children {
         let path = path_bytes(&format!("{parent}/{name}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()));
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         let info = unsafe { info.assume_init() };
         assert_eq!(info_name_str(&info), name);
         assert_eq!(
@@ -1840,25 +1830,25 @@ fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
     if dir_mode {
         for name in children {
             let path = path_bytes(&format!("{parent}/{name}"));
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
-                LFS_ERR_ISDIR,
-                lfs_file_open(lfs, file.as_mut_ptr(), path.as_ptr(), LFS_O_RDONLY),
+                Error::IsDir,
+                lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY),
             );
             assert_err(
-                LFS_ERR_ISDIR,
+                Error::IsDir,
                 lfs_file_open(
                     lfs,
-                    file.as_mut_ptr(),
+                    file,
                     path.as_ptr(),
                     LFS_O_WRONLY | LFS_O_CREAT,
                 ),
             );
             assert_err(
-                LFS_ERR_EXIST,
+                Error::Exists,
                 lfs_file_open(
                     lfs,
-                    file.as_mut_ptr(),
+                    file,
                     path.as_ptr(),
                     LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                 ),
@@ -1867,26 +1857,26 @@ fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
     } else {
         for name in children {
             let path = path_bytes(&format!("{parent}/{name}"));
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_RDONLY,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
             assert_err(
-                LFS_ERR_EXIST,
+                Error::Exists,
                 lfs_file_open(
                     lfs,
-                    file.as_mut_ptr(),
+                    file,
                     path.as_ptr(),
                     LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                 ),
@@ -1906,13 +1896,13 @@ fn test_paths_oopsallspaces(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     let root = " ";
     let children = [" ", "  ", "   ", "    ", "     ", "      "];
     assert_ok(lfs_mkdir(lfs, path_bytes(root).as_ptr()));
@@ -1921,20 +1911,20 @@ fn test_paths_oopsallspaces(#[case] dir_mode: bool) {
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, path.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
     for name in children.iter() {
         let path = path_bytes(&format!("{root}/{name}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()));
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         let info = unsafe { info.assume_init() };
         assert_eq!(info_name_str(&info), *name);
         assert_eq!(
@@ -1945,37 +1935,37 @@ fn test_paths_oopsallspaces(#[case] dir_mode: bool) {
     if dir_mode {
         for name in children {
             let path = path_bytes(&format!("{root}/{name}"));
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
-                LFS_ERR_ISDIR,
-                lfs_file_open(lfs, file.as_mut_ptr(), path.as_ptr(), LFS_O_RDONLY),
+                Error::IsDir,
+                lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY),
             );
             assert_err(
-                LFS_ERR_ISDIR,
+                Error::IsDir,
                 lfs_file_open(
                     lfs,
-                    file.as_mut_ptr(),
+                    file,
                     path.as_ptr(),
                     LFS_O_WRONLY | LFS_O_CREAT,
                 ),
             );
             let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
-            assert_ok(lfs_dir_open(lfs, dir.as_mut_ptr(), path.as_ptr()));
-            assert_ok(lfs_dir_close(lfs, dir.as_mut_ptr()));
+            assert_ok(lfs_dir_open(lfs, dir, path.as_ptr()));
+            assert_ok(lfs_dir_close(lfs, dir));
         }
     } else {
         for name in children {
             let path = path_bytes(&format!("{root}/{name}"));
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path.as_ptr(),
                 LFS_O_RDONLY,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
             assert_err(
-                LFS_ERR_NOTDIR,
+                Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr(),
@@ -2015,13 +2005,13 @@ fn test_paths_oopsalldels(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     let root = path_bytes_raw(&[0x7f]);
     assert_ok(lfs_mkdir(lfs, root.as_ptr()));
     let mut child_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
@@ -2036,14 +2026,14 @@ fn test_paths_oopsalldels(#[case] dir_mode: bool) {
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, full.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 full.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
     let mut full_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
@@ -2054,32 +2044,32 @@ fn test_paths_oopsalldels(#[case] dir_mode: bool) {
         full_paths.push(p);
     }
     for fp in &full_paths {
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, fp.as_ptr(), info.as_mut_ptr()));
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, fp.as_ptr(), info));
     }
     if dir_mode {
         for fp in &full_paths {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
-                LFS_ERR_ISDIR,
-                lfs_file_open(lfs, file.as_mut_ptr(), fp.as_ptr(), LFS_O_RDONLY),
+                Error::IsDir,
+                lfs_file_open(lfs, file, fp.as_ptr(), LFS_O_RDONLY),
             );
             let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
-            assert_ok(lfs_dir_open(lfs, dir.as_mut_ptr(), fp.as_ptr()));
-            assert_ok(lfs_dir_close(lfs, dir.as_mut_ptr()));
+            assert_ok(lfs_dir_open(lfs, dir, fp.as_ptr()));
+            assert_ok(lfs_dir_close(lfs, dir));
         }
     } else {
         for fp in &full_paths {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 fp.as_ptr(),
                 LFS_O_RDONLY,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
             assert_err(
-                LFS_ERR_NOTDIR,
+                Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr(),
@@ -2117,13 +2107,13 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     let root = path_bytes_raw(&[0xff]);
     assert_ok(lfs_mkdir(lfs, root.as_ptr()));
     let mut child_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
@@ -2138,14 +2128,14 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, full.as_ptr()));
         } else {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 full.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
     }
     let mut full_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
@@ -2156,32 +2146,32 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
         full_paths.push(p);
     }
     for fp in &full_paths {
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, fp.as_ptr(), info.as_mut_ptr()));
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, fp.as_ptr(), info));
     }
     if dir_mode {
         for fp in &full_paths {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
-                LFS_ERR_ISDIR,
-                lfs_file_open(lfs, file.as_mut_ptr(), fp.as_ptr(), LFS_O_RDONLY),
+                Error::IsDir,
+                lfs_file_open(lfs, file, fp.as_ptr(), LFS_O_RDONLY),
             );
             let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
-            assert_ok(lfs_dir_open(lfs, dir.as_mut_ptr(), fp.as_ptr()));
-            assert_ok(lfs_dir_close(lfs, dir.as_mut_ptr()));
+            assert_ok(lfs_dir_open(lfs, dir, fp.as_ptr()));
+            assert_ok(lfs_dir_close(lfs, dir));
         }
     } else {
         for fp in &full_paths {
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 fp.as_ptr(),
                 LFS_O_RDONLY,
             ));
-            assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
             assert_err(
-                LFS_ERR_NOTDIR,
+                Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr(),
@@ -2217,17 +2207,17 @@ fn test_paths_leading_dots(#[case] _dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    assert_ok(lfs_mount(lfs, &env.config));
+
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_INVAL,
-        lfs_stat(lfs, path_bytes("..").as_ptr(), info.as_mut_ptr()),
+        Error::Invalid,
+        lfs_stat(lfs, path_bytes("..").as_ptr(), info),
     );
     assert_ok(lfs_unmount(lfs));
 }
@@ -2239,17 +2229,17 @@ fn test_paths_root_dotdots(#[case] _dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    assert_ok(lfs_mount(lfs, &env.config));
+
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_INVAL,
-        lfs_stat(lfs, path_bytes("/..").as_ptr(), info.as_mut_ptr()),
+        Error::Invalid,
+        lfs_stat(lfs, path_bytes("/..").as_ptr(), info),
     );
     assert_ok(lfs_unmount(lfs));
 }
@@ -2259,20 +2249,20 @@ fn test_paths_noent_parent() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    assert_ok(lfs_mount(lfs, &env.config));
+
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_stat(
             lfs,
             path_bytes("nonexistent/child").as_ptr(),
-            info.as_mut_ptr(),
+            info,
         ),
     );
     assert_ok(lfs_unmount(lfs));
@@ -2283,25 +2273,25 @@ fn test_paths_notdir_parent() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
-    let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+    assert_ok(lfs_mount(lfs, &env.config));
+
+    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
-        file.as_mut_ptr(),
+        file,
         path_bytes("f").as_ptr(),
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
-    assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    assert_ok(lfs_file_close(lfs, file));
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_NOTDIR,
-        lfs_stat(lfs, path_bytes("f/child").as_ptr(), info.as_mut_ptr()),
+        Error::NotDir,
+        lfs_stat(lfs, path_bytes("f/child").as_ptr(), info),
     );
     assert_ok(lfs_unmount(lfs));
 }
@@ -2313,27 +2303,27 @@ fn test_paths_empty(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    assert_ok(lfs_mount(lfs, &env.config));
+
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_INVAL,
-        lfs_stat(lfs, path_bytes("").as_ptr(), info.as_mut_ptr()),
+        Error::Invalid,
+        lfs_stat(lfs, path_bytes("").as_ptr(), info),
     );
     if dir_mode {
-        assert_err(LFS_ERR_INVAL, lfs_mkdir(lfs, path_bytes("").as_ptr()));
+        assert_err(Error::Invalid, lfs_mkdir(lfs, path_bytes("").as_ptr()));
     } else {
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
-            LFS_ERR_INVAL,
+            Error::Invalid,
             lfs_file_open(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 path_bytes("").as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
@@ -2341,14 +2331,14 @@ fn test_paths_empty(#[case] dir_mode: bool) {
     }
     assert_ok(lfs_mkdir(lfs, path_bytes("x").as_ptr()));
     assert_err(
-        LFS_ERR_INVAL,
+        Error::Invalid,
         lfs_rename(lfs, path_bytes("x").as_ptr(), path_bytes("").as_ptr()),
     );
     assert_err(
-        LFS_ERR_INVAL,
+        Error::Invalid,
         lfs_rename(lfs, path_bytes("").as_ptr(), path_bytes("y").as_ptr()),
     );
-    assert_err(LFS_ERR_INVAL, lfs_remove(lfs, path_bytes("").as_ptr()));
+    assert_err(Error::Invalid, lfs_remove(lfs, path_bytes("").as_ptr()));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -2359,18 +2349,18 @@ fn test_paths_root_aliases(#[case] _dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     let aliases = &["/", ".", "./", "/.", "//"];
     for alias in aliases {
         let path = path_bytes(alias);
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_ptr(), info.as_mut_ptr()));
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok(lfs_stat(lfs, path.as_ptr(), info));
         let info = unsafe { info.assume_init() };
         assert_eq!(info_name_str(&info), "/");
         assert_eq!(info.type_, LFS_TYPE_DIR as u8);
@@ -2383,18 +2373,18 @@ fn test_paths_magic_noent() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     assert_ok(lfs_mkdir(lfs, path_bytes("a").as_ptr()));
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_NOENT,
-        lfs_stat(lfs, path_bytes("a/b").as_ptr(), info.as_mut_ptr()),
+        Error::NoEntry,
+        lfs_stat(lfs, path_bytes("a/b").as_ptr(), info),
     );
     assert_ok(lfs_unmount(lfs));
 }
@@ -2406,32 +2396,32 @@ fn test_paths_magic_conflict(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
+
     if dir_mode {
         assert_ok(lfs_mkdir(lfs, path_bytes("littlefs").as_ptr()));
     } else {
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
-            file.as_mut_ptr(),
+            file,
             path_bytes("littlefs").as_ptr(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
-        assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+        assert_ok(lfs_file_close(lfs, file));
     }
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(
         lfs,
         path_bytes("littlefs").as_ptr(),
-        info.as_mut_ptr(),
+        info,
     ));
-    assert_eq!(info_name_str(unsafe { &*info.as_ptr() }), "littlefs");
+    assert_eq!(info_name_str(unsafe { &*info }), "littlefs");
     assert_ok(lfs_rename(
         lfs,
         path_bytes("littlefs").as_ptr(),
@@ -2445,16 +2435,16 @@ fn test_paths_magic_conflict(#[case] dir_mode: bool) {
     assert_ok(lfs_stat(
         lfs,
         path_bytes("littlefs").as_ptr(),
-        info.as_mut_ptr(),
+        info,
     ));
     assert_err(
-        LFS_ERR_NOENT,
-        lfs_stat(lfs, path_bytes("coffee").as_ptr(), info.as_mut_ptr()),
+        Error::NoEntry,
+        lfs_stat(lfs, path_bytes("coffee").as_ptr(), info),
     );
     assert_ok(lfs_remove(lfs, path_bytes("littlefs").as_ptr()));
     assert_err(
-        LFS_ERR_NOENT,
-        lfs_stat(lfs, path_bytes("littlefs").as_ptr(), info.as_mut_ptr()),
+        Error::NoEntry,
+        lfs_stat(lfs, path_bytes("littlefs").as_ptr(), info),
     );
     assert_ok(lfs_unmount(lfs));
 }
@@ -2464,16 +2454,15 @@ fn test_paths_nametoolong() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
     let long_name = "a".repeat(256);
     assert_err(
-        LFS_ERR_NAMETOOLONG,
+        Error::NameTooLong,
         lfs_mkdir(lfs, path_bytes(&long_name).as_ptr()),
     );
     assert_ok(lfs_unmount(lfs));
@@ -2484,22 +2473,21 @@ fn test_paths_namejustlongenough() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
     let max_name = "a".repeat(255);
     assert_ok(lfs_mkdir(lfs, path_bytes(&max_name).as_ptr()));
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(
         lfs,
         path_bytes(&max_name).as_ptr(),
-        info.as_mut_ptr(),
+        info,
     ));
-    assert_eq!(info_name_str(unsafe { &*info.as_ptr() }), max_name);
+    assert_eq!(info_name_str(unsafe { &*info }), max_name);
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -2508,18 +2496,17 @@ fn test_paths_utf8() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
     let name = "café_日本_한글";
     assert_ok(lfs_mkdir(lfs, path_bytes(name).as_ptr()));
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, path_bytes(name).as_ptr(), info.as_mut_ptr()));
-    assert_eq!(info_name_str(unsafe { &*info.as_ptr() }), name);
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+    assert_ok(lfs_stat(lfs, path_bytes(name).as_ptr(), info));
+    assert_eq!(info_name_str(unsafe { &*info }), name);
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -2528,18 +2515,17 @@ fn test_paths_spaces() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
     let name = "foo bar";
     assert_ok(lfs_mkdir(lfs, path_bytes(name).as_ptr()));
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, path_bytes(name).as_ptr(), info.as_mut_ptr()));
-    assert_eq!(info_name_str(unsafe { &*info.as_ptr() }), name);
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+    assert_ok(lfs_stat(lfs, path_bytes(name).as_ptr(), info));
+    assert_eq!(info_name_str(unsafe { &*info }), name);
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -2548,19 +2534,18 @@ fn test_paths_nonprintable() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
     let mut name: Vec<u8> = vec![b'a'; 10];
     name[5] = 0x01;
     name.push(0);
     assert_ok(lfs_mkdir(lfs, name.as_ptr()));
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, name.as_ptr(), info.as_mut_ptr()));
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+    assert_ok(lfs_stat(lfs, name.as_ptr(), info));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -2569,16 +2554,15 @@ fn test_paths_nonutf8() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    let lfs = unsafe { lfs.assume_init_mut() };
+    assert_ok(lfs_mount(lfs, &env.config));
     let name = b"foo\xff\xfe\xfdbar\0";
     assert_ok(lfs_mkdir(lfs, name.as_ptr()));
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, name.as_ptr(), info.as_mut_ptr()));
+    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+    assert_ok(lfs_stat(lfs, name.as_ptr(), info));
     assert_ok(lfs_unmount(lfs));
 }
