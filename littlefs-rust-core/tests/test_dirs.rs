@@ -31,7 +31,7 @@ fn test_dirs_root() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs,
         &env.config,

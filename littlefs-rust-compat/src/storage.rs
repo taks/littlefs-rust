@@ -1,7 +1,9 @@
 //! Shared storage and config builders for C ↔ Rust compat tests.
 
 use core::cell::UnsafeCell;
-use std::{fmt::Error, os::raw::c_void};
+use std::{os::raw::c_void};
+
+use littlefs_rust_core::error::Error;
 
 /// Filesystem geometry for tests.
 pub struct TestGeometry {
@@ -56,32 +58,32 @@ impl SharedStorage {
         let start = (block as usize) * (self.geo.block_size as usize) + (off as usize);
         let end = start + buffer.len();
         if end > storage.len() {
-            return -22;
+            return Err(Error::Invalid);
         }
         buffer.copy_from_slice(&storage[start..end]);
         Ok(())
     }
 
-    fn prog_impl(&self, block: u32, off: u32, data: &[u8]) -> i32 {
+    fn prog_impl(&self, block: u32, off: u32, data: &[u8]) -> Result<(), Error> {
         let storage = unsafe { &mut *self.data.get() };
         let start = (block as usize) * (self.geo.block_size as usize) + (off as usize);
         let end = start + data.len();
         if end > storage.len() {
-            return -22;
+            return Err(Error::Invalid);
         }
         storage[start..end].copy_from_slice(data);
-        0
+        Ok(())
     }
 
-    fn erase_impl(&self, block: u32) -> i32 {
+    fn erase_impl(&self, block: u32) -> Result<(), Error> {
         let storage = unsafe { &mut *self.data.get() };
         let start = (block as usize) * (self.geo.block_size as usize);
         let end = start + (self.geo.block_size as usize);
         if end > storage.len() {
-            return -22;
+            return Err(Error::Invalid);
         }
         storage[start..end].fill(0xff);
-        0
+        Ok(())
     }
 
     // ── C (littlefs2-sys) callbacks ─────────────────────────────────────
@@ -125,7 +127,7 @@ impl SharedStorage {
     // ── Rust (littlefs-rust-core) callbacks ────────────────────────────────────
 
     unsafe extern "C" fn rust_read(
-        c: *const littlefs_rust_core::LfsConfig,
+        c: &littlefs_rust_core::LfsConfig,
         block: u32,
         off: u32,
         buffer: &mut [u8],
@@ -135,24 +137,22 @@ impl SharedStorage {
     }
 
     unsafe extern "C" fn rust_prog(
-        c: *const littlefs_rust_core::LfsConfig,
+        c: &littlefs_rust_core::LfsConfig,
         block: u32,
         off: u32,
-        buffer: *const u8,
-        size: u32,
-    ) -> i32 {
+        buffer: &[u8]
+    ) -> Result<(), Error> {
         let storage = &*((*c).context as *const SharedStorage);
-        let buf = std::slice::from_raw_parts(buffer, size as usize);
-        storage.prog_impl(block, off, buf)
+        storage.prog_impl(block, off, buffer)
     }
 
-    unsafe extern "C" fn rust_erase(c: *const littlefs_rust_core::LfsConfig, block: u32) -> i32 {
+    unsafe extern "C" fn rust_erase(c: &littlefs_rust_core::LfsConfig, block: u32) -> Result<(), Error> {
         let storage = &*((*c).context as *const SharedStorage);
         storage.erase_impl(block)
     }
 
-    unsafe extern "C" fn rust_sync(_c: *const littlefs_rust_core::LfsConfig) -> i32 {
-        0
+    unsafe extern "C" fn rust_sync(_c: &littlefs_rust_core::LfsConfig) -> Result<(), Error> {
+        Ok(())
     }
 
     // ── Config builders ─────────────────────────────────────────────────

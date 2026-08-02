@@ -25,7 +25,7 @@ fn test_attrs_get_set() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -205,7 +205,7 @@ fn test_attrs_get_set_root() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -351,14 +351,14 @@ fn test_attrs_get_set_file() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        &mut lfs,
+        lfs,
         &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config));
+    assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs.as_mut_ptr(), path_bytes("hello").as_ptr()));
+    assert_ok(lfs_mkdir(lfs, path_bytes("hello").as_ptr()));
     let mut file = unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs.as_mut_ptr(),
