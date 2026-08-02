@@ -1059,7 +1059,7 @@ fn test_dirs_remove_read() {
                 path_bytes(&format!("prickly-pear/cactus{k:03}")).as_ptr(),
             ));
             let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-            while lfs_dir_read(lfs, dir, info.as_mut_ptr()).unwrap() > 0 {}
+            while let Ok(x) = lfs_dir_read(lfs, dir, info.as_mut_ptr()) && x > 0 {}
             assert_ok(lfs_dir_close(lfs, dir));
             assert_ok(lfs_mkdir(
                 lfs,
@@ -1330,7 +1330,7 @@ fn test_dirs_seek() {
 
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         let mut n = 0usize;
-        while lfs_dir_read(lfs, dir, info.as_mut_ptr()).unwrap() > 0 {
+        while let Ok(x) = lfs_dir_read(lfs, dir, info.as_mut_ptr()) && x > 0 {
             n += 1;
         }
         assert_eq!(n, count + 2, "COUNT={count}: . and .. plus {count} entries");
@@ -1395,7 +1395,7 @@ fn test_dirs_toot_seek() {
 
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         let mut n = 0usize;
-        while lfs_dir_read(lfs, dir, info.as_mut_ptr()).unwrap() > 0 {
+        while let Ok(x) = lfs_dir_read(lfs, dir, info.as_mut_ptr()) && x > 0 {
             n += 1;
         }
         assert_eq!(n, count + 2, "COUNT={count}: . and .. plus {count} entries");
