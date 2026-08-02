@@ -296,7 +296,7 @@ pub fn run_powerloss_linear<O, V>(
     max_iter: u32,
     mut op: O,
     mut verify: V,
-) -> Result<(), i32>
+) -> Result<(), Error>
 where
     O: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), i32>,
     V: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), i32>,
@@ -316,7 +316,7 @@ where
             Err(e) => return Err(e),
         }
     }
-    Err(LFS_ERR_IO)
+    Err(Error::Io)
 }
 
 /// Like `run_powerloss_linear` but with exponential (log2) stepping:

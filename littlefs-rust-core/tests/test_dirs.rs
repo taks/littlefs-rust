@@ -33,8 +33,8 @@ fn test_dirs_root() {
 
     let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config,
     ));
     assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
 
