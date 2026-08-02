@@ -13,7 +13,7 @@ use common::{
 };
 use littlefs_rust_core::{
     lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
-    lfs_stat, lfs_unmount, Lfs, LfsConfig, LfsFile, LfsInfo, LFS_ERR_CORRUPT, LFS_ERR_NOSPC,
+    lfs_stat, lfs_unmount, Lfs, LfsConfig, LfsFile, LfsInfo,
 };
 use rstest::rstest;
 
@@ -56,13 +56,13 @@ fn test_badblocks_single(
         // C: lfs_emubd_setwear(cfg, badblock, 0xffffffff)
         env.bd.set_wear(badblock, 0xffffffff);
 
-        let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
         assert_ok(lfs_format(
-            lfs.as_mut_ptr(),
-            &env.config as *const LfsConfig,
+            lfs,
+            &env.config ,
         ));
 
-        assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+        assert_ok(lfs_mount(lfs, &env.config ));
 
         for i in 1..10 {
             let mut buffer = [0u8; 1024];
@@ -72,7 +72,7 @@ fn test_badblocks_single(
             buffer[NAMEMULT] = 0;
 
             // mkdir
-            assert_ok(lfs_mkdir(lfs.as_mut_ptr(), buffer.as_ptr()));
+            assert_ok(lfs_mkdir(lfs, buffer.as_ptr()));
 
             // Build file path: "dirname/dirname"
             buffer[NAMEMULT] = b'/';
@@ -81,10 +81,10 @@ fn test_badblocks_single(
             }
             buffer[2 * NAMEMULT + 1] = 0;
 
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
-                lfs.as_mut_ptr(),
-                file.as_mut_ptr(),
+                lfs,
+                file,
                 buffer.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT,
             ));
@@ -92,20 +92,20 @@ fn test_badblocks_single(
             let size = NAMEMULT as u32;
             for _j in 0..(i * FILEMULT) {
                 let n = lfs_file_write(
-                    lfs.as_mut_ptr(),
-                    file.as_mut_ptr(),
+                    lfs,
+                    file,
                     buffer.as_ptr() as *const core::ffi::c_void,
                     size,
                 );
-                assert_eq!(n, size as i32);
+                assert_eq!(n, Ok(size as u32));
             }
 
-            assert_ok(lfs_file_close(lfs.as_mut_ptr(), file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
-        assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+        assert_ok(lfs_unmount(lfs));
 
         // Remount and verify
-        assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+        assert_ok(lfs_mount(lfs, &env.config ));
 
         for i in 1..10 {
             let mut buffer = [0u8; 1024];
@@ -116,7 +116,7 @@ fn test_badblocks_single(
 
             let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
             assert_ok(lfs_stat(
-                lfs.as_mut_ptr(),
+                lfs,
                 buffer.as_ptr(),
                 info.as_mut_ptr(),
             ));
@@ -129,10 +129,10 @@ fn test_badblocks_single(
             }
             buffer[2 * NAMEMULT + 1] = 0;
 
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
-                lfs.as_mut_ptr(),
-                file.as_mut_ptr(),
+                lfs,
+                file,
                 buffer.as_ptr(),
                 LFS_O_RDONLY,
             ));
@@ -141,18 +141,18 @@ fn test_badblocks_single(
             for _j in 0..(i * FILEMULT) {
                 let mut rbuffer = [0u8; 1024];
                 let n = lfs_file_read(
-                    lfs.as_mut_ptr(),
-                    file.as_mut_ptr(),
+                    lfs,
+                    file,
                     rbuffer.as_mut_ptr() as *mut core::ffi::c_void,
                     size,
                 );
-                assert_eq!(n, size as i32);
+                assert_eq!(n, Ok(size as u32));
                 assert_eq!(&rbuffer[..size as usize], &buffer[..size as usize]);
             }
 
-            assert_ok(lfs_file_close(lfs.as_mut_ptr(), file.as_mut_ptr()));
+            assert_ok(lfs_file_close(lfs, file));
         }
-        assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+        assert_ok(lfs_unmount(lfs));
     }
 }
 
@@ -189,19 +189,19 @@ fn test_badblocks_region_corruption(
         env.bd.set_wear(i + 2, 0xffffffff);
     }
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config ,
     ));
 
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    badblocks_create_dirs_and_files(lfs.as_mut_ptr());
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_mount(lfs, &env.config ));
+    badblocks_create_dirs_and_files(lfs);
+    assert_ok(lfs_unmount(lfs));
 
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    badblocks_verify_dirs_and_files(lfs.as_mut_ptr());
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_mount(lfs, &env.config ));
+    badblocks_verify_dirs_and_files(lfs);
+    assert_ok(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_badblocks_alternating_corruption]
@@ -237,19 +237,19 @@ fn test_badblocks_alternating_corruption(
         env.bd.set_wear((2 * i) + 2, 0xffffffff);
     }
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        lfs,
+        &env.config ,
     ));
 
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    badblocks_create_dirs_and_files(lfs.as_mut_ptr());
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_mount(lfs, &env.config ));
+    badblocks_create_dirs_and_files(lfs);
+    assert_ok(lfs_unmount(lfs));
 
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
-    badblocks_verify_dirs_and_files(lfs.as_mut_ptr());
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_mount(lfs, &env.config ));
+    badblocks_verify_dirs_and_files(lfs);
+    assert_ok(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_badblocks_superblocks]
@@ -272,6 +272,8 @@ fn test_badblocks_superblocks(
     )]
     behavior: BadBlockBehavior,
 ) {
+    use littlefs_rust_core::error::Error;
+
     let block_count: u32 = 128;
 
     let mut env = config_with_wear_leveling_full(block_count, 0xffffffff, behavior, erase_value);
@@ -280,23 +282,23 @@ fn test_badblocks_superblocks(
     env.bd.set_wear(0, 0xffffffff);
     env.bd.set_wear(1, 0xffffffff);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
-    let err = lfs_format(lfs.as_mut_ptr(), &env.config as *const LfsConfig);
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let err = lfs_format(lfs, &env.config );
     assert_eq!(
-        err, LFS_ERR_NOSPC,
-        "format should fail with NOSPC, got {err}"
+        err, Err(Error::NoSpace),
+        "format should fail with NOSPC, got {err:?}"
     );
 
-    let err = lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig);
+    let err = lfs_mount(lfs, &env.config );
     assert_eq!(
-        err, LFS_ERR_CORRUPT,
-        "mount should fail with CORRUPT, got {err}"
+        err, Err(Error::Corrupt),
+        "mount should fail with CORRUPT, got {err:?}"
     );
 }
 
 // ── Helpers shared by region/alternating tests ──────────────────────────────
 
-fn badblocks_create_dirs_and_files(lfs: *mut Lfs) {
+fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
     for i in 1..10 {
         let mut buffer = [0u8; 1024];
         for j in 0..NAMEMULT {
@@ -312,10 +314,10 @@ fn badblocks_create_dirs_and_files(lfs: *mut Lfs) {
         }
         buffer[2 * NAMEMULT + 1] = 0;
 
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
-            file.as_mut_ptr(),
+            file,
             buffer.as_ptr(),
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
@@ -324,18 +326,18 @@ fn badblocks_create_dirs_and_files(lfs: *mut Lfs) {
         for _j in 0..(i * FILEMULT) {
             let n = lfs_file_write(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 buffer.as_ptr() as *const core::ffi::c_void,
                 size,
             );
-            assert_eq!(n, size as i32);
+            assert_eq!(n, Ok(size as u32));
         }
 
-        assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+        assert_ok(lfs_file_close(lfs, file));
     }
 }
 
-fn badblocks_verify_dirs_and_files(lfs: *mut Lfs) {
+fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
     for i in 1..10 {
         let mut buffer = [0u8; 1024];
         for j in 0..NAMEMULT {
@@ -354,10 +356,10 @@ fn badblocks_verify_dirs_and_files(lfs: *mut Lfs) {
         }
         buffer[2 * NAMEMULT + 1] = 0;
 
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
-            file.as_mut_ptr(),
+            file,
             buffer.as_ptr(),
             LFS_O_RDONLY,
         ));
@@ -367,14 +369,14 @@ fn badblocks_verify_dirs_and_files(lfs: *mut Lfs) {
             let mut rbuffer = [0u8; 1024];
             let n = lfs_file_read(
                 lfs,
-                file.as_mut_ptr(),
+                file,
                 rbuffer.as_mut_ptr() as *mut core::ffi::c_void,
                 size,
             );
-            assert_eq!(n, size as i32);
+            assert_eq!(n, Ok(size as u32));
             assert_eq!(&rbuffer[..size as usize], &buffer[..size as usize]);
         }
 
-        assert_ok(lfs_file_close(lfs, file.as_mut_ptr()));
+        assert_ok(lfs_file_close(lfs, file));
     }
 }
