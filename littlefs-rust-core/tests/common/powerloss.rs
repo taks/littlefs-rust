@@ -63,14 +63,14 @@ impl PowerLossCtx {
 
     /// Check if we should fail on this write. Call before performing prog/erase.
     /// fail_after_writes=N means fail on Nth write (e.g. 1 = first write).
-    fn check_and_count(&self) -> i32 {
+    fn check_and_count(&self) -> Result<(), Error> {
         let count = self.write_count.get() + 1;
         self.write_count.set(count);
         let fail_at = self.fail_after_writes.get();
         if fail_at > 0 && count >= fail_at {
-            return littlefs_rust_core::lfs_err!(LFS_ERR_IO);
+            return littlefs_rust_core::lfs_err!(Err(Error::Io));
         }
-        0
+        Ok(())
     }
 
     /// Save the current contents of `block` before the first write since last sync.
@@ -119,11 +119,11 @@ unsafe extern "C" fn powerloss_prog(
     let ctx = (*cfg).context as *mut PowerLossCtx;
     let ctx = &mut *ctx;
     let err = ctx.check_and_count();
-    if err != 0 {
+    if let Err(err) = err {
         if ctx.behavior == PowerLossBehavior::Ooo {
             ctx.restore_ooo_block();
         }
-        return littlefs_rust_core::lfs_pass_err!(err);
+        return littlefs_rust_core::lfs_pass_err!(Err(err));
     }
     if ctx.behavior == PowerLossBehavior::Ooo && ctx.ooo_first_block.is_none() {
         ctx.save_ooo_block(block);
@@ -132,28 +132,28 @@ unsafe extern "C" fn powerloss_prog(
     Ok(())
 }
 
-unsafe extern "C" fn powerloss_erase(cfg: *const LfsConfig, block: u32) -> i32 {
+unsafe extern "C" fn powerloss_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut PowerLossCtx;
     let ctx = &mut *ctx;
     let err = ctx.check_and_count();
-    if err != 0 {
+    if let Err(err) = err {
         if ctx.behavior == PowerLossBehavior::Ooo {
             ctx.restore_ooo_block();
         }
-        return littlefs_rust_core::lfs_pass_err!(err);
+        return littlefs_rust_core::lfs_pass_err!(Err(err));
     }
     if ctx.behavior == PowerLossBehavior::Ooo && ctx.ooo_first_block.is_none() {
         ctx.save_ooo_block(block);
     }
     ctx.ram.erase(block);
-    0
+    Ok(())
 }
 
-unsafe extern "C" fn powerloss_sync(cfg: *const LfsConfig) -> i32 {
+unsafe extern "C" fn powerloss_sync(cfg: &LfsConfig) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut PowerLossCtx;
     let ctx = &mut *ctx;
     ctx.clear_ooo_tracking();
-    0
+    Ok(())
 }
 
 /// Test environment with power-loss simulation. Owns PowerLossCtx, config, buffers.
@@ -298,20 +298,19 @@ pub fn run_powerloss_linear<O, V>(
     mut verify: V,
 ) -> Result<(), Error>
 where
-    O: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), i32>,
-    V: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), i32>,
+    O: FnMut(&mut Lfs, &LfsConfig) -> Result<(), Error>,
+    V: FnMut(&mut Lfs, &LfsConfig) -> Result<(), Error>,
 {
-    let config_ptr = &env.config as *const LfsConfig;
     for n in 1..=max_iter {
         env.restore(snapshot);
         env.set_fail_after_writes(n);
         env.reset_write_count();
 
-        let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
-        match op(lfs.as_mut_ptr(), config_ptr) {
+        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        match op(lfs, &env.config) {
             Ok(()) => return Ok(()),
-            Err(LFS_ERR_IO) => {
-                verify(lfs.as_mut_ptr(), config_ptr)?;
+            Err(Error::Io) => {
+                verify(lfs, &env.config)?;
             }
             Err(e) => return Err(e),
         }
@@ -329,10 +328,10 @@ pub fn run_powerloss_log<O, V>(
     max_iter: u32,
     mut op: O,
     mut verify: V,
-) -> Result<(), i32>
+) -> Result<(), Error>
 where
-    O: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), i32>,
-    V: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), i32>,
+    O: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), Error>,
+    V: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), Error>,
 {
     let config_ptr = &env.config as *const LfsConfig;
     let mut n: u32 = 1;
@@ -351,7 +350,7 @@ where
         }
         n = n.saturating_mul(2);
     }
-    Err(LFS_ERR_IO)
+    Err(Error::Io)
 }
 
 /// Recursively explore all power-loss permutations up to `max_depth` levels deep.
@@ -366,10 +365,10 @@ pub fn run_powerloss_exhaustive<O, V>(
     max_depth: u32,
     mut op: O,
     mut verify: V,
-) -> Result<(), i32>
+) -> Result<(), Error>
 where
-    O: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), i32>,
-    V: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), i32>,
+    O: FnMut(&mut Lfs, &LfsConfig) -> Result<(), Error>,
+    V: FnMut(&mut Lfs, &LfsConfig) -> Result<(), Error>,
 {
     run_powerloss_exhaustive_inner(env, snapshot, max_iter, max_depth, &mut op, &mut verify)
 }
@@ -381,22 +380,21 @@ fn run_powerloss_exhaustive_inner<O, V>(
     depth: u32,
     op: &mut O,
     verify: &mut V,
-) -> Result<(), i32>
+) -> Result<(), Error>
 where
-    O: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), i32>,
-    V: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), i32>,
+    O: FnMut(&mut Lfs, &LfsConfig) -> Result<(), Error>,
+    V: FnMut(&mut Lfs, &LfsConfig) -> Result<(), Error>,
 {
-    let config_ptr = &env.config as *const LfsConfig;
     for n in 1..=max_iter {
         env.restore(snapshot);
         env.set_fail_after_writes(n);
         env.reset_write_count();
 
-        let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
-        match op(lfs.as_mut_ptr(), config_ptr) {
+        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        match op(lfs, &env.config) {
             Ok(()) => return Ok(()),
-            Err(LFS_ERR_IO) => {
-                verify(lfs.as_mut_ptr(), config_ptr)?;
+            Err(Error::Io) => {
+                verify(lfs, &env.config)?;
                 if depth > 1 {
                     let inner_snapshot = env.snapshot();
                     let inner = run_powerloss_exhaustive_inner(
@@ -410,7 +408,7 @@ where
                     // Propagate real errors (verify failures); ignore Err(IO)
                     // which just means max_iter wasn't enough at this depth.
                     if let Err(e) = inner {
-                        if e != LFS_ERR_IO {
+                        if e != Error::Io {
                             return Err(e);
                         }
                     }
@@ -419,5 +417,5 @@ where
             Err(e) => return Err(e),
         }
     }
-    Err(LFS_ERR_IO)
+    Err(Error::Io)
 }

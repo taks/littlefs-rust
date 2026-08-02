@@ -252,19 +252,19 @@ pub fn lfs_mkdir(lfs: &mut Lfs, path: *const u8) -> Result<(), Error> {
 
 /// Open a directory. Per lfs.h lfs_dir_open (lfs.c:6511-6515).
 #[inline(never)]
-pub fn lfs_dir_open(lfs: *mut Lfs, dir: *mut LfsDir, path: *const u8) -> Result<(), Error> {
+pub fn lfs_dir_open(lfs: &mut Lfs, dir: &mut LfsDir, path: *const u8) -> Result<(), Error> {
     crate::dir::open::lfs_dir_open_(lfs, dir, path)
 }
 
 /// Close a directory. Per lfs.h lfs_dir_close.
 #[inline(never)]
-pub fn lfs_dir_close(lfs: *mut Lfs, dir: *mut LfsDir) -> Result<(), Error> {
+pub fn lfs_dir_close(lfs: &mut Lfs, dir: &mut LfsDir) -> Result<(), Error> {
     crate::dir::open::lfs_dir_close_(lfs, dir)
 }
 
 /// Read an entry in the directory. Per lfs.h lfs_dir_read.
 #[inline(never)]
-pub fn lfs_dir_read(lfs: *mut Lfs, dir: *mut LfsDir, info: *mut LfsInfo) -> Result<i32, Error> {
+pub fn lfs_dir_read(lfs: &mut Lfs, dir: &mut LfsDir, info: *mut LfsInfo) -> Result<i32, Error> {
     crate::dir::open::lfs_dir_read_(lfs, dir, info)
 }
 
