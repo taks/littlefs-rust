@@ -11,11 +11,12 @@ use common::{
     assert_err, assert_ok, default_config, dir_entry_names, init_context, init_logger, path_bytes,
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY,
 };
+use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG};
 use littlefs_rust_core::{
     lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_dir_rewind, lfs_dir_seek, lfs_dir_tell,
     lfs_file_close, lfs_file_open, lfs_format, lfs_mkdir, lfs_mount, lfs_remove, lfs_rename,
-    lfs_stat, lfs_unmount, Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, LFS_ERR_EXIST, LFS_ERR_ISDIR,
+    lfs_stat, lfs_unmount, Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo,
 };
 use rstest::rstest;
 
@@ -46,7 +47,7 @@ fn test_dirs_root() {
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
     let n = lfs_dir_read(lfs, dir, info.as_mut_ptr());
-    assert_eq!(n, 1);
+    assert_eq!(n, Ok(1));
     let info = unsafe { info.assume_init() };
     assert_eq!(info.name[0], b'.');
     assert_eq!(info.name[1], 0);
@@ -54,7 +55,7 @@ fn test_dirs_root() {
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
     let n = lfs_dir_read(lfs, dir, info.as_mut_ptr());
-    assert_eq!(n, 1);
+    assert_eq!(n, Ok(1));
     let info = unsafe { info.assume_init() };
     assert_eq!(info.name[0], b'.');
     assert_eq!(info.name[1], b'.');
@@ -63,7 +64,7 @@ fn test_dirs_root() {
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
     let n = lfs_dir_read(lfs, dir, info.as_mut_ptr());
-    assert_eq!(n, 0);
+    assert_eq!(n, Ok(0));
 
     assert_ok(lfs_dir_close(lfs, dir));
     assert_ok(lfs_unmount(lfs));
@@ -278,7 +279,7 @@ fn test_dirs_many_rename_append() {
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         assert_eq!(
             lfs_dir_read(lfs, dir, info.as_mut_ptr()),
-            1
+            Ok(1)
         );
         let info_ref = unsafe { &*info.as_ptr() };
         assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
@@ -288,7 +289,7 @@ fn test_dirs_many_rename_append() {
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         assert_eq!(
             lfs_dir_read(lfs, dir, info.as_mut_ptr()),
-            1
+            Ok(1)
         );
         let info_ref = unsafe { &*info.as_ptr() };
         assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
@@ -301,7 +302,7 @@ fn test_dirs_many_rename_append() {
             let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
             assert_eq!(
                 lfs_dir_read(lfs, dir, info.as_mut_ptr()),
-                1,
+                Ok(1),
                 "N={n}, expected entry {i}"
             );
             let info_ref = unsafe { &*info.as_ptr() };
@@ -314,7 +315,7 @@ fn test_dirs_many_rename_append() {
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         assert_eq!(
             lfs_dir_read(lfs, dir, info.as_mut_ptr()),
-            0
+            Ok(0)
         );
 
         assert_ok(lfs_dir_close(lfs, dir));
@@ -502,14 +503,14 @@ fn test_dirs_file_creation() {
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         assert_eq!(
             lfs_dir_read(lfs, dir, info.as_mut_ptr()),
-            1
+            Ok(1)
         );
         assert_eq!(unsafe { (*info.as_ptr()).type_ }, LFS_TYPE_DIR as u8);
 
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         assert_eq!(
             lfs_dir_read(lfs, dir, info.as_mut_ptr()),
-            1
+            Ok(1)
         );
         assert_eq!(unsafe { (*info.as_ptr()).type_ }, LFS_TYPE_DIR as u8);
 
@@ -518,7 +519,7 @@ fn test_dirs_file_creation() {
             let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
             assert_eq!(
                 lfs_dir_read(lfs, dir, info.as_mut_ptr()),
-                1,
+                Ok(1),
                 "N={n}, expected entry {i}"
             );
             let info_ref = unsafe { &*info.as_ptr() };
@@ -531,7 +532,7 @@ fn test_dirs_file_creation() {
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         assert_eq!(
             lfs_dir_read(lfs, dir, info.as_mut_ptr()),
-            0
+            Ok(0)
         );
 
         assert_ok(lfs_dir_close(lfs, dir));
@@ -842,7 +843,7 @@ fn test_dirs_nested() {
     assert_eq!(names_sorted, vec!["baked", "fried", "sweet"]);
 
     assert_err(
-        LFS_ERR_NOTEMPTY,
+        Error::NotEmpty,
         lfs_remove(lfs, path_bytes("potato").as_ptr()),
     );
 
@@ -863,19 +864,19 @@ fn test_dirs_nested() {
     ));
 
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_remove(lfs, path_bytes("potato").as_ptr()),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_remove(lfs, path_bytes("coldpotato").as_ptr()),
     );
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_remove(lfs, path_bytes("warmpotato").as_ptr()),
     );
     assert_err(
-        LFS_ERR_NOTEMPTY,
+        Error::NotEmpty,
         lfs_remove(lfs, path_bytes("hotpotato").as_ptr()),
     );
 
@@ -968,7 +969,7 @@ fn test_dirs_recursive_remove() {
         assert_eq!(names.len(), n, "N={n} subdir count");
 
         assert_err(
-            LFS_ERR_NOTEMPTY,
+            Error::NotEmpty,
             lfs_remove(lfs, path_bytes("prickly-pear").as_ptr()),
         );
 
@@ -981,10 +982,10 @@ fn test_dirs_recursive_remove() {
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         loop {
             let rc = lfs_dir_read(lfs, dir, info.as_mut_ptr());
-            if rc == 0 {
+            if rc == Ok(0) {
                 break;
             }
-            assert_eq!(rc, 1, "N={n}, unexpected dir_read result");
+            assert_eq!(rc, Ok(1), "N={n}, unexpected dir_read result");
             let info_ref = unsafe { &*info.as_ptr() };
             if info_ref.name[0] == b'.' {
                 continue;
@@ -1005,7 +1006,7 @@ fn test_dirs_recursive_remove() {
         assert_ok(lfs_mount(lfs, &env.config));
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         assert_err(
-            LFS_ERR_NOENT,
+            Error::NoEntry,
             lfs_stat(
                 lfs,
                 path_bytes("prickly-pear").as_ptr(),
@@ -1058,7 +1059,7 @@ fn test_dirs_remove_read() {
                 path_bytes(&format!("prickly-pear/cactus{k:03}")).as_ptr(),
             ));
             let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-            while lfs_dir_read(lfs, dir, info.as_mut_ptr()) > 0 {}
+            while lfs_dir_read(lfs, dir, info.as_mut_ptr()).unwrap() > 0 {}
             assert_ok(lfs_dir_close(lfs, dir));
             assert_ok(lfs_mkdir(
                 lfs,
@@ -1098,17 +1099,17 @@ fn test_dirs_other_errors() {
     assert_ok(lfs_file_close(lfs, file));
 
     assert_err(
-        LFS_ERR_EXIST,
+        Error::Exists,
         lfs_mkdir(lfs, path_bytes("potato").as_ptr()),
     );
     assert_err(
-        LFS_ERR_EXIST,
+        Error::Exists,
         lfs_mkdir(lfs, path_bytes("burito").as_ptr()),
     );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_EXIST,
+        Error::Exists,
         lfs_file_open(
             lfs,
             file,
@@ -1118,7 +1119,7 @@ fn test_dirs_other_errors() {
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_EXIST,
+        Error::Exists,
         lfs_file_open(
             lfs,
             file,
@@ -1129,7 +1130,7 @@ fn test_dirs_other_errors() {
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_dir_open(
             lfs,
             dir,
@@ -1138,7 +1139,7 @@ fn test_dirs_other_errors() {
     );
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_NOTDIR,
+        Error::NotDir,
         lfs_dir_open(
             lfs,
             dir,
@@ -1148,7 +1149,7 @@ fn test_dirs_other_errors() {
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_NOENT,
+        Error::NoEntry,
         lfs_file_open(
             lfs,
             file,
@@ -1158,7 +1159,7 @@ fn test_dirs_other_errors() {
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_ISDIR,
+        Error::IsDir,
         lfs_file_open(
             lfs,
             file,
@@ -1169,7 +1170,7 @@ fn test_dirs_other_errors() {
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_NOENT,
+        Error::IsDir,
         lfs_file_open(
             lfs,
             file,
@@ -1179,7 +1180,7 @@ fn test_dirs_other_errors() {
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_ISDIR,
+        Error::IsDir,
         lfs_file_open(
             lfs,
             file,
@@ -1190,7 +1191,7 @@ fn test_dirs_other_errors() {
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_ISDIR,
+        Error::IsDir,
         lfs_file_open(
             lfs,
             file,
@@ -1209,7 +1210,7 @@ fn test_dirs_other_errors() {
     assert_ok(lfs_file_close(lfs, file));
 
     assert_err(
-        LFS_ERR_ISDIR,
+        Error::NotDir,
         lfs_rename(
             lfs,
             path_bytes("tacoto").as_ptr(),
@@ -1217,7 +1218,7 @@ fn test_dirs_other_errors() {
         ),
     );
     assert_err(
-        LFS_ERR_NOTDIR,
+        Error::NotDir,
         lfs_rename(
             lfs,
             path_bytes("potato").as_ptr(),
@@ -1226,12 +1227,12 @@ fn test_dirs_other_errors() {
     );
 
     assert_err(
-        LFS_ERR_EXIST,
+        Error::Exists,
         lfs_mkdir(lfs, path_bytes("/").as_ptr()),
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_EXIST,
+        Error::Exists,
         lfs_file_open(
             lfs,
             file,
@@ -1241,7 +1242,7 @@ fn test_dirs_other_errors() {
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_ISDIR,
+        Error::IsDir,
         lfs_file_open(
             lfs,
             file,
@@ -1251,7 +1252,7 @@ fn test_dirs_other_errors() {
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_ISDIR,
+        Error::IsDir,
         lfs_file_open(
             lfs,
             file,
@@ -1261,7 +1262,7 @@ fn test_dirs_other_errors() {
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_ISDIR,
+        Error::IsDir,
         lfs_file_open(
             lfs,
             file,
@@ -1329,7 +1330,7 @@ fn test_dirs_seek() {
 
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         let mut n = 0usize;
-        while lfs_dir_read(lfs, dir, info.as_mut_ptr()) > 0 {
+        while lfs_dir_read(lfs, dir, info.as_mut_ptr()).unwrap() > 0 {
             n += 1;
         }
         assert_eq!(n, count + 2, "COUNT={count}: . and .. plus {count} entries");
@@ -1394,7 +1395,7 @@ fn test_dirs_toot_seek() {
 
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
         let mut n = 0usize;
-        while lfs_dir_read(lfs, dir, info.as_mut_ptr()) > 0 {
+        while lfs_dir_read(lfs, dir, info.as_mut_ptr()).unwrap() > 0 {
             n += 1;
         }
         assert_eq!(n, count + 2, "COUNT={count}: . and .. plus {count} entries");
