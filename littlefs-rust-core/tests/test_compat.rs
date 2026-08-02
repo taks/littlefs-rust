@@ -11,7 +11,7 @@ use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
     lfs_dir_commit, lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mattr, lfs_mktag, lfs_mount,
     lfs_superblock_tole32, lfs_unmount, Lfs, LfsConfig, LfsFsinfo, LfsMdir, LfsSuperblock,
-    LFS_DISK_VERSION, LFS_ERR_INVAL,
+    LFS_DISK_VERSION, error::Error,
 };
 
 /// Upstream: [cases.test_compat_major_incompat]
@@ -22,14 +22,12 @@ fn test_compat_major_incompat() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let cfg = &env.config as *const LfsConfig;
+    let cfg = &env.config;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
-    assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
+    let mut lfs = unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    assert_ok(lfs_format(&mut lfs, cfg));
+    assert_ok(lfs_mount(&mut lfs, cfg));
 
-    let lfs_ptr = lfs.as_mut_ptr();
-    let lfs_ref = unsafe { &*lfs_ptr };
     let mut mdir = LfsMdir {
         pair: [0, 0],
         rev: 0,
@@ -41,7 +39,7 @@ fn test_compat_major_incompat() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs_ptr, &mut mdir, &root_pair));
+    assert_ok(lfs_dir_fetch(&mut lfs, &mut mdir, &root_pair));
 
     let cfg = unsafe { &*lfs_ref.cfg };
     let mut superblock = LfsSuperblock {
@@ -62,14 +60,13 @@ fn test_compat_major_incompat() {
         buffer: &superblock as *const LfsSuperblock as *const core::ffi::c_void,
     }];
     assert_ok(lfs_dir_commit(
-        lfs_ptr,
+        &mut lfs,
         &mut mdir,
-        attrs.as_ptr() as *const core::ffi::c_void,
-        1,
+        &attrs,
     ));
-    assert_ok(lfs_unmount(lfs_ptr));
+    assert_ok(lfs_unmount(&mut lfs));
 
-    assert_err(LFS_ERR_INVAL, lfs_mount(lfs.as_mut_ptr(), cfg));
+    assert_err(Error::Invalid, lfs_mount(&mut lfs, cfg));
 }
 
 /// Upstream: [cases.test_compat_minor_incompat]
@@ -83,7 +80,7 @@ fn test_compat_minor_incompat() {
     let cfg = &env.config as *const LfsConfig;
 
     let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
-    assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
+    assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
 
     let lfs_ptr = lfs.as_mut_ptr();

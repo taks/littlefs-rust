@@ -509,9 +509,9 @@ pub fn assert_ok_at(step: &str, result: i32) {
 }
 
 /// Panic if actual is not expected error code.
-pub fn assert_err(expected: i32, actual: i32) {
-    if actual != expected {
-        panic!("expected error {}, got {}", expected, actual);
+pub fn assert_err(expected: Error, actual: Result<(), Error>) {
+    if actual.is_ok() || actual.unwrap_err() != expected {
+        panic!("expected error {:?}, got {:?}", expected, actual);
     }
 }
 
