@@ -229,7 +229,7 @@ pub fn lfs_file_opencfg_(
         file.cache.buffer = core::ptr::null_mut();
 
         let mut path_ptr = path_u8;
-        let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, Some(&mut file.id));
+        let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, &mut Some(&mut file.id));
         if let Err(err) = tag && !(err == Error::NoEntry && lfs_path_islast(lfs_path_slice_from_cstr(path_ptr)))
         {
             lfs_file_close_(lfs, file);
@@ -237,7 +237,7 @@ pub fn lfs_file_opencfg_(
         }
 
         file.type_ = LFS_TYPE_REG as u8;
-        lfs_mlist_append(lfs, file as *mut crate::dir::LfsMlist);
+        lfs_mlist_append(lfs, ::core::mem::transmute(::core::ptr::from_mut(file)));
 
         if tag == Err(Error::NoEntry) {
             if (flags & LFS_O_CREAT) == 0 {
@@ -374,7 +374,7 @@ pub fn lfs_file_opencfg_(
         };
         if u32::from(lfs_tag_type3(tag_val as u32)) == LFS_TYPE_INLINESTRUCT {
             file.ctz.head = LFS_BLOCK_INLINE;
-            file.ctz.size = if tag_val == LFS_ERR_NOENT {
+            file.ctz.size = if tag == Err(Error::NoEntry) {
                 0
             } else {
                 lfs_tag_size(tag_val as u32)
@@ -436,7 +436,7 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
     let err = lfs_file_sync_(lfs, file);
 
     unsafe {
-        lfs_mlist_remove(lfs, file as *mut crate::dir::LfsMlist);
+        lfs_mlist_remove(lfs, ::core::mem::transmute(::core::ptr::from_mut(file)));
 
         let cfg = (*file).cfg;
         if !cfg.is_null() && (*cfg).buffer.is_null() {
@@ -622,7 +622,8 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                 file_ref.block = nblock;
                 file_ref.flags |= LFS_F_WRITING as u32;
             }
-            lfs_cache_zero(lfs, &mut (*lfs).pcache );
+            let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
+            lfs_cache_zero(lfs, lfs_pcache );
             return Ok(());
         }
     }
@@ -781,7 +782,8 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                     cache: core::ptr::read(&lfs_ref.rcache),
                     cfg: core::ptr::null(),
                 };
-                lfs_cache_drop(lfs, &mut (*lfs).rcache);
+                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
+                lfs_cache_drop(lfs, lfs_rcache);
 
                 #[allow(clippy::while_immutable_condition)] // file.pos updated by flushedwrite
                 while (*file).pos < (*file).ctz.size {
@@ -1225,14 +1227,15 @@ pub fn lfs_file_flushedwrite(
                         lfs_cache_zero(lfs, &mut file.cache);
                     }
                     unsafe { lfs_alloc_ckpoint(lfs) };
+                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     let err = lfs_ctz_extend(
                         lfs,
                         &mut (*file).cache,
-                        &mut (*lfs).rcache,
-                        (*file).block,
-                        (*file).pos,
-                        &mut (*file).block,
-                        &mut (*file).off,
+                        lfs_rcache,
+                        file.block,
+                        file.pos,
+                        &mut file.block,
+                        &mut file.off,
                     );
                     if let Err(err) = err {
                         file.flags |= LFS_F_ERRED as u32;

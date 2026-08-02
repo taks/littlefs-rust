@@ -203,7 +203,8 @@ pub fn lfs_bd_read(
             if size >= hint && off.is_multiple_of(cfg.read_size) && size >= cfg.read_size {
                 diff = lfs_aligndown(diff, cfg.read_size);
                 crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
-                let err = read(cfg as *const _, block, off, data, diff);
+                let data_ = core::slice::from_raw_parts_mut(data, diff as _);
+                let err = read(cfg, block, off, data_);
                 if err.is_err() {
                     crate::lfs_trace!("bd_read block={} -> CORRUPT", block);
                     return crate::lfs_pass_err!(err);
@@ -228,12 +229,12 @@ pub fn lfs_bd_read(
                 rcache.off,
                 rcache.size
             );
+            let data_ = core::slice::from_raw_parts_mut(rcache.buffer, rcache.size as _);
             let err = read(
-                cfg as *const _,
+                cfg,
                 rcache.block,
                 rcache.off,
-                rcache.buffer,
-                rcache.size,
+                data_,
             );
             if err.is_err() {
                 crate::lfs_trace!("bd_read block={} -> CORRUPT", rcache.block);
@@ -450,12 +451,12 @@ pub fn lfs_bd_flush(
                 Some(f) => f,
                 None => return Err(Error::Corrupt),
             };
+            let data_ = core::slice::from_raw_parts(pcache.buffer, diff as _);
             let err = prog(
-                cfg as *const _,
+                cfg,
                 pcache.block,
                 pcache.off,
-                pcache.buffer,
-                diff,
+                data_,
             );
             if err.is_err() {
                 crate::lfs_trace!("bd_prog block={} -> CORRUPT", pcache.block);

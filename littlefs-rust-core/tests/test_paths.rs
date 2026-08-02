@@ -10,8 +10,7 @@ use common::{assert_err, assert_ok, default_config, init_context, init_logger, p
 use littlefs_rust_core::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG};
 use littlefs_rust_core::{
     lfs_dir_close, lfs_dir_open, lfs_format, lfs_mkdir, lfs_mount, lfs_remove, lfs_rename,
-    lfs_stat, lfs_unmount, Lfs, LfsConfig, LfsDir, LfsInfo, LFS_ERR_EXIST, LFS_ERR_INVAL,
-    LFS_ERR_ISDIR, LFS_ERR_NAMETOOLONG, LFS_ERR_NOENT, LFS_ERR_NOTDIR, LFS_ERR_NOTEMPTY,
+    lfs_stat, lfs_unmount, Lfs, LfsConfig, LfsDir, LfsInfo, error::Error,
 };
 use littlefs_rust_core::{lfs_file_close, lfs_file_open, LfsFile};
 use rstest::rstest;
@@ -46,27 +45,27 @@ fn test_paths_simple_dirs() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let mut lfs = unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        &mut lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(&mut lfs, &env.config));
 
     let coffee = path_bytes("coffee");
     assert_ok(lfs_mkdir(lfs.as_mut_ptr(), coffee.as_ptr()));
 
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
-        assert_ok(lfs_mkdir(lfs.as_mut_ptr(), path.as_ptr()));
+        assert_ok(lfs_mkdir(&mut lfs, path.as_ptr()));
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs.as_mut_ptr(), path.as_ptr(), info.as_mut_ptr()));
+        assert_ok(lfs_stat(&mut lfs, path.as_ptr(), info.as_mut_ptr()));
         let info = unsafe { info.assume_init() };
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
         assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     }
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_unmount(&mut lfs));
 }
 
 // --- test_paths_simple_files ---
@@ -76,12 +75,12 @@ fn test_paths_simple_files() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let mut lfs = unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        &mut lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(&mut lfs, &env.config));
 
     let coffee = path_bytes("coffee");
     assert_ok(lfs_mkdir(lfs.as_mut_ptr(), coffee.as_ptr()));

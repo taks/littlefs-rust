@@ -63,7 +63,7 @@ unsafe extern "C" fn ram_read(
 ) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut RamStorage;
     assert!(!ctx.is_null(), "ram_read: config.context is null");
-    let ram = &mut *ctx;
+    let ram = unsafe { &mut *ctx };
     assert!(
         !ram.data.is_empty(),
         "ram_read: RamStorage.data is empty; config.context may be invalid"
@@ -79,19 +79,19 @@ unsafe extern "C" fn ram_prog(
     buffer: &[u8]
 ) -> Result<(), Error> {
     let ctx = unsafe { (*cfg).context as *mut RamStorage };
-    let ram = &mut *ctx;
+    let ram = unsafe { &mut *ctx };
     ram.prog(block, off, buffer);
     Ok(())
 }
 
 unsafe extern "C" fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut RamStorage;
-    let ram = &mut *ctx;
+    let ram = unsafe { &mut *ctx };
     ram.erase(block);
     Ok(())
 }
 
-unsafe extern "C" fn ram_sync(_cfg: *const LfsConfig) -> Result<(), Error> {
+unsafe extern "C" fn ram_sync(_cfg: &LfsConfig) -> Result<(), Error> {
     Ok(())
 }
 

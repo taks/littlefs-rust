@@ -138,15 +138,15 @@ pub unsafe extern "C" fn lfs_fs_parent_match(
     if data.is_null() || buffer.is_null() {
         return Ok(LFS_CMP_LT);
     }
-    let find = &*(data as *const LfsFsParentMatch);
-    let disk = &*(buffer as *const lfs_diskoff);
+    let find = unsafe { &*(data as *const LfsFsParentMatch) };
+    let disk = unsafe { &*(buffer as *const lfs_diskoff) };
 
     let mut child: [crate::types::lfs_block_t; 2] = [0, 0];
     lfs_bd_read(
         unsafe { find.lfs.as_ref().unwrap() },
         None,
-        &mut (*find.lfs).rcache,
-        (*find.lfs).cfg.as_ref().expect("cfg").block_size,
+        unsafe { &mut (*find.lfs).rcache },
+        unsafe { (*find.lfs).cfg.as_ref().expect("cfg").block_size },
         disk.block,
         disk.off,
         child.as_mut_ptr() as *mut u8,
@@ -245,7 +245,7 @@ pub fn lfs_fs_parent(
                 parent_tail,
                 lfs_mktag(0x7ff, 0, 0x3ff),
                 lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
-                &None,
+                &mut None,
                 Some(lfs_fs_parent_match),
                 &find_match as *const _ as *mut core::ffi::c_void,
             );

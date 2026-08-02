@@ -6,7 +6,6 @@ use super::*;
 #[test]
 fn test_context_smoke() {
     let ctx = TestContext::default_blocks();
-    assert!(!ctx.config().is_null());
     let cfg = unsafe { &*ctx.config() };
     assert!(!cfg.context.is_null(), "config.context should be set");
     assert!(cfg.read.is_some());
@@ -22,8 +21,8 @@ fn test_context_smoke() {
 #[test]
 fn test_context_lfs_init() {
     let mut ctx = TestContext::default_blocks();
-    let mut lfs = core::mem::MaybeUninit::<crate::Lfs>::zeroed();
-    let err = crate::fs::lfs_init(lfs.as_mut_ptr() as *mut _, ctx.config());
+    let mut lfs = unsafe { core::mem::MaybeUninit::<crate::Lfs>::zeroed().assume_init() };
+    let err = crate::fs::lfs_init(&mut lfs, ctx.config());
     assert_eq!(err, Ok(()));
 }
 
@@ -35,11 +34,10 @@ fn test_context_format_to_alloc() {
     use crate::util::lfs_min;
 
     let mut ctx = TestContext::default_blocks();
-    let mut lfs = core::mem::MaybeUninit::<crate::Lfs>::zeroed();
-    let err = crate::fs::lfs_init(lfs.as_mut_ptr() as *mut _, ctx.config());
+    let mut lfs = unsafe { core::mem::MaybeUninit::<crate::Lfs>::zeroed().assume_init() };
+    let err = crate::fs::lfs_init(&mut lfs, ctx.config());
     assert_eq!(err, Ok(()));
 
-    let lfs = unsafe { &mut *lfs.as_mut_ptr() };
     let cfg = unsafe { &*lfs.cfg };
     if !lfs.lookahead.buffer.is_null() {
         unsafe {
@@ -49,7 +47,7 @@ fn test_context_format_to_alloc() {
     lfs.lookahead.start = 0;
     lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
     lfs.lookahead.next = 0;
-    unsafe { lfs_alloc_ckpoint(lfs) };
+    unsafe { lfs_alloc_ckpoint(&mut lfs) };
 
     let mut root = crate::dir::LfsMdir {
         pair: [0, 0],
@@ -61,7 +59,7 @@ fn test_context_format_to_alloc() {
         split: false,
         tail: [0, 0],
     };
-    let err = unsafe { lfs_dir_alloc(lfs, &mut root) };
+    let err = unsafe { lfs_dir_alloc(&mut lfs, &mut root) };
     assert_eq!(err, Ok(()));
 }
 

@@ -68,37 +68,37 @@ impl RamStorage {
 }
 
 unsafe extern "C" fn ram_read(
-    cfg: *const LfsConfig,
+    cfg: &LfsConfig,
     block: u32,
     off: u32,
     buffer: &mut [u8],
 ) -> Result<(), Error> {
-    let ctx = (*cfg).context as *mut RamStorage;
-    let ram = &mut *ctx;
+    let ctx = unsafe { (*cfg).context as *mut RamStorage };
+    let ram = unsafe { &mut *ctx };
     ram.read(block, off, buffer);
     Ok(())
 }
 
 unsafe extern "C" fn ram_prog(
-    cfg: *const LfsConfig,
+    cfg: &LfsConfig,
     block: u32,
     off: u32,
     buffer: &[u8],
 ) -> Result<(), Error> {
-    let ctx = (*cfg).context as *mut RamStorage;
-    let ram = &mut *ctx;
+    let ctx = unsafe { (*cfg).context as *mut RamStorage };
+    let ram = unsafe { &mut *ctx };
     ram.prog(block, off, buffer);
     Ok(())
 }
 
-unsafe extern "C" fn ram_erase(cfg: *const LfsConfig, block: u32) -> Result<(), Error> {
-    let ctx = (*cfg).context as *mut RamStorage;
-    let ram = &mut *ctx;
+unsafe extern "C" fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
+    let ctx = unsafe { (*cfg).context as *mut RamStorage };
+    let ram = unsafe { &mut *ctx };
     ram.erase(block);
     Ok(())
 }
 
-unsafe extern "C" fn ram_sync(_cfg: *const LfsConfig) -> Result<(), Error> {
+unsafe extern "C" fn ram_sync(_cfg: &LfsConfig) -> Result<(), Error> {
     Ok(())
 }
 
@@ -200,8 +200,8 @@ unsafe extern "C" fn badblock_prog(
     off: u32,
     buffer: &[u8],
 ) -> i32 {
-    let ctx = (*cfg).context as *mut BadBlockRamStorage;
-    let badblock = &mut *ctx;
+    let ctx = unsafe { (*cfg).context as *mut BadBlockRamStorage };
+    let badblock = unsafe { &mut *ctx };
     if badblock.is_bad(block) {
         match badblock.behavior {
             BadBlockBehavior::ProgError => return LFS_ERR_CORRUPT,
@@ -218,8 +218,8 @@ unsafe extern "C" fn badblock_prog(
 /// ERASENOOP → return 0 (silently skip the erase)
 /// All others → erase normally
 unsafe extern "C" fn badblock_erase(cfg: *const LfsConfig, block: u32) -> i32 {
-    let ctx = (*cfg).context as *mut BadBlockRamStorage;
-    let badblock = &mut *ctx;
+    let ctx = unsafe { (*cfg).context as *mut BadBlockRamStorage };
+    let badblock = unsafe { &mut *ctx };
     if badblock.is_bad(block) {
         match badblock.behavior {
             BadBlockBehavior::EraseError => return LFS_ERR_CORRUPT,

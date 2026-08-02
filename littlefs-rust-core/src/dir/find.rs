@@ -215,7 +215,7 @@ pub fn lfs_dir_find(
     lfs: *mut Lfs,
     dir: *mut LfsMdir,
     path: *mut *const u8,
-    id: Option<&mut u16>,
+    id: &mut Option<&mut u16>,
 ) -> Result<crate::types::lfs_tag_t, Error> {
     if lfs.is_null() || dir.is_null() || path.is_null() {
         return crate::lfs_err!(Err(Error::Invalid));
@@ -362,7 +362,7 @@ pub fn lfs_dir_find(
                     dir_tail,
                     lfs_mktag(0x780, 0, 0),
                     lfs_mktag(LFS_TYPE_NAME, 0, namelen),
-                    &id,
+                    id,
                     Some(lfs_dir_find_match),
                     &mut match_data as *mut _ as *mut core::ffi::c_void,
                 )?;

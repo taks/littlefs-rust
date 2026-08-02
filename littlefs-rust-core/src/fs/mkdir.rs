@@ -128,7 +128,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: *const u8) -> Result<(), Erro
 
         let mut path_ptr = path;
         let mut id: u16 = 0;
-        let find_err = lfs_dir_find(lfs, &mut cwd.m, &mut path_ptr, Some(&mut id));
+        let find_err = lfs_dir_find(lfs, &mut cwd.m, &mut path_ptr, &mut Some(&mut id));
         if !(find_err == Err(Error::NoEntry) && lfs_path_islast(slice_until_nul(path_ptr))) {
             return if let Err(err) = find_err {
                 Err(err)

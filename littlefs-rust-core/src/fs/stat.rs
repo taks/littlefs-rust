@@ -42,7 +42,7 @@ pub fn lfs_stat_(
         let mut cwd = core::mem::zeroed::<crate::dir::LfsMdir>();
         let mut path_ptr = path;
 
-        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, None)?;
+        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
         // C: lfs.c:3872-3875 - only allow trailing slashes on dirs (strchr(path, '/') != NULL)
         let mut p = path_ptr;

@@ -49,18 +49,18 @@ fn test_truncate_simple(#[case] medium: u32, #[case] large: u32) {
     let mut env = default_config(1024);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let mut lfs = unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
+        &mut lfs,
+        &env.config,
     ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(&mut lfs, &env.config));
 
     let path = path_bytes("baldynoop");
-    let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+    let mut file = unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
-        lfs.as_mut_ptr(),
-        file.as_mut_ptr(),
+        &mut lfs,
+        &mut file,
         path.as_ptr(),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));

@@ -277,7 +277,7 @@ pub fn lfs_mount_(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig)
                 dir_tail,
                 lfs_mktag(0x7ff, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-                &None,
+                &mut None,
                 Some(lfs_dir_find_match),
                 &find_match as *const _ as *mut core::ffi::c_void,
             );

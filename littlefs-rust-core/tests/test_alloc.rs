@@ -13,7 +13,7 @@ use common::{
 use littlefs_rust_core::{
     lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_size, lfs_file_sync, lfs_file_truncate,
     lfs_file_write, lfs_format, lfs_fs_gc, lfs_mkdir, lfs_mount, lfs_remove, lfs_stat, lfs_unmount,
-    Lfs, LfsConfig, LfsFile, LfsInfo, LFS_ERR_CORRUPT, LFS_ERR_NOSPC,
+    Lfs, LfsConfig, LfsFile, LfsInfo,
 };
 use rstest::rstest;
 

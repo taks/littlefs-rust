@@ -291,7 +291,7 @@ pub unsafe fn test_traverse_format_attrs(
             },
         ];
 
-        err = lfs_dir_traverse(
+        let err = lfs_dir_traverse(
             lfs,
             &root,
             0,
@@ -305,9 +305,9 @@ pub unsafe fn test_traverse_format_attrs(
             Some(lfs_dir_traverse_test_cb),
             out as *mut core::ffi::c_void,
         );
-        if err.is_err() {
+        if let Err(err) = err {
             lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
+            return crate::lfs_pass_err!(Err(err));
         }
     }
 
@@ -397,7 +397,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
             },
         ];
 
-        err = lfs_dir_traverse(
+        let err = lfs_dir_traverse(
             lfs,
             &root,
             0,
@@ -411,9 +411,9 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
             Some(lfs_dir_traverse_test_cb),
             out as *mut core::ffi::c_void,
         );
-        if err.is_err() {
+        if let Err(err) = err {
             lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
+            return crate::lfs_pass_err!(Err(err));
         }
     }
 

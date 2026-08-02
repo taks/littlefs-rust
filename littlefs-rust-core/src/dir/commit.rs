@@ -736,8 +736,9 @@ pub fn lfs_dir_commit_commit(
         return Err(Error::Invalid);
     }
     unsafe {
-        let commit_commit = &*(p as *const (&mut Lfs, &mut LfsCommit));
-        let (lfs, commit) = *commit_commit;
+        let commit_commit = &mut *(p as *mut (&mut Lfs, &mut LfsCommit));
+        let lfs = borrow_unchecked(&mut commit_commit.0);
+        let commit = borrow_unchecked(&mut commit_commit.1);
         lfs_dir_commitattr(lfs, commit, tag, buffer)
     }
 }
@@ -1087,7 +1088,7 @@ pub fn lfs_dir_compact(
             }
 
             let mut commit_commit: (*mut Lfs, *mut LfsCommit) = (lfs, &mut commit as *mut _);
-            err = lfs_dir_traverse(
+            let err = lfs_dir_traverse(
                 lfs,
                 source,
                 0,
@@ -1111,7 +1112,8 @@ pub fn lfs_dir_compact(
                         dir_ref.pair
                     );
                     lfs_alloc_lookahead(lfs, dir.pair[1]);
-                    lfs_cache_drop(lfs, &mut (*lfs).pcache);
+                    let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
+                    lfs_cache_drop(lfs, lfs_pcache);
                     if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+err traverse");
                         return crate::lfs_err!(Err(Error::NoSpace));
@@ -1133,7 +1135,7 @@ pub fn lfs_dir_compact(
 
             if !lfs_pair_isnull(&dir.tail) {
                 lfs_pair_tole32(&mut dir.tail);
-                err = lfs_dir_commitattr(
+                let err = lfs_dir_commitattr(
                     lfs,
                     &mut commit,
                     lfs_mktag(
@@ -1191,7 +1193,7 @@ pub fn lfs_dir_compact(
 
             if !lfs_gstate_iszero(&delta) {
                 lfs_gstate_tole32(&mut delta);
-                err = lfs_dir_commitattr(
+                let err = lfs_dir_commitattr(
                     lfs,
                     &mut commit,
                     lfs_mktag(
@@ -1232,7 +1234,7 @@ pub fn lfs_dir_compact(
                 }
             }
 
-            err = lfs_dir_commitcrc(lfs, &mut commit);
+            let err = lfs_dir_commitcrc(lfs, &mut commit);
             if let Err(err) = err {
                 if err == Error::Corrupt {
                     relocated = true;
@@ -1735,11 +1737,12 @@ pub fn lfs_dir_relocatingcommit(
         // C: lfs.c:2257-2268
         if hasdelete && dir.count == 0 {
             crate::lfs_assert!(pdir.is_some());
-            let err = crate::fs::parent::lfs_fs_pred(lfs, &dir.pair, pdir.unwrap());
+            let pdir = pdir.unwrap();
+            let err = crate::fs::parent::lfs_fs_pred(lfs, &dir.pair, pdir);
             if let Err(err) = err && err != Error::NoEntry {
                 return crate::lfs_pass_err!(Err(err));
             }
-            if err != Err(Error::NoEntry) && (pdir).unwrap().split {
+            if err != Err(Error::NoEntry) && (pdir).split {
                 state = crate::error::LFS_OK_DROPPED;
             }
         }
@@ -1839,16 +1842,14 @@ pub fn lfs_dir_relocatingcommit(
             } else if err == Err(Error::NoSpace) || err == Err(Error::Corrupt) {
                 do_compact = true;
             } else {
-                return crate::lfs_pass_err!(err);
+                return crate::lfs_pass_err!(Err(err.unwrap_err()));
             }
         }
 
         if do_compact {
-            lfs_cache_drop(lfs, &mut (*lfs).pcache);
+            let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
+            lfs_cache_drop(lfs, lfs_pcache);
             state = lfs_dir_splittingcompact(lfs, dir, attrs, dir, 0, (*dir).count)?;
-            if state < 0 {
-                return state;
-            }
         }
 
         relocatingcommit_fixmlist(lfs, dir, pair, attrs, state)
@@ -1960,9 +1961,12 @@ unsafe extern "C" fn lfs_dir_commit_commit_raw(
             preview
         );
     }
-    let commit_commit = &*(p as *const (&mut Lfs, &mut LfsCommit));
-    let (lfs, commit) = *commit_commit;
-    lfs_dir_commitattr(lfs, commit, tag, buffer)
+    unsafe {
+        let commit_commit = &mut *(p as *mut (&mut Lfs, &mut LfsCommit));
+        let lfs = borrow_unchecked(&mut commit_commit.0);
+        let commit = borrow_unchecked(&mut commit_commit.1);
+        lfs_dir_commitattr(lfs, commit, tag, buffer).map(|_| 0)
+    }
 }
 
 /// Per lfs.c lfs_dir_orphaningcommit (lines 2408-2599)

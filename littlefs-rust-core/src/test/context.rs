@@ -1,5 +1,6 @@
 //! TestContext: env + Lfs, ready for format/mount. Single setup for unit tests.
 
+use crate::borrow_unchecked::borrow_unchecked;
 use crate::test::ram::{make_config, RamStorage, BLOCK_SIZE};
 use crate::{lfs_format, lfs_mount, lfs_unmount, Lfs, LfsConfig};
 use core::mem::MaybeUninit;
@@ -60,13 +61,15 @@ impl TestContext {
 
     /// Format the filesystem. Panics on error.
     pub fn format(&mut self) {
-        let err = lfs_format(self.lfs_mut(), self.config());
+        let config = unsafe { borrow_unchecked(self.config()) };
+        let err = lfs_format(self.lfs_mut(), config);
         assert_eq!(err, Ok(()), "lfs_format failed: {:?}", err);
     }
 
     /// Mount the filesystem. Panics on error.
     pub fn mount(&mut self) {
-        let err = lfs_mount(self.lfs_mut(), self.config());
+        let config = unsafe { borrow_unchecked(self.config()) };
+        let err = lfs_mount(self.lfs_mut(), config);
         assert_eq!(err, Ok(()), "lfs_mount failed: {:?}", err);
     }
 

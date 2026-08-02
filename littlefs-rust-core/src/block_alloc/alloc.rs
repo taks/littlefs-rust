@@ -62,7 +62,7 @@ unsafe extern "C" fn lfs_alloc_lookahead_cb(
     data: *mut core::ffi::c_void,
     block: lfs_block_t,
 ) -> Result<(), Error> {
-    lfs_alloc_lookahead(data as &mut Lfs, block)
+    lfs_alloc_lookahead(unsafe { &mut *(data as *mut Lfs) }, block)
 }
 
 pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Error> {

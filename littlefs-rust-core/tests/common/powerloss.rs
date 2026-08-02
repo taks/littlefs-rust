@@ -10,7 +10,7 @@
 
 use core::cell::Cell;
 
-use littlefs_rust_core::{Lfs, LfsConfig, LFS_ERR_IO};
+use littlefs_rust_core::{Lfs, LfsConfig, error::Error};
 
 use super::{RamStorage, BLOCK_SIZE};
 
@@ -99,27 +99,23 @@ impl PowerLossCtx {
 }
 
 unsafe extern "C" fn powerloss_read(
-    cfg: *const LfsConfig,
+    cfg: &LfsConfig,
     block: u32,
     off: u32,
-    buffer: *mut u8,
-    size: u32,
-) -> i32 {
+    buffer: &mut [u8],
+) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut PowerLossCtx;
     let ctx = &mut *ctx;
-    let size = size as usize;
-    let buf = core::slice::from_raw_parts_mut(buffer, size);
-    ctx.ram.read(block, off, buf);
-    0
+    ctx.ram.read(block, off, buffer);
+    Ok(())
 }
 
 unsafe extern "C" fn powerloss_prog(
-    cfg: *const LfsConfig,
+    cfg: &LfsConfig,
     block: u32,
     off: u32,
-    buffer: *const u8,
-    size: u32,
-) -> i32 {
+    buffer: &[u8]
+) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut PowerLossCtx;
     let ctx = &mut *ctx;
     let err = ctx.check_and_count();
@@ -132,10 +128,8 @@ unsafe extern "C" fn powerloss_prog(
     if ctx.behavior == PowerLossBehavior::Ooo && ctx.ooo_first_block.is_none() {
         ctx.save_ooo_block(block);
     }
-    let size = size as usize;
-    let buf = core::slice::from_raw_parts(buffer, size);
-    ctx.ram.prog(block, off, buf);
-    0
+    ctx.ram.prog(block, off, buffer);
+    Ok(())
 }
 
 unsafe extern "C" fn powerloss_erase(cfg: *const LfsConfig, block: u32) -> i32 {

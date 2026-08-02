@@ -71,7 +71,7 @@ pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8
         let dir = &mut *dir;
         let mut path_ptr = path;
 
-        let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, None)?;
+        let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None)?;
 
         if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
             return Err(Error::NotDir);
@@ -104,7 +104,7 @@ pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8
         dir.id = 0;
         dir.pos = 0;
         dir.type_ = LFS_TYPE_DIR as u8;
-        lfs_mlist_append(lfs, dir as *mut crate::dir::lfs_mlist::LfsMlist);
+        lfs_mlist_append(lfs, ::core::mem::transmute(dir));
 
         Ok(())
     }
@@ -309,7 +309,8 @@ pub fn lfs_dir_seek_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, off: lfs_off_t)
                 if !dir.m.split {
                     return Err(Error::Invalid);
                 }
-                lfs_dir_fetch(lfs, &mut dir.m, &dir.m.tail)?;
+                let dir_m_tail = borrow_unchecked(&dir.m.tail);
+                lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
                 dir.id = 0;
             }
             let diff = lfs_min((dir.m.count - dir.id) as u32, off);

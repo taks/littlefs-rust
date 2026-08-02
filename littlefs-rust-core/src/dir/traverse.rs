@@ -709,7 +709,7 @@ pub fn lfs_dir_traverse(
         unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
     >,
     data: *mut core::ffi::c_void,
-) -> Result<(), Error> {
+) -> Result<i32, Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::lfs_type::lfs_type::LFS_FROM_NOOP;
     use crate::tag::{lfs_mktag, lfs_tag_dsize, lfs_tag_id, lfs_tag_type3};
@@ -718,7 +718,7 @@ pub fn lfs_dir_traverse(
 
     let cb = match cb {
         Some(c) => c,
-        None => return Ok(()),
+        None => return Ok(0),
     };
 
     let mut stack: [core::mem::MaybeUninit<LfsDirTraverseStack>; LFS_DIR_TRAVERSE_DEPTH - 1] =
@@ -777,10 +777,11 @@ pub fn lfs_dir_traverse(
                         // Per C: advance off first to skip previous tag's data, then read
                         off += lfs_tag_dsize(ptag);
                         let mut tag_raw: lfs_tag_t = 0;
+                        let lfs_rcache = unsafe { borrow_unchecked(&mut lfs.rcache) };
                         lfs_bd_read(
                             lfs,
                             None,
-                            unsafe { &mut (*lfs).rcache },
+                            lfs_rcache,
                             core::mem::size_of::<lfs_tag_t>() as u32,
                             dir_ref.pair[0],
                             off,
@@ -818,7 +819,7 @@ pub fn lfs_dir_traverse(
                         attr_i += 1;
                         (attr.tag, attr.buffer)
                     } else {
-                        res = 0;
+                        res = Ok(0);
                         if sp == 0 {
                             return res;
                         }
@@ -966,8 +967,8 @@ pub fn lfs_dir_traverse(
                                 a.buffer as *const core::ffi::c_void,
                                 diff,
                             );
-                            if res.is_err() {
-                                return res;
+                            if let Err(err) = res {
+                                return Err(err);
                             }
                             if res != Ok(0) {
                                 break;
@@ -1082,17 +1083,20 @@ pub unsafe extern "C" fn lfs_dir_traverse_test_cb(
 ) -> Result<i32, Error> {
     use crate::tag::lfs_tag_type3;
 
-    let out = p as *mut TraverseTestOut;
-    if out.is_null() || (*out).call_count as usize >= 8 {
-        return 0;
+    let Some(out) = (unsafe { (p as *mut TraverseTestOut).as_mut() }) else {
+        return Ok(0);
+    };
+
+    if (*out).call_count as usize >= 8 {
+        return Ok(0);
     }
     let i = (*out).call_count as usize;
     (*out).tags[i] = lfs_tag_type3(tag);
     (*out).first_bytes[i] = if buffer.is_null() {
         0
     } else {
-        *((buffer as *const u8).add(0))
+        unsafe { *((buffer as *const u8).add(0)) }
     };
     (*out).call_count += 1;
-    0
+    Ok(0)
 }

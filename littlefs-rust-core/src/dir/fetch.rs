@@ -316,7 +316,7 @@ pub fn lfs_dir_fetchmatch(
     pair: &[lfs_block_t; 2],
     _fmask: lfs_tag_t,
     _ftag: lfs_tag_t,
-    _id: &Option<&mut u16>,
+    _id: &mut Option<&mut u16>,
     _cb: Option<
         unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
     >,
@@ -415,10 +415,11 @@ pub fn lfs_dir_fetchmatch(
                 off += lfs_tag_dsize(ptag);
 
                 let mut tag_buf = [0u8; 4];
+                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 let err = lfs_bd_read(
                     lfs,
                     None,
-                    &mut lfs.rcache,
+                    lfs_rcache,
                     cfg.block_size,
                     dir.pair[0],
                     off,
@@ -447,10 +448,11 @@ pub fn lfs_dir_fetchmatch(
 
                 if u32::from(lfs_tag_type2(tag)) == LFS_TYPE_CCRC {
                     let mut dcrc_buf = [0u8; 4];
+                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     let err = lfs_bd_read(
                         lfs,
                         None,
-                        &mut lfs.rcache,
+                        lfs_rcache,
                         cfg.block_size,
                         dir.pair[0],
                         off + 4,
@@ -487,10 +489,11 @@ pub fn lfs_dir_fetchmatch(
 
                 let entry_size = lfs_tag_dsize(tag) - 4;
                 let mut crc_val = crc;
+                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 let err = lfs_bd_crc(
                     lfs,
                     None,
-                    &mut lfs.rcache,
+                    lfs_rcache,
                     cfg.block_size,
                     dir.pair[0],
                     off + 4,
@@ -530,10 +533,11 @@ pub fn lfs_dir_fetchmatch(
                     tempsplit = (lfs_tag_chunk(tag) & 1) != 0;
 
                     let mut tail_buf = [0u8; 8];
+                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     let err = lfs_bd_read(
                         lfs,
                         None,
-                        &mut lfs.rcache,
+                        lfs_rcache,
                         cfg.block_size,
                         dir.pair[0],
                         off + 4,
@@ -550,10 +554,11 @@ pub fn lfs_dir_fetchmatch(
                     temptail[1] = u32::from_le_bytes(tail_buf[4..8].try_into().unwrap());
                 } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_FCRC {
                     let mut fcrc_buf = [0u8; mem::size_of::<LfsFcrc>()];
+                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     let err = lfs_bd_read(
                         lfs,
                         None,
-                        &mut lfs.rcache,
+                        lfs_rcache,
                         cfg.block_size,
                         dir.pair[0],
                         off + 4,
@@ -705,7 +710,7 @@ pub fn lfs_dir_fetch(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir, pair: &[lfs_bl
         pair,
         0xffff_ffff,
         0xffff_ffff,
-        &None,
+        &mut None,
         None,
         core::ptr::null_mut(),
     );
