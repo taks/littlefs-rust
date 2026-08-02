@@ -11,9 +11,7 @@ use common::{
     LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY,
 };
 use littlefs_rust_core::{
-    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_size, lfs_file_sync, lfs_file_truncate,
-    lfs_file_write, lfs_format, lfs_fs_gc, lfs_mkdir, lfs_mount, lfs_remove, lfs_stat, lfs_unmount,
-    Lfs, LfsConfig, LfsFile, LfsInfo,
+    Lfs, LfsConfig, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_size, lfs_file_sync, lfs_file_truncate, lfs_file_write, lfs_format, lfs_fs_gc, lfs_mkdir, lfs_mount, lfs_remove, lfs_stat, lfs_unmount,
 };
 use rstest::rstest;
 
@@ -832,7 +830,7 @@ fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
             blah.as_ptr() as *const core::ffi::c_void,
             blah.len() as u32,
         );
-        assert_eq!(n, blah.len() as i32);
+        assert_eq!(n, Ok(blah.len() as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_mkdir(
@@ -862,7 +860,7 @@ fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
             blah.as_ptr() as *const core::ffi::c_void,
             blah.len() as u32,
         );
-        assert_eq!(n, blah.len() as i32);
+        assert_eq!(n, Ok(blah.len() as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
 
@@ -910,10 +908,10 @@ fn test_alloc_two_files_ctz() {
             waka.as_ptr() as *const core::ffi::c_void,
             waka.len() as u32,
         );
-        if res == LFS_ERR_NOSPC {
+        if res == Err(Error::NoSpace) {
             break;
         }
-        assert_eq!(res, waka.len() as i32);
+        assert_eq!(res, Ok(waka.len() as u32));
         filesize += waka.len();
     }
     assert_ok(lfs_file_close(lfs, file));
@@ -932,7 +930,7 @@ fn test_alloc_two_files_ctz() {
             waka.as_ptr() as *const core::ffi::c_void,
             waka.len() as u32,
         );
-        assert_eq!(n, waka.len() as i32);
+        assert_eq!(n, Ok(waka.len() as u32));
     }
     assert_ok(lfs_file_sync(lfs, file));
     let pacman_head = unsafe { (*file).ctz.head };
@@ -954,10 +952,10 @@ fn test_alloc_two_files_ctz() {
             chomp.as_ptr() as *const core::ffi::c_void,
             chomp.len() as u32,
         );
-        if res == LFS_ERR_NOSPC {
+        if res == Err(Error::NoSpace) {
             break;
         }
-        assert_eq!(res, chomp.len() as i32);
+        assert_eq!(res, Ok(chomp.len() as u32));
     }
     assert_ok(lfs_fs_gc(lfs));
     assert_ok(lfs_file_close(lfs, file));
@@ -970,7 +968,7 @@ fn test_alloc_two_files_ctz() {
         path_bytes("pacman").as_ptr(),
         LFS_O_RDONLY,
     ));
-    let open_head = unsafe { (*file.as_ptr()).ctz.head };
+    let open_head = unsafe { (*file).ctz.head };
     assert_eq!(
         open_head, pacman_head,
         "pacman ctz.head after ghost fill+GC: expected {} got {}",
@@ -1035,10 +1033,10 @@ fn test_alloc_bad_blocks_body() {
             waka.as_ptr() as *const core::ffi::c_void,
             waka.len() as u32,
         );
-        if res == LFS_ERR_NOSPC {
+        if res == Err(Error::NoSpace) {
             break;
         }
-        assert_eq!(res, waka.len() as i32);
+        assert_eq!(res, Ok(waka.len() as u32));
         filesize += waka.len();
     }
     assert_ok(lfs_file_close(lfs, file));
@@ -1058,7 +1056,7 @@ fn test_alloc_bad_blocks_body() {
             waka.as_ptr() as *const core::ffi::c_void,
             waka.len() as u32,
         );
-        assert_eq!(n, waka.len() as i32);
+        assert_eq!(n, Ok(waka.len() as u32));
     }
 
     assert_ok(lfs_file_sync(lfs, file));
@@ -1098,10 +1096,10 @@ fn test_alloc_bad_blocks_body() {
             chomp.as_ptr() as *const core::ffi::c_void,
             chomp.len() as u32,
         );
-        if res == LFS_ERR_CORRUPT || res == LFS_ERR_NOSPC {
+        if res == Err(Error::Corrupt) || res == Err(Error::NoSpace) {
             break;
         }
-        assert_eq!(res, chomp.len() as i32);
+        assert_eq!(res, Ok(chomp.len() as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
 
@@ -1128,10 +1126,10 @@ fn test_alloc_bad_blocks_body() {
             chomp.as_ptr() as *const core::ffi::c_void,
             chomp.len() as u32,
         );
-        if res == LFS_ERR_NOSPC {
+        if res == Err(Error::NoSpace) {
             break;
         }
-        assert_eq!(res, chomp.len() as i32);
+        assert_eq!(res, Ok(chomp.len() as u32));
     }
     assert_ok(lfs_fs_gc(lfs));
     assert_ok(lfs_file_close(lfs, file));
@@ -1144,7 +1142,7 @@ fn test_alloc_bad_blocks_body() {
         path_bytes("pacman").as_ptr(),
         LFS_O_RDONLY,
     ));
-    let open_head = unsafe { (*file.as_ptr()).ctz.head };
+    let open_head = unsafe { (*file).ctz.head };
     assert!(
         open_head < env.config.block_count,
         "pacman ctz.head={} must be < block_count {} (dir corruption when ghost present)",
@@ -1156,20 +1154,20 @@ fn test_alloc_bad_blocks_body() {
         let n = lfs_file_read(
             lfs,
             file,
-            rbuf as *mut core::ffi::c_void,
+            rbuf.as_mut_ptr() as *mut core::ffi::c_void,
             waka.len() as u32,
         );
-        if n != waka.len() as i32 {
+        if n != Ok(waka.len() as u32) {
             common::dump::dump_fs(
                 &env.badblock_ram.ram.data,
                 env.config.block_size,
                 env.config.block_count,
             );
             panic!(
-                "lfs_file_read returned {} (expected {}; LFS_ERR_CORRUPT={})",
+                "lfs_file_read returned {:?} (expected {}; LFS_ERR_CORRUPT={:?})",
                 n,
                 waka.len(),
-                LFS_ERR_CORRUPT
+                Error::Corrupt
             );
         }
         assert_eq!(&rbuf[..waka.len()], waka);
@@ -1224,8 +1222,8 @@ fn test_alloc_chained_dir_exhaustion() {
             blah.as_ptr() as *const core::ffi::c_void,
             blah.len() as u32,
         );
-        if err < 0 {
-            assert_err(LFS_ERR_NOSPC, err);
+        if err.is_err() {
+            assert_err(Error::NoSpace, err);
             break;
         }
         count += 1;
@@ -1260,7 +1258,7 @@ fn test_alloc_chained_dir_exhaustion() {
             blah.as_ptr() as *const core::ffi::c_void,
             blah.len() as u32,
         );
-        assert_eq!(n, blah.len() as i32);
+        assert_eq!(n, Ok(blah.len() as u32));
     }
     assert_ok(lfs_file_sync(lfs, file));
 
@@ -1271,13 +1269,12 @@ fn test_alloc_chained_dir_exhaustion() {
         ));
     }
 
-    let mut err: i32;
-    err = lfs_mkdir(lfs, path_bytes("exhaustiondir").as_ptr());
-    assert_err(LFS_ERR_NOSPC, err);
+    let mut err = lfs_mkdir(lfs, path_bytes("exhaustiondir").as_ptr());
+    assert_err(Error::NoSpace, err);
 
     loop {
         err = lfs_mkdir(lfs, path_bytes("exhaustiondir").as_ptr());
-        if err != LFS_ERR_NOSPC {
+        if err != Err(Error::NoSpace) {
             break;
         }
         let filesize = lfs_file_size(lfs, file);
@@ -1293,7 +1290,7 @@ fn test_alloc_chained_dir_exhaustion() {
     assert_ok(err);
 
     err = lfs_mkdir(lfs, path_bytes("exhaustiondir2").as_ptr());
-    assert_err(LFS_ERR_NOSPC, err);
+    assert_err(Error::NoSpace, err);
 
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -1339,7 +1336,7 @@ fn test_alloc_outdated_lookahead() {
             blah.as_ptr() as *const core::ffi::c_void,
             chunk as u32,
         );
-        assert_eq!(n, chunk as i32);
+        assert_eq!(n, Ok(chunk as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
 
@@ -1356,7 +1353,7 @@ fn test_alloc_outdated_lookahead() {
             blah.as_ptr() as *const core::ffi::c_void,
             chunk as u32,
         );
-        assert_eq!(n, chunk as i32);
+        assert_eq!(n, Ok(chunk as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
 
@@ -1377,7 +1374,7 @@ fn test_alloc_outdated_lookahead() {
             blah.as_ptr() as *const core::ffi::c_void,
             chunk as u32,
         );
-        assert_eq!(n, chunk as i32);
+        assert_eq!(n, Ok(chunk as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
 
@@ -1395,7 +1392,7 @@ fn test_alloc_outdated_lookahead() {
             blah.as_ptr() as *const core::ffi::c_void,
             chunk as u32,
         );
-        assert_eq!(n, chunk as i32);
+        assert_eq!(n, Ok(chunk as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
 
@@ -1443,7 +1440,7 @@ fn test_alloc_outdated_lookahead_split_dir() {
             blah.as_ptr() as *const core::ffi::c_void,
             chunk as u32,
         );
-        assert_eq!(n, chunk as i32);
+        assert_eq!(n, Ok(chunk as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
 
@@ -1460,7 +1457,7 @@ fn test_alloc_outdated_lookahead_split_dir() {
             blah.as_ptr() as *const core::ffi::c_void,
             chunk as u32,
         );
-        assert_eq!(n, chunk as i32);
+        assert_eq!(n, Ok(chunk as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
 
@@ -1481,12 +1478,12 @@ fn test_alloc_outdated_lookahead_split_dir() {
             blah.as_ptr() as *const core::ffi::c_void,
             chunk as u32,
         );
-        assert_eq!(n, chunk as i32);
+        assert_eq!(n, Ok(chunk as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
 
     let err = lfs_mkdir(lfs, path_bytes("split").as_ptr());
-    assert_err(LFS_ERR_NOSPC, err);
+    assert_err(Error::NoSpace, err);
 
     assert_ok(lfs_file_open(
         lfs,
@@ -1500,7 +1497,7 @@ fn test_alloc_outdated_lookahead_split_dir() {
         b"hi".as_ptr() as *const core::ffi::c_void,
         2,
     );
-    assert_eq!(n, 2);
+    assert_eq!(n, Ok(2));
     assert_ok(lfs_file_close(lfs, file));
 
     assert_ok(lfs_unmount(lfs));
