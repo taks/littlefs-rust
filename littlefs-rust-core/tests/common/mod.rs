@@ -9,7 +9,7 @@ pub mod dump;
 pub mod powerloss;
 
 use core::cell::RefCell;
-use littlefs_rust_core::{LFS_ERR_CORRUPT, LfsConfig, error::Error};
+use littlefs_rust_core::{LfsConfig, error::Error};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
@@ -199,7 +199,7 @@ unsafe extern "C" fn badblock_prog(
     block: u32,
     off: u32,
     buffer: &[u8],
-) -> i32 {
+) -> Result<(), Error> {
     let ctx = unsafe { (*cfg).context as *mut BadBlockRamStorage };
     let badblock = unsafe { &mut *ctx };
     if badblock.is_bad(block) {
@@ -217,22 +217,22 @@ unsafe extern "C" fn badblock_prog(
 /// ERASEERROR → return LFS_ERR_CORRUPT
 /// ERASENOOP → return 0 (silently skip the erase)
 /// All others → erase normally
-unsafe extern "C" fn badblock_erase(cfg: *const LfsConfig, block: u32) -> i32 {
+unsafe extern "C" fn badblock_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     let ctx = unsafe { (*cfg).context as *mut BadBlockRamStorage };
     let badblock = unsafe { &mut *ctx };
     if badblock.is_bad(block) {
         match badblock.behavior {
-            BadBlockBehavior::EraseError => return LFS_ERR_CORRUPT,
-            BadBlockBehavior::EraseNoop => return 0,
+            BadBlockBehavior::EraseError => return Err(Error::Corrupt),
+            BadBlockBehavior::EraseNoop => return Ok(()),
             _ => {}
         }
     }
     badblock.ram.erase(block);
-    0
+    Ok(())
 }
 
-unsafe extern "C" fn badblock_sync(_cfg: *const LfsConfig) -> i32 {
-    0
+unsafe extern "C" fn badblock_sync(_cfg: &LfsConfig) -> Result<(), Error> {
+    Ok(())
 }
 
 /// Holds RAM storage, config, and buffers. Keeps pointers valid for lfs_* calls.
@@ -292,9 +292,9 @@ pub fn config_with_geometry(block_size: u32, block_count: u32) -> TestEnv {
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
+    env.config.read_buffer = env._read_buf as *mut core::ffi::c_void;
+    env.config.prog_buffer = env._prog_buf as *mut core::ffi::c_void;
+    env.config.lookahead_buffer = env._lookahead_buf as *mut core::ffi::c_void;
     env
 }
 
@@ -340,9 +340,9 @@ pub fn default_config(block_count: u32) -> TestEnv {
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
+    env.config.read_buffer = env._read_buf as *mut core::ffi::c_void;
+    env.config.prog_buffer = env._prog_buf as *mut core::ffi::c_void;
+    env.config.lookahead_buffer = env._lookahead_buf as *mut core::ffi::c_void;
     env
 }
 
@@ -385,9 +385,9 @@ pub fn clone_config_with_block_count(env: &TestEnv, block_count: u32) -> ClonedC
         cache_size: env.config.cache_size,
         lookahead_size: env.config.lookahead_size,
         compact_thresh: env.config.compact_thresh,
-        read_buffer: read_buf.as_mut_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_mut_ptr() as *mut core::ffi::c_void,
-        lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void,
+        read_buffer: read_buf as *mut core::ffi::c_void,
+        prog_buffer: prog_buf as *mut core::ffi::c_void,
+        lookahead_buffer: lookahead_buf as *mut core::ffi::c_void,
         name_max: env.config.name_max,
         file_max: env.config.file_max,
         attr_max: env.config.attr_max,
@@ -459,9 +459,9 @@ pub fn config_badblock_with_behavior(
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
+    env.config.read_buffer = env._read_buf as *mut core::ffi::c_void;
+    env.config.prog_buffer = env._prog_buf as *mut core::ffi::c_void;
+    env.config.lookahead_buffer = env._lookahead_buf as *mut core::ffi::c_void;
     env
 }
 
@@ -530,7 +530,7 @@ fn block_has_magic(config: &LfsConfig, block: u32) -> bool {
 
 /// Assert "littlefs" in blocks 0 and 1 (at offset 8 or 12 depending on commit path).
 /// Both blocks must have magic per upstream.
-pub fn assert_superblock_magic(config: *const LfsConfig) {
+pub fn assert_superblock_magic(config: &LfsConfig) {
     let has_0 = block_has_magic(config, 0);
     let has_1 = block_has_magic(config, 1);
     assert!(
@@ -542,10 +542,10 @@ pub fn assert_superblock_magic(config: *const LfsConfig) {
 }
 
 /// Invoke config read callback for raw block access (e.g. test_superblocks_magic).
-pub fn read_block_raw(config: *const LfsConfig, block: u32, off: u32, buf: &mut [u8]) -> i32 {
+pub fn read_block_raw(config: &LfsConfig, block: u32, off: u32, buf: &mut [u8]) -> i32 {
     unsafe {
         let read = (*config).read.expect("read callback");
-        read(config, block, off, buf.as_mut_ptr(), buf.len() as u32)
+        read(config, block, off, buf, buf.len() as u32)
     }
 }
 
@@ -553,7 +553,7 @@ pub fn read_block_raw(config: *const LfsConfig, block: u32, off: u32, buf: &mut 
 /// Mirrors read_block_raw but for writes. Used for corruption injection (test_evil).
 ///
 /// C: lfs_emubd_prog via cfg->prog callback
-pub fn write_block_raw(config: *const LfsConfig, block: u32, off: u32, data: &[u8]) -> i32 {
+pub fn write_block_raw(config: &LfsConfig, block: u32, off: u32, data: &[u8]) -> i32 {
     unsafe {
         let prog = (*config).prog.expect("prog callback");
         prog(config, block, off, data.as_ptr(), data.len() as u32)
@@ -564,7 +564,7 @@ pub fn write_block_raw(config: *const LfsConfig, block: u32, off: u32, data: &[u
 /// Used for corruption injection (test_evil_invalid_ctz_pointer).
 ///
 /// C: cfg->erase(cfg, block)
-pub fn erase_block_raw(config: *const LfsConfig, block: u32) -> i32 {
+pub fn erase_block_raw(config: &LfsConfig, block: u32) -> Result<(), Error> {
     unsafe {
         let erase = (*config).erase.expect("erase callback");
         erase(config, block)
@@ -605,24 +605,24 @@ pub fn path_bytes(s: &str) -> Vec<u8> {
 /// Read directory entry names (excluding "." and "..") from path. For use in dir tests.
 pub fn dir_entry_names(
     lfs: *mut littlefs_rust_core::Lfs,
-    _config: *const LfsConfig,
+    _config: &LfsConfig,
     path_str: &str,
 ) -> Result<Vec<String>, Error> {
     use littlefs_rust_core::{lfs_dir_close, lfs_dir_open, lfs_dir_read, LfsDir, LfsInfo};
 
     let path = path_bytes(path_str);
     let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
-    lfs_dir_open(lfs, dir.as_mut_ptr(), path.as_ptr())?;
+    lfs_dir_open(lfs, dir, path.as_ptr())?;
 
     let mut names = Vec::new();
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
     loop {
-        let n = lfs_dir_read(lfs, dir.as_mut_ptr(), info.as_mut_ptr());
+        let n = lfs_dir_read(lfs, dir, info);
         if n == Ok(0) {
             break;
         }
         if let Err(err) = n {
-            let _ = lfs_dir_close(lfs, dir.as_mut_ptr());
+            let _ = lfs_dir_close(lfs, dir);
             return Err(err);
         }
         let info_ref = unsafe { &*info.as_ptr() };
@@ -634,7 +634,7 @@ pub fn dir_entry_names(
             names.push(name);
         }
     }
-    let _ = lfs_dir_close(lfs, dir.as_mut_ptr());
+    let _ = lfs_dir_close(lfs, dir);
     Ok(names)
 }
 
@@ -664,46 +664,42 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
     };
 
     init_context(env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
-    let err = lfs_format(lfs.as_mut_ptr(), &env.config as *const LfsConfig);
-    if err != 0 {
-        return Err(err);
-    }
-    let err = lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig);
-    if err != 0 {
-        return Err(err);
-    }
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let err = lfs_format(lfs, &env.config as &LfsConfig)?;
+
+    let err = lfs_mount(lfs, &env.config as &LfsConfig)?;
+
 
     let path = path_bytes("hello");
     let data = b"Hello World!\0";
-    let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     let err = lfs_file_open(
-        lfs.as_mut_ptr(),
-        file.as_mut_ptr(),
+        lfs,
+        file,
         path.as_ptr(),
         0x0100 | 2,
     );
-    if err != 0 {
-        let _ = lfs_unmount(lfs.as_mut_ptr());
+    if let Err(err) = err {
+        let _ = lfs_unmount(lfs);
         return Err(err);
     }
     let n = lfs_file_write(
-        lfs.as_mut_ptr(),
-        file.as_mut_ptr(),
-        data.as_ptr() as *const core::ffi::c_void,
+        lfs,
+        file,
+        data.as_ptr() as *mut core::ffi::c_void,
         data.len() as u32,
     )?;
     if n != data.len() as _ {
-        let _ = lfs_file_close(lfs.as_mut_ptr(), file.as_mut_ptr());
-        let _ = lfs_unmount(lfs.as_mut_ptr());
+        let _ = lfs_file_close(lfs, file);
+        let _ = lfs_unmount(lfs);
         return Err(Error::Invalid);
     }
-    let err = lfs_file_close(lfs.as_mut_ptr(), file.as_mut_ptr());
+    let err = lfs_file_close(lfs, file);
     if err != 0 {
-        let _ = lfs_unmount(lfs.as_mut_ptr());
+        let _ = lfs_unmount(lfs);
         return Err(err);
     }
-    let err = lfs_unmount(lfs.as_mut_ptr());
+    let err = lfs_unmount(lfs);
     if err != 0 {
         return Err(err);
     }
@@ -718,14 +714,14 @@ pub fn dir_block(lfs: *mut littlefs_rust_core::Lfs, dir_path: &str) -> u32 {
 
 /// Get both metadata block numbers (`m.pair[0]`, `m.pair[1]`) for a directory while mounted.
 /// Used by fix_relocation tests to set wear on dir pairs.
-pub fn dir_pair(lfs: *mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
+pub fn dir_pair(lfs: &littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
     use littlefs_rust_core::{lfs_dir_close, lfs_dir_open, LfsDir};
 
     let path = path_bytes(dir_path);
     let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
-    assert_ok(lfs_dir_open(lfs, dir.as_mut_ptr(), path.as_ptr()));
+    assert_ok(lfs_dir_open(lfs, dir, path.as_ptr()));
     let pair = unsafe { (*dir.as_ptr()).m.pair };
-    assert_ok(lfs_dir_close(lfs, dir.as_mut_ptr()));
+    assert_ok(lfs_dir_close(lfs, dir));
     [pair[0], pair[1]]
 }
 
@@ -737,7 +733,7 @@ pub fn corrupt_block(env: &mut TestEnv, block: u32) {
     let block_size = BLOCK_SIZE as usize;
     let mut buffer = vec![0u8; block_size];
     assert_eq!(
-        read_block_raw(&env.config as *const LfsConfig, block, 0, &mut buffer),
+        read_block_raw(&env.config as &LfsConfig, block, 0, &mut buffer),
         0
     );
 
@@ -776,7 +772,7 @@ pub fn format_and_read_superblock_blocks(env: &mut TestEnv) -> Result<(Vec<u8>, 
     use littlefs_rust_core::{lfs_format, Lfs};
 
     let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
-    let err = lfs_format(lfs.as_mut_ptr(), &env.config as *const LfsConfig);
+    let err = lfs_format(lfs, &env.config as &LfsConfig);
     if err != 0 {
         return Err(err);
     }
@@ -784,8 +780,8 @@ pub fn format_and_read_superblock_blocks(env: &mut TestEnv) -> Result<(Vec<u8>, 
     let block_size = env.config.block_size as usize;
     let mut block0 = vec![0u8; block_size];
     let mut block1 = vec![0u8; block_size];
-    let err0 = read_block_raw(&env.config as *const LfsConfig, 0, 0, &mut block0);
-    let err1 = read_block_raw(&env.config as *const LfsConfig, 1, 0, &mut block1);
+    let err0 = read_block_raw(&env.config as &LfsConfig, 0, 0, &mut block0);
+    let err1 = read_block_raw(&env.config as &LfsConfig, 1, 0, &mut block1);
     if err0 != 0 || err1 != 0 {
         return Err(if err0 != 0 { err0 } else { err1 });
     }
@@ -1125,8 +1121,8 @@ pub fn advance_prng(state: &mut u32, n: u32) {
 /// }
 /// ```
 pub fn write_prng_file(
-    lfs: *mut littlefs_rust_core::Lfs,
-    file: *mut littlefs_rust_core::LfsFile,
+    lfs: &mut littlefs_rust_core::Lfs,
+    file: &mut littlefs_rust_core::LfsFile,
     size: u32,
     chunk_size: u32,
     seed: u32,
@@ -1142,7 +1138,7 @@ pub fn write_prng_file(
         let n = littlefs_rust_core::lfs_file_write(
             lfs,
             file,
-            buffer.as_ptr() as *const core::ffi::c_void,
+            buffer.as_ptr() as *mut core::ffi::c_void,
             chunk,
         );
         assert_eq!(
@@ -1158,12 +1154,12 @@ pub fn write_prng_file(
 /// Like write_prng_file but returns Err on write failure (e.g. power-loss LFS_ERR_IO).
 /// Use in power-loss tests where writes can legitimately fail.
 pub fn write_prng_file_result(
-    lfs: *mut littlefs_rust_core::Lfs,
-    file: *mut littlefs_rust_core::LfsFile,
+    lfs: &mut littlefs_rust_core::Lfs,
+    file: &mut littlefs_rust_core::LfsFile,
     size: u32,
     chunk_size: u32,
     seed: u32,
-) -> Result<u32, i32> {
+) -> Result<u32, Error> {
     let mut prng = seed;
     let mut buffer = [0u8; 1024];
     let mut i: u32 = 0;
@@ -1175,14 +1171,12 @@ pub fn write_prng_file_result(
         let n = littlefs_rust_core::lfs_file_write(
             lfs,
             file,
-            buffer.as_ptr() as *const core::ffi::c_void,
+            buffer.as_ptr() as *mut core::ffi::c_void,
             chunk,
-        );
-        if n < 0 {
-            return Err(n);
-        }
-        if n != chunk as i32 {
-            return Err(-1);
+        )?;
+
+        if n != chunk as u32 {
+            return Err(Error::Invalid);
         }
         i += chunk;
     }
@@ -1218,7 +1212,7 @@ pub fn verify_prng_file(
         let n = littlefs_rust_core::lfs_file_read(
             lfs,
             file,
-            buffer.as_mut_ptr() as *mut core::ffi::c_void,
+            buffer as *mut core::ffi::c_void,
             chunk,
         );
         assert_eq!(
@@ -1241,8 +1235,8 @@ pub fn verify_prng_file(
 /// Same as verify_prng_file but uses existing PRNG state (for verifying a tail after advance).
 /// Used when reading SIZE2..SIZE1 in test_files_rewrite (PRNG was advanced by SIZE2 from seed 1).
 pub fn verify_prng_file_with_state(
-    lfs: *mut littlefs_rust_core::Lfs,
-    file: *mut littlefs_rust_core::LfsFile,
+    lfs: &mut littlefs_rust_core::Lfs,
+    file: &mut littlefs_rust_core::LfsFile,
     size: u32,
     chunk_size: u32,
     prng: &mut u32,
