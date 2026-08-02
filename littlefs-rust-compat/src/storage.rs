@@ -1,7 +1,7 @@
 //! Shared storage and config builders for C ↔ Rust compat tests.
 
 use core::cell::UnsafeCell;
-use std::os::raw::c_void;
+use std::{fmt::Error, os::raw::c_void};
 
 /// Filesystem geometry for tests.
 pub struct TestGeometry {
@@ -51,7 +51,7 @@ impl SharedStorage {
         Self::new(TestGeometry::default())
     }
 
-    fn read_impl(&self, block: u32, off: u32, buffer: &mut [u8]) -> i32 {
+    fn read_impl(&self, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {
         let storage = unsafe { &*self.data.get() };
         let start = (block as usize) * (self.geo.block_size as usize) + (off as usize);
         let end = start + buffer.len();
@@ -59,7 +59,7 @@ impl SharedStorage {
             return -22;
         }
         buffer.copy_from_slice(&storage[start..end]);
-        0
+        Ok(())
     }
 
     fn prog_impl(&self, block: u32, off: u32, data: &[u8]) -> i32 {
@@ -128,12 +128,10 @@ impl SharedStorage {
         c: *const littlefs_rust_core::LfsConfig,
         block: u32,
         off: u32,
-        buffer: *mut u8,
-        size: u32,
-    ) -> i32 {
+        buffer: &mut [u8],
+    ) -> Result<(), Error> {
         let storage = &*((*c).context as *const SharedStorage);
-        let buf = std::slice::from_raw_parts_mut(buffer, size as usize);
-        storage.read_impl(block, off, buf)
+        storage.read_impl(block, off, buffer)
     }
 
     unsafe extern "C" fn rust_prog(

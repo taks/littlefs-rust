@@ -65,18 +65,18 @@ pub fn format_mkdir_file_unmount(
     storage: &SharedStorage,
     dir_name: &str,
     file_name: &str,
-) -> Result<(), i32> {
+) -> Result<(), Error> {
     let env = storage.build_rust_env();
-    let mut lfs = MaybeUninit::<littlefs_rust_core::Lfs>::zeroed();
+    let mut lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    check(littlefs_rust_core::lfs_format(
-        lfs.as_mut_ptr(),
+    littlefs_rust_core::lfs_format(
+        lfs,
         &env.config,
-    ))?;
-    check(littlefs_rust_core::lfs_mount(lfs.as_mut_ptr(), &env.config))?;
-    mkdir_mounted(lfs.as_mut_ptr(), dir_name)?;
-    create_empty_file_mounted(lfs.as_mut_ptr(), file_name)?;
-    check(littlefs_rust_core::lfs_unmount(lfs.as_mut_ptr()))?;
+    )?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config)?;
+    mkdir_mounted(lfs, dir_name)?;
+    create_empty_file_mounted(lfs, file_name)?;
+    littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(())
 }
 
@@ -512,12 +512,12 @@ pub fn mount_create_dirs_files_prng_and_verify_all(
 
 // ── Internal helpers ────────────────────────────────────────────────────
 
-fn mkdir_mounted(lfs: *mut littlefs_rust_core::Lfs, path: &str) -> Result<(), i32> {
+fn mkdir_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<(), Error> {
     let p = path_cstr(path);
-    check(littlefs_rust_core::lfs_mkdir(lfs, p.as_ptr()))
+    littlefs_rust_core::lfs_mkdir(lfs, p.as_ptr())
 }
 
-fn create_empty_file_mounted(lfs: *mut littlefs_rust_core::Lfs, path: &str) -> Result<(), i32> {
+fn create_empty_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<(), i32> {
     let p = path_cstr(path);
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let mut file = MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed();
@@ -534,7 +534,7 @@ fn write_file_mounted(
     lfs: *mut littlefs_rust_core::Lfs,
     path: &str,
     content: &[u8],
-) -> Result<(), i32> {
+) -> Result<(), Error> {
     let p = path_cstr(path);
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let mut file = MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed();
@@ -564,7 +564,7 @@ fn write_prng_file_mounted(
     size: u32,
     chunk: u32,
     seed: u32,
-) -> Result<(), i32> {
+) -> Result<(), Error> {
     let p = path_cstr(path);
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let mut file = MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed();
