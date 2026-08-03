@@ -34,13 +34,10 @@ fn test_orphans_mkconsistent_fresh() {
     init_context(&mut env);
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
-    ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok(lfs_mount(lfs, &env.config));
 
-    let lfs_ptr = lfs.as_mut_ptr();
+    let lfs_ptr = lfs;
     assert_ok(lfs_fs_mkconsistent(lfs_ptr));
     assert_ok(lfs_unmount(lfs_ptr));
 }
@@ -55,13 +52,10 @@ fn test_orphans_mkconsistent_no_orphans() {
     init_context(&mut env);
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
-    ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok(lfs_mount(lfs, &env.config));
 
-    let lfs_ptr = lfs.as_mut_ptr();
+    let lfs_ptr = lfs;
     assert_ok(lfs_fs_preporphans(lfs_ptr, 1));
     assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) });
 
@@ -74,7 +68,7 @@ fn test_orphans_mkconsistent_no_orphans() {
     );
     assert_ok(lfs_unmount(lfs_ptr));
 
-    assert_ok(lfs_mount(lfs_ptr, &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(lfs_ptr, &env.config));
     assert!(
         !unsafe { lfs_fs_hasorphans(lfs_ptr) },
         "persisted gstate has no orphans"
@@ -86,7 +80,7 @@ fn test_orphans_mkconsistent_no_orphans() {
     );
     assert_ok(lfs_unmount(lfs_ptr));
 
-    assert_ok(lfs_mount(lfs_ptr, &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(lfs_ptr, &env.config));
     assert!(
         !unsafe { lfs_fs_hasorphans(lfs_ptr) },
         "after remount, gstate persisted to disk has no orphans"
@@ -103,13 +97,10 @@ fn test_orphans_no_orphans() {
     init_context(&mut env);
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
-    ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok(lfs_mount(lfs, &env.config));
 
-    let lfs_ptr = lfs.as_mut_ptr();
+    let lfs_ptr = lfs;
     assert_ok(lfs_fs_preporphans(lfs_ptr, 1));
     assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) });
 
@@ -130,13 +121,10 @@ fn test_orphans_nonreentrant() {
     init_context(&mut env);
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
-    ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok(lfs_mount(lfs, &env.config));
 
-    let lfs_ptr = lfs.as_mut_ptr();
+    let lfs_ptr = lfs;
     let path = path_bytes("a");
     assert_ok(lfs_mkdir(lfs_ptr, path.as_ptr()));
     assert_ok(lfs_remove(lfs_ptr, path.as_ptr()));
@@ -153,13 +141,13 @@ fn test_orphans_normal() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let cfg = &env.config as *const LfsConfig;
+    let cfg = &env.config;
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
+    assert_ok(lfs_format(lfs, cfg));
+    assert_ok(lfs_mount(lfs, cfg));
 
-    let lfs_ptr = lfs.as_mut_ptr();
+    let lfs_ptr = lfs;
     assert_ok(lfs_mkdir(lfs_ptr, path_bytes("parent").as_ptr()));
     assert_ok(lfs_mkdir(lfs_ptr, path_bytes("parent/orphan").as_ptr()));
     assert_ok(lfs_mkdir(lfs_ptr, path_bytes("parent/child").as_ptr()));
@@ -239,13 +227,10 @@ fn test_orphans_one_orphan() {
     init_context(&mut env);
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
-    ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok(lfs_mount(lfs, &env.config));
 
-    let lfs_ptr = lfs.as_mut_ptr();
+    let lfs_ptr = lfs;
 
     // Create an orphan mdir
     let mut orphan = LfsMdir {
@@ -291,7 +276,7 @@ fn test_orphans_one_orphan() {
     assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) }, "should have orphans");
     assert_ok(lfs_unmount(lfs_ptr));
 
-    assert_ok(lfs_mount(lfs_ptr, &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(lfs_ptr, &env.config));
     assert!(
         unsafe { lfs_fs_hasorphans(lfs_ptr) },
         "orphans should persist"
@@ -313,13 +298,10 @@ fn test_orphans_mkconsistent_one_orphan() {
     init_context(&mut env);
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
-    ));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig));
+    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok(lfs_mount(lfs, &env.config));
 
-    let lfs_ptr = lfs.as_mut_ptr();
+    let lfs_ptr = lfs;
 
     // Create an orphan mdir
     let mut orphan = LfsMdir {
@@ -365,7 +347,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) }, "should have orphans");
     assert_ok(lfs_unmount(lfs_ptr));
 
-    assert_ok(lfs_mount(lfs_ptr, &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(lfs_ptr, &env.config));
     assert!(
         unsafe { lfs_fs_hasorphans(lfs_ptr) },
         "orphans should persist"
@@ -378,7 +360,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     assert_ok(lfs_unmount(lfs_ptr));
 
     // Remount and verify orphans are still gone
-    assert_ok(lfs_mount(lfs_ptr, &env.config as *const LfsConfig));
+    assert_ok(lfs_mount(lfs_ptr, &env.config));
     assert!(
         !unsafe { lfs_fs_hasorphans(lfs_ptr) },
         "after remount, orphans should still be gone"

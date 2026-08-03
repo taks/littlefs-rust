@@ -9,8 +9,8 @@ use common::{
     clone_config_with_block_count, default_config, init_context,
 };
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
-    lfs_format, lfs_fs_grow, lfs_mount, lfs_unmount,
+    Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
+    lfs_file_write, lfs_format, lfs_fs_grow, lfs_mount, lfs_unmount,
 };
 
 const BLOCK_SIZE: u32 = 512;
@@ -38,26 +38,23 @@ fn test_shrink_simple() {
 unsafe fn shrink_simple(block_count: u32, after_block_count: u32) {
     let mut env = default_config(block_count);
     init_context(&mut env);
-    let cfg = &env.config as *const LfsConfig;
+    let cfg = &env.config;
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
-    assert_ok(lfs_fs_grow(lfs.as_mut_ptr(), after_block_count));
-    let _ = lfs_unmount(lfs.as_mut_ptr());
+    assert_ok(lfs_format(lfs, cfg));
+    assert_ok(lfs_mount(lfs, cfg));
+    assert_ok(lfs_fs_grow(lfs, after_block_count));
+    let _ = lfs_unmount(lfs);
 
     if block_count != after_block_count {
-        assert_err(LFS_ERR_INVAL, lfs_mount(lfs.as_mut_ptr(), cfg));
+        assert_err(Error::Invalid, lfs_mount(lfs, cfg));
     }
 
     // Mount with reduced config
     let cfg2 = clone_config_with_block_count(&env, after_block_count);
-    let mut lfs2 = core::mem::MaybeUninit::<Lfs>::zeroed();
-    assert_ok(lfs_mount(
-        lfs2.as_mut_ptr(),
-        &cfg2.config as *const LfsConfig,
-    ));
-    assert_ok(lfs_unmount(lfs2.as_mut_ptr()));
+    let lfs2 = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    assert_ok(lfs_mount(lfs2, &cfg2.config));
+    assert_ok(lfs_unmount(lfs2));
 }
 
 /// Upstream: [cases.test_shrink_full]
@@ -87,20 +84,20 @@ fn test_shrink_full() {
 unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32) {
     let mut env = default_config(block_count);
     init_context(&mut env);
-    let cfg = &env.config as *const LfsConfig;
+    let cfg = &env.config;
     let size = BLOCK_SIZE - 0x40;
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
+    assert_ok(lfs_format(lfs, cfg));
+    assert_ok(lfs_mount(lfs, cfg));
 
     // Create FILES_COUNT+1 files of BLOCK_SIZE - 0x40 bytes
     for i in 0..files_count + 1 {
         let path = format!("file_{:03}\0", i);
-        let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
-            lfs.as_mut_ptr(),
-            file.as_mut_ptr(),
+            lfs,
+            file,
             path.as_ptr(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
@@ -110,37 +107,32 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
         wbuffer[..header.len()].copy_from_slice(header.as_bytes());
 
         let n = lfs_file_write(
-            lfs.as_mut_ptr(),
-            file.as_mut_ptr(),
+            lfs,
+            file,
             wbuffer.as_ptr() as *const core::ffi::c_void,
             size,
         );
-        assert_eq!(n, size as i32);
-        assert_ok(lfs_file_close(lfs.as_mut_ptr(), file.as_mut_ptr()));
+        assert_eq!(n, Ok(size as u32));
+        assert_ok(lfs_file_close(lfs, file));
     }
 
-    let err = lfs_fs_grow(lfs.as_mut_ptr(), after_block_count);
-    if err == 0 {
+    let err = lfs_fs_grow(lfs, after_block_count);
+    if err.is_ok() {
         // Verify all files while still mounted
         for i in 0..files_count + 1 {
             let path = format!("file_{:03}\0", i);
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
-            assert_ok(lfs_file_open(
-                lfs.as_mut_ptr(),
-                file.as_mut_ptr(),
-                path.as_ptr(),
-                LFS_O_RDONLY,
-            ));
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
 
             let mut rbuffer = vec![0u8; size as usize];
             let n = lfs_file_read(
-                lfs.as_mut_ptr(),
-                file.as_mut_ptr(),
+                lfs,
+                file,
                 rbuffer.as_mut_ptr() as *mut core::ffi::c_void,
                 BLOCK_SIZE,
             );
-            assert_eq!(n, size as i32);
-            assert_ok(lfs_file_close(lfs.as_mut_ptr(), file.as_mut_ptr()));
+            assert_eq!(n, Ok(size as u32));
+            assert_ok(lfs_file_close(lfs, file));
 
             // Build reference buffer
             let mut wbuffer_ref = vec![b'b'; size as usize];
@@ -149,43 +141,35 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
             assert_eq!(rbuffer, wbuffer_ref);
         }
     } else {
-        assert_eq!(err, LFS_ERR_NOTEMPTY);
+        assert_eq!(err, Err(Error::NotEmpty));
     }
 
-    assert_ok(lfs_unmount(lfs.as_mut_ptr()));
+    assert_ok(lfs_unmount(lfs));
 
-    if err == 0 {
+    if err.is_ok() {
         if after_block_count != block_count {
-            assert_err(LFS_ERR_INVAL, lfs_mount(lfs.as_mut_ptr(), cfg));
+            assert_err(Error::Invalid, lfs_mount(lfs, cfg));
         }
 
         // Remount with reduced config and verify files again
         let cfg2 = clone_config_with_block_count(&env, after_block_count);
-        let mut lfs2 = core::mem::MaybeUninit::<Lfs>::zeroed();
-        assert_ok(lfs_mount(
-            lfs2.as_mut_ptr(),
-            &cfg2.config as *const LfsConfig,
-        ));
+        let lfs2 = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        assert_ok(lfs_mount(lfs2, &cfg2.config));
 
         for i in 0..files_count + 1 {
             let path = format!("file_{:03}\0", i);
-            let mut file = core::mem::MaybeUninit::<LfsFile>::zeroed();
-            assert_ok(lfs_file_open(
-                lfs2.as_mut_ptr(),
-                file.as_mut_ptr(),
-                path.as_ptr(),
-                LFS_O_RDONLY,
-            ));
+            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            assert_ok(lfs_file_open(lfs2, file, path.as_ptr(), LFS_O_RDONLY));
 
             let mut rbuffer = vec![0u8; size as usize];
             let n = lfs_file_read(
-                lfs2.as_mut_ptr(),
-                file.as_mut_ptr(),
+                lfs2,
+                file,
                 rbuffer.as_mut_ptr() as *mut core::ffi::c_void,
                 BLOCK_SIZE,
             );
-            assert_eq!(n, size as i32);
-            assert_ok(lfs_file_close(lfs2.as_mut_ptr(), file.as_mut_ptr()));
+            assert_eq!(n, Ok(size as u32));
+            assert_ok(lfs_file_close(lfs2, file));
 
             let mut wbuffer_ref = vec![b'b'; size as usize];
             let header = format!("Hi {:03}", i);
@@ -193,6 +177,6 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
             assert_eq!(rbuffer, wbuffer_ref);
         }
 
-        let _ = lfs_unmount(lfs2.as_mut_ptr());
+        let _ = lfs_unmount(lfs2);
     }
 }

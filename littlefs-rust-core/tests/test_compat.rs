@@ -73,13 +73,13 @@ fn test_compat_minor_incompat() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let cfg = &env.config as *const LfsConfig;
+    let cfg = &env.config;
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, cfg));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
+    assert_ok(lfs_mount(lfs, cfg));
 
-    let lfs_ptr = lfs.as_mut_ptr();
+    let lfs_ptr = lfs;
     let lfs_ref = unsafe { &*lfs_ptr };
     let mut mdir = LfsMdir {
         pair: [0, 0],
@@ -120,7 +120,7 @@ fn test_compat_minor_incompat() {
     ));
     assert_ok(lfs_unmount(lfs_ptr));
 
-    assert_err(LFS_ERR_INVAL, lfs_mount(lfs.as_mut_ptr(), cfg));
+    assert_err(LFS_ERR_INVAL, lfs_mount(lfs, cfg));
 }
 
 /// Upstream: [cases.test_compat_minor_bump]
@@ -136,30 +136,30 @@ fn test_compat_minor_bump() {
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let cfg = &env.config as *const LfsConfig;
+    let cfg = &env.config;
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
-    assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
+    assert_ok(lfs_format(lfs, cfg));
+    assert_ok(lfs_mount(lfs, cfg));
 
-    let lfs_ptr = lfs.as_mut_ptr();
+    let lfs_ptr = lfs;
     let mut file = core::mem::MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed();
     assert_ok(lfs_file_open(
         lfs_ptr,
-        file.as_mut_ptr(),
+        file,
         path_bytes("test").as_ptr(),
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     assert_eq!(
         lfs_file_write(
             lfs_ptr,
-            file.as_mut_ptr(),
+            file,
             b"testtest".as_ptr() as *const core::ffi::c_void,
             8,
         ),
         8
     );
-    assert_ok(lfs_file_close(lfs_ptr, file.as_mut_ptr()));
+    assert_ok(lfs_file_close(lfs_ptr, file));
     assert_ok(lfs_unmount(lfs_ptr));
 
     // Write old minor version to superblock
@@ -216,7 +216,7 @@ fn test_compat_minor_bump() {
 
     assert_ok(lfs_file_open(
         lfs_ptr,
-        file.as_mut_ptr(),
+        file,
         path_bytes("test").as_ptr(),
         LFS_O_RDONLY,
     ));
@@ -224,14 +224,14 @@ fn test_compat_minor_bump() {
     assert_eq!(
         lfs_file_read(
             lfs_ptr,
-            file.as_mut_ptr(),
+            file,
             buf.as_mut_ptr() as *mut core::ffi::c_void,
             8,
         ),
         8
     );
     assert_eq!(&buf, b"testtest");
-    assert_ok(lfs_file_close(lfs_ptr, file.as_mut_ptr()));
+    assert_ok(lfs_file_close(lfs_ptr, file));
 
     assert_ok(lfs_fs_stat(lfs_ptr, fsinfo.as_mut_ptr()));
     assert_eq!(
@@ -250,20 +250,20 @@ fn test_compat_minor_bump() {
 
     assert_ok(lfs_file_open(
         lfs_ptr,
-        file.as_mut_ptr(),
+        file,
         path_bytes("test").as_ptr(),
         LFS_O_WRONLY | LFS_O_TRUNC,
     ));
     assert_eq!(
         lfs_file_write(
             lfs_ptr,
-            file.as_mut_ptr(),
+            file,
             b"teeeeest".as_ptr() as *const core::ffi::c_void,
             8,
         ),
         8
     );
-    assert_ok(lfs_file_close(lfs_ptr, file.as_mut_ptr()));
+    assert_ok(lfs_file_close(lfs_ptr, file));
 
     assert_ok(lfs_fs_stat(lfs_ptr, fsinfo.as_mut_ptr()));
     assert_eq!(unsafe { (*fsinfo.as_ptr()).disk_version }, LFS_DISK_VERSION);
@@ -276,21 +276,21 @@ fn test_compat_minor_bump() {
 
     assert_ok(lfs_file_open(
         lfs_ptr,
-        file.as_mut_ptr(),
+        file,
         path_bytes("test").as_ptr(),
         LFS_O_RDONLY,
     ));
     assert_eq!(
         lfs_file_read(
             lfs_ptr,
-            file.as_mut_ptr(),
+            file,
             buf.as_mut_ptr() as *mut core::ffi::c_void,
             8,
         ),
         8
     );
     assert_eq!(&buf, b"teeeeest");
-    assert_ok(lfs_file_close(lfs_ptr, file.as_mut_ptr()));
+    assert_ok(lfs_file_close(lfs_ptr, file));
 
     assert_ok(lfs_fs_stat(lfs_ptr, fsinfo.as_mut_ptr()));
     assert_eq!(unsafe { (*fsinfo.as_ptr()).disk_version }, LFS_DISK_VERSION);

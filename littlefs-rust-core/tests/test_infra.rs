@@ -5,11 +5,12 @@
 mod common;
 
 use common::{
-    assert_ok, config_badblock_with_behavior, config_with_wear_leveling, default_config,
+    BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok,
+    config_badblock_with_behavior, config_with_wear_leveling, default_config,
     init_badblock_context, init_context, init_wear_leveling_context, test_prng, verify_prng_file,
-    write_block_raw, write_prng_file, BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY,
+    write_block_raw, write_prng_file,
 };
-use littlefs_rust_core::{LfsConfig, LFS_ERR_CORRUPT};
+use littlefs_rust_core::{LFS_ERR_CORRUPT, LfsConfig};
 
 // ── PRNG tests ──────────────────────────────────────────────────────────────
 
@@ -55,13 +56,13 @@ fn test_badblock_behavior_prog_error() {
     env.badblock_ram.set_bad_block(5);
 
     let data = [0xABu8; 16];
-    let result = write_block_raw(&env.config as *const LfsConfig, 5, 0, &data);
+    let result = write_block_raw(&env.config, 5, 0, &data);
     assert_eq!(
         result, LFS_ERR_CORRUPT,
         "ProgError should return LFS_ERR_CORRUPT on prog"
     );
 
-    let result_ok = write_block_raw(&env.config as *const LfsConfig, 6, 0, &data);
+    let result_ok = write_block_raw(&env.config, 6, 0, &data);
     assert_eq!(result_ok, 0, "Non-bad block should prog successfully");
 }
 
@@ -77,7 +78,7 @@ fn test_badblock_behavior_erase_error() {
     // Use the erase callback directly
     let result = unsafe {
         let erase = env.config.erase.expect("erase callback");
-        erase(&env.config as *const LfsConfig, 5)
+        erase(&env.config, 5)
     };
     assert_eq!(
         result, LFS_ERR_CORRUPT,
@@ -95,7 +96,7 @@ fn test_badblock_behavior_read_error() {
     env.badblock_ram.set_bad_block(5);
 
     let mut buf = [0u8; 16];
-    let result = common::read_block_raw(&env.config as *const LfsConfig, 5, 0, &mut buf);
+    let result = common::read_block_raw(&env.config, 5, 0, &mut buf);
     assert_eq!(
         result, LFS_ERR_CORRUPT,
         "ReadError should return LFS_ERR_CORRUPT on read"
@@ -113,18 +114,18 @@ fn test_badblock_behavior_prog_noop() {
     // Erase block 5, then mark it bad
     unsafe {
         let erase = env.config.erase.expect("erase callback");
-        erase(&env.config as *const LfsConfig, 5);
+        erase(&env.config, 5);
     }
     env.badblock_ram.set_bad_block(5);
 
     // Prog should succeed (return 0) but not actually write
     let data = [0xABu8; 16];
-    let result = write_block_raw(&env.config as *const LfsConfig, 5, 0, &data);
+    let result = write_block_raw(&env.config, 5, 0, &data);
     assert_eq!(result, 0, "ProgNoop should return 0");
 
     // Verify data was NOT written (should still be 0xFF from erase)
     let mut buf = [0u8; 16];
-    let _ = common::read_block_raw(&env.config as *const LfsConfig, 5, 0, &mut buf);
+    let _ = common::read_block_raw(&env.config, 5, 0, &mut buf);
     assert_eq!(buf, [0xFF; 16], "ProgNoop should not modify block data");
 }
 
@@ -142,13 +143,13 @@ fn test_badblock_behavior_erase_noop() {
     // Erase should succeed (return 0) but not actually erase
     let result = unsafe {
         let erase = env.config.erase.expect("erase callback");
-        erase(&env.config as *const LfsConfig, 5)
+        erase(&env.config, 5)
     };
     assert_eq!(result, 0, "EraseNoop should return 0");
 
     // Prog should also noop (C: ERASENOOP makes prog noop too)
     let data = [0xABu8; 16];
-    let result = write_block_raw(&env.config as *const LfsConfig, 5, 0, &data);
+    let result = write_block_raw(&env.config, 5, 0, &data);
     assert_eq!(result, 0, "EraseNoop should make prog return 0 too");
 }
 
@@ -167,7 +168,7 @@ fn test_wear_leveling_bd_exhaustion() {
     for i in 0..erase_cycles {
         let result = unsafe {
             let erase = env.config.erase.expect("erase callback");
-            erase(&env.config as *const LfsConfig, 3)
+            erase(&env.config, 3)
         };
         assert_eq!(result, 0, "Erase #{} should succeed", i);
         assert_eq!(env.bd.get_wear(3), i + 1);
@@ -187,7 +188,7 @@ fn test_wear_leveling_bd_exhaustion() {
     // (no increment, no error).
     let result = unsafe {
         let erase = env.config.erase.expect("erase callback");
-        erase(&env.config as *const LfsConfig, 3)
+        erase(&env.config, 3)
     };
     assert_eq!(
         result, 0,
@@ -201,7 +202,7 @@ fn test_wear_leveling_bd_exhaustion() {
 
     // But prog should fail with ProgError
     let data = [0xABu8; 16];
-    let result = write_block_raw(&env.config as *const LfsConfig, 3, 0, &data);
+    let result = write_block_raw(&env.config, 3, 0, &data);
     assert_eq!(
         result, LFS_ERR_CORRUPT,
         "ProgError: prog on worn block should fail"
@@ -220,7 +221,7 @@ fn test_wear_leveling_bd_erase_error() {
     for _ in 0..erase_cycles {
         let result = unsafe {
             let erase = env.config.erase.expect("erase callback");
-            erase(&env.config as *const LfsConfig, 2)
+            erase(&env.config, 2)
         };
         assert_eq!(result, 0);
     }
@@ -229,7 +230,7 @@ fn test_wear_leveling_bd_erase_error() {
     // Next erase should fail
     let result = unsafe {
         let erase = env.config.erase.expect("erase callback");
-        erase(&env.config as *const LfsConfig, 2)
+        erase(&env.config, 2)
     };
     assert_eq!(
         result, LFS_ERR_CORRUPT,
@@ -260,47 +261,32 @@ fn test_write_verify_prng_file() {
     init_context(&mut env);
 
     let mut lfs = core::mem::MaybeUninit::<littlefs_rust_core::Lfs>::zeroed();
-    assert_ok(littlefs_rust_core::lfs_format(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
-    ));
-    assert_ok(littlefs_rust_core::lfs_mount(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
-    ));
+    assert_ok(littlefs_rust_core::lfs_format(lfs, &env.config));
+    assert_ok(littlefs_rust_core::lfs_mount(lfs, &env.config));
 
     let path = common::path_bytes("prng_test");
     let mut file = core::mem::MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed();
 
     // Write 256 bytes in 31-byte chunks with seed=1
     assert_ok(littlefs_rust_core::lfs_file_open(
-        lfs.as_mut_ptr(),
-        file.as_mut_ptr(),
+        lfs,
+        file,
         path.as_ptr(),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    write_prng_file(lfs.as_mut_ptr(), file.as_mut_ptr(), 256, 31, 1);
-    assert_ok(littlefs_rust_core::lfs_file_close(
-        lfs.as_mut_ptr(),
-        file.as_mut_ptr(),
-    ));
-    assert_ok(littlefs_rust_core::lfs_unmount(lfs.as_mut_ptr()));
+    write_prng_file(lfs, file, 256, 31, 1);
+    assert_ok(littlefs_rust_core::lfs_file_close(lfs, file));
+    assert_ok(littlefs_rust_core::lfs_unmount(lfs));
 
     // Remount and verify
-    assert_ok(littlefs_rust_core::lfs_mount(
-        lfs.as_mut_ptr(),
-        &env.config as *const LfsConfig,
-    ));
+    assert_ok(littlefs_rust_core::lfs_mount(lfs, &env.config));
     assert_ok(littlefs_rust_core::lfs_file_open(
-        lfs.as_mut_ptr(),
-        file.as_mut_ptr(),
+        lfs,
+        file,
         path.as_ptr(),
         LFS_O_RDONLY,
     ));
-    verify_prng_file(lfs.as_mut_ptr(), file.as_mut_ptr(), 256, 31, 1);
-    assert_ok(littlefs_rust_core::lfs_file_close(
-        lfs.as_mut_ptr(),
-        file.as_mut_ptr(),
-    ));
-    assert_ok(littlefs_rust_core::lfs_unmount(lfs.as_mut_ptr()));
+    verify_prng_file(lfs, file, 256, 31, 1);
+    assert_ok(littlefs_rust_core::lfs_file_close(lfs, file));
+    assert_ok(littlefs_rust_core::lfs_unmount(lfs));
 }
