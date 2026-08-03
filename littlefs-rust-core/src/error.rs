@@ -19,6 +19,14 @@ pub enum Error {
     FileTooBig,
 }
 
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl core::error::Error for Error {}
+
 /// Positive return values for commit/orphan machinery. Per lfs.h enum lfs_error.
 pub const LFS_OK_RELOCATED: i32 = 1;
 pub const LFS_OK_DROPPED: i32 = 2;
