@@ -843,12 +843,9 @@ pub fn lfs_dir_getinfo(
             lfs_mktag(0x780, 0x3ff, 0),
             lfs_mktag(LFS_TYPE_NAME, id as u32, name_max + 1),
             info.name.as_mut_ptr() as *mut core::ffi::c_void,
-        );
-        if let Err(err) = tag {
-            return Err(err);
-        }
+        )?;
 
-        info.type_ = lfs_tag_type3(tag.unwrap() as _) as u8;
+        info.type_ = lfs_tag_type3(tag as _) as u8;
 
         // C: lfs.c:1430-1441
         let mut ctz = LfsCtz { head: 0, size: 0 };
