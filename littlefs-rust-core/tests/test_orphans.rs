@@ -16,14 +16,14 @@ use common::{
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
-use littlefs_rust_core::{
-    lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit, lfs_dir_fetch, lfs_format,
-    lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent, lfs_fs_preporphans,
-    lfs_fs_size, lfs_mattr, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32, lfs_remove, lfs_stat,
-    lfs_unmount, Lfs, LfsConfig, LfsMdir, LFS_ERR_NOENT,
-};
 #[cfg(feature = "slow_tests")]
-use littlefs_rust_core::{LfsInfo, LFS_ERR_EXIST, LFS_ERR_NOTEMPTY};
+use littlefs_rust_core::{LFS_ERR_EXIST, LFS_ERR_NOTEMPTY, LfsInfo};
+use littlefs_rust_core::{
+    LFS_ERR_NOENT, Lfs, LfsConfig, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit,
+    lfs_dir_fetch, lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
+    lfs_fs_preporphans, lfs_fs_size, lfs_mattr, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32,
+    lfs_remove, lfs_stat, lfs_unmount,
+};
 
 // --- test_orphans_mkconsistent_fresh ---
 // Minimal: format, mount, mkconsistent. No mkdir/remove. Sanity check.
@@ -33,7 +33,7 @@ fn test_orphans_mkconsistent_fresh() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -54,7 +54,7 @@ fn test_orphans_mkconsistent_no_orphans() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -102,7 +102,7 @@ fn test_orphans_no_orphans() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -129,7 +129,7 @@ fn test_orphans_nonreentrant() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -155,7 +155,7 @@ fn test_orphans_normal() {
     init_context(&mut env);
     let cfg = &env.config as *const LfsConfig;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
     assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
 
@@ -238,7 +238,7 @@ fn test_orphans_one_orphan() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -312,7 +312,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,

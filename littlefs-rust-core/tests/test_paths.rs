@@ -9,8 +9,8 @@ use common::{assert_err, assert_ok, default_config, init_context, init_logger, p
 #[allow(unused_imports)]
 use littlefs_rust_core::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG};
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsDir, LfsInfo, error::Error, lfs_dir_close, lfs_dir_open, lfs_format,
-    lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
+    Lfs, LfsDir, LfsInfo, error::Error, lfs_dir_close, lfs_dir_open, lfs_format, lfs_mkdir,
+    lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_core::{LfsFile, lfs_file_close, lfs_file_open};
 use rstest::rstest;
@@ -606,9 +606,8 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
         let err = lfs_stat(lfs, path.as_ptr(), info);
         if dir_mode {
             assert_ok(err);
-            let info_ref = unsafe { &*info };
-            assert_eq!(info_name_str(info_ref), PATHS[i]);
-            assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
+            assert_eq!(info_name_str(info), PATHS[i]);
+            assert_eq!(info.type_, LFS_TYPE_DIR as u8);
         } else {
             assert_err(Error::NotDir, err);
         }
@@ -2228,7 +2227,7 @@ fn test_paths_magic_conflict(#[case] dir_mode: bool) {
     }
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, path_bytes("littlefs").as_ptr(), info));
-    assert_eq!(info_name_str(unsafe { &*info }), "littlefs");
+    assert_eq!(info_name_str(info), "littlefs");
     assert_ok(lfs_rename(
         lfs,
         path_bytes("littlefs").as_ptr(),

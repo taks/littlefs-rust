@@ -9,15 +9,15 @@ mod common;
 #[cfg(feature = "slow_tests")]
 use common::LFS_O_APPEND;
 use common::{
-    assert_ok, default_config, init_context, path_bytes, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY,
-    LFS_O_WRONLY,
+    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok, default_config, init_context,
+    path_bytes,
 };
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_file_size;
 use littlefs_rust_core::{
-    lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close, lfs_file_open, lfs_file_read,
-    lfs_file_sync, lfs_file_write, lfs_format, lfs_mount, lfs_remove, lfs_unmount, Lfs, LfsConfig,
-    LfsDir, LfsFile, LfsInfo,
+    Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
+    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format,
+    lfs_mount, lfs_remove, lfs_unmount,
 };
 use rstest::rstest;
 
@@ -37,7 +37,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -179,7 +179,7 @@ fn test_interspersed_remove_files(
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -317,7 +317,7 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -540,7 +540,7 @@ fn test_interspersed_reentrant_files(
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
 
     // Mount-or-format
     let err = lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig);

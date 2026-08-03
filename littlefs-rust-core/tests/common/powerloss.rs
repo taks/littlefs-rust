@@ -12,7 +12,7 @@ use core::cell::Cell;
 
 use littlefs_rust_core::{Lfs, LfsConfig, error::Error};
 
-use super::{RamStorage, BLOCK_SIZE};
+use super::{BLOCK_SIZE, RamStorage};
 
 /// How power-loss affects in-flight writes.
 /// Upstream lfs_emubd_powerloss: NOOP vs OOO.
@@ -114,7 +114,7 @@ unsafe extern "C" fn powerloss_prog(
     cfg: &LfsConfig,
     block: u32,
     off: u32,
-    buffer: &[u8]
+    buffer: &[u8],
 ) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut PowerLossCtx;
     let ctx = &mut *ctx;
@@ -330,21 +330,20 @@ pub fn run_powerloss_log<O, V>(
     mut verify: V,
 ) -> Result<(), Error>
 where
-    O: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), Error>,
-    V: FnMut(*mut Lfs, *const LfsConfig) -> Result<(), Error>,
+    O: FnMut(&mut Lfs, &LfsConfig) -> Result<(), Error>,
+    V: FnMut(&mut Lfs, &LfsConfig) -> Result<(), Error>,
 {
-    let config_ptr = &env.config as *const LfsConfig;
     let mut n: u32 = 1;
     while n <= max_iter {
         env.restore(snapshot);
         env.set_fail_after_writes(n);
         env.reset_write_count();
 
-        let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
-        match op(lfs.as_mut_ptr(), config_ptr) {
+        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        match op(lfs, &env.config) {
             Ok(()) => return Ok(()),
-            Err(LFS_ERR_IO) => {
-                verify(lfs.as_mut_ptr(), config_ptr)?;
+            Err(Error::Io) => {
+                verify(lfs, &env.config)?;
             }
             Err(e) => return Err(e),
         }

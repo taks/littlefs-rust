@@ -5,12 +5,12 @@
 mod common;
 
 use common::{
-    assert_err, assert_ok, clone_config_with_block_count, default_config, init_context,
-    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY,
+    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok,
+    clone_config_with_block_count, default_config, init_context,
 };
 use littlefs_rust_core::{
-    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_fs_grow,
-    lfs_mount, lfs_unmount, Lfs, LfsConfig, LfsFile, LFS_ERR_INVAL, LFS_ERR_NOTEMPTY,
+    Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
+    lfs_format, lfs_fs_grow, lfs_mount, lfs_unmount,
 };
 
 const BLOCK_SIZE: u32 = 512;
@@ -40,7 +40,7 @@ unsafe fn shrink_simple(block_count: u32, after_block_count: u32) {
     init_context(&mut env);
     let cfg = &env.config as *const LfsConfig;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
     assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
     assert_ok(lfs_fs_grow(lfs.as_mut_ptr(), after_block_count));
@@ -90,7 +90,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
     let cfg = &env.config as *const LfsConfig;
     let size = BLOCK_SIZE - 0x40;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
     assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
 

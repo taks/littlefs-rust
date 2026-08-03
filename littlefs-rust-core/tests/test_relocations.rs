@@ -11,12 +11,12 @@ mod common;
 
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
-    assert_ok, config_with_cache, default_config, init_context, init_logger, path_bytes,
-    LFS_O_CREAT, LFS_O_WRONLY,
+    LFS_O_CREAT, LFS_O_WRONLY, assert_ok, config_with_cache, default_config, init_context,
+    init_logger, path_bytes,
 };
 use littlefs_rust_core::{
-    lfs_file_close, lfs_file_open, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_remove,
-    lfs_rename, lfs_stat, lfs_unmount, Lfs, LfsConfig, LfsFile, LfsInfo,
+    Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_write, lfs_format,
+    lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
 use rstest::rstest;
 
@@ -36,7 +36,7 @@ fn test_relocations_dangling_split_dir(#[values(8, 1)] block_cycles: i32) {
     init_context(&mut env);
     env.config.block_cycles = block_cycles;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -90,7 +90,7 @@ fn test_relocations_outdated_head(#[values(8, 1)] block_cycles: i32) {
     init_context(&mut env);
     env.config.block_cycles = block_cycles;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -158,7 +158,7 @@ fn test_relocations_nonreentrant(
     let mut env = default_config(block_count);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -206,7 +206,7 @@ fn test_relocations_nonreentrant_renames(
     let mut env = config_with_cache(64, block_count);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -284,7 +284,7 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
     let mut env = powerloss_config(block_count);
     init_powerloss_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -364,7 +364,7 @@ fn test_relocations_reentrant_renames(
     let mut env = powerloss_config(block_count);
     init_powerloss_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,

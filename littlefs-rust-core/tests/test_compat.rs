@@ -9,9 +9,9 @@ mod common;
 use common::{assert_err, assert_ok, default_config, init_context, init_logger, path_bytes};
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
+    LFS_DISK_VERSION, Lfs, LfsConfig, LfsFsinfo, LfsMdir, LfsSuperblock, error::Error,
     lfs_dir_commit, lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mattr, lfs_mktag, lfs_mount,
-    lfs_superblock_tole32, lfs_unmount, Lfs, LfsConfig, LfsFsinfo, LfsMdir, LfsSuperblock,
-    LFS_DISK_VERSION, error::Error,
+    lfs_superblock_tole32, lfs_unmount,
 };
 
 /// Upstream: [cases.test_compat_major_incompat]
@@ -59,11 +59,7 @@ fn test_compat_major_incompat() {
         ),
         buffer: &superblock as *const LfsSuperblock as *const core::ffi::c_void,
     }];
-    assert_ok(lfs_dir_commit(
-        &mut lfs,
-        &mut mdir,
-        &attrs,
-    ));
+    assert_ok(lfs_dir_commit(&mut lfs, &mut mdir, &attrs));
     assert_ok(lfs_unmount(&mut lfs));
 
     assert_err(Error::Invalid, lfs_mount(&mut lfs, cfg));
@@ -79,7 +75,7 @@ fn test_compat_minor_incompat() {
     init_context(&mut env);
     let cfg = &env.config as *const LfsConfig;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
 
@@ -142,7 +138,7 @@ fn test_compat_minor_bump() {
     init_context(&mut env);
     let cfg = &env.config as *const LfsConfig;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
     assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
 

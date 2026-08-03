@@ -8,14 +8,15 @@ mod common;
 #[cfg(feature = "slow_tests")]
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
-    assert_err, assert_ok, assert_superblock_magic, clone_config_with_block_count, default_config,
-    init_context, path_bytes, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY,
+    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok,
+    assert_superblock_magic, clone_config_with_block_count, default_config, init_context,
+    path_bytes,
 };
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;
 use littlefs_rust_core::{
-    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_fs_grow,
-    lfs_fs_stat, lfs_mount, lfs_remove, lfs_stat, lfs_unmount, Lfs, LfsConfig, LfsFile, LfsFsinfo,
-    LfsInfo, LFS_ERR_INVAL, LFS_ERR_NOENT,
+    LFS_ERR_INVAL, LFS_ERR_NOENT, Lfs, LfsConfig, LfsFile, LfsFsinfo, LfsInfo, lfs_file_close,
+    lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_mount,
+    lfs_remove, lfs_stat, lfs_unmount,
 };
 use rstest::rstest;
 
@@ -25,7 +26,7 @@ use rstest::rstest;
 fn test_superblocks_format() {
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     let err = lfs_format(lfs.as_mut_ptr(), &env.config as *const LfsConfig);
     assert_ok(err);
 }
@@ -36,7 +37,7 @@ fn test_superblocks_format() {
 fn test_superblocks_mount() {
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -52,7 +53,7 @@ fn test_superblocks_magic() {
     common::init_logger();
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -67,7 +68,7 @@ fn test_superblocks_magic() {
 fn test_traverse_attrs_callback_order() {
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     let mut out = littlefs_rust_core::TraverseTestOut::default();
 
     assert_ok(unsafe {
@@ -89,7 +90,7 @@ fn test_traverse_attrs_callback_order() {
 fn test_traverse_filter_gets_superblock_after_push() {
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     let mut out = littlefs_rust_core::TraverseTestOut::default();
 
     assert_ok(unsafe {
@@ -121,7 +122,7 @@ fn test_traverse_filter_gets_superblock_after_push() {
 fn test_superblocks_invalid_mount() {
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     let err = lfs_mount(lfs.as_mut_ptr(), &env.config as *const LfsConfig);
     assert_err(littlefs_rust_core::LFS_ERR_CORRUPT, err);
 }
@@ -132,7 +133,7 @@ fn test_superblocks_invalid_mount() {
 fn test_superblocks_stat() {
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -158,7 +159,7 @@ fn test_superblocks_stat() {
 fn test_superblocks_mount_unknown_block_count() {
     let mut env = default_config(128);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -223,7 +224,7 @@ fn test_superblocks_stat_tweaked() {
     env.config.file_max = 65535;
     env.config.attr_max = 512;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -253,7 +254,7 @@ fn test_superblocks_expand() {
             init_context(&mut env);
             env.config.block_cycles = block_cycles;
 
-            let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+            let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
             assert_ok(lfs_format(
                 lfs.as_mut_ptr(),
                 &env.config as *const LfsConfig,
@@ -315,7 +316,7 @@ fn test_superblocks_magic_expand() {
             init_context(&mut env);
             env.config.block_cycles = block_cycles;
 
-            let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+            let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
             assert_ok(lfs_format(
                 lfs.as_mut_ptr(),
                 &env.config as *const LfsConfig,
@@ -359,7 +360,7 @@ fn test_superblocks_expand_power_cycle() {
             init_context(&mut env);
             env.config.block_cycles = block_cycles;
 
-            let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+            let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
             assert_ok(lfs_format(
                 lfs.as_mut_ptr(),
                 &env.config as *const LfsConfig,
@@ -424,7 +425,7 @@ fn test_superblocks_reentrant_expand() {
         init_powerloss_context(&mut env);
         env.config.block_cycles = block_cycles;
 
-        let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
         assert_ok(lfs_format(
             lfs.as_mut_ptr(),
             &env.config as *const LfsConfig,
@@ -510,7 +511,7 @@ fn test_superblocks_unknown_blocks() {
     const BLOCK_COUNT: u32 = 128;
     let mut env = default_config(BLOCK_COUNT);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -601,7 +602,7 @@ fn test_superblocks_fewer_blocks() {
         init_context(&mut env);
         env.config.block_count = block_count;
 
-        let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
         assert_ok(lfs_format(
             lfs.as_mut_ptr(),
             &env.config as *const LfsConfig,
@@ -680,7 +681,7 @@ fn test_superblocks_more_blocks() {
     const ERASE_COUNT: u32 = 128;
     let mut env = default_config(2 * ERASE_COUNT);
     init_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -713,7 +714,7 @@ fn test_superblocks_grow(
     let large_count = ERASE_COUNT_GROW;
     env.config.block_count = small_count;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs.as_mut_ptr(), cfg));
     assert_ok(lfs_mount(lfs.as_mut_ptr(), cfg));
 
@@ -787,7 +788,7 @@ fn test_superblocks_shrink(
     let mut env = default_config(ERASE_COUNT_SHRINK);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
 
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
@@ -939,7 +940,7 @@ fn test_superblocks_metadata_max(
     init_context(&mut env);
     env.config.metadata_max = metadata_max;
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,

@@ -8,12 +8,12 @@
 mod common;
 
 use common::{
-    assert_ok, config_with_wear_leveling_behavior, init_wear_leveling_context, path_bytes,
-    test_prng, BadBlockBehavior, WearLevelingEnv,
+    BadBlockBehavior, WearLevelingEnv, assert_ok, config_with_wear_leveling_behavior,
+    init_wear_leveling_context, path_bytes, test_prng,
 };
 use littlefs_rust_core::{
-    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
-    lfs_stat, lfs_unmount, Lfs, LfsConfig, LfsFile, LfsInfo, LFS_ERR_NOSPC,
+    LFS_ERR_NOSPC, Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
+    lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_unmount,
 };
 use rstest::rstest;
 
@@ -149,7 +149,7 @@ fn test_exhaustion_normal(
 
     let mut env = init_exhaustion_env(erase_cycles, block_cycles, behavior);
     init_wear_leveling_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
 
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
@@ -197,7 +197,7 @@ fn test_exhaustion_superblocks(
 
     let mut env = init_exhaustion_env(erase_cycles, block_cycles, behavior);
     init_wear_leveling_context(&mut env);
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
 
     // No mkdir — files go directly in root
     assert_ok(lfs_format(
@@ -333,7 +333,7 @@ fn test_exhaustion_wear_leveling() {
             }
         }
 
-        let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
         assert_ok(lfs_format(
             lfs.as_mut_ptr(),
             &env.config as *const LfsConfig,
@@ -404,7 +404,7 @@ fn test_exhaustion_wear_leveling_superblocks() {
             }
         }
 
-        let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
         assert_ok(lfs_format(
             lfs.as_mut_ptr(),
             &env.config as *const LfsConfig,
@@ -451,7 +451,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
     env.config.block_cycles = block_cycles_val;
     init_wear_leveling_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(
         lfs.as_mut_ptr(),
         &env.config as *const LfsConfig,
@@ -548,7 +548,9 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
     }
     assert_ok(lfs_unmount(lfs.as_mut_ptr()));
 
-    eprintln!("test_exhaustion_wear_distribution(block_cycles={block_cycles_val}): completed {cycle} cycles");
+    eprintln!(
+        "test_exhaustion_wear_distribution(block_cycles={block_cycles_val}): completed {cycle} cycles"
+    );
 
     // Check wear distribution (skip blocks 0,1 = superblocks)
     let mut min_wear: i64 = i64::MAX;
