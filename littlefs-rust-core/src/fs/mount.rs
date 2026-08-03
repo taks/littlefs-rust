@@ -206,15 +206,18 @@ pub fn lfs_tortoise_detectcycles(
 ///     return err;
 /// }
 /// ```
-pub fn lfs_mount_(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(), Error> {
+pub fn lfs_mount_(
+    lfs: &mut super::lfs::Lfs,
+    cfg: &crate::lfs_config::LfsConfig,
+) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_drop;
     use crate::dir::fetch::{lfs_dir_fetchmatch, lfs_dir_getgstate};
-    use crate::dir::find::{lfs_dir_find_match, LfsDirFindMatch};
+    use crate::dir::find::{LfsDirFindMatch, lfs_dir_find_match};
     use crate::dir::traverse::lfs_dir_get;
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::fs::superblock::lfs_fs_prepsuperblock;
     use crate::lfs_gstate::lfs_gstate_iszero;
-    use crate::lfs_superblock::{lfs_superblock_fromle32, LfsSuperblock};
+    use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_fromle32};
     use crate::lfs_type::lfs_type::{LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK};
     use crate::tag::{lfs_mktag, lfs_tag_isdelete, lfs_tag_isvalid};
     use crate::types::{LFS_BLOCK_NULL, LFS_DISK_VERSION_MAJOR, LFS_DISK_VERSION_MINOR};
@@ -266,7 +269,7 @@ pub fn lfs_mount_(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig)
             }
             err_inner = lfs_tortoise_detectcycles(&dir as *const _, &mut tortoise);
             if err_inner.is_err() {
-                crate::lfs_trace!("mount: tortoise err={}", err_inner);
+                crate::lfs_trace!("mount: tortoise err={:?}", err_inner);
                 break;
             }
 
@@ -360,7 +363,7 @@ pub fn lfs_mount_(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig)
             let lfs_gstate = borrow_unchecked(&mut lfs.gstate);
             err_inner = lfs_dir_getgstate(lfs, &dir, lfs_gstate);
             crate::lfs_trace!(
-                "mount: after getgstate err={} tail={:?}",
+                "mount: after getgstate err={:?} tail={:?}",
                 err_inner,
                 dir.tail
             );

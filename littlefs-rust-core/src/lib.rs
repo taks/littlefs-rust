@@ -29,10 +29,10 @@ pub mod lfs_type;
 mod test;
 #[macro_use]
 mod macros;
+mod borrow_unchecked;
 mod tag;
 mod types;
 mod util;
-mod borrow_unchecked;
 
 use core::ffi::c_void;
 use core::future::Ready;
@@ -61,23 +61,23 @@ pub use crate::types::LFS_DISK_VERSION;
 #[doc(hidden)]
 pub use crate::block_alloc::alloc::lfs_alloc_ckpoint;
 #[doc(hidden)]
+pub use crate::dir::LfsMdir;
+#[doc(hidden)]
 pub use crate::dir::commit::{lfs_dir_alloc, lfs_dir_commit};
 #[doc(hidden)]
 pub use crate::dir::fetch::lfs_dir_fetch;
 #[doc(hidden)]
 pub use crate::dir::traverse::lfs_dir_get;
 #[doc(hidden)]
-pub use crate::dir::LfsMdir;
+pub use crate::file::lfs_ctz::LfsCtz;
 #[doc(hidden)]
 pub use crate::file::lfs_ctz::lfs_ctz_fromle32;
-#[doc(hidden)]
-pub use crate::file::lfs_ctz::LfsCtz;
 #[doc(hidden)]
 pub use crate::fs::init::{lfs_deinit, lfs_init};
 #[doc(hidden)]
 pub use crate::fs::superblock::lfs_fs_prepmove;
 #[doc(hidden)]
-pub use crate::lfs_superblock::{lfs_superblock_tole32, LfsSuperblock};
+pub use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_tole32};
 #[doc(hidden)]
 pub use crate::tag::{lfs_mattr, lfs_mktag};
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_soff_t};
@@ -90,7 +90,7 @@ pub use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_tole32};
 pub fn lfs_format(lfs: &mut Lfs, config: &LfsConfig) -> Result<(), Error> {
     crate::lfs_trace!("lfs_format({:p}, {:p})", lfs, config);
     let err = crate::fs::lfs_format_(lfs, config);
-    crate::lfs_trace!("lfs_format -> {}", err);
+    crate::lfs_trace!("lfs_format -> {:?}", err);
     err
 }
 
@@ -159,7 +159,12 @@ pub fn lfs_removeattr(lfs: *mut Lfs, path: *const u8, r#type: u8) -> Result<(), 
 
 /// Open a file. Per lfs.h lfs_file_open (lfs.c:6140-6146).
 #[inline(never)]
-pub fn lfs_file_open(lfs: &mut Lfs, file: &mut LfsFile, path: *const u8, flags: i32) -> Result<(), Error> {
+pub fn lfs_file_open(
+    lfs: &mut Lfs,
+    file: &mut LfsFile,
+    path: *const u8,
+    flags: i32,
+) -> Result<(), Error> {
     crate::file::ops::lfs_file_open_(lfs, file, path as *const i8, flags)
 }
 
@@ -299,7 +304,8 @@ pub fn lfs_fs_size(lfs: &mut Lfs) -> Result<lfs_size_t, Error> {
 }
 
 /// Callback type for lfs_fs_traverse. Per lfs.h int (*cb)(void*, lfs_block_t).
-pub type LfsTraverseCb = unsafe extern "C" fn(data: *mut c_void, block: lfs_block_t) -> Result<(), Error>;
+pub type LfsTraverseCb =
+    unsafe extern "C" fn(data: *mut c_void, block: lfs_block_t) -> Result<(), Error>;
 
 /// Traverse through all blocks in use by the filesystem. Per lfs.h lfs_fs_traverse.
 #[inline(never)]

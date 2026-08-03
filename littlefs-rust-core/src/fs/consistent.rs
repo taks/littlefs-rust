@@ -2,8 +2,8 @@
 
 use crate::Lfs;
 use crate::borrow_unchecked::borrow_unchecked;
-use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::LfsMdir;
+use crate::dir::fetch::lfs_dir_fetch;
 use crate::error::Error;
 
 /// Translation docs: Deorphan, complete moves, persist gstate. If pending gstate
@@ -130,7 +130,7 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 
     crate::lfs_trace!("lfs_fs_gc: start");
     let err = super::superblock::lfs_fs_forceconsistency(lfs);
-    crate::lfs_trace!("lfs_fs_gc: after forceconsistency err={}", err);
+    crate::lfs_trace!("lfs_fs_gc: after forceconsistency err={:?}", err);
     if err.is_err() {
         return crate::lfs_pass_err!(err);
     }
@@ -193,7 +193,7 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         if lfs_ref.lookahead.size < lfs_min(8 * lookahead_size, block_count) {
             crate::lfs_trace!("lfs_fs_gc: alloc_scan start");
             let err = lfs_alloc_scan(lfs);
-            crate::lfs_trace!("lfs_fs_gc: alloc_scan done err={}", err);
+            crate::lfs_trace!("lfs_fs_gc: alloc_scan done err={:?}", err);
             if err.is_err() {
                 return crate::lfs_pass_err!(err);
             }

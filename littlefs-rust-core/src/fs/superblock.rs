@@ -15,9 +15,7 @@ use crate::types::lfs_block_t;
 /// ```
 pub fn lfs_fs_prepsuperblock(lfs: &mut super::lfs::Lfs, needssuperblock: bool) {
     use crate::tag::lfs_mktag;
-    lfs.gstate.tag =
-        (lfs.gstate.tag & !lfs_mktag(0, 0, 0x200)) | ((needssuperblock as u32) << 9);
-
+    lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0, 0, 0x200)) | ((needssuperblock as u32) << 9);
 }
 
 /// Translation docs: Prepend orphan count delta to gstate before a commit that may create orphans.
@@ -73,7 +71,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     use crate::dir::commit::lfs_dir_commit;
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::lfs_gstate::lfs_gstate_needssuperblock;
-    use crate::lfs_superblock::{lfs_superblock_tole32, LfsSuperblock};
+    use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_tole32};
     use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
     use crate::tag::lfs_mktag;
     use crate::types::LFS_DISK_VERSION;
@@ -326,11 +324,11 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 /// C: lfs.c:4991-5120
 pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(), Error> {
     crate::lfs_trace!("deorphan: start powerloss={}", powerloss);
+    use crate::dir::LfsMdir;
     use crate::dir::commit::{lfs_dir_commit, lfs_dir_orphaningcommit};
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::dir::traverse::lfs_dir_get;
-    use crate::dir::LfsMdir;
-    use crate::error::{LFS_OK_ORPHANED};
+    use crate::error::LFS_OK_ORPHANED;
     use crate::fs::parent::lfs_fs_parent;
     use crate::lfs_gstate::{lfs_gstate_getorphans, lfs_gstate_hasmovehere};
     use crate::lfs_type::lfs_type::{LFS_TYPE_SOFTTAIL, LFS_TYPE_TAIL};
@@ -386,7 +384,9 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                 if !pdir.split {
                     let mut parent = core::mem::zeroed();
                     let tag = lfs_fs_parent(lfs, &pdir.tail, &mut parent);
-                    if let Err(err) = tag && err != Error::NoEntry {
+                    if let Err(err) = tag
+                        && err != Error::NoEntry
+                    {
                         return Err(err);
                     }
 
@@ -425,11 +425,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                                     buffer: pair.as_ptr() as *const core::ffi::c_void,
                                 },
                             ];
-                            let state = lfs_dir_orphaningcommit(
-                                lfs,
-                                &mut pdir,
-                                &attrs
-                            );
+                            let state = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
                             lfs_pair_fromle32(&mut pair);
                             if let Err(err) = state {
                                 return Err(err);
@@ -451,8 +447,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                             tag: lfs_mktag(LFS_TYPE_TAIL + if dir.split { 1 } else { 0 }, 0x3ff, 8),
                             buffer: dir_tail.as_ptr() as *const core::ffi::c_void,
                         }];
-                        let state =
-                            lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
+                        let state = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
                         lfs_pair_fromle32(&mut dir_tail);
                         if let Err(err) = state {
                             return Err(err);
@@ -482,17 +477,17 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
 pub fn lfs_fs_forceconsistency(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     crate::lfs_trace!("forceconsistency: start");
     let err = lfs_fs_desuperblock(lfs);
-    crate::lfs_trace!("forceconsistency: after desuperblock err={}", err);
+    crate::lfs_trace!("forceconsistency: after desuperblock err={:?}", err);
     if err.is_err() {
         return crate::lfs_pass_err!(err);
     }
     let err = lfs_fs_demove(lfs);
-    crate::lfs_trace!("forceconsistency: after demove err={}", err);
+    crate::lfs_trace!("forceconsistency: after demove err={:?}", err);
     if err.is_err() {
         return crate::lfs_pass_err!(err);
     }
     crate::lfs_trace!("forceconsistency: before deorphan");
     let result = lfs_fs_deorphan(lfs, true);
-    crate::lfs_trace!("forceconsistency: after deorphan err={}", result);
+    crate::lfs_trace!("forceconsistency: after deorphan err={:?}", result);
     result
 }
