@@ -21,6 +21,8 @@ use littlefs_rust_core::{
 };
 use rstest::rstest;
 
+use crate::common::init_logger;
+
 // --- test_superblocks_format ---
 // Upstream: lfs_format(&lfs, cfg) => 0
 #[test]
@@ -314,6 +316,8 @@ fn test_superblocks_magic_expand() {
 /// Same as expand but unmount/remount after each iteration.
 #[test]
 fn test_superblocks_expand_power_cycle() {
+    init_logger();
+
     for &block_cycles in &[32i32, 33, 1] {
         for &n in &[10u32, 100, 1000] {
             let mut env = default_config(128);
