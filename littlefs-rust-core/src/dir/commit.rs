@@ -138,8 +138,8 @@ pub fn lfs_dir_commitattr(
                 "commitattr SUPERBLOCK: dsize={} buffer={:p} commit.block={} commit.off={}",
                 dsize,
                 buffer,
-                commit_ref.block,
-                commit_ref.off
+                commit.block,
+                commit.off
             );
             if !buffer.is_null() && dsize >= 8 {
                 crate::lfs_trace!(
@@ -672,10 +672,10 @@ pub fn lfs_dir_split(
             end,
             tail.pair[0],
             tail.pair[1],
-            dir_ref.pair[0],
-            dir_ref.pair[1],
-            dir_ref.tail[0],
-            dir_ref.tail[1]
+            dir.pair[0],
+            dir.pair[1],
+            dir.tail[0],
+            dir.tail[1]
         );
 
         // update root if needed
@@ -981,7 +981,7 @@ pub fn lfs_dir_compact(
                 && (err != Error::NoSpace || !tired)
             {
                 crate::lfs_trace!(
-                    "lfs_dir_compact: tired pre-alloc failed err={} pair={:?}",
+                    "lfs_dir_compact: tired pre-alloc failed err={:?} pair={:?}",
                     err,
                     dir.pair
                 );
@@ -1030,7 +1030,7 @@ pub fn lfs_dir_compact(
                     crate::lfs_trace!(
                         "lfs_dir_compact relocate #{}: bd_erase CORRUPT pair={:?}",
                         relocate_count,
-                        dir_ref.pair
+                        dir.pair
                     );
                     lfs_alloc_lookahead(lfs, dir.pair[1]);
                     let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
@@ -1044,7 +1044,7 @@ pub fn lfs_dir_compact(
                         && (err2 != Error::NoSpace || !tired)
                     {
                         crate::lfs_trace!(
-                            "lfs_dir_compact NOSPC: alloc failed after bd_erase err={}",
+                            "lfs_dir_compact NOSPC: alloc failed after bd_erase err={:?}",
                             err2
                         );
                         return Err(err2);
@@ -1065,7 +1065,7 @@ pub fn lfs_dir_compact(
                     crate::lfs_trace!(
                         "lfs_dir_compact relocate #{}: commitprog CORRUPT pair={:?}",
                         relocate_count,
-                        dir_ref.pair
+                        dir.pair
                     );
                     lfs_alloc_lookahead(lfs, dir.pair[1]);
                     let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
@@ -1079,7 +1079,7 @@ pub fn lfs_dir_compact(
                         && (err2 != Error::NoSpace || !tired)
                     {
                         crate::lfs_trace!(
-                            "lfs_dir_compact NOSPC: alloc failed after commitprog err={}",
+                            "lfs_dir_compact NOSPC: alloc failed after commitprog err={:?}",
                             err2
                         );
                         return Err(err2);
@@ -1112,7 +1112,7 @@ pub fn lfs_dir_compact(
                     crate::lfs_trace!(
                         "lfs_dir_compact relocate #{}: traverse CORRUPT pair={:?}",
                         relocate_count,
-                        dir_ref.pair
+                        dir.pair
                     );
                     lfs_alloc_lookahead(lfs, dir.pair[1]);
                     let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
@@ -1126,7 +1126,7 @@ pub fn lfs_dir_compact(
                         && (err2 != Error::NoSpace || !tired)
                     {
                         crate::lfs_trace!(
-                            "lfs_dir_compact NOSPC: alloc failed after traverse err={}",
+                            "lfs_dir_compact NOSPC: alloc failed after traverse err={:?}",
                             err2
                         );
                         return Err(err2);
@@ -1134,7 +1134,7 @@ pub fn lfs_dir_compact(
                     tired = false;
                     continue;
                 }
-                crate::lfs_trace!("lfs_dir_compact: traverse returned err={}", err);
+                crate::lfs_trace!("lfs_dir_compact: traverse returned err={:?}", err);
                 return crate::lfs_pass_err!(Err(err));
             }
 
@@ -1158,7 +1158,7 @@ pub fn lfs_dir_compact(
                         crate::lfs_trace!(
                             "lfs_dir_compact relocate #{}: tail CORRUPT pair={:?}",
                             relocate_count,
-                            dir_ref.pair
+                            dir.pair
                         );
                         lfs_alloc_lookahead(lfs, dir.pair[1]);
                         let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
@@ -1172,7 +1172,7 @@ pub fn lfs_dir_compact(
                             && (err2 != Error::NoSpace || !tired)
                         {
                             crate::lfs_trace!(
-                                "lfs_dir_compact NOSPC: alloc failed after tail err={}",
+                                "lfs_dir_compact NOSPC: alloc failed after tail err={:?}",
                                 err2
                             );
                             return Err(err2);
@@ -1216,7 +1216,7 @@ pub fn lfs_dir_compact(
                         crate::lfs_trace!(
                             "lfs_dir_compact relocate #{}: movestate CORRUPT pair={:?}",
                             relocate_count,
-                            dir_ref.pair
+                            dir.pair
                         );
                         lfs_alloc_lookahead(lfs, dir.pair[1]);
                         let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
@@ -1230,7 +1230,7 @@ pub fn lfs_dir_compact(
                             && (err2 != Error::NoSpace || !tired)
                         {
                             crate::lfs_trace!(
-                                "lfs_dir_compact NOSPC: alloc failed after movestate err={}",
+                                "lfs_dir_compact NOSPC: alloc failed after movestate err={:?}",
                                 err2
                             );
                             return Err(err2);
@@ -1250,7 +1250,7 @@ pub fn lfs_dir_compact(
                     crate::lfs_trace!(
                         "lfs_dir_compact relocate #{}: commitcrc CORRUPT pair={:?}",
                         relocate_count,
-                        dir_ref.pair
+                        dir.pair
                     );
                     lfs_alloc_lookahead(lfs, dir.pair[1]);
                     let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
@@ -1264,7 +1264,7 @@ pub fn lfs_dir_compact(
                         && (err2 != Error::NoSpace || !tired)
                     {
                         crate::lfs_trace!(
-                            "lfs_dir_compact NOSPC: alloc failed after commitcrc err={}",
+                            "lfs_dir_compact NOSPC: alloc failed after commitcrc err={:?}",
                             err2
                         );
                         return Err(err2);

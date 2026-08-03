@@ -126,8 +126,7 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
         }
 
         // move lookahead buffer to the first unused block
-        lfs.lookahead.start =
-            (lfs.lookahead.start + lfs.lookahead.next) % lfs.block_count;
+        lfs.lookahead.start = (lfs.lookahead.start + lfs.lookahead.next) % lfs.block_count;
         lfs.lookahead.next = 0;
         // note we limit the lookahead buffer to at most the amount of blocks
         // checkpointed, this prevents the math in lfs_alloc from underflowing
@@ -137,14 +136,9 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
         core::ptr::write_bytes(buf, 0, cfg.lookahead_size as usize);
 
         let lfs_ptr = lfs as *mut _ as *mut core::ffi::c_void;
-        let err = lfs_fs_traverse_(
-            lfs,
-            Some(lfs_alloc_lookahead_cb),
-            lfs_ptr,
-            true,
-        );
+        let err = lfs_fs_traverse_(lfs, Some(lfs_alloc_lookahead_cb), lfs_ptr, true);
         if err.is_err() {
-            crate::lfs_trace!("alloc_scan: traverse err={}", err);
+            crate::lfs_trace!("alloc_scan: traverse err={:?}", err);
             lfs_alloc_drop(lfs);
             return crate::lfs_pass_err!(err);
         }
@@ -211,7 +205,6 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
 /// #endif
 /// ```
 pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
-
     unsafe {
         let buf = lfs.lookahead.buffer;
         if buf.is_null() {
@@ -294,7 +287,7 @@ pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
             let err = lfs_alloc_scan(lfs);
             if err.is_err() {
                 crate::lfs_trace!(
-                    "lfs_alloc NOSPC: alloc_scan returned {} start={} next={}",
+                    "lfs_alloc NOSPC: alloc_scan returned {:?} start={} next={}",
                     err,
                     lfs.lookahead.start,
                     lfs.lookahead.next
