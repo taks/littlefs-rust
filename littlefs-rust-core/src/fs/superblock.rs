@@ -85,7 +85,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 
         let mut root = core::mem::zeroed();
         let lfs_root = borrow_unchecked(&mut lfs.root);
-        let err = lfs_dir_fetch(lfs, &mut root, lfs_root)?;
+        lfs_dir_fetch(lfs, &mut root, lfs_root)?;
 
         // write a new superblock
         let mut superblock = LfsSuperblock {
@@ -465,7 +465,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
             pass = if moreorphans { 0 } else { pass + 1 };
         }
 
-        let orphans = lfs_gstate_getorphans(&(*lfs).gstate);
+        let orphans = lfs_gstate_getorphans(&lfs.gstate);
         lfs_fs_preporphans(lfs, -(orphans as i8))
     }
 }

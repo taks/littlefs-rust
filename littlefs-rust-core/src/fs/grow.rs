@@ -144,7 +144,7 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
             tag: tag as u32,
             buffer: superblock.as_ptr() as *const core::ffi::c_void,
         }];
-        let err = lfs_dir_commit(
+        lfs_dir_commit(
             lfs,
             root,
             &attrs

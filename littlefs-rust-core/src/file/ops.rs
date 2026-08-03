@@ -1351,9 +1351,9 @@ pub fn lfs_file_write_(
         }
 
         // C: lfs.c:3677-3688 — zero-fill gap when writing past end of file
-        if ((*file).flags as i32 & LFS_F_WRITING) == 0 && (*file).pos > (*file).ctz.size {
+        if (file.flags as i32 & LFS_F_WRITING) == 0 && file.pos > file.ctz.size {
             let pos = (*file).pos;
-            (*file).pos = (*file).ctz.size;
+            file.pos = file.ctz.size;
             let zero: u8 = 0;
             #[allow(clippy::while_immutable_condition)] // pos mutated via raw ptr in flushedwrite
             while (*file).pos < pos {
