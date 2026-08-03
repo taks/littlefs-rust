@@ -84,8 +84,8 @@ fn test_powerloss_only_rev() {
         "dir_open notebook",
         lfs_dir_open(lfs, dir, path_nb.as_ptr()),
     );
-    let pair = unsafe { (*dir.as_ptr()).m.pair };
-    let rev = unsafe { (*dir.as_ptr()).m.rev };
+    let pair = dir.m.pair;
+    let rev = dir.m.rev;
     assert_ok_at("dir_close", lfs_dir_close(lfs, dir));
     assert_ok_at("unmount before corrupt", lfs_unmount(lfs));
 
@@ -131,7 +131,7 @@ fn test_powerloss_only_rev() {
             buf2.as_ptr() as *const core::ffi::c_void,
             buf2.len() as u32,
         );
-        assert!(n == buf2.len() as i32);
+        assert_eq!(n, Ok(buf2.len() as u32));
         assert_ok_at(
             &format!("file_sync #{} (after corrupt)", i + 1),
             lfs_file_sync(lfs, file),
@@ -146,12 +146,12 @@ fn test_powerloss_only_rev() {
     );
     for _ in 0..5 {
         let n = lfs_file_read(lfs, file, rbuf.as_mut_ptr() as *mut core::ffi::c_void, 5);
-        assert_eq!(n, 5);
+        assert_eq!(n, Ok(5));
         assert_eq!(&rbuf[..5], b"hello");
     }
     for _ in 0..5 {
         let n = lfs_file_read(lfs, file, rbuf.as_mut_ptr() as *mut core::ffi::c_void, 7);
-        assert_eq!(n, 7);
+        assert_eq!(n, Ok(7));
         assert_eq!(&rbuf[..7], b"goodbye");
     }
     assert_ok_at("file_close", lfs_file_close(lfs, file));
@@ -256,7 +256,7 @@ fn test_powerloss_partial_prog() {
             );
             let mut info = core::mem::MaybeUninit::<littlefs_rust_core::LfsInfo>::zeroed();
             let r = littlefs_rust_core::lfs_stat(lfs, path_a.as_ptr(), info.as_mut_ptr());
-            assert!(r == 0, "lfs_stat a after corrupt: {r}");
+            assert!(r.is_ok(), "lfs_stat a after corrupt: {r:?}");
             assert_ok_at("unmount after verify", lfs_unmount(lfs));
         }
     }

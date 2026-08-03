@@ -10,7 +10,7 @@ use common::{
     init_badblock_context, init_context, init_wear_leveling_context, test_prng, verify_prng_file,
     write_block_raw, write_prng_file,
 };
-use littlefs_rust_core::{LFS_ERR_CORRUPT, LfsConfig};
+use littlefs_rust_core::{Lfs, LfsFile, error::Error};
 
 // ── PRNG tests ──────────────────────────────────────────────────────────────
 
@@ -58,12 +58,13 @@ fn test_badblock_behavior_prog_error() {
     let data = [0xABu8; 16];
     let result = write_block_raw(&env.config, 5, 0, &data);
     assert_eq!(
-        result, LFS_ERR_CORRUPT,
+        result,
+        Err(Error::Corrupt),
         "ProgError should return LFS_ERR_CORRUPT on prog"
     );
 
     let result_ok = write_block_raw(&env.config, 6, 0, &data);
-    assert_eq!(result_ok, 0, "Non-bad block should prog successfully");
+    assert_eq!(result_ok, Ok(()), "Non-bad block should prog successfully");
 }
 
 /// Verify EraseError behavior: erase returns LFS_ERR_CORRUPT on bad block.
@@ -81,7 +82,8 @@ fn test_badblock_behavior_erase_error() {
         erase(&env.config, 5)
     };
     assert_eq!(
-        result, LFS_ERR_CORRUPT,
+        result,
+        Err(Error::Corrupt),
         "EraseError should return LFS_ERR_CORRUPT on erase"
     );
 }
@@ -98,7 +100,8 @@ fn test_badblock_behavior_read_error() {
     let mut buf = [0u8; 16];
     let result = common::read_block_raw(&env.config, 5, 0, &mut buf);
     assert_eq!(
-        result, LFS_ERR_CORRUPT,
+        result,
+        Err(Error::Corrupt),
         "ReadError should return LFS_ERR_CORRUPT on read"
     );
 }
@@ -121,7 +124,7 @@ fn test_badblock_behavior_prog_noop() {
     // Prog should succeed (return 0) but not actually write
     let data = [0xABu8; 16];
     let result = write_block_raw(&env.config, 5, 0, &data);
-    assert_eq!(result, 0, "ProgNoop should return 0");
+    assert_eq!(result, Ok(()), "ProgNoop should return 0");
 
     // Verify data was NOT written (should still be 0xFF from erase)
     let mut buf = [0u8; 16];
@@ -145,12 +148,12 @@ fn test_badblock_behavior_erase_noop() {
         let erase = env.config.erase.expect("erase callback");
         erase(&env.config, 5)
     };
-    assert_eq!(result, 0, "EraseNoop should return 0");
+    assert_eq!(result, Ok(()), "EraseNoop should return 0");
 
     // Prog should also noop (C: ERASENOOP makes prog noop too)
     let data = [0xABu8; 16];
     let result = write_block_raw(&env.config, 5, 0, &data);
-    assert_eq!(result, 0, "EraseNoop should make prog return 0 too");
+    assert_eq!(result, Ok(()), "EraseNoop should make prog return 0 too");
 }
 
 // ── Wear-leveling BD tests ──────────────────────────────────────────────────
@@ -170,7 +173,7 @@ fn test_wear_leveling_bd_exhaustion() {
             let erase = env.config.erase.expect("erase callback");
             erase(&env.config, 3)
         };
-        assert_eq!(result, 0, "Erase #{} should succeed", i);
+        assert_eq!(result, Ok(()), "Erase #{} should succeed", i);
         assert_eq!(env.bd.get_wear(3), i + 1);
     }
 
@@ -191,7 +194,8 @@ fn test_wear_leveling_bd_exhaustion() {
         erase(&env.config, 3)
     };
     assert_eq!(
-        result, 0,
+        result,
+        Ok(()),
         "ProgError behavior: erase on worn block should still succeed"
     );
     assert_eq!(
@@ -204,7 +208,8 @@ fn test_wear_leveling_bd_exhaustion() {
     let data = [0xABu8; 16];
     let result = write_block_raw(&env.config, 3, 0, &data);
     assert_eq!(
-        result, LFS_ERR_CORRUPT,
+        result,
+        Err(Error::Corrupt),
         "ProgError: prog on worn block should fail"
     );
 }
@@ -223,7 +228,7 @@ fn test_wear_leveling_bd_erase_error() {
             let erase = env.config.erase.expect("erase callback");
             erase(&env.config, 2)
         };
-        assert_eq!(result, 0);
+        assert_eq!(result, Ok(()));
     }
     assert_eq!(env.bd.get_wear(2), erase_cycles);
 
@@ -233,7 +238,8 @@ fn test_wear_leveling_bd_erase_error() {
         erase(&env.config, 2)
     };
     assert_eq!(
-        result, LFS_ERR_CORRUPT,
+        result,
+        Err(Error::Corrupt),
         "EraseError: erase on worn block should fail"
     );
 }
@@ -260,12 +266,12 @@ fn test_write_verify_prng_file() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let mut lfs = core::mem::MaybeUninit::<littlefs_rust_core::Lfs>::zeroed();
+    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(littlefs_rust_core::lfs_format(lfs, &env.config));
     assert_ok(littlefs_rust_core::lfs_mount(lfs, &env.config));
 
     let path = common::path_bytes("prng_test");
-    let mut file = core::mem::MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed();
+    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
 
     // Write 256 bytes in 31-byte chunks with seed=1
     assert_ok(littlefs_rust_core::lfs_file_open(

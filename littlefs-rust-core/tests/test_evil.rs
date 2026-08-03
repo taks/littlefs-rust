@@ -29,7 +29,7 @@ const BLOCK_COUNT: u32 = 256;
 /// defines.INVALSET = [0x3, 0x1, 0x2]
 ///
 /// Format, then commit a TAIL_TYPE tag with invalid pair to root metadata.
-/// Expect lfs_mount to return LFS_ERR_CORRUPT.
+/// Expect lfs_mount to return Error::Corrupt.
 #[test]
 fn test_evil_invalid_tail_pointer() {
     for &tail_type in &[LFS_TYPE_HARDTAIL, LFS_TYPE_SOFTTAIL] {
@@ -60,15 +60,10 @@ unsafe fn evil_invalid_tail_pointer(tail_type: u32, invalset: u32) {
         tag: lfs_mktag(tail_type, 0x3ff, 8),
         buffer: invalid_pair.as_ptr() as *const core::ffi::c_void,
     }];
-    assert_ok(lfs_dir_commit(
-        lfs,
-        mdir,
-        attrs.as_ptr() as *const core::ffi::c_void,
-        1,
-    ));
+    assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
 
-    assert_err(LFS_ERR_CORRUPT, lfs_mount(lfs, cfg));
+    assert_err(Error::Corrupt, lfs_mount(lfs, cfg));
 }
 
 /// Upstream: [cases.test_evil_invalid_dir_pointer]
@@ -77,7 +72,7 @@ unsafe fn evil_invalid_tail_pointer(tail_type: u32, invalset: u32) {
 ///
 /// Format, create "dir_here", commit a DIRSTRUCT tag with invalid pair.
 /// Mount succeeds, stat works, but dir_open/stat-child/file_open fail
-/// with LFS_ERR_CORRUPT.
+/// with Error::Corrupt.
 #[test]
 fn test_evil_invalid_dir_pointer() {
     for &invalset in &[0x3u32, 0x1, 0x2] {
@@ -112,7 +107,7 @@ unsafe fn evil_invalid_dir_pointer(invalset: u32) {
         lfs_mktag(LFS_TYPE_NAME, 1, 8), // strlen("dir_here") == 8
         buffer.as_mut_ptr() as *mut core::ffi::c_void,
     );
-    assert_eq!(tag, lfs_mktag(LFS_TYPE_DIR, 1, 8) as i32);
+    assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE_DIR, 1, 8) as u32));
     assert_eq!(&buffer[..8], b"dir_here");
 
     let invalid_pair: [u32; 2] = [
@@ -123,12 +118,7 @@ unsafe fn evil_invalid_dir_pointer(invalset: u32) {
         tag: lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, 8),
         buffer: invalid_pair.as_ptr() as *const core::ffi::c_void,
     }];
-    assert_ok(lfs_dir_commit(
-        lfs,
-        mdir,
-        attrs.as_ptr() as *const core::ffi::c_void,
-        1,
-    ));
+    assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
 
     // Verify corruption behavior
@@ -142,30 +132,24 @@ unsafe fn evil_invalid_dir_pointer(invalset: u32) {
     assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_err(
-        LFS_ERR_CORRUPT,
-        lfs_dir_open(lfs, dir.as_mut_ptr(), dir_name.as_ptr()),
-    );
+    assert_err(Error::Corrupt, lfs_dir_open(lfs, dir, dir_name.as_ptr()));
 
     let child_file = path_bytes("dir_here/file_here");
     assert_err(
-        LFS_ERR_CORRUPT,
+        Error::Corrupt,
         lfs_stat(lfs, child_file.as_ptr(), info.as_mut_ptr()),
     );
 
     let child_dir = path_bytes("dir_here/dir_here");
-    assert_err(
-        LFS_ERR_CORRUPT,
-        lfs_dir_open(lfs, dir.as_mut_ptr(), child_dir.as_ptr()),
-    );
+    assert_err(Error::Corrupt, lfs_dir_open(lfs, dir, child_dir.as_ptr()));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        LFS_ERR_CORRUPT,
+        Error::Corrupt,
         lfs_file_open(lfs, file, child_file.as_ptr(), LFS_O_RDONLY),
     );
     assert_err(
-        LFS_ERR_CORRUPT,
+        Error::Corrupt,
         lfs_file_open(lfs, file, child_file.as_ptr(), LFS_O_WRONLY | LFS_O_CREAT),
     );
 
@@ -177,7 +161,7 @@ unsafe fn evil_invalid_dir_pointer(invalset: u32) {
 /// defines.SIZE = [10, 1000, 100000]
 ///
 /// Create "file_here" (empty). Corrupt its CTZSTRUCT to point at 0xcccccccc
-/// with faked size. Mount + stat succeed. file_read fails with LFS_ERR_CORRUPT.
+/// with faked size. Mount + stat succeed. file_read fails with Error::Corrupt.
 /// If SIZE > 2*BLOCK_SIZE, mkdir also fails (GC triggers corrupt read).
 #[test]
 fn test_evil_invalid_file_pointer() {
@@ -233,12 +217,7 @@ unsafe fn evil_invalid_file_pointer(size: u32) {
         tag: lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>() as u32),
         buffer: &fake_ctz as *const _ as *const core::ffi::c_void,
     }];
-    assert_ok(lfs_dir_commit(
-        lfs,
-        mdir,
-        attrs.as_ptr() as *const core::ffi::c_void,
-        1,
-    ));
+    assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
 
     // Verify corruption behavior
@@ -254,7 +233,7 @@ unsafe fn evil_invalid_file_pointer(size: u32) {
 
     assert_ok(lfs_file_open(lfs, file, file_name.as_ptr(), LFS_O_RDONLY));
     assert_err(
-        LFS_ERR_CORRUPT,
+        Error::Corrupt,
         lfs_file_read(
             lfs,
             file,
@@ -266,7 +245,7 @@ unsafe fn evil_invalid_file_pointer(size: u32) {
 
     if size > 2 * BLOCK_SIZE {
         let dir_name = path_bytes("dir_here");
-        assert_err(LFS_ERR_CORRUPT, lfs_mkdir(lfs, dir_name.as_ptr()));
+        assert_err(Error::Corrupt, lfs_mkdir(lfs, dir_name.as_ptr()));
     }
 
     assert_ok(lfs_unmount(lfs));
@@ -278,7 +257,7 @@ unsafe fn evil_invalid_file_pointer(size: u32) {
 ///
 /// Create file of SIZE bytes. Corrupt the CTZ skip-list head block by writing
 /// invalid block pointers into it. Mount + stat succeed. File read fails
-/// with LFS_ERR_CORRUPT. If SIZE > 2*BLOCK_SIZE, mkdir also fails.
+/// with Error::Corrupt. If SIZE > 2*BLOCK_SIZE, mkdir also fails.
 #[test]
 fn test_evil_invalid_ctz_pointer() {
     for &size in &[2 * BLOCK_SIZE, 3 * BLOCK_SIZE, 4 * BLOCK_SIZE] {
@@ -389,7 +368,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
 /// defines.INVALSET = [0x3, 0x1, 0x2]
 ///
 /// Corrupt gstate via lfs_fs_prepmove with invalid move pointer.
-/// Mount may succeed but first lfs_mkdir fails with LFS_ERR_CORRUPT.
+/// Mount may succeed but first lfs_mkdir fails with Error::Corrupt.
 #[test]
 fn test_evil_invalid_gstate_pointer() {
     for &invalset in &[0x3u32, 0x1, 0x2] {
@@ -427,7 +406,7 @@ unsafe fn evil_invalid_gstate_pointer(invalset: u32) {
 /// Upstream: [cases.test_evil_mdir_loop]
 ///
 /// Change root tail to point at (0, 1) (itself), forming a 1-length
-/// metadata loop. Expect mount to fail with LFS_ERR_CORRUPT.
+/// metadata loop. Expect mount to fail with Error::Corrupt.
 #[test]
 fn test_evil_mdir_loop() {
     unsafe { evil_mdir_loop() };
@@ -451,21 +430,16 @@ unsafe fn evil_mdir_loop() {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: self_pair.as_ptr() as *const core::ffi::c_void,
     }];
-    assert_ok(lfs_dir_commit(
-        lfs,
-        mdir,
-        attrs.as_ptr() as *const core::ffi::c_void,
-        1,
-    ));
+    assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
 
-    assert_err(LFS_ERR_CORRUPT, lfs_mount(lfs, cfg));
+    assert_err(Error::Corrupt, lfs_mount(lfs, cfg));
 }
 
 /// Upstream: [cases.test_evil_mdir_loop2]
 ///
 /// Create "child" dir. Corrupt child's tail to point at root (0, 1),
-/// forming a 2-length loop. Expect mount to fail with LFS_ERR_CORRUPT.
+/// forming a 2-length loop. Expect mount to fail with Error::Corrupt.
 #[test]
 fn test_evil_mdir_loop2() {
     unsafe { evil_mdir_loop2() };
@@ -518,22 +492,17 @@ unsafe fn evil_mdir_loop2() {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: root_ptr.as_ptr() as *const core::ffi::c_void,
     }];
-    assert_ok(lfs_dir_commit(
-        lfs,
-        mdir,
-        attrs.as_ptr() as *const core::ffi::c_void,
-        1,
-    ));
+    assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
 
-    assert_err(LFS_ERR_CORRUPT, lfs_mount(lfs, cfg));
+    assert_err(Error::Corrupt, lfs_mount(lfs, cfg));
 }
 
 /// Upstream: [cases.test_evil_mdir_loop_child]
 ///
 /// Create "child" dir. Corrupt child's tail to point at itself (child's
 /// own block pair), forming a 1-length child loop. Expect mount to fail
-/// with LFS_ERR_CORRUPT.
+/// with Error::Corrupt.
 #[test]
 fn test_evil_mdir_loop_child() {
     unsafe { evil_mdir_loop_child() };
@@ -571,11 +540,11 @@ unsafe fn evil_mdir_loop_child() {
     );
     assert_eq!(
         tag,
-        lfs_mktag(
+        Ok(lfs_mktag(
             LFS_TYPE_DIRSTRUCT,
             1,
             core::mem::size_of::<[u32; 2]>() as u32
-        ) as i32
+        ) as u32)
     );
     lfs_pair_fromle32(&mut child_pair);
 
@@ -585,13 +554,8 @@ unsafe fn evil_mdir_loop_child() {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: child_pair.as_ptr() as *const core::ffi::c_void,
     }];
-    assert_ok(lfs_dir_commit(
-        lfs,
-        mdir,
-        attrs.as_ptr() as *const core::ffi::c_void,
-        1,
-    ));
+    assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
 
-    assert_err(LFS_ERR_CORRUPT, lfs_mount(lfs, cfg));
+    assert_err(Error::Corrupt, lfs_mount(lfs, cfg));
 }

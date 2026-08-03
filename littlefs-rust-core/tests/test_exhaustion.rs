@@ -12,7 +12,7 @@ use common::{
     init_wear_leveling_context, path_bytes, test_prng,
 };
 use littlefs_rust_core::{
-    LFS_ERR_NOSPC, Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
+    Lfs, LfsConfig, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_unmount,
 };
 use rstest::rstest;
@@ -32,7 +32,7 @@ fn init_exhaustion_env(
 /// verify after each cycle, repeat until NOSPC. Returns number of completed cycles.
 ///
 /// C: test_exhaustion.toml — shared pattern across normal/superblocks/wear_leveling
-fn run_exhaustion(lfs: *mut Lfs, config: *const LfsConfig, prefix: &str, files: u32) -> u32 {
+fn run_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) -> u32 {
     let mut cycle: u32 = 0;
     'outer: loop {
         assert_ok(lfs_mount(lfs, config));
@@ -54,12 +54,12 @@ fn run_exhaustion(lfs: *mut Lfs, config: *const LfsConfig, prefix: &str, files: 
                 let c = b'a' + (test_prng(&mut prng) % 26) as u8;
                 let res = lfs_file_write(lfs, file, &c as *const u8 as *const core::ffi::c_void, 1);
                 assert!(
-                    res == 1 || res == LFS_ERR_NOSPC,
-                    "write returned {res} at cycle={cycle} file={i}"
+                    res == Ok(1) || res == Err(Error::NoSpace),
+                    "write returned {res:?} at cycle={cycle} file={i}"
                 );
-                if res == LFS_ERR_NOSPC {
+                if res == Err(Error::NoSpace) {
                     let err = lfs_file_close(lfs, file);
-                    assert!(err == 0 || err == LFS_ERR_NOSPC);
+                    assert!(err == Ok(()) || err == Err(Error::NoSpace));
                     assert_ok(lfs_unmount(lfs));
                     break 'outer;
                 }
@@ -67,10 +67,10 @@ fn run_exhaustion(lfs: *mut Lfs, config: *const LfsConfig, prefix: &str, files: 
 
             let err = lfs_file_close(lfs, file);
             assert!(
-                err == 0 || err == LFS_ERR_NOSPC,
-                "close returned {err} at cycle={cycle} file={i}"
+                err == Ok(()) || err == Err(Error::NoSpace),
+                "close returned {err:?} at cycle={cycle} file={i}"
             );
-            if err == LFS_ERR_NOSPC {
+            if err == Err(Error::NoSpace) {
                 assert_ok(lfs_unmount(lfs));
                 break 'outer;
             }
@@ -93,7 +93,7 @@ fn run_exhaustion(lfs: *mut Lfs, config: *const LfsConfig, prefix: &str, files: 
                 let expected = b'a' + (test_prng(&mut prng) % 26) as u8;
                 let mut r: u8 = 0;
                 let n = lfs_file_read(lfs, file, &mut r as *mut u8 as *mut core::ffi::c_void, 1);
-                assert_eq!(n, 1);
+                assert_eq!(n, Ok(1));
                 assert_eq!(r, expected);
             }
 
@@ -109,7 +109,7 @@ fn run_exhaustion(lfs: *mut Lfs, config: *const LfsConfig, prefix: &str, files: 
 /// After exhaustion: remount and stat all files to verify they're still readable.
 ///
 /// C: `exhausted:` label in test_exhaustion.toml
-fn verify_after_exhaustion(lfs: *mut Lfs, config: *const LfsConfig, prefix: &str, files: u32) {
+fn verify_after_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) {
     assert_ok(lfs_mount(lfs, config));
     for i in 0..files {
         let path = path_bytes(&format!("{prefix}/test{i}"));
@@ -185,7 +185,7 @@ fn test_exhaustion_superblocks(
 }
 
 /// Run exhaustion with files in root (no subdirectory prefix).
-fn run_exhaustion_root(lfs: *mut Lfs, config: *const LfsConfig, files: u32) -> u32 {
+fn run_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) -> u32 {
     let mut cycle: u32 = 0;
     'outer: loop {
         assert_ok(lfs_mount(lfs, config));
@@ -206,18 +206,18 @@ fn run_exhaustion_root(lfs: *mut Lfs, config: *const LfsConfig, files: u32) -> u
             for _ in 0..size {
                 let c = b'a' + (test_prng(&mut prng) % 26) as u8;
                 let res = lfs_file_write(lfs, file, &c as *const u8 as *const core::ffi::c_void, 1);
-                assert!(res == 1 || res == LFS_ERR_NOSPC);
-                if res == LFS_ERR_NOSPC {
+                assert!(res == Ok(1) || res == Err(Error::NoSpace));
+                if res == Err(Error::NoSpace) {
                     let err = lfs_file_close(lfs, file);
-                    assert!(err == 0 || err == LFS_ERR_NOSPC);
+                    assert!(err == Ok(()) || err == Err(Error::NoSpace));
                     assert_ok(lfs_unmount(lfs));
                     break 'outer;
                 }
             }
 
             let err = lfs_file_close(lfs, file);
-            assert!(err == 0 || err == LFS_ERR_NOSPC);
-            if err == LFS_ERR_NOSPC {
+            assert!(err == Ok(()) || err == Err(Error::NoSpace));
+            if err == Err(Error::NoSpace) {
                 assert_ok(lfs_unmount(lfs));
                 break 'outer;
             }
@@ -240,7 +240,7 @@ fn run_exhaustion_root(lfs: *mut Lfs, config: *const LfsConfig, files: u32) -> u
                 let expected = b'a' + (test_prng(&mut prng) % 26) as u8;
                 let mut r: u8 = 0;
                 let n = lfs_file_read(lfs, file, &mut r as *mut u8 as *mut core::ffi::c_void, 1);
-                assert_eq!(n, 1);
+                assert_eq!(n, Ok(1));
                 assert_eq!(r, expected);
             }
 
@@ -253,7 +253,7 @@ fn run_exhaustion_root(lfs: *mut Lfs, config: *const LfsConfig, files: u32) -> u
     cycle
 }
 
-fn verify_after_exhaustion_root(lfs: *mut Lfs, config: *const LfsConfig, files: u32) {
+fn verify_after_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) {
     assert_ok(lfs_mount(lfs, config));
     for i in 0..files {
         let path = path_bytes(&format!("test{i}"));
@@ -420,18 +420,18 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
             for _ in 0..size {
                 let c = b'a' + (test_prng(&mut prng) % 26) as u8;
                 let res = lfs_file_write(lfs, file, &c as *const u8 as *const core::ffi::c_void, 1);
-                assert!(res == 1 || res == LFS_ERR_NOSPC);
-                if res == LFS_ERR_NOSPC {
+                assert!(res == Ok(1) || res == Err(Error::NoSpace));
+                if res == Err(Error::NoSpace) {
                     let err = lfs_file_close(lfs, file);
-                    assert!(err == 0 || err == LFS_ERR_NOSPC);
+                    assert!(err == Ok(()) || err == Err(Error::NoSpace));
                     assert_ok(lfs_unmount(lfs));
                     break 'outer;
                 }
             }
 
             let err = lfs_file_close(lfs, file);
-            assert!(err == 0 || err == LFS_ERR_NOSPC);
-            if err == LFS_ERR_NOSPC {
+            assert!(err == Ok(()) || err == Err(Error::NoSpace));
+            if err == Err(Error::NoSpace) {
                 assert_ok(lfs_unmount(lfs));
                 break 'outer;
             }
@@ -454,7 +454,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
                 let expected = b'a' + (test_prng(&mut prng) % 26) as u8;
                 let mut r: u8 = 0;
                 let n = lfs_file_read(lfs, file, &mut r as *mut u8 as *mut core::ffi::c_void, 1);
-                assert_eq!(n, 1);
+                assert_eq!(n, Ok(1));
                 assert_eq!(r, expected);
             }
 
