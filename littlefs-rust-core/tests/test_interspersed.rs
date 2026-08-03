@@ -74,7 +74,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
 
     // Verify directory listing
     let root = path_bytes("/");
-    let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
+    let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok(lfs_dir_open(lfs, dir.as_mut_ptr(), root.as_ptr()));
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
@@ -211,7 +211,7 @@ fn test_interspersed_remove_files(
 
     // Verify directory: only "zzz" left
     let root = path_bytes("/");
-    let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
+    let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok(lfs_dir_open(lfs, dir.as_mut_ptr(), root.as_ptr()));
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
@@ -377,7 +377,7 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
 
     // Verify directory: "e" and "g" present, "f" absent
     let root = path_bytes("/");
-    let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
+    let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok(lfs_dir_open(lfs, dir.as_mut_ptr(), root.as_ptr()));
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
@@ -521,7 +521,7 @@ fn test_interspersed_reentrant_files(
 
     // Verify directory
     let root = path_bytes("/");
-    let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
+    let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok(lfs_dir_open(lfs, dir.as_mut_ptr(), root.as_ptr()));
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();

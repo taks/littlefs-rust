@@ -7,17 +7,17 @@
 mod common;
 
 use common::{
-    assert_err, assert_ok, default_config, erase_block_raw, init_context, path_bytes,
-    read_block_raw, write_block_raw, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok, default_config,
+    erase_block_raw, init_context, path_bytes, read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_mattr;
 use littlefs_rust_core::lfs_type::lfs_type::*;
 use littlefs_rust_core::{
-    lfs_ctz_fromle32, lfs_deinit, lfs_dir_commit, lfs_dir_fetch, lfs_dir_get, lfs_dir_open,
-    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_fs_prepmove,
-    lfs_init, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_fromle32, lfs_stat, lfs_tole32,
-    lfs_unmount, Lfs, LfsConfig, LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMdir,
+    Lfs, LfsConfig, LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMdir, lfs_ctz_fromle32, lfs_deinit,
+    lfs_dir_commit, lfs_dir_fetch, lfs_dir_get, lfs_dir_open, lfs_file_close, lfs_file_open,
+    lfs_file_read, lfs_file_write, lfs_format, lfs_fs_prepmove, lfs_init, lfs_mkdir, lfs_mktag,
+    lfs_mount, lfs_pair_fromle32, lfs_stat, lfs_tole32, lfs_unmount,
 };
 
 const BLOCK_SIZE: u32 = 512;
@@ -135,17 +135,13 @@ unsafe fn evil_invalid_dir_pointer(invalset: u32) {
     assert_ok(lfs_mount(lfs, cfg));
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(
-        lfs,
-        dir_name.as_ptr(),
-        info.as_mut_ptr(),
-    ));
+    assert_ok(lfs_stat(lfs, dir_name.as_ptr(), info.as_mut_ptr()));
     let info_ref = &*info.as_ptr();
     let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info_ref.name[..nul], b"dir_here");
     assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
 
-    let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
+    let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_err(
         LFS_ERR_CORRUPT,
         lfs_dir_open(lfs, dir.as_mut_ptr(), dir_name.as_ptr()),
@@ -166,21 +162,11 @@ unsafe fn evil_invalid_dir_pointer(invalset: u32) {
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         LFS_ERR_CORRUPT,
-        lfs_file_open(
-            lfs,
-            file,
-            child_file.as_ptr(),
-            LFS_O_RDONLY,
-        ),
+        lfs_file_open(lfs, file, child_file.as_ptr(), LFS_O_RDONLY),
     );
     assert_err(
         LFS_ERR_CORRUPT,
-        lfs_file_open(
-            lfs,
-            file,
-            child_file.as_ptr(),
-            LFS_O_WRONLY | LFS_O_CREAT,
-        ),
+        lfs_file_open(lfs, file, child_file.as_ptr(), LFS_O_WRONLY | LFS_O_CREAT),
     );
 
     assert_ok(lfs_unmount(lfs));
@@ -259,23 +245,14 @@ unsafe fn evil_invalid_file_pointer(size: u32) {
     assert_ok(lfs_mount(lfs, cfg));
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(
-        lfs,
-        file_name.as_ptr(),
-        info.as_mut_ptr(),
-    ));
+    assert_ok(lfs_stat(lfs, file_name.as_ptr(), info.as_mut_ptr()));
     let info_ref = &*info.as_ptr();
     let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info_ref.name[..nul], b"file_here");
     assert_eq!(info_ref.type_, LFS_TYPE_REG as u8);
     assert_eq!(info_ref.size, size);
 
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        file_name.as_ptr(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, file_name.as_ptr(), LFS_O_RDONLY));
     assert_err(
         LFS_ERR_CORRUPT,
         lfs_file_read(
@@ -289,10 +266,7 @@ unsafe fn evil_invalid_file_pointer(size: u32) {
 
     if size > 2 * BLOCK_SIZE {
         let dir_name = path_bytes("dir_here");
-        assert_err(
-            LFS_ERR_CORRUPT,
-            lfs_mkdir(lfs, dir_name.as_ptr()),
-        );
+        assert_err(LFS_ERR_CORRUPT, lfs_mkdir(lfs, dir_name.as_ptr()));
     }
 
     assert_ok(lfs_unmount(lfs));
@@ -331,12 +305,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     ));
     for _ in 0..size {
         let c: u8 = b'c';
-        let n = lfs_file_write(
-            lfs,
-            file,
-            &c as *const u8 as *const core::ffi::c_void,
-            1,
-        );
+        let n = lfs_file_write(lfs, file, &c as *const u8 as *const core::ffi::c_void, 1);
         assert_eq!(n, Ok(1));
     }
     assert_ok(lfs_file_close(lfs, file));
@@ -389,22 +358,13 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     assert_ok(lfs_mount(lfs, cfg));
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(
-        lfs,
-        file_name.as_ptr(),
-        info,
-    ));
+    assert_ok(lfs_stat(lfs, file_name.as_ptr(), info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info.name[..nul], b"file_here");
     assert_eq!(info.type_, LFS_TYPE_REG as u8);
     assert_eq!(info.size, size);
 
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        file_name.as_ptr(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, file_name.as_ptr(), LFS_O_RDONLY));
     assert_err(
         Error::Corrupt,
         lfs_file_read(
@@ -418,10 +378,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
 
     if size > 2 * BLOCK_SIZE {
         let dir_name = path_bytes("dir_here");
-        assert_err(
-            Error::Corrupt,
-            lfs_mkdir(lfs, dir_name.as_ptr()),
-        );
+        assert_err(Error::Corrupt, lfs_mkdir(lfs, dir_name.as_ptr()));
     }
 
     assert_ok(lfs_unmount(lfs));
@@ -458,19 +415,12 @@ unsafe fn evil_invalid_gstate_pointer(invalset: u32) {
         if invalset & 0x2 != 0 { 0xcccccccc } else { 0 },
     ];
     lfs_fs_prepmove(lfs, 1, &invalid_pair);
-    assert_ok(lfs_dir_commit(
-        lfs,
-        mdir,
-        &[]
-    ));
+    assert_ok(lfs_dir_commit(lfs, mdir, &[]));
     assert_ok(lfs_deinit(lfs));
 
     assert_ok(lfs_mount(lfs, cfg));
     let dir_name = path_bytes("should_fail");
-    assert_err(
-        Error::Corrupt,
-        lfs_mkdir(lfs, dir_name.as_ptr()),
-    );
+    assert_err(Error::Corrupt, lfs_mkdir(lfs, dir_name.as_ptr()));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -537,11 +487,7 @@ unsafe fn evil_mdir_loop2() {
     assert_ok(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(
-        lfs,
-        mdir,
-        &root_pair,
-    ));
+    assert_ok(lfs_dir_fetch(lfs, mdir, &root_pair));
 
     let mut child_pair: [u32; 2] = [0; 2];
     let tag = lfs_dir_get(
@@ -566,11 +512,7 @@ unsafe fn evil_mdir_loop2() {
     lfs_pair_fromle32(&mut child_pair);
 
     // Corrupt child's tail to point at root
-    assert_ok(lfs_dir_fetch(
-        lfs,
-        mdir,
-        &child_pair,
-    ));
+    assert_ok(lfs_dir_fetch(lfs, mdir, &child_pair));
     let root_ptr: [u32; 2] = [0, 1];
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
@@ -613,11 +555,7 @@ unsafe fn evil_mdir_loop_child() {
     assert_ok(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(
-        lfs,
-        mdir,
-        &root_pair,
-    ));
+    assert_ok(lfs_dir_fetch(lfs, mdir, &root_pair));
 
     let mut child_pair: [u32; 2] = [0; 2];
     let tag = lfs_dir_get(
@@ -642,11 +580,7 @@ unsafe fn evil_mdir_loop_child() {
     lfs_pair_fromle32(&mut child_pair);
 
     // Corrupt child's tail to point at itself
-    assert_ok(lfs_dir_fetch(
-        lfs,
-        mdir,
-        &child_pair,
-    ));
+    assert_ok(lfs_dir_fetch(lfs, mdir, &child_pair));
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: child_pair.as_ptr() as *const core::ffi::c_void,

@@ -13,14 +13,15 @@ use common::{
     assert_ok, default_config, dir_block, erase_block_raw, init_context, init_logger, path_bytes,
     read_block_raw, write_block_raw,
 };
+use littlefs_rust_core::error::Error;
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::{LFS_ERR_EXIST, LFS_ERR_NOTEMPTY, LfsInfo};
 use littlefs_rust_core::{
-    LFS_ERR_NOENT, Lfs, LfsConfig, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit,
-    lfs_dir_fetch, lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
+    Lfs, LfsConfig, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit, lfs_dir_fetch,
+    lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
     lfs_fs_preporphans, lfs_fs_size, lfs_mattr, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32,
     lfs_remove, lfs_stat, lfs_unmount,
 };
@@ -161,7 +162,7 @@ fn test_orphans_normal() {
 
     let block_size = env.config.block_size as usize;
     let mut buffer = vec![0u8; block_size];
-    assert_eq!(read_block_raw(cfg, block, 0, &mut buffer), 0);
+    assert_eq!(read_block_raw(cfg, block, 0, &mut buffer), Ok(()));
 
     let mut off = block_size as i32 - 1;
     while off >= 0 && buffer[off as usize] == 0xff {
@@ -171,8 +172,8 @@ fn test_orphans_normal() {
     let start = (off - 3) as usize;
     buffer[start..start + 3].fill(env.config.block_size as u8);
 
-    assert_eq!(erase_block_raw(cfg, block), 0);
-    assert_eq!(write_block_raw(cfg, block, 0, &buffer), 0);
+    assert_eq!(erase_block_raw(cfg, block), Ok(()));
+    assert_eq!(write_block_raw(cfg, block, 0, &buffer), Ok(()));
 
     // Mount and verify orphan is gone, child exists, size is 8
     assert_ok(lfs_mount(lfs_ptr, cfg));
@@ -183,14 +184,14 @@ fn test_orphans_normal() {
             path_bytes("parent/orphan").as_ptr(),
             info.as_mut_ptr()
         ),
-        LFS_ERR_NOENT
+        Err(Error::NoEntry)
     );
     assert_ok(lfs_stat(
         lfs_ptr,
         path_bytes("parent/child").as_ptr(),
         info.as_mut_ptr(),
     ));
-    assert_eq!(lfs_fs_size(lfs_ptr), 8);
+    assert_eq!(lfs_fs_size(lfs_ptr), Ok(8));
     assert_ok(lfs_unmount(lfs_ptr));
 
     // mkdir parent/otherchild triggers deorphan, size still 8
@@ -202,7 +203,7 @@ fn test_orphans_normal() {
             path_bytes("parent/orphan").as_ptr(),
             info.as_mut_ptr()
         ),
-        LFS_ERR_NOENT
+        Err(Error::NoEntry)
     );
     assert_ok(lfs_stat(
         lfs_ptr,
@@ -214,7 +215,7 @@ fn test_orphans_normal() {
         path_bytes("parent/otherchild").as_ptr(),
         info.as_mut_ptr(),
     ));
-    assert_eq!(lfs_fs_size(lfs_ptr), 8);
+    assert_eq!(lfs_fs_size(lfs_ptr), Ok(8));
     assert_ok(lfs_unmount(lfs_ptr));
 }
 
@@ -245,7 +246,7 @@ fn test_orphans_one_orphan() {
     };
     unsafe { lfs_alloc_ckpoint(lfs_ptr) };
     assert_ok(unsafe { lfs_dir_alloc(lfs_ptr, &mut orphan) });
-    assert_ok(lfs_dir_commit(lfs_ptr, &mut orphan, core::ptr::null(), 0));
+    assert_ok(lfs_dir_commit(lfs_ptr, &mut orphan, &[]));
 
     // Append orphan to root and mark FS as having orphans
     assert_ok(lfs_fs_preporphans(lfs_ptr, 1));
@@ -266,12 +267,7 @@ fn test_orphans_one_orphan() {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
         buffer: orphan.pair.as_ptr() as *const core::ffi::c_void,
     }];
-    assert_ok(lfs_dir_commit(
-        lfs_ptr,
-        &mut mdir,
-        attrs.as_ptr() as *const core::ffi::c_void,
-        1,
-    ));
+    assert_ok(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
 
     assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) }, "should have orphans");
     assert_ok(lfs_unmount(lfs_ptr));
@@ -316,7 +312,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     };
     unsafe { lfs_alloc_ckpoint(lfs_ptr) };
     assert_ok(unsafe { lfs_dir_alloc(lfs_ptr, &mut orphan) });
-    assert_ok(lfs_dir_commit(lfs_ptr, &mut orphan, core::ptr::null(), 0));
+    assert_ok(lfs_dir_commit(lfs_ptr, &mut orphan, &[]));
 
     // Append orphan to root and mark FS as having orphans
     assert_ok(lfs_fs_preporphans(lfs_ptr, 1));
@@ -337,12 +333,7 @@ fn test_orphans_mkconsistent_one_orphan() {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
         buffer: orphan.pair.as_ptr() as *const core::ffi::c_void,
     }];
-    assert_ok(lfs_dir_commit(
-        lfs_ptr,
-        &mut mdir,
-        attrs.as_ptr() as *const core::ffi::c_void,
-        1,
-    ));
+    assert_ok(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
 
     assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) }, "should have orphans");
     assert_ok(lfs_unmount(lfs_ptr));

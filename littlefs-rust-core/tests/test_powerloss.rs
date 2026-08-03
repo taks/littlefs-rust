@@ -79,7 +79,7 @@ fn test_powerloss_only_rev() {
 
     // Get dir pair and rev from a fresh mount, then corrupt rev
     assert_ok_at("mount before corrupt", lfs_mount(lfs, &env.config));
-    let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
+    let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok_at(
         "dir_open notebook",
         lfs_dir_open(lfs, dir, path_nb.as_ptr()),
@@ -358,7 +358,7 @@ fn test_debug_file_root_repeated_write_sync() {
             buf.as_ptr() as *const core::ffi::c_void,
             buf.len() as u32,
         );
-        assert_eq!(n, buf.len() as i32);
+        assert_eq!(n, Ok(buf.len() as u32));
         assert_ok_at(&format!("file_sync #{}", i + 1), lfs_file_sync(lfs, file));
     }
     assert_ok_at("file_close", lfs_file_close(lfs, file));
@@ -399,7 +399,7 @@ fn test_debug_file_subdir_which_sync_fails() {
             buf.as_ptr() as *const core::ffi::c_void,
             buf.len() as u32,
         );
-        assert_eq!(n, buf.len() as i32);
+        assert_eq!(n, Ok(buf.len() as u32));
         let err = lfs_file_sync(lfs, file);
         assert_ok_at(&format!("file_sync #{}", i + 1), err);
     }
@@ -441,20 +441,20 @@ fn test_debug_powerloss_after_corrupt_append() {
             buf.as_ptr() as *const core::ffi::c_void,
             buf.len() as u32,
         );
-        assert_eq!(n, buf.len() as i32);
+        assert_eq!(n, Ok(buf.len() as u32));
         assert_ok_at(&format!("file_sync #{}", i + 1), lfs_file_sync(lfs, file));
     }
     assert_ok_at("file_close", lfs_file_close(lfs, file));
     assert_ok_at("unmount", lfs_unmount(lfs));
 
     assert_ok_at("mount before corrupt", lfs_mount(lfs, &env.config));
-    let mut dir = core::mem::MaybeUninit::<LfsDir>::zeroed();
+    let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok_at(
         "dir_open notebook",
         lfs_dir_open(lfs, dir, path_nb.as_ptr()),
     );
-    let pair = unsafe { (*dir.as_ptr()).m.pair };
-    let rev = unsafe { (*dir.as_ptr()).m.rev };
+    let pair = dir.m.pair;
+    let rev = dir.m.rev;
     assert_ok_at("dir_close", lfs_dir_close(lfs, dir));
     assert_ok_at("unmount before corrupt", lfs_unmount(lfs));
 

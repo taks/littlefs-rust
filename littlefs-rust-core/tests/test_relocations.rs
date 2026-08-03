@@ -51,7 +51,7 @@ fn test_relocations_dangling_split_dir(#[values(8, 1)] block_cycles: i32) {
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
         let n = lfs_file_write(lfs, file, b"x".as_ptr() as *const core::ffi::c_void, 1);
-        assert_eq!(n, 1);
+        assert_eq!(n, Ok(1));
         assert_ok(lfs_file_close(lfs, file));
     }
 
@@ -100,7 +100,7 @@ fn test_relocations_outdated_head(#[values(8, 1)] block_cycles: i32) {
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
         let n = lfs_file_write(lfs, file, b"x".as_ptr() as *const core::ffi::c_void, 1);
-        assert_eq!(n, 1);
+        assert_eq!(n, Ok(1));
         assert_ok(lfs_file_close(lfs, file));
     }
 
