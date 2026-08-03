@@ -63,8 +63,9 @@ macro_rules! lfs_trace {
 #[macro_export]
 macro_rules! lfs_err {
     ($e:expr) => {{
-        $crate::lfs_trace!("lfs_err {} at {}:{}", $e, file!(), line!());
-        $e
+        let e = $e;
+        $crate::lfs_trace!("lfs_err {:?} at {}:{}", e, file!(), line!());
+        e
     }};
     ($e:expr, $fmt:expr, $($arg:tt)*) => {{
         $crate::lfs_trace!(concat!("lfs_err {} at ", file!(), ":", line!(), " ", $fmt), $e, $($arg)*);
@@ -90,12 +91,14 @@ macro_rules! lfs_err {
 #[macro_export]
 macro_rules! lfs_pass_err {
     ($e:expr) => {{
-        $crate::lfs_trace!("lfs_pass_err {:?} at {}:{}", $e, file!(), line!());
-        $e
+        let e = $e;
+        $crate::lfs_trace!("lfs_pass_err {:?} at {}:{}", e, file!(), line!());
+        e
     }};
     ($e:expr, $fmt:expr, $($arg:tt)*) => {{
-        $crate::lfs_trace!(concat!("lfs_pass_err {} at ", file!(), ":", line!(), " ", $fmt), $e, $($arg)*);
-        $e
+        let e = $e;
+        $crate::lfs_trace!(concat!("lfs_pass_err {} at ", file!(), ":", line!(), " ", $fmt), e, $($arg)*);
+        e
     }};
 }
 
