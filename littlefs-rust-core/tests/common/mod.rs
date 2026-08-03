@@ -502,15 +502,17 @@ pub fn assert_ok(result: Result<(), Error>) {
 }
 
 /// Panic if result is not 0, with step name for debugging.
-pub fn assert_ok_at(step: &str, result: i32) {
-    if result != 0 {
-        panic!("{} failed: {} (expected 0)", step, result);
+pub fn assert_ok_at(step: &str, result: Result<(), Error>) {
+    if result.is_err() {
+        panic!("{} failed: {:?} (expected 0)", step, result);
     }
 }
 
 /// Panic if actual is not expected error code.
 pub fn assert_err<T>(expected: Error, actual: Result<T, Error>)
-where T: core::fmt::Debug + Copy {
+where
+    T: core::fmt::Debug + Copy,
+{
     if actual.is_ok() || actual.unwrap_err() != expected {
         panic!("expected error {:?}, got {:?}", expected, actual);
     }
@@ -543,7 +545,12 @@ pub fn assert_superblock_magic(config: &LfsConfig) {
 }
 
 /// Invoke config read callback for raw block access (e.g. test_superblocks_magic).
-pub fn read_block_raw(config: &LfsConfig, block: u32, off: u32, buf: &mut [u8]) -> Result<(), Error> {
+pub fn read_block_raw(
+    config: &LfsConfig,
+    block: u32,
+    off: u32,
+    buf: &mut [u8],
+) -> Result<(), Error> {
     unsafe {
         let read = (*config).read.expect("read callback");
         read(config, block, off, buf)
@@ -609,7 +616,7 @@ pub fn dir_entry_names(
     _config: &LfsConfig,
     path_str: &str,
 ) -> Result<Vec<String>, Error> {
-    use littlefs_rust_core::{lfs_dir_close, lfs_dir_open, lfs_dir_read, LfsDir, LfsInfo};
+    use littlefs_rust_core::{LfsDir, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read};
 
     let path = path_bytes(path_str);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
@@ -659,8 +666,8 @@ pub const LFS_FILE_MAX: i32 = 2_147_483_647;
 /// Returns env. Caller mounts again before reading.
 pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
     use littlefs_rust_core::{
-        lfs_file_close, lfs_file_open, lfs_file_write, lfs_format, lfs_mount, lfs_unmount, Lfs,
-        LfsConfig, LfsFile,
+        Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_write, lfs_format,
+        lfs_mount, lfs_unmount,
     };
 
     init_context(env);
@@ -672,12 +679,7 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
     let path = path_bytes("hello");
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    let err = lfs_file_open(
-        lfs,
-        file,
-        path.as_ptr(),
-        0x0100 | 2,
-    );
+    let err = lfs_file_open(lfs, file, path.as_ptr(), 0x0100 | 2);
     if let Err(err) = err {
         let _ = lfs_unmount(lfs);
         return Err(err);
@@ -712,10 +714,10 @@ pub fn dir_block(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> u32 {
 /// Get both metadata block numbers (`m.pair[0]`, `m.pair[1]`) for a directory while mounted.
 /// Used by fix_relocation tests to set wear on dir pairs.
 pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
-    use littlefs_rust_core::{lfs_dir_close, lfs_dir_open, LfsDir};
+    use littlefs_rust_core::{LfsDir, lfs_dir_close, lfs_dir_open};
 
     let path = path_bytes(dir_path);
-    let dir = &mut unsafe {core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init()};
+    let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok(lfs_dir_open(lfs, dir, path.as_ptr()));
     let pair = (dir).m.pair;
     assert_ok(lfs_dir_close(lfs, dir));
@@ -766,7 +768,7 @@ pub fn config_with_inline_max(block_count: u32, inline_max: i32) -> TestEnv {
 /// Format fs, sync, return raw content of superblock blocks 0 and 1.
 /// Helper for debug tests. Caller must init_context before.
 pub fn format_and_read_superblock_blocks(env: &mut TestEnv) -> Result<(Vec<u8>, Vec<u8>), Error> {
-    use littlefs_rust_core::{lfs_format, Lfs};
+    use littlefs_rust_core::{Lfs, lfs_format};
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     lfs_format(lfs, &env.config as &LfsConfig)?;
@@ -876,7 +878,7 @@ unsafe extern "C" fn wear_read(
     cfg: &LfsConfig,
     block: u32,
     off: u32,
-    buffer: &mut [u8]
+    buffer: &mut [u8],
 ) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut WearLevelingBd;
     let bd = &mut *ctx;
@@ -1133,9 +1135,12 @@ pub fn write_prng_file(
             chunk,
         );
         assert_eq!(
-            n, Ok(chunk as u32),
+            n,
+            Ok(chunk as u32),
             "write_prng_file: expected {} bytes written at offset {}, got {:?}",
-            chunk, i, n
+            chunk,
+            i,
+            n
         );
         i += chunk;
     }
@@ -1207,16 +1212,23 @@ pub fn verify_prng_file(
             chunk,
         );
         assert_eq!(
-            n, Ok(chunk as u32),
+            n,
+            Ok(chunk as u32),
             "verify_prng_file: expected {} bytes read at offset {}, got {:?}",
-            chunk, i, n
+            chunk,
+            i,
+            n
         );
         for (b, &actual) in buffer[..chunk as usize].iter().enumerate() {
             let expected = (test_prng(&mut prng) & 0xff) as u8;
             assert_eq!(
-                actual, expected,
+                actual,
+                expected,
                 "verify_prng_file: mismatch at byte {} (chunk offset {}), expected {:#04x}, got {:#04x}",
-                i as usize + b, b, expected, actual
+                i as usize + b,
+                b,
+                expected,
+                actual
             );
         }
         i += chunk;
@@ -1243,16 +1255,23 @@ pub fn verify_prng_file_with_state(
             chunk,
         );
         assert_eq!(
-            n, Ok(chunk as u32),
+            n,
+            Ok(chunk as u32),
             "verify_prng_file_with_state: expected {} bytes read at offset {}, got {:?}",
-            chunk, i, n
+            chunk,
+            i,
+            n
         );
         for (b, &actual) in buffer[..chunk as usize].iter().enumerate() {
             let expected = (test_prng(prng) & 0xff) as u8;
             assert_eq!(
-                actual, expected,
+                actual,
+                expected,
                 "verify_prng_file_with_state: mismatch at byte {} (chunk offset {}), expected {:#04x}, got {:#04x}",
-                i as usize + b, b, expected, actual
+                i as usize + b,
+                b,
+                expected,
+                actual
             );
         }
         i += chunk;
