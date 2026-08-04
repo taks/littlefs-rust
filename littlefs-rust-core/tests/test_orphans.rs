@@ -382,15 +382,10 @@ fn test_orphans_reentrant() {
             2000,
             |lfs_ptr, config| {
                 let err = lfs_mount(lfs_ptr, config);
-                if err != 0 {
-                    let e = lfs_format(lfs_ptr, config);
-                    if e != 0 {
-                        return Err(e);
-                    }
-                    let e = lfs_mount(lfs_ptr, config);
-                    if e != 0 {
-                        return Err(e);
-                    }
+                if err.is_err() {
+                    let e = lfs_format(lfs_ptr, config)?;
+
+                    let e = lfs_mount(lfs_ptr, config)?;
                 }
 
                 let mut prng: u32 = 1;
@@ -404,58 +399,57 @@ fn test_orphans_reentrant() {
 
                     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
                     let res = lfs_stat(lfs_ptr, path_bytes(&full_path).as_ptr(), info.as_mut_ptr());
-                    if res == LFS_ERR_NOENT {
+                    if res == Err(Error::NoEntry) {
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
                             let err = lfs_mkdir(lfs_ptr, path_bytes(&sub).as_ptr());
-                            if err != 0 && err != LFS_ERR_EXIST {
-                                return Err(err);
+                            if err.is_err() && err != Err(Error::Exists) {
+                                return (err);
                             }
                         }
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
-                            let r = lfs_stat(lfs_ptr, path_bytes(&sub).as_ptr(), info.as_mut_ptr());
-                            if r != 0 {
-                                return Err(if r < 0 { r } else { -1 });
-                            }
+                            let r =
+                                lfs_stat(lfs_ptr, path_bytes(&sub).as_ptr(), info.as_mut_ptr())?;
+
                             let info_ref = unsafe { &*info.as_ptr() };
                             let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
                             let name = core::str::from_utf8(&info_ref.name[..nul]).unwrap();
                             let expected = &components[d];
                             if name != *expected {
-                                return Err(-1);
+                                return Err(Error::Invalid);
                             }
                             if info_ref.type_ != LFS_TYPE_DIR as u8 {
-                                return Err(-1);
+                                return Err(Error::Invalid);
                             }
                         }
-                    } else if res == 0 {
+                    } else if res.is_ok() {
                         let info_ref = unsafe { &*info.as_ptr() };
                         let expected = &components[depth - 1];
                         let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
                         let name = core::str::from_utf8(&info_ref.name[..nul]).unwrap();
                         if name != *expected || info_ref.type_ != LFS_TYPE_DIR as u8 {
-                            return Err(-1);
+                            return Err(Error::Invalid);
                         }
                         for d in (0..depth).rev() {
                             let sub = "/".to_string() + &components[..=d].join("/");
                             let err = lfs_remove(lfs_ptr, path_bytes(&sub).as_ptr());
-                            if err != 0 && err != LFS_ERR_NOTEMPTY {
-                                return Err(err);
+                            if err.is_err() && err != Err(Error::NotEmpty) {
+                                return (err);
                             }
                         }
                         let r =
                             lfs_stat(lfs_ptr, path_bytes(&full_path).as_ptr(), info.as_mut_ptr());
-                        if r != LFS_ERR_NOENT {
-                            return Err(if r < 0 { r } else { -1 });
+                        if r != Err(Error::NoEntry) {
+                            return Err(if let Err(r) = r { r } else { Error::Invalid });
                         }
                     } else {
-                        return Err(res);
+                        return (res);
                     }
                 }
 
-                if lfs_unmount(lfs_ptr) != 0 {
-                    return Err(-1);
+                if lfs_unmount(lfs_ptr).is_err() {
+                    return Err(Error::Invalid);
                 }
                 Ok(())
             },

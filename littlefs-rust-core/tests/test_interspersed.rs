@@ -458,7 +458,7 @@ fn test_interspersed_reentrant_files(
 
     // Mount-or-format
     let err = lfs_mount(lfs, &env.config);
-    if err != 0 {
+    if err.is_err() {
         assert_ok(lfs_format(lfs, &env.config));
         assert_ok(lfs_mount(lfs, &env.config));
     }
@@ -506,19 +506,19 @@ fn test_interspersed_reentrant_files(
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), 1);
+    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
     let info_ref = unsafe { &*info.as_ptr() };
     assert_eq!(&info_ref.name[..1], b".");
     assert_eq!(info_ref.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), 1);
+    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
     let info_ref = unsafe { &*info.as_ptr() };
     assert_eq!(&info_ref.name[..2], b"..");
     assert_eq!(info_ref.type_, LFS_TYPE_DIR);
 
     for j in 0..files {
         let expected_name = String::from(ALPHAS[j] as char);
-        assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), 1);
+        assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
         let info_ref = unsafe { &*info.as_ptr() };
         let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info_ref.name[..nul]).unwrap();
@@ -526,19 +526,19 @@ fn test_interspersed_reentrant_files(
         assert_eq!(info_ref.type_, LFS_TYPE_REG);
         assert_eq!(info_ref.size, size as u32);
     }
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), 0);
+    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(0));
     assert_ok(lfs_dir_close(lfs, dir));
 
     // Read first 10 bytes from each
-    let mut file_handles: Vec<core::mem::MaybeUninit<LfsFile>> = (0..files)
-        .map(|_| core::mem::MaybeUninit::zeroed())
+    let mut file_handles: Vec<LfsFile> = (0..files)
+        .map(|_| unsafe { core::mem::MaybeUninit::zeroed().assume_init() })
         .collect();
 
     for j in 0..files {
         let path = path_bytes(&String::from(ALPHAS[j] as char));
         assert_ok(lfs_file_open(
             lfs,
-            file_handles[j].as_mut_ptr(),
+            &mut file_handles[j],
             path.as_ptr(),
             LFS_O_RDONLY,
         ));
@@ -549,17 +549,17 @@ fn test_interspersed_reentrant_files(
             let mut buffer = [0u8; 1];
             let n = lfs_file_read(
                 lfs,
-                file_handles[j].as_mut_ptr(),
+                &mut file_handles[j],
                 buffer.as_mut_ptr() as *mut core::ffi::c_void,
                 1,
             );
-            assert_eq!(n, 1);
+            assert_eq!(n, Ok(1));
             assert_eq!(buffer[0], ALPHAS[j]);
         }
     }
 
     for j in 0..files {
-        assert_ok(lfs_file_close(lfs, file_handles[j].as_mut_ptr()));
+        assert_ok(lfs_file_close(lfs, &mut file_handles[j]));
     }
 
     assert_ok(lfs_unmount(lfs));

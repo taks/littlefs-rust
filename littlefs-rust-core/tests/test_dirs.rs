@@ -345,7 +345,7 @@ fn test_dirs_many_reentrant() {
                         return Err(Error::Invalid);
                     }
                 }
-                if lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr()) != 0 {
+                if lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr()).is_err() {
                     let _ = lfs_dir_close(lfs_ptr, dir);
                     return Err(Error::Invalid);
                 }
@@ -369,9 +369,9 @@ fn test_dirs_many_reentrant() {
                 for i in 0..n {
                     let expected = format!("hello{i:03}");
                     let r = lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr());
-                    if r != 1 {
+                    if r != Ok(1) {
                         let _ = lfs_dir_close(lfs_ptr, dir);
-                        return Err(if r < 0 { r } else { -1 });
+                        return Err(if let Err(r) = r { r } else { Error::Invalid });
                     }
                     let info_ref = unsafe { &*info.as_ptr() };
                     let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
@@ -385,31 +385,31 @@ fn test_dirs_many_reentrant() {
                     let _ = lfs_dir_close(lfs_ptr, dir);
                     return Err(Error::Invalid);
                 }
-                if lfs_dir_close(lfs_ptr, dir) != 0 {
+                if lfs_dir_close(lfs_ptr, dir).is_err() {
                     return Err(Error::Invalid);
                 }
 
                 for i in 0..n {
                     let path = path_bytes(&format!("hello{i:03}"));
-                    if lfs_remove(lfs_ptr, path.as_ptr()) != 0 {
+                    if lfs_remove(lfs_ptr, path.as_ptr()).is_err() {
                         return Err(Error::Invalid);
                     }
                 }
 
-                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_ptr()) != 0 {
+                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_ptr()).is_err() {
                     return Err(Error::Invalid);
                 }
                 let _ = lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr());
                 let _ = lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr());
-                if lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr()) != 0 {
+                if lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr()).is_err() {
                     let _ = lfs_dir_close(lfs_ptr, dir);
                     return Err(Error::Invalid);
                 }
-                if lfs_dir_close(lfs_ptr, dir) != 0 {
+                if lfs_dir_close(lfs_ptr, dir).is_err() {
                     return Err(Error::Invalid);
                 }
 
-                if lfs_unmount(lfs_ptr) != 0 {
+                if lfs_unmount(lfs_ptr).is_err() {
                     return Err(Error::Invalid);
                 }
                 Ok(())
@@ -606,36 +606,34 @@ fn test_dirs_file_reentrant() {
             3000,
             |lfs_ptr, config| {
                 let err = lfs_mount(lfs_ptr, config);
-                if err != 0 {
+                if err.is_err() {
                     let _ = lfs_format(lfs_ptr, config);
-                    let e = lfs_mount(lfs_ptr, config);
-                    if e != 0 {
-                        return Err(e);
-                    }
+                    let e = lfs_mount(lfs_ptr, config)?;
                 }
 
                 let file =
                     &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
                 for i in 0..n {
                     let path = path_bytes(&format!("hi{i:03}"));
-                    if lfs_file_open(lfs_ptr, file, path.as_ptr(), LFS_O_CREAT | LFS_O_WRONLY) != 0
+                    if lfs_file_open(lfs_ptr, file, path.as_ptr(), LFS_O_CREAT | LFS_O_WRONLY)
+                        .is_err()
                     {
                         return Err(Error::Invalid);
                     }
-                    if lfs_file_close(lfs_ptr, file) != 0 {
+                    if lfs_file_close(lfs_ptr, file).is_err() {
                         return Err(Error::Invalid);
                     }
                 }
                 for i in 0..n {
                     let path = path_bytes(&format!("hello{i:03}"));
                     let err = lfs_remove(lfs_ptr, path.as_ptr());
-                    if err != 0 && err != LFS_ERR_NOENT {
-                        return Err(err);
+                    if err.is_err() && err != Err(Error::NoEntry) {
+                        return err;
                     }
                 }
 
                 let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_ptr()) != 0 {
+                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_ptr()).is_err() {
                     return Err(Error::Invalid);
                 }
                 let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
@@ -644,9 +642,9 @@ fn test_dirs_file_reentrant() {
                 for i in 0..n {
                     let expected = format!("hi{i:03}");
                     let r = lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr());
-                    if r != 1 {
+                    if r != Ok(1) {
                         let _ = lfs_dir_close(lfs_ptr, dir);
-                        return Err(if r < 0 { r } else { -1 });
+                        return Err(if let Err(r) = r { r } else { Error::Invalid });
                     }
                     let info_ref = unsafe { &*info.as_ptr() };
                     if info_ref.type_ != LFS_TYPE_REG as u8 {
@@ -660,23 +658,23 @@ fn test_dirs_file_reentrant() {
                         return Err(Error::Invalid);
                     }
                 }
-                if lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr()) != 0 {
+                if lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr()).is_err() {
                     let _ = lfs_dir_close(lfs_ptr, dir);
                     return Err(Error::Invalid);
                 }
-                if lfs_dir_close(lfs_ptr, dir) != 0 {
+                if lfs_dir_close(lfs_ptr, dir).is_err() {
                     return Err(Error::Invalid);
                 }
 
                 for i in 0..n {
                     let old = path_bytes(&format!("hi{i:03}"));
                     let new = path_bytes(&format!("hello{i:03}"));
-                    if lfs_rename(lfs_ptr, old.as_ptr(), new.as_ptr()) != 0 {
+                    if lfs_rename(lfs_ptr, old.as_ptr(), new.as_ptr()).is_err() {
                         return Err(Error::Invalid);
                     }
                 }
 
-                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_ptr()) != 0 {
+                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_ptr()).is_err() {
                     return Err(Error::Invalid);
                 }
                 let _ = lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr());
@@ -684,9 +682,9 @@ fn test_dirs_file_reentrant() {
                 for i in 0..n {
                     let expected = format!("hello{i:03}");
                     let r = lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr());
-                    if r != 1 {
+                    if r != Ok(1) {
                         let _ = lfs_dir_close(lfs_ptr, dir);
-                        return Err(if r < 0 { r } else { -1 });
+                        return Err(if let Err(r) = r { r } else { Error::Invalid });
                     }
                     let info_ref = unsafe { &*info.as_ptr() };
                     if info_ref.type_ != LFS_TYPE_REG as u8 {
@@ -700,22 +698,22 @@ fn test_dirs_file_reentrant() {
                         return Err(Error::Invalid);
                     }
                 }
-                if lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr()) != 0 {
+                if lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr()).is_err() {
                     let _ = lfs_dir_close(lfs_ptr, dir);
                     return Err(Error::Invalid);
                 }
-                if lfs_dir_close(lfs_ptr, dir) != 0 {
+                if lfs_dir_close(lfs_ptr, dir).is_err() {
                     return Err(Error::Invalid);
                 }
 
                 for i in 0..n {
                     let path = path_bytes(&format!("hello{i:03}"));
-                    if lfs_remove(lfs_ptr, path.as_ptr()) != 0 {
+                    if lfs_remove(lfs_ptr, path.as_ptr()).is_err() {
                         return Err(Error::Invalid);
                     }
                 }
 
-                if lfs_unmount(lfs_ptr) != 0 {
+                if lfs_unmount(lfs_ptr).is_err() {
                     return Err(Error::Invalid);
                 }
                 Ok(())

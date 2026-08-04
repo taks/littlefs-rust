@@ -643,14 +643,11 @@ fn test_files_many_power_loss() {
 
     let max_iter = 2000;
 
-    let op = |lfs: *mut Lfs, cfg: *const LfsConfig| -> Result<(), i32> {
+    let op = |lfs: &mut Lfs, cfg: &LfsConfig| -> Result<(), Error> {
         let err = littlefs_rust_core::lfs_mount(lfs, cfg);
-        if err != 0 {
+        if err.is_err() {
             let _ = littlefs_rust_core::lfs_format(lfs, cfg);
-            let e = littlefs_rust_core::lfs_mount(lfs, cfg);
-            if e != 0 {
-                return Err(e);
-            }
+            let e = littlefs_rust_core::lfs_mount(lfs, cfg)?;
         }
         for i in 0..N {
             let path = path_bytes(&format!("file_{:03}", i));
@@ -660,10 +657,7 @@ fn test_files_many_power_loss() {
                 file,
                 path.as_ptr(),
                 LFS_O_WRONLY | LFS_O_CREAT,
-            );
-            if e != 0 {
-                return Err(e);
-            }
+            )?;
             let content = format!("Hi {:03}\0", i);
             let bytes = content.as_bytes();
             assert_eq!(bytes.len(), 7);
@@ -674,44 +668,29 @@ fn test_files_many_power_loss() {
                     file,
                     bytes.as_ptr() as *const core::ffi::c_void,
                     bytes.len() as u32,
-                );
-                if n < 0 {
-                    return Err(n);
-                }
-                assert_eq!(n, bytes.len() as i32);
+                )?;
+                assert_eq!(n, bytes.len() as u32);
             }
-            let e = littlefs_rust_core::lfs_file_close(lfs, file);
-            if e != 0 {
-                return Err(e);
-            }
+            let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
 
-            let mut rfile = core::mem::MaybeUninit::<LfsFile>::zeroed();
-            let e = littlefs_rust_core::lfs_file_open(lfs, rfile, path.as_ptr(), LFS_O_RDONLY);
-            if e != 0 {
-                return Err(e);
-            }
+            let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let e = littlefs_rust_core::lfs_file_open(lfs, rfile, path.as_ptr(), LFS_O_RDONLY)?;
             let mut buf = [0u8; 32];
             let n = littlefs_rust_core::lfs_file_read(
                 lfs,
                 rfile,
                 buf.as_mut_ptr() as *mut core::ffi::c_void,
                 7,
-            );
+            )?;
             assert_eq!(n, 7);
             assert_eq!(&buf[..7], bytes);
-            let e = littlefs_rust_core::lfs_file_close(lfs, rfile);
-            if e != 0 {
-                return Err(e);
-            }
+            let e = littlefs_rust_core::lfs_file_close(lfs, rfile)?;
         }
-        let e = littlefs_rust_core::lfs_unmount(lfs);
-        if e != 0 {
-            return Err(e);
-        }
+        let e = littlefs_rust_core::lfs_unmount(lfs)?;
         Ok(())
     };
 
-    let verify = |_lfs: *mut Lfs, _cfg: *const LfsConfig| -> Result<(), i32> { Ok(()) };
+    let verify = |_lfs: &mut Lfs, _cfg: &LfsConfig| -> Result<(), Error> { Ok(()) };
 
     let result = run_powerloss_linear(&mut env, &snapshot, max_iter, op, verify);
     result.expect("many_power_loss should eventually succeed");
