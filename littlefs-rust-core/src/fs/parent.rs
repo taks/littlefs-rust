@@ -250,9 +250,7 @@ pub fn lfs_fs_parent(
                 &find_match as *const _ as *mut core::ffi::c_void,
             );
 
-            if let Err(err) = tag
-                && err != Error::NoEntry
-            {
+            if tag != Ok(0) && tag != Err(Error::NoEntry) {
                 return tag;
             }
         }
