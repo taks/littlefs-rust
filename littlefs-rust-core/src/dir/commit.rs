@@ -61,7 +61,7 @@ pub fn lfs_dir_commitprog(
             buf_,
         )?;
 
-        commit.crc = lfs_crc(commit.crc, buf, size as usize);
+        commit.crc = lfs_crc(commit.crc, buf_);
         commit.off += size;
         Ok(())
     }
@@ -381,7 +381,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             );
 
             let xor_tag = lfs_tobe32(ntag ^ (*commit).ptag);
-            (*commit).crc = lfs_crc((*commit).crc, &xor_tag as *const _ as *const u8, 4);
+            (*commit).crc = lfs_crc((*commit).crc, xor_tag.as_bytes());
             let crc_le = lfs_tole32((*commit).crc);
 
             let mut ccrc: [u8; 8] = [0; 8];

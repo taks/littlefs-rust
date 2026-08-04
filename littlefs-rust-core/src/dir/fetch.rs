@@ -1,5 +1,7 @@
 //! Directory fetch. Per lfs.c lfs_dir_fetch, lfs_dir_getgstate, lfs_dir_getinfo.
 
+use zerocopy::IntoBytes;
+
 use crate::bd::bd::{lfs_bd_crc, lfs_bd_read};
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::crc::lfs_crc;
@@ -377,7 +379,7 @@ pub fn lfs_dir_fetchmatch(
             let mut fcrc = LfsFcrc { size: 0, crc: 0 };
 
             let rev_le = lfs_tole32(dir.rev);
-            let mut crc = lfs_crc(0xffff_ffff, &rev_le as *const _ as *const u8, 4);
+            let mut crc = lfs_crc(0xffff_ffff, rev_le.as_bytes());
             dir.rev = lfs_fromle32(dir.rev);
 
             #[cfg(feature = "loop_limits")]
@@ -425,7 +427,7 @@ pub fn lfs_dir_fetchmatch(
                     return Err(err);
                 }
 
-                crc = lfs_crc(crc, tag_buf.as_ptr(), 4);
+                crc = lfs_crc(crc, &tag_buf);
                 let tag_raw = u32::from_be_bytes(tag_buf);
                 let mut tag = tag_raw ^ ptag;
 
@@ -464,7 +466,7 @@ pub fn lfs_dir_fetchmatch(
 
                     ptag ^= (lfs_tag_chunk(tag) as lfs_tag_t & 1) << 31;
 
-                    lfs.seed = lfs_crc(lfs.seed, &crc as *const _ as *const u8, 4);
+                    lfs.seed = lfs_crc(lfs.seed, crc.as_bytes());
 
                     besttag = tempbesttag;
                     dir.off = off + lfs_tag_dsize(tag);

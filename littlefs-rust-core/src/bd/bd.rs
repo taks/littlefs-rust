@@ -373,7 +373,7 @@ pub fn lfs_bd_crc(
         )?;
 
         unsafe {
-            *crc = lfs_crc(*crc, dat.as_ptr(), diff);
+            *crc = lfs_crc(*crc, &dat[..(diff as usize)]);
         }
         i += diff as lfs_off_t;
     }
