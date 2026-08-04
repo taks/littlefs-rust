@@ -463,15 +463,15 @@ fn test_interspersed_reentrant_files(
         assert_ok(lfs_mount(lfs, &env.config));
     }
 
-    let mut file_handles: Vec<core::mem::MaybeUninit<LfsFile>> = (0..files)
-        .map(|_| core::mem::MaybeUninit::zeroed())
+    let mut file_handles: Vec<LfsFile> = (0..files)
+        .map(|_| unsafe { core::mem::MaybeUninit::zeroed().assume_init() })
         .collect();
 
     for j in 0..files {
         let path = path_bytes(&String::from(ALPHAS[j] as char));
         assert_ok(lfs_file_open(
             lfs,
-            file_handles[j].as_mut_ptr(),
+            &mut file_handles[j],
             path.as_ptr(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
         ));
@@ -479,24 +479,24 @@ fn test_interspersed_reentrant_files(
 
     for i in 0..size {
         for j in 0..files {
-            let file_sz = lfs_file_size(lfs, file_handles[j].as_mut_ptr());
+            let file_sz = lfs_file_size(lfs, &mut file_handles[j]);
             assert!(file_sz >= 0);
             if (file_sz as usize) <= i {
                 let byte = [ALPHAS[j]];
                 let n = lfs_file_write(
                     lfs,
-                    file_handles[j].as_mut_ptr(),
+                    &mut file_handles[j],
                     byte.as_ptr() as *const core::ffi::c_void,
                     1,
                 );
-                assert_eq!(n, 1);
-                assert_ok(lfs_file_sync(lfs, file_handles[j].as_mut_ptr()));
+                assert_eq!(n, Ok(1));
+                assert_ok(lfs_file_sync(lfs, &mut file_handles[j]));
             }
         }
     }
 
     for j in 0..files {
-        assert_ok(lfs_file_close(lfs, file_handles[j].as_mut_ptr()));
+        assert_ok(lfs_file_close(lfs, &mut file_handles[j]));
     }
 
     // Verify directory

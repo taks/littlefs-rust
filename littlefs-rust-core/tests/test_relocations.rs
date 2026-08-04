@@ -260,18 +260,16 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
         &snapshot,
         block_count,
         |lfs_ptr, config| {
-            let err = lfs_mount(lfs_ptr, config);
-            if err != 0 {
-                return Err(err);
-            }
+            let err = lfs_mount(lfs_ptr, config)?;
+
             for _ in 0..cycles {
                 for i in 0..files {
                     let name = format!("{}", (b'a' + i as u8) as char);
                     let path = path_bytes(&name);
                     let err = lfs_mkdir(lfs_ptr, path.as_ptr());
-                    if err != 0 {
+                    if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
-                        return Err(err);
+                        return err;
                     }
                 }
                 for i in 0..files {
@@ -279,28 +277,23 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
                     let path = path_bytes(&name);
                     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
                     let err = lfs_stat(lfs_ptr, path.as_ptr(), info.as_mut_ptr());
-                    if err != 0 {
+                    if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
-                        return Err(err);
+                        return err;
                     }
                     let err = lfs_remove(lfs_ptr, path.as_ptr());
-                    if err != 0 {
+                    if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
-                        return Err(err);
+                        return err;
                     }
                 }
             }
-            let err = lfs_unmount(lfs_ptr);
-            if err != 0 {
-                return Err(err);
-            }
+            let err = lfs_unmount(lfs_ptr)?;
+
             Ok(())
         },
         |lfs_ptr, config| {
-            let err = lfs_mount(lfs_ptr, config);
-            if err != 0 {
-                return Err(err);
-            }
+            let err = lfs_mount(lfs_ptr, config)?;
             let _ = lfs_unmount(lfs_ptr);
             Ok(())
         },
@@ -351,46 +344,40 @@ fn test_relocations_reentrant_renames(
         &snapshot,
         128,
         |lfs_ptr, config| {
-            let err = lfs_mount(lfs_ptr, config);
-            if err != 0 {
-                return Err(err);
-            }
+            let err = lfs_mount(lfs_ptr, config)?;
             let err = lfs_rename(lfs_ptr, path_bytes("x").as_ptr(), path_bytes("z").as_ptr());
-            if err != 0 {
+            if err.is_err() {
                 let _ = lfs_unmount(lfs_ptr);
-                return Err(err);
+                return err;
             }
             let err = lfs_rename(lfs_ptr, path_bytes("y").as_ptr(), path_bytes("x").as_ptr());
-            if err != 0 {
+            if err.is_err() {
                 let _ = lfs_unmount(lfs_ptr);
-                return Err(err);
+                return err;
             }
             let err = lfs_rename(lfs_ptr, path_bytes("z").as_ptr(), path_bytes("y").as_ptr());
-            if err != 0 {
+            if err.is_err() {
                 let _ = lfs_unmount(lfs_ptr);
-                return Err(err);
+                return err;
             }
             let err = lfs_remove(lfs_ptr, path_bytes("x").as_ptr());
-            if err != 0 {
+            if err.is_err() {
                 let _ = lfs_unmount(lfs_ptr);
-                return Err(err);
+                return err;
             }
             let err = lfs_remove(lfs_ptr, path_bytes("y").as_ptr());
-            if err != 0 {
+            if err.is_err() {
                 let _ = lfs_unmount(lfs_ptr);
-                return Err(err);
+                return err;
             }
             let err = lfs_unmount(lfs_ptr);
-            if err != 0 {
-                return Err(err);
+            if err.is_err() {
+                return err;
             }
             Ok(())
         },
         |lfs_ptr, config| {
-            let err = lfs_mount(lfs_ptr, config);
-            if err != 0 {
-                return Err(err);
-            }
+            let err = lfs_mount(lfs_ptr, config)?;
             let _ = lfs_unmount(lfs_ptr);
             Ok(())
         },

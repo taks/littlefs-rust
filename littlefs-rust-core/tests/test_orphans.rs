@@ -13,12 +13,12 @@ use common::{
     assert_ok, default_config, dir_block, erase_block_raw, init_context, init_logger, path_bytes,
     read_block_raw, write_block_raw,
 };
+#[cfg(feature = "slow_tests")]
+use littlefs_rust_core::LfsInfo;
 use littlefs_rust_core::error::Error;
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
-#[cfg(feature = "slow_tests")]
-use littlefs_rust_core::{LFS_ERR_EXIST, LFS_ERR_NOTEMPTY, LfsInfo};
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit, lfs_dir_fetch,
     lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
