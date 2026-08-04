@@ -192,8 +192,8 @@ pub fn lfs_tobe32(a: u32) -> u32 {
 
 /// Per C strspn: count leading bytes equal to `c`, stop at first unequal or null.
 #[inline(always)]
-pub fn lfs_strspn(p: *const u8, c: u8) -> u32 {
-    if p.is_null() {
+pub fn lfs_strspn(p: &[u8], c: u8) -> u32 {
+    if p.is_empty() {
         return 0;
     }
     let mut n: u32 = 0;
@@ -215,7 +215,7 @@ pub fn lfs_strspn(p: *const u8, c: u8) -> u32 {
                 iter += 1;
             }
             n += 1;
-            q = q.add(1);
+            q = &q[1..];
         }
     }
     n
@@ -223,8 +223,8 @@ pub fn lfs_strspn(p: *const u8, c: u8) -> u32 {
 
 /// Per C strcspn: count bytes until we hit `c` or null.
 #[inline(always)]
-pub fn lfs_strcspn(p: *const u8, c: u8) -> u32 {
-    if p.is_null() {
+pub fn lfs_strcspn(p: &[u8], c: u8) -> u32 {
+    if p.is_empty() {
         return 0;
     }
     let mut n: u32 = 0;
@@ -234,7 +234,7 @@ pub fn lfs_strcspn(p: *const u8, c: u8) -> u32 {
         const MAX_STRCSPN_ITER: u32 = 4096;
         #[cfg(feature = "loop_limits")]
         let mut iter: u32 = 0;
-        while *q != c && *q != 0 {
+        while q[0] != c && q[0] != 0 {
             #[cfg(feature = "loop_limits")]
             {
                 if iter >= MAX_STRCSPN_ITER {
@@ -246,7 +246,7 @@ pub fn lfs_strcspn(p: *const u8, c: u8) -> u32 {
                 iter += 1;
             }
             n += 1;
-            q = q.add(1);
+            q = &q[1..];
         }
     }
     n

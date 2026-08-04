@@ -1,10 +1,13 @@
 //! Superblock. Per lfs.h lfs_superblock_t.
 
+use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
+
 use crate::types::lfs_size_t;
 use crate::util::{lfs_fromle32, lfs_tole32};
 
 /// Per lfs.h typedef struct lfs_superblock
 #[repr(C)]
+#[derive(IntoBytes, Immutable, FromBytes)]
 pub struct LfsSuperblock {
     pub version: u32,
     pub block_size: lfs_size_t,

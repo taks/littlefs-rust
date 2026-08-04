@@ -1,5 +1,7 @@
 //! Mount/unmount. Per lfs.c lfs_mount_, lfs_unmount_.
 
+use zerocopy::IntoBytes;
+
 use crate::{borrow_unchecked::borrow_unchecked, error::Error};
 
 /// Per lfs.c lfs_tortoise_t and lfs_tortoise_detectcycles (lines 4464-4480)
@@ -304,7 +306,7 @@ pub fn lfs_mount_(
                         0,
                         core::mem::size_of::<LfsSuperblock>() as u32,
                     ),
-                    &mut superblock as *mut _ as *mut core::ffi::c_void,
+                    superblock.as_mut_bytes(),
                 );
                 if let Err(err) = sbtag {
                     err_inner = Err(err);

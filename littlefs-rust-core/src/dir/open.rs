@@ -1,5 +1,7 @@
 //! Directory open/read. Per lfs.c lfs_dir_open_, lfs_dir_close_, lfs_dir_read_, etc.
 
+use zerocopy::IntoBytes;
+
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::fetch::{lfs_dir_fetch, lfs_dir_getinfo};
 use crate::dir::find::lfs_dir_find;
@@ -62,8 +64,8 @@ use crate::util::{lfs_min, lfs_pair_cmp, lfs_pair_fromle32};
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8) -> Result<(), Error> {
-    if lfs.is_null() || dir.is_null() || path.is_null() {
+pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: &[u8]) -> Result<(), Error> {
+    if lfs.is_null() || dir.is_null() || path.is_empty() {
         return Err(Error::Invalid);
     }
     unsafe {
@@ -91,7 +93,7 @@ pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8
                     lfs_tag_id(tag as u32) as u32,
                     8,
                 ),
-                pair.as_mut_ptr() as *mut core::ffi::c_void,
+                pair.as_mut_bytes(),
             )?;
 
             lfs_pair_fromle32(&mut pair);

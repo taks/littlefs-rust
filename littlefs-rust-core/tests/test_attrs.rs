@@ -383,18 +383,15 @@ fn test_attrs_get_set_file() {
     let mut attrs = [
         LfsAttr {
             type_: b'A',
-            buffer: buffer.as_mut_ptr() as *mut core::ffi::c_void,
-            size: 4,
+            buffer: &mut buffer[0..4],
         },
         LfsAttr {
             type_: b'B',
-            buffer: buffer[4..].as_mut_ptr() as *mut core::ffi::c_void,
-            size: 6,
+            buffer: &mut buffer[4..10],
         },
         LfsAttr {
             type_: b'C',
-            buffer: buffer[10..].as_mut_ptr() as *mut core::ffi::c_void,
-            size: 5,
+            buffer: &mut buffer[10..],
         },
     ];
     let cfg = LfsFileConfig {

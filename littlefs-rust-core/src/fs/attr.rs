@@ -54,12 +54,12 @@ use crate::util::lfs_min;
 /// ```
 pub fn lfs_getattr_(
     lfs: *mut Lfs,
-    path: *const u8,
+    path: &[u8],
     r#type: u8,
     buffer: *mut core::ffi::c_void,
     size: lfs_size_t,
 ) -> Result<lfs_size_t, Error> {
-    if lfs.is_null() || path.is_null() {
+    if lfs.is_null() || path.is_empty() {
         return crate::lfs_err!(Err(Error::Invalid));
     }
     unsafe {
@@ -85,12 +85,13 @@ pub fn lfs_getattr_(
             let lfs_root = borrow_unchecked(&lfs.root);
             lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
-
+        let size = lfs_min(size, (*lfs).attr_max);
         let gtag = lfs_mktag(
             LFS_TYPE_USERATTR + r#type as u32,
             id as u32,
-            lfs_min(size, (*lfs).attr_max),
+            size,
         );
+        let buffer = core::slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
         let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer);
         if let Err(err) = tag {
             if err == Error::NoEntry {
@@ -134,12 +135,12 @@ pub fn lfs_getattr_(
 /// ```
 pub fn lfs_commitattr(
     lfs: *mut Lfs,
-    path: *const u8,
+    path: &[u8],
     r#type: u8,
     buffer: *const core::ffi::c_void,
     size: lfs_size_t,
 ) -> Result<(), Error> {
-    if lfs.is_null() || path.is_null() {
+    if lfs.is_null() || path.is_empty() {
         return crate::lfs_err!(Err(Error::Invalid));
     }
     unsafe {
@@ -166,6 +167,7 @@ pub fn lfs_commitattr(
             lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
 
+        let buffer = core::slice::from_raw_parts(buffer as *const u8, size as usize);
         let attrs = [lfs_mattr {
             tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size),
             buffer,
@@ -192,7 +194,7 @@ pub fn lfs_commitattr(
 /// ```
 pub fn lfs_setattr_(
     lfs: *mut Lfs,
-    path: *const u8,
+    path: &[u8],
     r#type: u8,
     buffer: *const core::ffi::c_void,
     size: lfs_size_t,
@@ -219,6 +221,6 @@ pub fn lfs_setattr_(
 /// }
 /// #endif
 /// ```
-pub fn lfs_removeattr_(lfs: *mut Lfs, path: *const u8, r#type: u8) -> Result<(), Error> {
+pub fn lfs_removeattr_(lfs: *mut Lfs, path: &[u8], r#type: u8) -> Result<(), Error> {
     lfs_commitattr(lfs, path, r#type, core::ptr::null(), 0x3ff)
 }

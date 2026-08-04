@@ -579,7 +579,7 @@ pub fn lfs_dir_drop(
         lfs_pair_tole32(&mut tail_pair);
         let attrs = [crate::tag::lfs_mattr {
             tag: lfs_mktag(LFS_TYPE_TAIL + if tail_ref.split { 1 } else { 0 }, 0x3ff, 8),
-            buffer: tail_pair.as_ptr() as *const core::ffi::c_void,
+            buffer: tail_pair.as_bytes(),
         }];
         lfs_dir_commit(lfs, dir, &attrs)
     }
@@ -722,7 +722,7 @@ pub fn lfs_dir_commit_size(
 pub fn lfs_dir_commit_commit(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
-    buffer: *const core::ffi::c_void,
+    buffer: &[u8],
 ) -> Result<(), Error> {
     if p.is_null() {
         return Err(Error::Invalid);
@@ -1202,7 +1202,7 @@ pub fn lfs_dir_compact(
                         0x3ff,
                         core::mem::size_of::<crate::lfs_gstate::LfsGstate>() as u32,
                     ),
-                    &delta as *const _ as *const _,
+                    delta.as_bytes(),
                 );
                 if let Err(err) = err {
                     if err == Error::Corrupt {
@@ -1950,7 +1950,7 @@ fn relocatingcommit_fixmlist(
 fn lfs_dir_commit_commit_raw(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
-    buffer: &[u8],
+    buffer: *const core::ffi::c_void,
 ) -> Result<i32, Error> {
     crate::lfs_trace!(
         "commit_commit_raw: tag=0x{:08x} type1={} buffer={:p}",
@@ -1959,7 +1959,7 @@ fn lfs_dir_commit_commit_raw(
         buffer
     );
     if u32::from(crate::tag::lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK {
-        let preview: [u8; 8] = if buffer.is_empty() {
+        let preview: [u8; 8] = if buffer.is_null() {
             [0u8; 8]
         } else {
             unsafe { core::ptr::read(buffer as *const [u8; 8]) }
@@ -2205,7 +2205,7 @@ pub fn lfs_dir_orphaningcommit(
                     0x3ff,
                     8,
                 ),
-                buffer: (*dir).tail.as_ptr() as *const core::ffi::c_void,
+                buffer: (*dir).tail.as_bytes(),
             }];
             let tail_state = lfs_dir_relocatingcommit(lfs, &mut pdir, &plpair, &tail_attrs, None);
             lfs_pair_fromle32(&mut (*dir).tail);
@@ -2286,11 +2286,11 @@ pub fn lfs_dir_orphaningcommit(
                             moveid.into(),
                             0,
                         ),
-                        buffer: core::ptr::null(),
+                        buffer: &[],
                     },
                     crate::tag::lfs_mattr {
                         tag: tag as lfs_tag_t,
-                        buffer: ldir.pair.as_ptr() as *const core::ffi::c_void,
+                        buffer: ldir.pair.as_bytes(),
                     },
                 ];
 
@@ -2345,7 +2345,7 @@ pub fn lfs_dir_orphaningcommit(
                             moveid.into(),
                             0,
                         ),
-                        buffer: core::ptr::null(),
+                        buffer: &[],
                     },
                     crate::tag::lfs_mattr {
                         tag: crate::tag::lfs_mktag(
@@ -2354,7 +2354,7 @@ pub fn lfs_dir_orphaningcommit(
                             0x3ff,
                             8,
                         ),
-                        buffer: ldir.pair.as_ptr() as *const core::ffi::c_void,
+                        buffer: ldir.pair.as_bytes(),
                     },
                 ];
                 state = {

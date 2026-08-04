@@ -1,5 +1,7 @@
 //! File and filesystem info. Per lfs.h struct lfs_info, lfs_fsinfo, lfs_attr, lfs_file_config.
 
+use zerocopy_derive::{Immutable, IntoBytes, KnownLayout, TryFromBytes};
+
 use crate::types::lfs_size_t;
 use core::ffi::c_void;
 
@@ -24,19 +26,19 @@ pub struct LfsFsinfo {
 
 /// Per lfs.h struct lfs_attr
 #[repr(C)]
-pub struct LfsAttr {
+#[derive(KnownLayout, TryFromBytes, IntoBytes, Immutable)]
+pub struct LfsAttr<'a> {
     pub type_: u8,
-    pub buffer: *mut c_void,
-    pub size: lfs_size_t,
+    pub buffer: &'a mut [u8],
 }
 
 /// Per lfs.h struct lfs_file_config
 #[repr(C)]
-pub struct LfsFileConfig {
+pub struct LfsFileConfig<'a> {
     pub buffer: *mut c_void,
-    pub attrs: *mut LfsAttr,
+    pub attrs: *mut LfsAttr<'a>,
     pub attr_count: lfs_size_t,
 }
 
 // Safe: default config (all nulls) is shareable. Callers must not mutate.
-unsafe impl Sync for LfsFileConfig {}
+unsafe impl Sync for LfsFileConfig<'_> {}

@@ -151,11 +151,11 @@ pub fn lfs_format_(
         let attrs = [
             crate::tag::lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, 0, 0),
-                buffer: core::ptr::null(),
+                buffer: &[],
             },
             crate::tag::lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-                buffer: magic.as_ptr() as *const core::ffi::c_void,
+                buffer: magic,
             },
             crate::tag::lfs_mattr {
                 tag: lfs_mktag(
@@ -163,7 +163,7 @@ pub fn lfs_format_(
                     0,
                     core::mem::size_of::<LfsSuperblock>() as u32,
                 ),
-                buffer: &superblock as *const _ as *const _,
+                buffer: superblock.as_bytes(),
             },
         ];
         err = lfs_dir_commit(lfs, &mut root, &attrs);
@@ -276,11 +276,11 @@ pub unsafe fn test_traverse_format_attrs(
         let attrs = [
             crate::tag::lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, 0, 0),
-                buffer: core::ptr::null(),
+                buffer: &[],
             },
             crate::tag::lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-                buffer: magic.as_ptr() as *const core::ffi::c_void,
+                buffer: magic,
             },
             crate::tag::lfs_mattr {
                 tag: lfs_mktag(
@@ -288,7 +288,7 @@ pub unsafe fn test_traverse_format_attrs(
                     0,
                     core::mem::size_of::<crate::lfs_superblock::LfsSuperblock>() as u32,
                 ),
-                buffer: &superblock as *const _ as *const _,
+                buffer: superblock.as_bytes(),
             },
         ];
 
@@ -382,11 +382,11 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
         let attrs = [
             crate::tag::lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, 0, 0),
-                buffer: core::ptr::null(),
+                buffer: &[],
             },
             crate::tag::lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-                buffer: magic.as_ptr() as *const core::ffi::c_void,
+                buffer: magic,
             },
             crate::tag::lfs_mattr {
                 tag: lfs_mktag(
@@ -394,7 +394,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
                     0,
                     core::mem::size_of::<crate::lfs_superblock::LfsSuperblock>() as u32,
                 ),
-                buffer: &superblock as *const _ as *const _,
+                buffer: superblock.as_bytes(),
             },
         ];
 

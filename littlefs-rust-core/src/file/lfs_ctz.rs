@@ -1,11 +1,13 @@
 //! CTZ struct (file block list). Per lfs.h lfs_file_t.ctz.
 
+use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
+
 use crate::types::{lfs_block_t, lfs_size_t};
 use crate::util::{lfs_fromle32, lfs_tole32};
 
 /// Per lfs.h struct lfs_ctz (in lfs_file_t)
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, FromBytes, IntoBytes, Immutable)]
 pub struct LfsCtz {
     pub head: lfs_block_t,
     pub size: lfs_size_t,

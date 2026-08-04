@@ -755,7 +755,7 @@ pub fn lfs_dir_getgstate(
                 0,
                 core::mem::size_of::<LfsGstate>() as u32,
             ),
-            &mut temp as *mut _ as *mut core::ffi::c_void,
+            temp.as_mut_bytes(),
         );
         if let Err(err) = res
             && err != Error::NoEntry
@@ -837,7 +837,8 @@ pub fn lfs_dir_getinfo(
             dir,
             lfs_mktag(0x780, 0x3ff, 0),
             lfs_mktag(LFS_TYPE_NAME, id as u32, name_max + 1),
-            info.name.as_mut_ptr() as *mut core::ffi::c_void,
+            // TODO: info.name.as_mut_ptr() as *mut core::ffi::c_void,
+            &mut info.name,
         )?;
 
         info.type_ = lfs_tag_type3(tag as _) as u8;
@@ -849,7 +850,7 @@ pub fn lfs_dir_getinfo(
             dir,
             lfs_mktag(0x700, 0x3ff, 0),
             lfs_mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>() as u32),
-            &mut ctz as *mut _ as *mut core::ffi::c_void,
+            ctz.as_mut_bytes(),
         )?;
 
         lfs_ctz_fromle32(&mut ctz);
