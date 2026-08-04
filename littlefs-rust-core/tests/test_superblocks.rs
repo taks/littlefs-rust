@@ -175,20 +175,12 @@ fn test_superblocks_reentrant_format() {
         500,
         |lfs_ptr, config| {
             let err = lfs_mount(lfs_ptr, config);
-            if err != 0 {
-                let e = lfs_format(lfs_ptr, config);
-                if e != 0 {
-                    return Err(e);
-                }
-                let e = lfs_mount(lfs_ptr, config);
-                if e != 0 {
-                    return Err(e);
-                }
+            if err.is_err() {
+                let e = lfs_format(lfs_ptr, config)?;
+
+                let e = lfs_mount(lfs_ptr, config)?;
             }
-            let e = lfs_unmount(lfs_ptr);
-            if e != 0 {
-                return Err(e);
-            }
+            let e = lfs_unmount(lfs_ptr)?;
             Ok(())
         },
         |_, _| Ok(()),
@@ -392,31 +384,25 @@ fn test_superblocks_reentrant_expand() {
             3000,
             |lfs_ptr, config| {
                 let err = lfs_mount(lfs_ptr, config);
-                if err != 0 {
-                    let e = lfs_format(lfs_ptr, config);
-                    if e != 0 {
-                        return Err(e);
-                    }
-                    let e = lfs_mount(lfs_ptr, config);
-                    if e != 0 {
-                        return Err(e);
-                    }
+                if err.is_err() {
+                    let e = lfs_format(lfs_ptr, config)?;
+                    let e = lfs_mount(lfs_ptr, config)?;
                 }
                 for i in 0..N {
                     let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
                     let err = lfs_stat(lfs_ptr, dummy.as_ptr(), info.as_mut_ptr());
-                    if err == 0 {
+                    if err.is_ok() {
                         let info = unsafe { info.assume_init() };
                         if info.type_ == LFS_TYPE_REG as u8 {
                             let e = lfs_remove(lfs_ptr, dummy.as_ptr());
-                            if e != 0 {
+                            if e.is_err() {
                                 let _ = lfs_unmount(lfs_ptr);
-                                return Err(e);
+                                return e;
                             }
                         }
-                    } else if err != littlefs_rust_core::LFS_ERR_NOENT || i != 0 {
+                    } else if err != Err(Error::NoEntry) || i != 0 {
                         let _ = lfs_unmount(lfs_ptr);
-                        return Err(err);
+                        return Err(err.unwrap_err());
                     }
                     let file =
                         &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
@@ -426,26 +412,23 @@ fn test_superblocks_reentrant_expand() {
                         dummy.as_ptr(),
                         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                     );
-                    if e != 0 {
+                    if e.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
-                        return Err(e);
+                        return e;
                     }
                     let e = lfs_file_close(lfs_ptr, file);
-                    if e != 0 {
+                    if e.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
-                        return Err(e);
+                        return e;
                     }
                     let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
                     let e = lfs_stat(lfs_ptr, dummy.as_ptr(), info.as_mut_ptr());
-                    if e != 0 {
+                    if e.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
-                        return Err(e);
+                        return e;
                     }
                 }
-                let e = lfs_unmount(lfs_ptr);
-                if e != 0 {
-                    return Err(e);
-                }
+                let e = lfs_unmount(lfs_ptr)?;
                 Ok(())
             },
             |_, _| Ok(()),
