@@ -1,5 +1,7 @@
 //! Directory traverse. Per lfs.c lfs_dir_traverse, lfs_dir_getslice, lfs_dir_get, lfs_dir_getread.
 
+use zerocopy::IntoBytes;
+
 use crate::bd::LfsCache;
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
@@ -133,8 +135,7 @@ pub fn lfs_dir_getslice(
                 4,
                 dir.pair[0],
                 off,
-                &mut ntag_buf as *mut _ as *mut u8,
-                4,
+                ntag_buf.as_mut_bytes(),
             )?;
 
             ntag = (lfs_frombe32(ntag_buf) ^ tag) & 0x7fff_ffff;
@@ -159,6 +160,7 @@ pub fn lfs_dir_getslice(
                 }
                 let diff = lfs_min(lfs_tag_size(tag), gsize);
                 let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
+                let buf = core::slice::from_raw_parts_mut(gbuffer as *mut u8, diff as _);
                 lfs_bd_read(
                     lfs,
                     None,
@@ -166,8 +168,7 @@ pub fn lfs_dir_getslice(
                     diff,
                     dir.pair[0],
                     off + 4 + goff,
-                    gbuffer as *mut u8,
-                    diff,
+                    buf,
                 )?;
                 if !gbuffer.is_null() && diff < gsize {
                     core::ptr::write_bytes(
@@ -469,7 +470,11 @@ struct LfsDirTraverseStack {
     begin: u16,
     end: u16,
     diff: i16,
-    cb: unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
+    cb: unsafe extern "C" fn(
+        *mut core::ffi::c_void,
+        lfs_tag_t,
+        *const core::ffi::c_void,
+    ) -> Result<i32, Error>,
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
@@ -683,7 +688,11 @@ struct LfsDirTraverseStack {
 /// C: `res = cb(data, tag + LFS_MKTAG(0, diff, 0), buffer);`
 #[inline(always)]
 fn dispatch_tag(
-    cb: unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
+    cb: unsafe extern "C" fn(
+        *mut core::ffi::c_void,
+        lfs_tag_t,
+        *const core::ffi::c_void,
+    ) -> Result<i32, Error>,
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
@@ -706,7 +715,11 @@ pub fn lfs_dir_traverse(
     end: u16,
     diff: i16,
     cb: Option<
-        unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
+        unsafe extern "C" fn(
+            *mut core::ffi::c_void,
+            lfs_tag_t,
+            *const core::ffi::c_void,
+        ) -> Result<i32, Error>,
     >,
     data: *mut core::ffi::c_void,
 ) -> Result<i32, Error> {
@@ -785,8 +798,7 @@ pub fn lfs_dir_traverse(
                             core::mem::size_of::<lfs_tag_t>() as u32,
                             dir_ref.pair[0],
                             off,
-                            &mut tag_raw as *mut _ as *mut u8,
-                            core::mem::size_of::<lfs_tag_t>() as u32,
+                            tag_raw.as_mut_bytes(),
                         )?;
 
                         let tag_val = (lfs_frombe32(tag_raw) ^ ptag) | 0x8000_0000;

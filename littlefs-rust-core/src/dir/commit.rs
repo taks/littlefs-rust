@@ -1,6 +1,7 @@
 //! Directory commit. Per lfs.c lfs_dir_commit, lfs_dir_commitattr, lfs_dir_alloc, etc.
 
 use alloc::borrow;
+use zerocopy::IntoBytes;
 
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsCommit;
@@ -165,8 +166,7 @@ pub fn lfs_dir_commitattr(
                     data_size - i,
                     disk_ref.block,
                     disk_ref.off + i,
-                    &mut dat as *mut u8,
-                    1,
+                    dat.as_mut_bytes(),
                 )?;
 
                 lfs_dir_commitprog(lfs, commit, &dat as *const _ as *const _, 1)?;
@@ -361,8 +361,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
                     prog_size,
                     (*commit).block,
                     noff,
-                    &mut eperturb,
-                    1,
+                    eperturb.as_mut_bytes(),
                 );
                 if let Err(err) = ret
                     && err != Error::Corrupt
@@ -519,8 +518,7 @@ pub unsafe fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Resu
             core::mem::size_of::<u32>() as u32,
             dir.pair[0],
             0,
-            &mut rev_buf as *mut u32 as *mut u8,
-            core::mem::size_of::<u32>() as u32,
+            rev_buf.as_mut_bytes(),
         );
         dir.rev = lfs_fromle32(rev_buf);
         if err.is_err() && err != Err(Error::Corrupt) {

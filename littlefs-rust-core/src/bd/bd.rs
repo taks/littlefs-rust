@@ -140,8 +140,7 @@ pub fn lfs_bd_read(
     hint: lfs_size_t,
     block: lfs_block_t,
     off: lfs_off_t,
-    buffer: *mut u8,
-    size: lfs_size_t,
+    buffer: &mut [u8],
 ) -> Result<(), Error> {
     unsafe {
         let cfg = &*lfs.cfg;
@@ -150,13 +149,15 @@ pub fn lfs_bd_read(
             None => return Err(Error::Corrupt),
         };
 
-        if off + size > cfg.block_size || (lfs.block_count != 0 && block >= lfs.block_count) {
+        if off + (buffer.len() as u32) > cfg.block_size
+            || (lfs.block_count != 0 && block >= lfs.block_count)
+        {
             return crate::lfs_err!(Err(Error::Corrupt));
         }
 
         let mut data = buffer;
         let mut off = off;
-        let mut size = size;
+        let mut size = data.len() as u32;
 
         while size > 0 {
             let mut diff = size;
@@ -168,11 +169,11 @@ pub fn lfs_bd_read(
                         if !pcache.buffer.is_null() {
                             core::ptr::copy_nonoverlapping(
                                 pcache.buffer.add((off - pcache.off) as usize),
-                                data,
+                                data.as_mut_ptr(),
                                 diff as usize,
                             );
                         }
-                        data = data.add(diff as usize);
+                        data = &mut data[(diff as usize)..];
                         off += diff;
                         size -= diff;
                         continue;
@@ -188,11 +189,11 @@ pub fn lfs_bd_read(
                     if !rcache.buffer.is_null() {
                         core::ptr::copy_nonoverlapping(
                             rcache.buffer.add((off - rcache.off) as usize),
-                            data,
+                            data.as_mut_ptr(),
                             diff as usize,
                         );
                     }
-                    data = data.add(diff as usize);
+                    data = &mut data[(diff as usize)..];
                     off += diff;
                     size -= diff;
                     continue;
@@ -203,14 +204,14 @@ pub fn lfs_bd_read(
             if size >= hint && off.is_multiple_of(cfg.read_size) && size >= cfg.read_size {
                 diff = lfs_aligndown(diff, cfg.read_size);
                 crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
-                let data_ = core::slice::from_raw_parts_mut(data, diff as _);
-                let err = read(cfg, block, off, data_);
+                let data_ = data.split_at_mut(diff as _);
+                let err = read(cfg, block, off, data_.0);
                 if err.is_err() {
                     crate::lfs_trace!("bd_read block={} -> CORRUPT", block);
                     return crate::lfs_pass_err!(err);
                 }
-                data = data.add(diff as usize);
-                off += diff;
+                data = data_.1;
+                off += (diff as u32);
                 size -= diff;
                 continue;
             }
@@ -230,12 +231,7 @@ pub fn lfs_bd_read(
                 rcache.size
             );
             let data_ = core::slice::from_raw_parts_mut(rcache.buffer, rcache.size as _);
-            let err = read(
-                cfg,
-                rcache.block,
-                rcache.off,
-                data_,
-            );
+            let err = read(cfg, rcache.block, rcache.off, data_);
             if err.is_err() {
                 crate::lfs_trace!("bd_read block={} -> CORRUPT", rcache.block);
                 // Don't leave rcache claiming to have this block when the buffer wasn't filled.
@@ -306,8 +302,7 @@ pub fn lfs_bd_cmp(
             hint.saturating_sub(i),
             block,
             off + i,
-            dat.as_mut_ptr(),
-            diff as lfs_size_t,
+            &mut dat[..diff],
         )?;
 
         let res = unsafe {
@@ -374,8 +369,7 @@ pub fn lfs_bd_crc(
             hint.saturating_sub(i),
             block,
             off + i,
-            dat.as_mut_ptr(),
-            diff as lfs_size_t,
+            &mut dat[0..diff],
         )?;
 
         unsafe {
@@ -452,12 +446,7 @@ pub fn lfs_bd_flush(
                 None => return Err(Error::Corrupt),
             };
             let data_ = core::slice::from_raw_parts(pcache.buffer, diff as _);
-            let err = prog(
-                cfg,
-                pcache.block,
-                pcache.off,
-                data_,
-            );
+            let err = prog(cfg, pcache.block, pcache.off, data_);
             if err.is_err() {
                 crate::lfs_trace!("bd_prog block={} -> CORRUPT", pcache.block);
                 return crate::lfs_pass_err!(err);
@@ -478,7 +467,9 @@ pub fn lfs_bd_flush(
                 if let Err(e) = res {
                     return Err(e);
                 }
-                if let Ok(res) = res && res != 0 {
+                if let Ok(res) = res
+                    && res != 0
+                {
                     return crate::lfs_err!(Err(Error::Corrupt));
                 }
             }

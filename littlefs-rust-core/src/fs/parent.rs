@@ -1,5 +1,7 @@
 //! FS parent. Per lfs.c lfs_fs_pred, lfs_fs_parent.
 
+use zerocopy::IntoBytes;
+
 use crate::{borrow_unchecked::borrow_unchecked, error::Error, lfs_pass_err};
 
 /// Per lfs.c lfs_fs_pred (lines 4796-4833)
@@ -149,8 +151,7 @@ pub unsafe extern "C" fn lfs_fs_parent_match(
         unsafe { (*find.lfs).cfg.as_ref().expect("cfg").block_size },
         disk.block,
         disk.off,
-        child.as_mut_ptr() as *mut u8,
-        8,
+        child.as_mut_bytes(),
     )?;
 
     lfs_pair_fromle32(&mut child);

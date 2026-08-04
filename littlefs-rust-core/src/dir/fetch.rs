@@ -3,12 +3,12 @@
 use crate::bd::bd::{lfs_bd_crc, lfs_bd_read};
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::crc::lfs_crc;
-use crate::dir::lfs_fcrc::lfs_fcrc_fromle32;
-use crate::dir::traverse::lfs_dir_get;
 use crate::dir::LfsFcrc;
 use crate::dir::LfsMdir;
+use crate::dir::lfs_fcrc::lfs_fcrc_fromle32;
+use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
-use crate::file::lfs_ctz::{lfs_ctz_fromle32, LfsCtz};
+use crate::file::lfs_ctz::{LfsCtz, lfs_ctz_fromle32};
 use crate::lfs_gstate::LfsGstate;
 use crate::lfs_gstate::{lfs_gstate_fromle32, lfs_gstate_hasmovehere, lfs_gstate_xor};
 use crate::lfs_info::LfsInfo;
@@ -20,7 +20,7 @@ use crate::tag::{
     lfs_mktag, lfs_tag_chunk, lfs_tag_dsize, lfs_tag_id, lfs_tag_isvalid, lfs_tag_size,
     lfs_tag_splice, lfs_tag_type1, lfs_tag_type2, lfs_tag_type3,
 };
-use crate::types::{lfs_block_t, lfs_stag_t, lfs_tag_t, LFS_BLOCK_NULL};
+use crate::types::{LFS_BLOCK_NULL, lfs_block_t, lfs_stag_t, lfs_tag_t};
 use crate::util::{lfs_fromle32, lfs_min, lfs_pair_swap, lfs_scmp, lfs_tole32};
 use core::f32::consts::E;
 use core::mem;
@@ -318,7 +318,11 @@ pub fn lfs_dir_fetchmatch(
     _ftag: lfs_tag_t,
     _id: &mut Option<&mut u16>,
     _cb: Option<
-        unsafe extern "C" fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
+        unsafe extern "C" fn(
+            *mut core::ffi::c_void,
+            lfs_tag_t,
+            *const core::ffi::c_void,
+        ) -> Result<i32, Error>,
     >,
     _data: *mut core::ffi::c_void,
 ) -> Result<lfs_tag_t, Error> {
@@ -345,18 +349,11 @@ pub fn lfs_dir_fetchmatch(
             crate::lfs_trace!("fetchmatch: reading rev for pair[{}]={}", i, pair[i]);
             let mut rev_buf = [0u8; 4];
             let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-            let err = lfs_bd_read(
-                lfs,
-                None,
-                lfs_rcache,
-                4,
-                pair[i],
-                0,
-                rev_buf.as_mut_ptr(),
-                4,
-            );
+            let err = lfs_bd_read(lfs, None, lfs_rcache, 4, pair[i], 0, &mut rev_buf);
             revs[i] = u32::from_le_bytes(rev_buf);
-            if let Err(err) = err && err != Error::Corrupt {
+            if let Err(err) = err
+                && err != Error::Corrupt
+            {
                 return Err(err);
             }
             if err != Err(Error::Corrupt) && lfs_scmp(revs[i], revs[(i + 1) % 2]) > 0 {
@@ -423,10 +420,9 @@ pub fn lfs_dir_fetchmatch(
                     cfg.block_size,
                     dir.pair[0],
                     off,
-                    tag_buf.as_mut_ptr(),
-                    4,
+                    &mut tag_buf,
                 );
-                if let Err(err) = err{
+                if let Err(err) = err {
                     if err == Error::Corrupt {
                         break;
                     }
@@ -456,8 +452,7 @@ pub fn lfs_dir_fetchmatch(
                         cfg.block_size,
                         dir.pair[0],
                         off + 4,
-                        dcrc_buf.as_mut_ptr(),
-                        4,
+                        &mut dcrc_buf,
                     );
                     if let Err(err) = err {
                         if err == Error::Corrupt {
@@ -500,7 +495,7 @@ pub fn lfs_dir_fetchmatch(
                     entry_size,
                     &mut crc_val,
                 );
-                if let Err(err) = err{
+                if let Err(err) = err {
                     if err == Error::Corrupt {
                         break;
                     }
@@ -541,8 +536,7 @@ pub fn lfs_dir_fetchmatch(
                         cfg.block_size,
                         dir.pair[0],
                         off + 4,
-                        tail_buf.as_mut_ptr(),
-                        8,
+                        &mut tail_buf,
                     );
                     if let Err(err) = err {
                         if err == Error::Corrupt {
@@ -562,8 +556,7 @@ pub fn lfs_dir_fetchmatch(
                         cfg.block_size,
                         dir.pair[0],
                         off + 4,
-                        fcrc_buf.as_mut_ptr(),
-                        fcrc_buf.len() as u32,
+                        &mut fcrc_buf,
                     );
                     if let Err(err) = err {
                         if err == Error::Corrupt {
@@ -629,7 +622,9 @@ pub fn lfs_dir_fetchmatch(
                     fcrc.size,
                     &mut fcrc_,
                 );
-                if let Err(err) = err && err != Error::Corrupt {
+                if let Err(err) = err
+                    && err != Error::Corrupt
+                {
                     return Err(err);
                 }
                 dir.erased = fcrc_ == fcrc.crc;
@@ -703,7 +698,11 @@ pub fn lfs_dir_fetchmatch(
 ///             (lfs_tag_t)-1, (lfs_tag_t)-1, NULL, NULL, NULL);
 /// }
 /// ```
-pub fn lfs_dir_fetch(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir, pair: &[lfs_block_t; 2]) -> Result<(), Error> {
+pub fn lfs_dir_fetch(
+    lfs: &mut crate::fs::Lfs,
+    dir: &mut LfsMdir,
+    pair: &[lfs_block_t; 2],
+) -> Result<(), Error> {
     let res = lfs_dir_fetchmatch(
         lfs,
         dir,
@@ -714,11 +713,7 @@ pub fn lfs_dir_fetch(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir, pair: &[lfs_bl
         None,
         core::ptr::null_mut(),
     );
-    if let Err(e) = res {
-        Err(e)
-    } else {
-        Ok(())
-    }
+    if let Err(e) = res { Err(e) } else { Ok(()) }
 }
 
 /// Per lfs.c lfs_dir_getgstate (lines 1395-1411)
@@ -764,7 +759,9 @@ pub fn lfs_dir_getgstate(
             ),
             &mut temp as *mut _ as *mut core::ffi::c_void,
         );
-        if let Err(err) = res && err != Error::NoEntry {
+        if let Err(err) = res
+            && err != Error::NoEntry
+        {
             return Err(err);
         }
         if res != Err(Error::NoEntry) {

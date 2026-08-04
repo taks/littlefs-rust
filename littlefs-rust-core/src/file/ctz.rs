@@ -1,5 +1,7 @@
 //! CTZ operations. Per lfs.c lfs_ctz_index, lfs_ctz_find, lfs_ctz_extend, lfs_ctz_traverse.
 
+use zerocopy::IntoBytes;
+
 use crate::error::Error;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 
@@ -188,8 +190,7 @@ pub fn lfs_ctz_find(
                 4,
                 head_val,
                 4 * skip,
-                &mut head_buf as *mut u32 as *mut u8,
-                4,
+                head_buf.as_mut_bytes(),
             )?;
 
             head_val = lfs_fromle32(head_buf);
@@ -304,8 +305,7 @@ pub fn lfs_ctz_traverse(
                 read_size,
                 current_head,
                 0,
-                heads.as_mut_ptr() as *mut u8,
-                read_size,
+                heads.as_mut_bytes(),
             )?;
 
             heads[0] = lfs_fromle32(heads[0]);
@@ -449,7 +449,6 @@ pub fn lfs_ctz_extend(
             let mut nblock: lfs_block_t = 0;
             lfs_alloc(lfs, &mut nblock)?;
 
-
             let err = lfs_bd_erase(lfs, nblock);
             if let Err(err) = err {
                 if err == Error::Corrupt {
@@ -473,27 +472,10 @@ pub fn lfs_ctz_extend(
             if noff != block_size {
                 for i in 0..noff {
                     let mut data: u8 = 0;
-                    let err = lfs_bd_read(
-                        lfs,
-                        None,
-                        rcache,
-                        noff - i,
-                        head,
-                        i,
-                        &mut data,
-                        1,
-                    )?;
+                    let err =
+                        lfs_bd_read(lfs, None, rcache, noff - i, head, i, data.as_mut_bytes())?;
 
-                    let err = lfs_bd_prog(
-                        lfs,
-                        pcache,
-                        rcache,
-                        true,
-                        nblock,
-                        i,
-                        &data,
-                        1,
-                    );
+                    let err = lfs_bd_prog(lfs, pcache, rcache, true, nblock, i, &data, 1);
                     if let Err(err) = err {
                         if err == Error::Corrupt {
                             lfs_alloc_lookahead(lfs, nblock);
@@ -535,16 +517,8 @@ pub fn lfs_ctz_extend(
 
                 if i != skips - 1 {
                     let mut nhead_buf: u32 = 0;
-                    lfs_bd_read(
-                        lfs,
-                        None,
-                        rcache,
-                        4,
-                        nhead,
-                        4 * i,
-                        &mut nhead_buf as *mut u32 as *mut u8,
-                        4,
-                    )?;
+
+                    lfs_bd_read(lfs, None, rcache, 4, nhead, 4 * i, nhead_buf.as_mut_bytes())?;
 
                     nhead = lfs_fromle32(nhead_buf);
                 }
