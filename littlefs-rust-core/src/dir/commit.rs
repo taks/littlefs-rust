@@ -46,6 +46,11 @@ pub fn lfs_dir_commitprog(
 
         let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
         let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
+        let buf_ = if buf.is_null() {
+            &[]
+        } else {
+            core::slice::from_raw_parts(buf, size as usize)
+        };
         lfs_bd_prog(
             lfs,
             lfs_pcache,
@@ -53,8 +58,7 @@ pub fn lfs_dir_commitprog(
             false,
             commit.block,
             commit.off,
-            buf,
-            size,
+            buf_,
         )?;
 
         commit.crc = lfs_crc(commit.crc, buf, size as usize);
@@ -397,8 +401,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
                 false,
                 (*commit).block,
                 (*commit).off,
-                ccrc.as_ptr(),
-                8,
+                &ccrc,
             )?;
 
             if off1 == 0 {

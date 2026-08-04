@@ -475,7 +475,7 @@ pub fn lfs_ctz_extend(
                     let err =
                         lfs_bd_read(lfs, None, rcache, noff - i, head, i, data.as_mut_bytes())?;
 
-                    let err = lfs_bd_prog(lfs, pcache, rcache, true, nblock, i, &data, 1);
+                    let err = lfs_bd_prog(lfs, pcache, rcache, true, nblock, i, data.as_bytes());
                     if let Err(err) = err {
                         if err == Error::Corrupt {
                             lfs_alloc_lookahead(lfs, nblock);
@@ -502,8 +502,7 @@ pub fn lfs_ctz_extend(
                     true,
                     nblock,
                     4 * i,
-                    &nhead_le as *const u32 as *const u8,
-                    4,
+                    nhead_le.as_bytes(),
                 );
                 if let Err(err) = err {
                     if err == Error::Corrupt {

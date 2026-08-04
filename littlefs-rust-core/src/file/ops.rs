@@ -439,7 +439,7 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
     unsafe {
         lfs_mlist_remove(lfs, ::core::mem::transmute(::core::ptr::from_mut(file)));
 
-        let cfg = (*file).cfg;
+        let cfg = file.cfg;
         if !cfg.is_null() && (*cfg).buffer.is_null() {
             #[cfg(feature = "alloc")]
             {
@@ -583,7 +583,15 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                 }
                 let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
                 let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                let err = lfs_bd_prog(lfs, lfs_pcache, lfs_rcache, true, nblock, i, &data, 1);
+                let err = lfs_bd_prog(
+                    lfs,
+                    lfs_pcache,
+                    lfs_rcache,
+                    true,
+                    nblock,
+                    i,
+                    data.as_bytes(),
+                );
                 if let Err(err) = err {
                     if err == Error::Corrupt {
                         lfs_alloc_lookahead(lfs, nblock);
@@ -777,12 +785,7 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                     let mut data: u8 = 0;
                     let res = lfs_file_flushedread(lfs, &mut orig, data.as_mut_bytes())?;
 
-                    let res = lfs_file_flushedwrite(
-                        lfs,
-                        file,
-                        &data as *const u8 as *const core::ffi::c_void,
-                        1,
-                    )?;
+                    let res = lfs_file_flushedwrite(lfs, file, data.as_bytes())?;
 
                     if (*lfs).rcache.block != crate::types::LFS_BLOCK_NULL {
                         lfs_cache_drop(lfs, &mut orig.cache);
@@ -1149,22 +1152,20 @@ pub fn lfs_file_read_(
 pub fn lfs_file_flushedwrite(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
-    buffer: *const core::ffi::c_void,
-    size: lfs_size_t,
+    buffer: &[u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
     use crate::bd::bd::{lfs_bd_prog, lfs_cache_zero};
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
     use crate::file::ctz::{lfs_ctz_extend, lfs_ctz_find};
 
-    if buffer.is_null() {
+    if buffer.is_empty() {
         return Ok(0);
     }
-    let data = buffer as *const u8;
 
     unsafe {
         let cfg = lfs.cfg.as_ref().expect("cfg");
         let block_size = cfg.block_size;
-        let mut nsize = size;
+        let mut nsize = buffer.len() as u32;
 
         if (file.flags as i32 & LFS_F_INLINE) != 0
             && crate::util::lfs_max(file.pos + nsize, file.ctz.size) > lfs.inline_max
@@ -1176,7 +1177,7 @@ pub fn lfs_file_flushedwrite(
             }
         }
 
-        let mut data = data;
+        let mut data = buffer;
         while nsize > 0 {
             if (file.flags as i32 & LFS_F_WRITING) == 0 || file.off == block_size {
                 if (file.flags as i32 & LFS_F_INLINE) != 0 {
@@ -1231,8 +1232,7 @@ pub fn lfs_file_flushedwrite(
                     true,
                     file.block,
                     file.off,
-                    data,
-                    diff,
+                    &data[..(diff as usize)],
                 );
                 if let Err(err) = err {
                     if err == Error::Corrupt {
@@ -1251,12 +1251,12 @@ pub fn lfs_file_flushedwrite(
 
             file.pos += diff;
             file.off += diff;
-            data = data.add(diff as usize);
+            data = &data[(diff as usize)..];
             nsize -= diff;
 
             unsafe { lfs_alloc_ckpoint(lfs) };
         }
-        Ok(size)
+        Ok(buffer.len() as u32)
     }
 }
 
@@ -1333,16 +1333,12 @@ pub fn lfs_file_write_(
             let zero: u8 = 0;
             #[allow(clippy::while_immutable_condition)] // pos mutated via raw ptr in flushedwrite
             while (*file).pos < pos {
-                let res = lfs_file_flushedwrite(
-                    lfs,
-                    file,
-                    &zero as *const u8 as *const core::ffi::c_void,
-                    1,
-                )?;
+                let res = lfs_file_flushedwrite(lfs, file, zero.as_bytes())?;
             }
         }
 
-        let nsize = lfs_file_flushedwrite(lfs, file, buffer, size);
+        let buffer = core::slice::from_raw_parts(buffer as *const u8, size as usize);
+        let nsize = lfs_file_flushedwrite(lfs, file, buffer);
         if nsize.is_ok() {
             (*file).flags &= !0x080000;
         }

@@ -580,8 +580,7 @@ pub fn lfs_bd_prog(
     validate: bool,
     block: lfs_block_t,
     off: lfs_off_t,
-    buffer: *const u8,
-    size: lfs_size_t,
+    buffer: &[u8],
 ) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_aligndown, lfs_max, lfs_min};
@@ -591,23 +590,25 @@ pub fn lfs_bd_prog(
         let pcache = &mut *pcache;
 
         crate::lfs_assert!(block == LFS_BLOCK_INLINE || block < lfs.block_count);
-        crate::lfs_assert!(off + size <= cfg.block_size);
+        crate::lfs_assert!(off + buffer.len() as u32 <= cfg.block_size);
 
         let mut data = buffer;
         let mut off = off;
-        let mut size = size;
+        let mut size = buffer.len() as u32;
 
         while size > 0 {
             if block == pcache.block && off >= pcache.off && off < pcache.off + cfg.cache_size {
                 let diff = lfs_min(size, cfg.cache_size - (off - pcache.off));
-                if !pcache.buffer.is_null() && !data.is_null() {
+                if !pcache.buffer.is_null() && !data.is_empty() {
                     // Trace superblock magic region (offset 12-20 in block 0/1)
                     if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
                         let magic_start = 12usize.saturating_sub(off as usize);
                         let magic_len = (8).min(diff as usize - magic_start);
                         if magic_len > 0 {
-                            let slice =
-                                core::slice::from_raw_parts(data.add(magic_start), magic_len);
+                            let slice = core::slice::from_raw_parts(
+                                data.as_ptr().add(magic_start),
+                                magic_len,
+                            );
                             crate::lfs_trace!(
                                 "bd_prog superblock block={} off={} size={} magic_region[{}..{}]={:?}",
                                 block,
@@ -620,13 +621,13 @@ pub fn lfs_bd_prog(
                         }
                     }
                     core::ptr::copy_nonoverlapping(
-                        data,
+                        data.as_ptr(),
                         pcache.buffer.add((off - pcache.off) as usize),
                         diff as usize,
                     );
                 }
 
-                data = data.add(diff as usize);
+                data = &data[(diff as usize)..];
                 off += diff;
                 size -= diff;
 

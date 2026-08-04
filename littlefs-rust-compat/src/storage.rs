@@ -1,7 +1,7 @@
 //! Shared storage and config builders for C ↔ Rust compat tests.
 
 use core::cell::UnsafeCell;
-use std::{os::raw::c_void};
+use std::os::raw::c_void;
 
 use littlefs_rust_core::error::Error;
 
@@ -126,7 +126,7 @@ impl SharedStorage {
 
     // ── Rust (littlefs-rust-core) callbacks ────────────────────────────────────
 
-    unsafe extern "C" fn rust_read(
+    fn rust_read(
         c: &littlefs_rust_core::LfsConfig,
         block: u32,
         off: u32,
@@ -140,13 +140,16 @@ impl SharedStorage {
         c: &littlefs_rust_core::LfsConfig,
         block: u32,
         off: u32,
-        buffer: &[u8]
+        buffer: &[u8],
     ) -> Result<(), Error> {
         let storage = &*((*c).context as *const SharedStorage);
         storage.prog_impl(block, off, buffer)
     }
 
-    unsafe extern "C" fn rust_erase(c: &littlefs_rust_core::LfsConfig, block: u32) -> Result<(), Error> {
+    unsafe extern "C" fn rust_erase(
+        c: &littlefs_rust_core::LfsConfig,
+        block: u32,
+    ) -> Result<(), Error> {
         let storage = &*((*c).context as *const SharedStorage);
         storage.erase_impl(block)
     }
