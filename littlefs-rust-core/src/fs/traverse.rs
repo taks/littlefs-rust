@@ -116,17 +116,17 @@ use crate::{borrow_unchecked::borrow_unchecked, error::Error, tag};
 /// C: lfs.c:4693-4794
 pub fn lfs_fs_traverse_(
     lfs: &mut super::lfs::Lfs,
-    cb: Option<unsafe extern "C" fn(*mut core::ffi::c_void, crate::types::lfs_block_t) -> Result<(), Error>>,
+    cb: Option<fn(*mut core::ffi::c_void, crate::types::lfs_block_t) -> Result<(), Error>>,
     data: *mut core::ffi::c_void,
     includeorphans: bool,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::dir::traverse::lfs_dir_get;
     use crate::file::ctz::lfs_ctz_traverse;
-    use crate::fs::mount::{lfs_tortoise_detectcycles, LfsTortoise};
+    use crate::fs::mount::{LfsTortoise, lfs_tortoise_detectcycles};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CTZSTRUCT, LFS_TYPE_DIRSTRUCT};
     use crate::tag::{lfs_mktag, lfs_tag_type3};
-    use crate::types::{lfs_block_t, LFS_BLOCK_NULL};
+    use crate::types::{LFS_BLOCK_NULL, lfs_block_t};
     use crate::util::{lfs_pair_fromle32, lfs_pair_isnull};
 
     if cb.is_none() {
@@ -205,15 +205,7 @@ pub fn lfs_fs_traverse_(
                 let tag = tag.unwrap();
                 if u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_CTZSTRUCT {
                     let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                    lfs_ctz_traverse(
-                        lfs,
-                        None,
-                        lfs_rcache,
-                        raw[0],
-                        raw[1],
-                        Some(cb),
-                        data,
-                    )?;
+                    lfs_ctz_traverse(lfs, None, lfs_rcache, raw[0], raw[1], Some(cb), data)?;
                 } else if includeorphans
                     && u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_DIRSTRUCT
                 {
@@ -227,8 +219,8 @@ pub fn lfs_fs_traverse_(
 
         // iterate over any open files
         use crate::dir::LfsMlist;
-        use crate::file::ctz::lfs_ctz_traverse;
         use crate::file::LfsFile;
+        use crate::file::ctz::lfs_ctz_traverse;
         use crate::lfs_type::lfs_open_flags::{LFS_F_DIRTY, LFS_F_INLINE, LFS_F_WRITING};
         use crate::lfs_type::lfs_type::LFS_TYPE_REG;
 

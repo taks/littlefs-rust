@@ -304,8 +304,7 @@ pub fn lfs_fs_size(lfs: &mut Lfs) -> Result<lfs_size_t, Error> {
 }
 
 /// Callback type for lfs_fs_traverse. Per lfs.h int (*cb)(void*, lfs_block_t).
-pub type LfsTraverseCb =
-    unsafe extern "C" fn(data: *mut c_void, block: lfs_block_t) -> Result<(), Error>;
+pub type LfsTraverseCb = fn(data: *mut c_void, block: lfs_block_t) -> Result<(), Error>;
 
 /// Traverse through all blocks in use by the filesystem. Per lfs.h lfs_fs_traverse.
 #[inline(never)]

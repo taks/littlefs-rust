@@ -118,11 +118,14 @@ pub fn lfs_stat_(
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_fs_stat_(lfs: &mut super::lfs::Lfs, fsinfo: *mut crate::lfs_info::LfsFsinfo) -> Result<(), Error> {
+pub fn lfs_fs_stat_(
+    lfs: &mut super::lfs::Lfs,
+    fsinfo: *mut crate::lfs_info::LfsFsinfo,
+) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::dir::traverse::lfs_dir_get;
     use crate::lfs_gstate::lfs_gstate_needssuperblock;
-    use crate::lfs_superblock::{lfs_superblock_fromle32, LfsSuperblock};
+    use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_fromle32};
     use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
     use crate::tag::lfs_mktag;
     use crate::types::LFS_DISK_VERSION;
@@ -183,7 +186,7 @@ pub fn lfs_fs_stat_(lfs: &mut super::lfs::Lfs, fsinfo: *mut crate::lfs_info::Lfs
 ///     return 0;
 /// }
 /// ```
-pub unsafe extern "C" fn lfs_fs_size_count(p: *mut core::ffi::c_void, _block: lfs_block_t) -> Result<(), Error> {
+pub fn lfs_fs_size_count(p: *mut core::ffi::c_void, _block: lfs_block_t) -> Result<(), Error> {
     if p.is_null() {
         return Ok(());
     }

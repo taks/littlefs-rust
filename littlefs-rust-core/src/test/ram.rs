@@ -55,12 +55,7 @@ impl RamStorage {
 
 pub const BLOCK_SIZE: u32 = 512;
 
-unsafe extern "C" fn ram_read(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &mut [u8],
-) -> Result<(), Error> {
+fn ram_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut RamStorage;
     assert!(!ctx.is_null(), "ram_read: config.context is null");
     let ram = unsafe { &mut *ctx };
@@ -72,26 +67,21 @@ unsafe extern "C" fn ram_read(
     Ok(())
 }
 
-unsafe extern "C" fn ram_prog(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &[u8]
-) -> Result<(), Error> {
+fn ram_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
     let ctx = unsafe { (*cfg).context as *mut RamStorage };
     let ram = unsafe { &mut *ctx };
     ram.prog(block, off, buffer);
     Ok(())
 }
 
-unsafe extern "C" fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
+fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut RamStorage;
     let ram = unsafe { &mut *ctx };
     ram.erase(block);
     Ok(())
 }
 
-unsafe extern "C" fn ram_sync(_cfg: &LfsConfig) -> Result<(), Error> {
+fn ram_sync(_cfg: &LfsConfig) -> Result<(), Error> {
     Ok(())
 }
 

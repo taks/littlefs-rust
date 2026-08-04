@@ -1,12 +1,12 @@
 //! FS grow/shrink. Per lfs.c lfs_fs_grow_, lfs_shrink_checkblock.
 
 use crate::borrow_unchecked::borrow_unchecked;
+use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::traverse::lfs_dir_get;
-use crate::dir::LfsMdir;
-use crate::error::{Error};
-use crate::lfs_superblock::{lfs_superblock_fromle32, lfs_superblock_tole32, LfsSuperblock};
+use crate::error::Error;
+use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_fromle32, lfs_superblock_tole32};
 use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use crate::tag::{lfs_mattr, lfs_mktag};
 use crate::types::{lfs_block_t, lfs_size_t};
@@ -25,10 +25,7 @@ use crate::types::{lfs_block_t, lfs_size_t};
 ///     return 0;
 /// }
 /// ```
-unsafe extern "C" fn lfs_shrink_checkblock(
-    data: *mut core::ffi::c_void,
-    block: lfs_block_t,
-) -> Result<(), Error> {
+fn lfs_shrink_checkblock(data: *mut core::ffi::c_void, block: lfs_block_t) -> Result<(), Error> {
     let threshold = unsafe { *(data as *const lfs_size_t) };
     if block >= threshold {
         return Err(Error::NotEmpty);
@@ -144,11 +141,7 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
             tag: tag as u32,
             buffer: superblock.as_ptr() as *const core::ffi::c_void,
         }];
-        lfs_dir_commit(
-            lfs,
-            root,
-            &attrs
-        )?;
+        lfs_dir_commit(lfs, root, &attrs)?;
 
         Ok(())
     }

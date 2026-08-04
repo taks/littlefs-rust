@@ -58,10 +58,7 @@ pub fn lfs_alloc_drop(lfs: &mut Lfs) {
 /// #endif
 /// ```
 /// Callback wrapper for lfs_fs_traverse_: C expects (void* data, block), we pass lfs as data.
-unsafe extern "C" fn lfs_alloc_lookahead_cb(
-    data: *mut core::ffi::c_void,
-    block: lfs_block_t,
-) -> Result<(), Error> {
+fn lfs_alloc_lookahead_cb(data: *mut core::ffi::c_void, block: lfs_block_t) -> Result<(), Error> {
     lfs_alloc_lookahead(unsafe { &mut *(data as *mut Lfs) }, block)
 }
 

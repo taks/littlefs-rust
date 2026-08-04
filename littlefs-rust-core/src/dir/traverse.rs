@@ -390,7 +390,7 @@ pub fn lfs_dir_getread(
 ///     struct lfs_diskoff disk;
 /// };
 /// ```
-pub unsafe extern "C" fn lfs_dir_traverse_filter(
+pub fn lfs_dir_traverse_filter(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     _buffer: *const core::ffi::c_void,
@@ -470,11 +470,7 @@ struct LfsDirTraverseStack {
     begin: u16,
     end: u16,
     diff: i16,
-    cb: unsafe extern "C" fn(
-        *mut core::ffi::c_void,
-        lfs_tag_t,
-        *const core::ffi::c_void,
-    ) -> Result<i32, Error>,
+    cb: fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
@@ -688,11 +684,7 @@ struct LfsDirTraverseStack {
 /// C: `res = cb(data, tag + LFS_MKTAG(0, diff, 0), buffer);`
 #[inline(always)]
 fn dispatch_tag(
-    cb: unsafe extern "C" fn(
-        *mut core::ffi::c_void,
-        lfs_tag_t,
-        *const core::ffi::c_void,
-    ) -> Result<i32, Error>,
+    cb: fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
@@ -715,11 +707,7 @@ pub fn lfs_dir_traverse(
     end: u16,
     diff: i16,
     cb: Option<
-        unsafe extern "C" fn(
-            *mut core::ffi::c_void,
-            lfs_tag_t,
-            *const core::ffi::c_void,
-        ) -> Result<i32, Error>,
+        fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
     >,
     data: *mut core::ffi::c_void,
 ) -> Result<i32, Error> {
@@ -1088,7 +1076,7 @@ pub struct TraverseTestOut {
     pub first_bytes: [u8; 8],
 }
 
-pub unsafe extern "C" fn lfs_dir_traverse_test_cb(
+pub fn lfs_dir_traverse_test_cb(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,

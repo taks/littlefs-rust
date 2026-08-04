@@ -1526,7 +1526,7 @@ pub fn lfs_dir_splittingcompact(
     }
 }
 
-unsafe extern "C" fn lfs_dir_commit_size_raw(
+fn lfs_dir_commit_size_raw(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
@@ -1954,7 +1954,7 @@ fn relocatingcommit_fixmlist(
     }
 }
 
-unsafe extern "C" fn lfs_dir_commit_commit_raw(
+fn lfs_dir_commit_commit_raw(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
