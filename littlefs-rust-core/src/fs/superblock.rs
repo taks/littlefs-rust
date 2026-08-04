@@ -2,6 +2,7 @@
 
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
+use crate::lfs_pass_err;
 use crate::types::lfs_block_t;
 
 /// Per lfs.c lfs_fs_prepsuperblock (lines 4888-4892)
@@ -439,7 +440,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
 
                     if pass == 1 && tag == Err(Error::NoEntry) && powerloss {
                         let lfs_gdelta = borrow_unchecked(&mut lfs.gdelta);
-                        crate::dir::fetch::lfs_dir_getgstate(lfs, &dir, lfs_gdelta)?;
+                        lfs_pass_err!(crate::dir::fetch::lfs_dir_getgstate(lfs, &dir, lfs_gdelta))?;
 
                         let mut dir_tail = dir.tail;
                         lfs_pair_tole32(&mut dir_tail);
