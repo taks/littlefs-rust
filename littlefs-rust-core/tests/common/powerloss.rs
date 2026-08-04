@@ -98,26 +98,16 @@ impl PowerLossCtx {
     }
 }
 
-unsafe extern "C" fn powerloss_read(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &mut [u8],
-) -> Result<(), Error> {
+fn powerloss_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut PowerLossCtx;
-    let ctx = &mut *ctx;
+    let ctx = unsafe { &mut *ctx };
     ctx.ram.read(block, off, buffer);
     Ok(())
 }
 
-unsafe extern "C" fn powerloss_prog(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &[u8],
-) -> Result<(), Error> {
+fn powerloss_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut PowerLossCtx;
-    let ctx = &mut *ctx;
+    let ctx = unsafe { &mut *ctx };
     let err = ctx.check_and_count();
     if let Err(err) = err {
         if ctx.behavior == PowerLossBehavior::Ooo {
@@ -132,9 +122,9 @@ unsafe extern "C" fn powerloss_prog(
     Ok(())
 }
 
-unsafe extern "C" fn powerloss_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
+fn powerloss_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut PowerLossCtx;
-    let ctx = &mut *ctx;
+    let ctx = unsafe { &mut *ctx };
     let err = ctx.check_and_count();
     if let Err(err) = err {
         if ctx.behavior == PowerLossBehavior::Ooo {
@@ -149,9 +139,9 @@ unsafe extern "C" fn powerloss_erase(cfg: &LfsConfig, block: u32) -> Result<(), 
     Ok(())
 }
 
-unsafe extern "C" fn powerloss_sync(cfg: &LfsConfig) -> Result<(), Error> {
+fn powerloss_sync(cfg: &LfsConfig) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut PowerLossCtx;
-    let ctx = &mut *ctx;
+    let ctx = unsafe { &mut *ctx };
     ctx.clear_ooo_tracking();
     Ok(())
 }

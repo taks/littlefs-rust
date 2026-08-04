@@ -67,38 +67,28 @@ impl RamStorage {
     }
 }
 
-unsafe extern "C" fn ram_read(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &mut [u8],
-) -> Result<(), Error> {
+fn ram_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {
     let ctx = unsafe { (*cfg).context as *mut RamStorage };
     let ram = unsafe { &mut *ctx };
     ram.read(block, off, buffer);
     Ok(())
 }
 
-unsafe extern "C" fn ram_prog(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &[u8],
-) -> Result<(), Error> {
+fn ram_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
     let ctx = unsafe { (*cfg).context as *mut RamStorage };
     let ram = unsafe { &mut *ctx };
     ram.prog(block, off, buffer);
     Ok(())
 }
 
-unsafe extern "C" fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
+fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     let ctx = unsafe { (*cfg).context as *mut RamStorage };
     let ram = unsafe { &mut *ctx };
     ram.erase(block);
     Ok(())
 }
 
-unsafe extern "C" fn ram_sync(_cfg: &LfsConfig) -> Result<(), Error> {
+fn ram_sync(_cfg: &LfsConfig) -> Result<(), Error> {
     Ok(())
 }
 
@@ -175,14 +165,9 @@ impl BadBlockRamStorage {
 
 /// C: lfs_emubd_read — block bad check (lfs_emubd.c:303-308)
 /// Only READERROR triggers on read; all other behaviors allow the read through.
-unsafe extern "C" fn badblock_read(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &mut [u8],
-) -> Result<(), Error> {
+fn badblock_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut BadBlockRamStorage;
-    let badblock = &mut *ctx;
+    let badblock = unsafe { &mut *ctx };
     if badblock.is_bad(block) && badblock.behavior == BadBlockBehavior::ReadError {
         return Err(Error::Corrupt);
     }
@@ -194,12 +179,7 @@ unsafe extern "C" fn badblock_read(
 /// PROGERROR → return LFS_ERR_CORRUPT
 /// PROGNOOP or ERASENOOP → return 0 (silently skip the prog)
 /// All others → prog normally
-unsafe extern "C" fn badblock_prog(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &[u8],
-) -> Result<(), Error> {
+fn badblock_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
     let ctx = unsafe { (*cfg).context as *mut BadBlockRamStorage };
     let badblock = unsafe { &mut *ctx };
     if badblock.is_bad(block) {
@@ -217,7 +197,7 @@ unsafe extern "C" fn badblock_prog(
 /// ERASEERROR → return LFS_ERR_CORRUPT
 /// ERASENOOP → return 0 (silently skip the erase)
 /// All others → erase normally
-unsafe extern "C" fn badblock_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
+fn badblock_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     let ctx = unsafe { (*cfg).context as *mut BadBlockRamStorage };
     let badblock = unsafe { &mut *ctx };
     if badblock.is_bad(block) {
@@ -231,7 +211,7 @@ unsafe extern "C" fn badblock_erase(cfg: &LfsConfig, block: u32) -> Result<(), E
     Ok(())
 }
 
-unsafe extern "C" fn badblock_sync(_cfg: &LfsConfig) -> Result<(), Error> {
+fn badblock_sync(_cfg: &LfsConfig) -> Result<(), Error> {
     Ok(())
 }
 
@@ -874,14 +854,9 @@ impl WearLevelingBd {
 
 /// C: lfs_emubd_read — wear check (lfs_emubd.c:303-308)
 /// Only READERROR triggers on read for worn blocks.
-unsafe extern "C" fn wear_read(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &mut [u8],
-) -> Result<(), Error> {
+fn wear_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut WearLevelingBd;
-    let bd = &mut *ctx;
+    let bd = unsafe { &mut *ctx };
     if bd.is_worn(block) && bd.badblock_behavior == BadBlockBehavior::ReadError {
         return Err(Error::Corrupt);
     }
@@ -892,14 +867,9 @@ unsafe extern "C" fn wear_read(
 /// C: lfs_emubd_prog — wear check (lfs_emubd.c:358-370)
 /// PROGERROR → LFS_ERR_CORRUPT
 /// PROGNOOP or ERASENOOP → return 0 (skip prog)
-unsafe extern "C" fn wear_prog(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &[u8],
-) -> Result<(), Error> {
+fn wear_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut WearLevelingBd;
-    let bd = &mut *ctx;
+    let bd = unsafe { &mut *ctx };
     if bd.is_worn(block) {
         match bd.badblock_behavior {
             BadBlockBehavior::ProgError => return Err(Error::Corrupt),
@@ -916,9 +886,9 @@ unsafe extern "C" fn wear_prog(
 ///   ERASEERROR → LFS_ERR_CORRUPT
 ///   ERASENOOP → return 0 (skip erase)
 /// If not worn: increment wear, then erase.
-unsafe extern "C" fn wear_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
+fn wear_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     let ctx = (*cfg).context as *mut WearLevelingBd;
-    let bd = &mut *ctx;
+    let bd = unsafe { &mut *ctx };
     // C: if (bd->cfg->erase_cycles) { ... }
     if bd.erase_cycles > 0 {
         if bd.wear[block as usize] >= bd.erase_cycles {
@@ -940,7 +910,7 @@ unsafe extern "C" fn wear_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error
     Ok(())
 }
 
-unsafe extern "C" fn wear_sync(_cfg: &LfsConfig) -> Result<(), Error> {
+fn wear_sync(_cfg: &LfsConfig) -> Result<(), Error> {
     Ok(())
 }
 

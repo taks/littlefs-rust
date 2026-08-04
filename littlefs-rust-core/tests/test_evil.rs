@@ -80,7 +80,7 @@ fn test_evil_invalid_dir_pointer() {
     }
 }
 
-unsafe fn evil_invalid_dir_pointer(invalset: u32) {
+fn evil_invalid_dir_pointer(invalset: u32) {
     let mut env = default_config(BLOCK_COUNT);
     init_context(&mut env);
     let cfg = &env.config;
@@ -126,7 +126,7 @@ unsafe fn evil_invalid_dir_pointer(invalset: u32) {
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
     assert_ok(lfs_stat(lfs, dir_name.as_ptr(), info.as_mut_ptr()));
-    let info_ref = &*info.as_ptr();
+    let info_ref = unsafe { &*info.as_ptr() };
     let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info_ref.name[..nul], b"dir_here");
     assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
@@ -170,7 +170,7 @@ fn test_evil_invalid_file_pointer() {
     }
 }
 
-unsafe fn evil_invalid_file_pointer(size: u32) {
+fn evil_invalid_file_pointer(size: u32) {
     let mut env = default_config(BLOCK_COUNT);
     init_context(&mut env);
     let cfg = &env.config;
@@ -225,7 +225,7 @@ unsafe fn evil_invalid_file_pointer(size: u32) {
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
     assert_ok(lfs_stat(lfs, file_name.as_ptr(), info.as_mut_ptr()));
-    let info_ref = &*info.as_ptr();
+    let info_ref = unsafe { &*info.as_ptr() };
     let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info_ref.name[..nul], b"file_here");
     assert_eq!(info_ref.type_, LFS_TYPE_REG as u8);
