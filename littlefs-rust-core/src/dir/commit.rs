@@ -2302,12 +2302,19 @@ pub fn lfs_dir_orphaningcommit(
                         buffer: ldir.pair.as_ptr() as *const core::ffi::c_void,
                     },
                 ];
-                let state = lfs_dir_relocatingcommit(lfs, &mut pdir, &ppair, &relocate_attrs, None);
-                lfs_pair_fromle32(&mut ldir.pair);
-                if state.is_err() {
-                    return state;
-                }
-                if state.unwrap() == crate::error::LFS_OK_RELOCATED {
+
+                state = {
+                    let state =
+                        lfs_dir_relocatingcommit(lfs, &mut pdir, &ppair, &relocate_attrs, None);
+                    lfs_pair_fromle32(&mut ldir.pair);
+
+                    match state {
+                        Ok(state) => state,
+                        Err(err) => return Err(err),
+                    }
+                };
+
+                if state == crate::error::LFS_OK_RELOCATED {
                     lpair = ppair;
                     ldir = pdir;
                     orphans = true;
@@ -2359,11 +2366,14 @@ pub fn lfs_dir_orphaningcommit(
                         buffer: ldir.pair.as_ptr() as *const core::ffi::c_void,
                     },
                 ];
-                let state = lfs_dir_relocatingcommit(lfs, &mut pdir, &lpair, &tail_attrs, None);
-                lfs_pair_fromle32(&mut ldir.pair);
-                if state.is_err() {
-                    return state;
-                }
+                state = {
+                    let state = lfs_dir_relocatingcommit(lfs, &mut pdir, &lpair, &tail_attrs, None);
+                    lfs_pair_fromle32(&mut ldir.pair);
+                    match state {
+                        Ok(state) => state,
+                        Err(err) => return Err(err),
+                    }
+                };
 
                 ldir = pdir;
             }
