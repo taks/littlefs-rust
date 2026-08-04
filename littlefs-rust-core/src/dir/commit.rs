@@ -35,22 +35,15 @@ use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
 pub fn lfs_dir_commitprog(
     lfs: &mut crate::fs::Lfs,
     commit: &mut LfsCommit,
-    buffer: *const core::ffi::c_void,
-    size: lfs_size_t,
+    buffer: &[u8],
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_prog;
     use crate::crc::lfs_crc;
 
     unsafe {
-        let buf = buffer as *const u8;
-
         let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
         let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-        let buf_ = if buf.is_null() {
-            &[]
-        } else {
-            core::slice::from_raw_parts(buf, size as usize)
-        };
+
         lfs_bd_prog(
             lfs,
             lfs_pcache,
@@ -58,11 +51,11 @@ pub fn lfs_dir_commitprog(
             false,
             commit.block,
             commit.off,
-            buf_,
+            buffer,
         )?;
 
-        commit.crc = lfs_crc(commit.crc, buf_);
-        commit.off += size;
+        commit.crc = lfs_crc(commit.crc, buffer);
+        commit.off += (buffer.len() as u32);
         Ok(())
     }
 }
@@ -113,7 +106,7 @@ pub fn lfs_dir_commitattr(
     lfs: &mut crate::fs::Lfs,
     commit: &mut LfsCommit,
     tag: lfs_tag_t,
-    buffer: *const core::ffi::c_void,
+    buffer: &[u8],
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::tag::{lfs_tag_dsize, lfs_tag_isvalid};
@@ -134,7 +127,7 @@ pub fn lfs_dir_commitattr(
         }
 
         let ntag = lfs_tobe32((tag & 0x7fff_ffff) ^ commit.ptag);
-        lfs_dir_commitprog(lfs, commit, &ntag as *const _ as *const _, 4)?;
+        lfs_dir_commitprog(lfs, commit, ntag.as_bytes())?;
 
         if u32::from(crate::tag::lfs_tag_type1(tag))
             == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK
@@ -146,18 +139,19 @@ pub fn lfs_dir_commitattr(
                 commit.block,
                 commit.off
             );
-            if !buffer.is_null() && dsize >= 8 {
+            if !buffer.is_empty() && dsize >= 8 {
                 crate::lfs_trace!(
                     "commitattr SUPERBLOCK data (first 8): {:?}",
-                    core::slice::from_raw_parts(buffer as *const u8, 8)
+                    core::slice::from_raw_parts(&buffer, 8)
                 );
             }
         }
 
         if lfs_tag_isvalid(tag) {
-            lfs_dir_commitprog(lfs, commit, buffer, dsize.saturating_sub(4))?;
+            assert_eq!(buffer.len(), dsize.saturating_sub(4) as usize);
+            lfs_dir_commitprog(lfs, commit, &buffer[..dsize.saturating_sub(4) as usize])?;
         } else {
-            let disk = buffer as *const crate::tag::lfs_diskoff;
+            let disk = buffer.as_ptr() as *const crate::tag::lfs_diskoff;
             let disk_ref = &*disk;
             let data_size = dsize.saturating_sub(4);
             for i in 0..data_size {
@@ -173,7 +167,7 @@ pub fn lfs_dir_commitattr(
                     dat.as_mut_bytes(),
                 )?;
 
-                lfs_dir_commitprog(lfs, commit, &dat as *const _ as *const _, 1)?;
+                lfs_dir_commitprog(lfs, commit, dat.as_bytes())?;
             }
         }
 
@@ -1057,7 +1051,7 @@ pub fn lfs_dir_compact(
             }
 
             let mut rev = lfs_tole32(dir.rev);
-            let mut err = lfs_dir_commitprog(lfs, &mut commit, &rev as *const _ as *const _, 4);
+            let mut err = lfs_dir_commitprog(lfs, &mut commit, rev.as_bytes());
             dir.rev = lfs_fromle32(rev);
             if let Err(err) = err {
                 if err == Error::Corrupt {
@@ -1826,12 +1820,8 @@ pub fn lfs_dir_relocatingcommit(
                         0x3ff,
                         core::mem::size_of::<crate::lfs_gstate::LfsGstate>() as u32,
                     );
-                    let err2 = lfs_dir_commitattr(
-                        lfs,
-                        &mut commit,
-                        movestate_tag,
-                        &delta as *const _ as *const _,
-                    );
+                    let err2 =
+                        lfs_dir_commitattr(lfs, &mut commit, movestate_tag, &delta.as_bytes());
                     if let Err(err2) = err2 {
                         if err2 == Error::NoSpace || err2 == Error::Corrupt {
                             do_compact = true;
@@ -1960,7 +1950,7 @@ fn relocatingcommit_fixmlist(
 fn lfs_dir_commit_commit_raw(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
-    buffer: *const core::ffi::c_void,
+    buffer: &[u8],
 ) -> Result<i32, Error> {
     crate::lfs_trace!(
         "commit_commit_raw: tag=0x{:08x} type1={} buffer={:p}",
@@ -1969,7 +1959,7 @@ fn lfs_dir_commit_commit_raw(
         buffer
     );
     if u32::from(crate::tag::lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK {
-        let preview: [u8; 8] = if buffer.is_null() {
+        let preview: [u8; 8] = if buffer.is_empty() {
             [0u8; 8]
         } else {
             unsafe { core::ptr::read(buffer as *const [u8; 8]) }

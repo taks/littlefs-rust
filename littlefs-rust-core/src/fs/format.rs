@@ -1,16 +1,18 @@
 //! Format. Per lfs.c lfs_format_.
 
+use zerocopy::IntoBytes;
+
 use crate::bd::bd::lfs_bd_sync;
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
 use crate::borrow_unchecked::borrow_unchecked;
+use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_alloc;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
-use crate::dir::LfsMdir;
 use crate::error::Error;
 use crate::fs::init::{lfs_deinit, lfs_init};
-use crate::lfs_superblock::lfs_superblock_tole32;
 use crate::lfs_superblock::LfsSuperblock;
+use crate::lfs_superblock::lfs_superblock_tole32;
 use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK};
 use crate::tag::lfs_mktag;
 use crate::types::LFS_DISK_VERSION;
@@ -93,7 +95,10 @@ use crate::util::lfs_min;
 ///     lfs_size_t period;
 /// };
 /// ```
-pub fn lfs_format_(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(), Error> {
+pub fn lfs_format_(
+    lfs: &mut super::lfs::Lfs,
+    cfg: &crate::lfs_config::LfsConfig,
+) -> Result<(), Error> {
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
         lfs_deinit(lfs);
@@ -161,11 +166,7 @@ pub fn lfs_format_(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig
                 buffer: &superblock as *const _ as *const _,
             },
         ];
-        err = lfs_dir_commit(
-            lfs,
-            &mut root,
-            &attrs
-        );
+        err = lfs_dir_commit(lfs, &mut root, &attrs);
         if err.is_err() {
             lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
@@ -433,10 +434,10 @@ pub unsafe fn test_format_minimal_superblock(
 ) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_sync};
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
+    use crate::dir::LfsCommit;
     use crate::dir::commit::{
         lfs_dir_alloc, lfs_dir_commitattr, lfs_dir_commitcrc, lfs_dir_commitprog,
     };
-    use crate::dir::LfsCommit;
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_SUPERBLOCK};
     use crate::tag::lfs_mktag;
@@ -498,7 +499,7 @@ pub unsafe fn test_format_minimal_superblock(
 
         let rev = 1u32;
         let rev_le = lfs_tole32(rev);
-        let err = lfs_dir_commitprog(lfs, &mut commit, &rev_le as *const _ as *const _, 4);
+        let err = lfs_dir_commitprog(lfs, &mut commit, rev_le.as_bytes());
         if err.is_err() {
             lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
@@ -506,12 +507,7 @@ pub unsafe fn test_format_minimal_superblock(
         commit.ptag = rev & 0x7fff_ffff;
 
         let magic = b"littlefs";
-        let err = lfs_dir_commitattr(
-            lfs,
-            &mut commit,
-            lfs_mktag(LFS_TYPE_CREATE, 0, 0),
-            core::ptr::null(),
-        );
+        let err = lfs_dir_commitattr(lfs, &mut commit, lfs_mktag(LFS_TYPE_CREATE, 0, 0), &[]);
         if err.is_err() {
             lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
@@ -520,7 +516,7 @@ pub unsafe fn test_format_minimal_superblock(
             lfs,
             &mut commit,
             lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-            magic.as_ptr() as *const core::ffi::c_void,
+            magic,
         );
         if err.is_err() {
             lfs_deinit(lfs);
