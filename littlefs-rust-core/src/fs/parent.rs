@@ -1,6 +1,6 @@
 //! FS parent. Per lfs.c lfs_fs_pred, lfs_fs_parent.
 
-use crate::{borrow_unchecked::borrow_unchecked, error::Error};
+use crate::{borrow_unchecked::borrow_unchecked, error::Error, lfs_pass_err};
 
 /// Per lfs.c lfs_fs_pred (lines 4796-4833)
 ///
@@ -43,7 +43,7 @@ pub fn lfs_fs_pred(
     pdir: &mut crate::dir::LfsMdir,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
-    use crate::fs::mount::{lfs_tortoise_detectcycles, LfsTortoise};
+    use crate::fs::mount::{LfsTortoise, lfs_tortoise_detectcycles};
     use crate::types::LFS_BLOCK_NULL;
     use crate::util::{lfs_pair_cmp, lfs_pair_isnull};
 
@@ -203,10 +203,10 @@ pub fn lfs_fs_parent(
     parent: &mut crate::dir::LfsMdir,
 ) -> Result<crate::types::lfs_tag_t, Error> {
     use crate::dir::fetch::lfs_dir_fetchmatch;
-    use crate::fs::mount::{lfs_tortoise_detectcycles, LfsTortoise};
+    use crate::fs::mount::{LfsTortoise, lfs_tortoise_detectcycles};
     use crate::lfs_type::lfs_type::LFS_TYPE_DIRSTRUCT;
     use crate::tag::lfs_mktag;
-    use crate::types::{lfs_block_t, LFS_BLOCK_NULL};
+    use crate::types::{LFS_BLOCK_NULL, lfs_block_t};
     use crate::util::lfs_pair_isnull;
 
     unsafe {
@@ -232,7 +232,7 @@ pub fn lfs_fs_parent(
                 }
                 iter += 1;
             }
-            lfs_tortoise_detectcycles(parent, &mut tortoise)?;
+            lfs_pass_err!(lfs_tortoise_detectcycles(parent, &mut tortoise))?;
 
             let find_match = LfsFsParentMatch {
                 lfs,
@@ -250,7 +250,9 @@ pub fn lfs_fs_parent(
                 &find_match as *const _ as *mut core::ffi::c_void,
             );
 
-            if let Err(err) = tag && err != Error::NoEntry {
+            if let Err(err) = tag
+                && err != Error::NoEntry
+            {
                 return tag;
             }
         }
