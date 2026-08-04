@@ -128,7 +128,7 @@ const LFS_CMP_LT: i32 = 1;
 ///     return (lfs_pair_cmp(child, find->pair) == 0) ? LFS_CMP_EQ : LFS_CMP_LT;
 /// }
 /// ```
-pub unsafe extern "C" fn lfs_fs_parent_match(
+pub fn lfs_fs_parent_match(
     data: *mut core::ffi::c_void,
     _tag: crate::types::lfs_tag_t,
     buffer: *const core::ffi::c_void,

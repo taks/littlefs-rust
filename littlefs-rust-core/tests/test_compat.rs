@@ -259,6 +259,6 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_file_close(lfs, file));
 
     assert_ok(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(unsafe { (*fsinfo).disk_version }, LFS_DISK_VERSION);
+    assert_eq!(fsinfo.disk_version, LFS_DISK_VERSION);
     assert_ok(lfs_unmount(lfs));
 }

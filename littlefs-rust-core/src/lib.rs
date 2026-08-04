@@ -200,7 +200,8 @@ pub fn lfs_file_read(
     buffer: *mut c_void,
     size: lfs_size_t,
 ) -> Result<crate::types::lfs_size_t, Error> {
-    crate::file::ops::lfs_file_read_(lfs, file, buffer, size)
+    let slice = unsafe { core::slice::from_raw_parts_mut(buffer as *mut u8, size as usize) };
+    crate::file::ops::lfs_file_read_(lfs, file, slice)
 }
 
 /// Write data to file. Per lfs.h lfs_file_write (lfs.c:6228-6242).

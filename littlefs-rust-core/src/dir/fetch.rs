@@ -318,11 +318,7 @@ pub fn lfs_dir_fetchmatch(
     _ftag: lfs_tag_t,
     _id: &mut Option<&mut u16>,
     _cb: Option<
-        unsafe extern "C" fn(
-            *mut core::ffi::c_void,
-            lfs_tag_t,
-            *const core::ffi::c_void,
-        ) -> Result<i32, Error>,
+        fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
     >,
     _data: *mut core::ffi::c_void,
 ) -> Result<lfs_tag_t, Error> {

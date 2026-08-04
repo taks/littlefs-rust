@@ -2,9 +2,9 @@
 
 use crate::bd::bd::lfs_bd_cmp;
 use crate::borrow_unchecked::borrow_unchecked;
+use crate::dir::LfsMdir;
 use crate::dir::fetch::lfs_dir_fetchmatch;
 use crate::dir::traverse::lfs_dir_get;
-use crate::dir::LfsMdir;
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_NAME, LFS_TYPE_STRUCT};
@@ -60,7 +60,7 @@ pub struct LfsDirFindMatch {
 /// }
 ///
 /// ```
-pub unsafe extern "C" fn lfs_dir_find_match(
+pub fn lfs_dir_find_match(
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: *const core::ffi::c_void,
