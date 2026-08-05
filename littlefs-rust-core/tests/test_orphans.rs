@@ -60,9 +60,9 @@ fn test_orphans_mkconsistent_no_orphans() {
     assert_ok(lfs_fs_preporphans(lfs_ptr, 1));
     assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) });
 
-    let path = path_bytes("_p");
-    assert_ok(lfs_mkdir(lfs_ptr, path.as_ptr() as *const _));
-    assert_ok(lfs_remove(lfs_ptr, path.as_ptr() as *const _));
+    let path = c"_p";
+    assert_ok(lfs_mkdir(lfs_ptr, path));
+    assert_ok(lfs_remove(lfs_ptr, path));
     assert!(
         !unsafe { lfs_fs_hasorphans(lfs_ptr) },
         "force_consistency before mkdir clears orphans"
@@ -105,9 +105,9 @@ fn test_orphans_no_orphans() {
     assert_ok(lfs_fs_preporphans(lfs_ptr, 1));
     assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) });
 
-    let path = path_bytes("_x");
-    assert_ok(lfs_mkdir(lfs_ptr, path.as_ptr() as *const _));
-    assert_ok(lfs_remove(lfs_ptr, path.as_ptr() as *const _));
+    let path = c"_x";
+    assert_ok(lfs_mkdir(lfs_ptr, path));
+    assert_ok(lfs_remove(lfs_ptr, path));
     assert!(!unsafe { lfs_fs_hasorphans(lfs_ptr) });
     assert_ok(lfs_unmount(lfs_ptr));
 }
@@ -126,9 +126,9 @@ fn test_orphans_nonreentrant() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let lfs_ptr = lfs;
-    let path = path_bytes("a");
-    assert_ok(lfs_mkdir(lfs_ptr, path.as_ptr() as *const _));
-    assert_ok(lfs_remove(lfs_ptr, path.as_ptr() as *const _));
+    let path = c"a";
+    assert_ok(lfs_mkdir(lfs_ptr, path));
+    assert_ok(lfs_remove(lfs_ptr, path));
     assert!(!unsafe { lfs_fs_hasorphans(lfs_ptr) });
     assert_ok(lfs_unmount(lfs_ptr));
 }
@@ -149,22 +149,10 @@ fn test_orphans_normal() {
     assert_ok(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
-    assert_ok(lfs_mkdir(
-        lfs_ptr,
-        path_bytes("parent").as_ptr() as *const _,
-    ));
-    assert_ok(lfs_mkdir(
-        lfs_ptr,
-        path_bytes("parent/orphan").as_ptr() as *const _,
-    ));
-    assert_ok(lfs_mkdir(
-        lfs_ptr,
-        path_bytes("parent/child").as_ptr() as *const _,
-    ));
-    assert_ok(lfs_remove(
-        lfs_ptr,
-        path_bytes("parent/orphan").as_ptr() as *const _,
-    ));
+    assert_ok(lfs_mkdir(lfs_ptr, c"parent"));
+    assert_ok(lfs_mkdir(lfs_ptr, c"parent/orphan"));
+    assert_ok(lfs_mkdir(lfs_ptr, c"parent/child"));
+    assert_ok(lfs_remove(lfs_ptr, c"parent/orphan"));
     assert_ok(lfs_unmount(lfs_ptr));
 
     // Mount to get child dir block, then corrupt it
@@ -200,10 +188,7 @@ fn test_orphans_normal() {
 
     // mkdir parent/otherchild triggers deorphan, size still 8
     assert_ok(lfs_mount(lfs_ptr, cfg));
-    assert_ok(lfs_mkdir(
-        lfs_ptr,
-        path_bytes("parent/otherchild").as_ptr() as *const _,
-    ));
+    assert_ok(lfs_mkdir(lfs_ptr, c"parent/otherchild"));
     assert_eq!(
         lfs_stat(lfs_ptr, c"parent/orphan", info.as_mut_ptr()),
         Err(Error::NoEntry)

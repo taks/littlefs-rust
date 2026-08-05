@@ -157,11 +157,8 @@ pub fn lfs_setattr(
 
 /// Remove a custom attribute. Per lfs.h lfs_removeattr (lfs.c:6487-6491).
 #[inline(never)]
-pub fn lfs_removeattr<T>(lfs: *mut Lfs, path: T, r#type: u8) -> Result<(), Error>
-where
-    T: Into<*const u8>,
-{
-    crate::fs::attr::lfs_removeattr_(lfs, path.into(), r#type)
+pub fn lfs_removeattr(lfs: *mut Lfs, path: &CStr, r#type: u8) -> Result<(), Error> {
+    crate::fs::attr::lfs_removeattr_(lfs, path.as_ptr() as *const _, r#type)
 }
 
 /// Open a file. Per lfs.h lfs_file_open (lfs.c:6140-6146).
@@ -180,11 +177,11 @@ pub fn lfs_file_open(
 pub fn lfs_file_opencfg(
     lfs: &mut Lfs,
     file: &mut LfsFile,
-    path: *const u8,
+    path: &CStr,
     flags: i32,
     config: *const LfsFileConfig,
 ) -> Result<(), Error> {
-    crate::file::ops::lfs_file_opencfg_(lfs, file, path as *const i8, flags, config)
+    crate::file::ops::lfs_file_opencfg_(lfs, file, path.as_ptr() as *const i8, flags, config)
 }
 
 /// Close a file. Per lfs.h lfs_file_close (lfs.c:6227-6231).

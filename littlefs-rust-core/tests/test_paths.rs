@@ -1863,13 +1863,15 @@ fn test_paths_oopsalldels(#[case] dir_mode: bool) {
         full.extend_from_slice(&cp[..cp.len().saturating_sub(1)]);
         full.push(0);
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, full.as_c_str()));
+            assert_ok(lfs_mkdir(lfs, unsafe {
+                CStr::from_ptr(full.as_ptr() as *const _)
+            }));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                full.as_c_str(),
+                unsafe { CStr::from_ptr(full.as_ptr() as *const _) },
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1895,44 +1897,68 @@ fn test_paths_oopsalldels(#[case] dir_mode: bool) {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
                 Error::IsDir,
-                lfs_file_open(lfs, file, fp.as_c_str(), LFS_O_RDONLY),
+                lfs_file_open(
+                    lfs,
+                    file,
+                    unsafe { CStr::from_ptr(fp.as_ptr() as *const _) },
+                    LFS_O_RDONLY,
+                ),
             );
             let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-            assert_ok(lfs_dir_open(lfs, dir, fp.as_c_str()));
+            assert_ok(lfs_dir_open(lfs, dir, unsafe {
+                CStr::from_ptr(fp.as_ptr() as *const _)
+            }));
             assert_ok(lfs_dir_close(lfs, dir));
         }
     } else {
         for fp in &full_paths {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(lfs, file, fp.as_c_str(), LFS_O_RDONLY));
+            assert_ok(lfs_file_open(
+                lfs,
+                file,
+                unsafe { CStr::from_ptr(fp.as_ptr() as *const _) },
+                LFS_O_RDONLY,
+            ));
             assert_ok(lfs_file_close(lfs, file));
             assert_err(
                 Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     unsafe { &mut *core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr() },
-                    fp.as_c_str(),
+                    unsafe { CStr::from_ptr(fp.as_ptr() as *const _) },
                 ),
             );
         }
     }
     let new_root = path_bytes_raw(&[0x7f, 0x7f]);
-    assert_ok(lfs_mkdir(lfs, new_root.as_c_str()));
+    assert_ok(lfs_mkdir(lfs, unsafe {
+        CStr::from_ptr(new_root.as_ptr() as *const _)
+    }));
     for (n, fp) in full_paths.iter().enumerate() {
         let new_name_len = 6 - n;
         let mut new_path = vec![0x7f, 0x7f, b'/'];
         new_path.extend((0..new_name_len).map(|_| 0x7f));
         new_path.push(0);
-        assert_ok(lfs_rename(lfs, fp.as_c_str(), new_path.as_c_str()));
+        assert_ok(lfs_rename(
+            lfs,
+            unsafe { CStr::from_ptr(fp.as_ptr() as *const _) },
+            unsafe { CStr::from_ptr(new_path.as_ptr() as *const _) },
+        ));
     }
     for n in 1..=6 {
         let mut p = vec![0x7f, 0x7f, b'/'];
         p.extend((0..n).map(|_| 0x7f));
         p.push(0);
-        assert_ok(lfs_remove(lfs, p.as_c_str()));
+        assert_ok(lfs_remove(lfs, unsafe {
+            CStr::from_ptr(p.as_ptr() as *const _)
+        }));
     }
-    assert_ok(lfs_remove(lfs, new_root.as_c_str()));
-    assert_ok(lfs_remove(lfs, root.as_c_str()));
+    assert_ok(lfs_remove(lfs, unsafe {
+        CStr::from_ptr(new_root.as_ptr() as *const _)
+    }));
+    assert_ok(lfs_remove(lfs, unsafe {
+        CStr::from_ptr(root.as_ptr() as *const _)
+    }));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -1950,7 +1976,9 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let root = path_bytes_raw(&[0xff]);
-    assert_ok(lfs_mkdir(lfs, root.as_c_str()));
+    assert_ok(lfs_mkdir(lfs, unsafe {
+        CStr::from_ptr(root.as_ptr() as *const _)
+    }));
     let mut child_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
     for n in 1..=6 {
         let p: Vec<u8> = (0..n).map(|_| 0xff).collect();
@@ -1986,7 +2014,7 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(
             lfs,
-            unsafe { CStr::from_ptr(fp.as_c_str() as *const _) },
+            unsafe { CStr::from_ptr(fp.as_ptr() as *const _) },
             info,
         ));
     }
@@ -1995,44 +2023,68 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
                 Error::IsDir,
-                lfs_file_open(lfs, file, fp.as_c_str(), LFS_O_RDONLY),
+                lfs_file_open(
+                    lfs,
+                    file,
+                    unsafe { CStr::from_ptr(fp.as_ptr() as *const _) },
+                    LFS_O_RDONLY,
+                ),
             );
             let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-            assert_ok(lfs_dir_open(lfs, dir, fp.as_c_str()));
+            assert_ok(lfs_dir_open(lfs, dir, unsafe {
+                CStr::from_ptr(fp.as_ptr() as *const _)
+            }));
             assert_ok(lfs_dir_close(lfs, dir));
         }
     } else {
         for fp in &full_paths {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(lfs, file, fp.as_c_str(), LFS_O_RDONLY));
+            assert_ok(lfs_file_open(
+                lfs,
+                file,
+                unsafe { CStr::from_ptr(fp.as_ptr() as *const _) },
+                LFS_O_RDONLY,
+            ));
             assert_ok(lfs_file_close(lfs, file));
             assert_err(
                 Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     unsafe { &mut *core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr() },
-                    fp.as_c_str(),
+                    unsafe { CStr::from_ptr(fp.as_ptr() as *const _) },
                 ),
             );
         }
     }
     let new_root = path_bytes_raw(&[0xff, 0xff]);
-    assert_ok(lfs_mkdir(lfs, new_root.as_c_str()));
+    assert_ok(lfs_mkdir(lfs, unsafe {
+        CStr::from_ptr(new_root.as_ptr() as *const _)
+    }));
     for (n, fp) in full_paths.iter().enumerate() {
         let new_name_len = 6 - n;
         let mut new_path = vec![0xff, 0xff, b'/'];
         new_path.extend((0..new_name_len).map(|_| 0xff));
         new_path.push(0);
-        assert_ok(lfs_rename(lfs, fp.as_c_str(), new_path.as_c_str()));
+        assert_ok(lfs_rename(
+            lfs,
+            unsafe { CStr::from_ptr(fp.as_ptr() as *const _) },
+            unsafe { CStr::from_ptr(new_path.as_ptr() as *const _) },
+        ));
     }
     for n in 1..=6 {
         let mut p = vec![0xff, 0xff, b'/'];
         p.extend((0..n).map(|_| 0xff));
         p.push(0);
-        assert_ok(lfs_remove(lfs, p.as_c_str()));
+        assert_ok(lfs_remove(lfs, unsafe {
+            CStr::from_ptr(p.as_ptr() as *const _)
+        }));
     }
-    assert_ok(lfs_remove(lfs, new_root.as_c_str()));
-    assert_ok(lfs_remove(lfs, root.as_c_str()));
+    assert_ok(lfs_remove(lfs, unsafe {
+        CStr::from_ptr(new_root.as_ptr() as *const _)
+    }));
+    assert_ok(lfs_remove(lfs, unsafe {
+        CStr::from_ptr(root.as_ptr() as *const _)
+    }));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -2258,7 +2310,7 @@ fn test_paths_namejustlongenough() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
     let max_name = "a".repeat(255);
-    assert_ok(lfs_mkdir(lfs, path_bytes(&max_name).as_ptr()));
+    assert_ok(lfs_mkdir(lfs, path_bytes(&max_name).as_c_str()));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, path_bytes(&max_name).as_c_str(), info));
     assert_eq!(info_name_str(info), max_name);
@@ -2324,7 +2376,7 @@ fn test_paths_nonutf8() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
     let name = c"foo\xff\xfe\xfdbar";
-    assert_ok(lfs_mkdir(lfs, name.as_c_str()));
+    assert_ok(lfs_mkdir(lfs, name));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, name, info));
     assert_ok(lfs_unmount(lfs));

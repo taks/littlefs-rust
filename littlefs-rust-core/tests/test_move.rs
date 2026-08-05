@@ -45,8 +45,8 @@ fn test_move_nop() {
     assert_ok(lfs_rename(lfs, hi_hi.as_c_str(), hi_hi.as_c_str()));
 
     let hi_hi_hi = c"hi/hi/hi";
-    assert_ok(lfs_mkdir(lfs, hi_hi_hi.as_c_str()));
-    assert_ok(lfs_rename(lfs, hi_hi_hi.as_c_str(), hi_hi_hi.as_ptr()));
+    assert_ok(lfs_mkdir(lfs, hi_hi_hi));
+    assert_ok(lfs_rename(lfs, hi_hi_hi, hi_hi_hi));
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, hi_hi_hi, info));

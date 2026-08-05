@@ -29,7 +29,7 @@ fn test_attrs_get_set() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("hello").as_ptr()));
+    assert_ok(lfs_mkdir(lfs, c"hello"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
@@ -112,7 +112,7 @@ fn test_attrs_get_set() {
     assert_eq!(n, Ok(0));
     assert_eq!(&buffer[4..10], b"\0\0\0\0\0\0");
 
-    assert_ok(lfs_removeattr(lfs, path_bytes("hello").as_c_str(), b'B'));
+    assert_ok(lfs_removeattr(lfs, c"hello", b'B'));
     let err = lfs_getattr(
         lfs,
         path_bytes("hello").as_c_str(),
@@ -192,7 +192,7 @@ fn test_attrs_get_set_root() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("hello").as_ptr()));
+    assert_ok(lfs_mkdir(lfs, c"hello"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
@@ -265,7 +265,7 @@ fn test_attrs_get_set_root() {
         b"".as_ptr() as *const core::ffi::c_void,
         0,
     ));
-    assert_ok(lfs_removeattr(lfs, path_bytes("/").as_c_str(), b'B'));
+    assert_ok(lfs_removeattr(lfs, c"/", b'B'));
     assert_ok(lfs_setattr(
         lfs,
         path_bytes("/").as_c_str(),
@@ -366,7 +366,7 @@ fn test_attrs_get_set_file() {
     assert_ok(lfs_file_opencfg(
         lfs,
         file,
-        path_bytes("hello/hello").as_c_str(),
+        c"hello/hello",
         LFS_O_WRONLY,
         &cfg,
     ));

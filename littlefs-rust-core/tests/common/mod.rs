@@ -502,7 +502,7 @@ where
 /// Check if block has "littlefs" at offset 8 or 12 (layout varies by commit path).
 fn block_has_magic(config: &LfsConfig, block: u32) -> bool {
     let mut buf = [0u8; 24];
-    let err = unsafe {
+    let err = {
         let read = (*config).read.expect("read callback");
         read(config, block, 0, &mut buf)
     };
@@ -550,10 +550,8 @@ pub fn write_block_raw(config: &LfsConfig, block: u32, off: u32, data: &[u8]) ->
 ///
 /// C: cfg->erase(cfg, block)
 pub fn erase_block_raw(config: &LfsConfig, block: u32) -> Result<(), Error> {
-    unsafe {
-        let erase = (*config).erase.expect("erase callback");
-        erase(config, block)
-    }
+    let erase = (*config).erase.expect("erase callback");
+    erase(config, block)
 }
 
 /// Pretty-print first `len` bytes of block for inspection. Used when debugging layout.
