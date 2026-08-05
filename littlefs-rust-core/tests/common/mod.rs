@@ -599,7 +599,7 @@ pub fn dir_entry_names(
 
     let path = path_bytes(path_str);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    lfs_dir_open(lfs, dir, path.as_ptr() as *const _)?;
+    lfs_dir_open(lfs, dir, path.as_c_str())?;
 
     let mut names = Vec::new();
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -655,10 +655,10 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
 
     lfs_mount(lfs, &env.config as &LfsConfig)?;
 
-    let path = path_bytes("hello");
+    let path = c"hello";
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    let err = lfs_file_open(lfs, file, path.as_ptr(), 0x0100 | 2);
+    let err = lfs_file_open(lfs, file, path, 0x0100 | 2);
     if let Err(err) = err {
         let _ = lfs_unmount(lfs);
         return Err(err);
@@ -697,7 +697,7 @@ pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
 
     let path = path_bytes(dir_path);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, path.as_ptr() as *const _));
+    assert_ok(lfs_dir_open(lfs, dir, path.as_c_str()));
     let pair = (dir).m.pair;
     assert_ok(lfs_dir_close(lfs, dir));
     [pair[0], pair[1]]

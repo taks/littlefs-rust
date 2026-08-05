@@ -54,7 +54,7 @@ fn test_alloc_parallel(
 
     let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
     assert_ok(lfs_mount(lfs, &mount_cfg.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("breakfast").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("breakfast").as_c_str()));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &mount_cfg.config));
@@ -147,7 +147,7 @@ fn test_alloc_serial(
 
     let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
     assert_ok(lfs_mount(lfs, &mount_cfg.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("breakfast").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("breakfast").as_c_str()));
     assert_ok(lfs_unmount(lfs));
 
     for n in 0..FILES {
@@ -232,7 +232,7 @@ fn test_alloc_parallel_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)
 
     for _c in 0..cycles {
         assert_ok(lfs_mount(lfs, &mount_cfg.config));
-        assert_ok(lfs_mkdir(lfs, path_bytes("breakfast").as_ptr() as *const _));
+        assert_ok(lfs_mkdir(lfs, path_bytes("breakfast").as_c_str()));
         assert_ok(lfs_unmount(lfs));
 
         assert_ok(lfs_mount(lfs, &mount_cfg.config));
@@ -329,7 +329,7 @@ fn test_alloc_serial_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)] 
 
     for _c in 0..cycles {
         assert_ok(lfs_mount(lfs, &mount_cfg.config));
-        assert_ok(lfs_mkdir(lfs, path_bytes("breakfast").as_ptr() as *const _));
+        assert_ok(lfs_mkdir(lfs, path_bytes("breakfast").as_c_str()));
         assert_ok(lfs_unmount(lfs));
 
         for n in 0..FILES {
@@ -494,7 +494,7 @@ fn test_alloc_split_dir() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_c_str()));
     for i in 0..8 {
         let path = path_bytes(&format!("d/f{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
@@ -513,7 +513,7 @@ fn test_alloc_split_dir() {
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(
             lfs,
-            unsafe { CStr::from_ptr(path.as_ptr() as *const _) },
+            unsafe { CStr::from_ptr(path.as_c_str()) },
             info,
         ));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
@@ -646,17 +646,14 @@ fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &mount_cfg.config));
 
-    assert_ok(lfs_mkdir(
-        lfs,
-        path_bytes("exhaustiondir").as_ptr() as *const _,
-    ));
+    assert_ok(lfs_mkdir(lfs, c"exhaustiondir"));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     let blah = b"blahblahblahblah";
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("exhaustion").as_ptr(),
+        c"exhaustion",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
 
@@ -678,14 +675,14 @@ fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
 
     assert_ok(lfs_fs_gc(lfs));
     assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_remove(lfs, path_bytes("exhaustion").as_ptr()));
-    assert_ok(lfs_remove(lfs, path_bytes("exhaustiondir").as_ptr()));
+    assert_ok(lfs_remove(lfs, c"exhaustion"));
+    assert_ok(lfs_remove(lfs, c"exhaustiondir"));
 
     // Recreate with count writes; mkdir should succeed
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("exhaustion").as_ptr(),
+        c"exhaustion",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     for _ in 0..count {
@@ -698,10 +695,7 @@ fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
         assert_eq!(n, Ok(blah.len() as u32));
     }
     assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_mkdir(
-        lfs,
-        path_bytes("exhaustiondir").as_ptr() as *const _,
-    ));
+    assert_ok(lfs_mkdir(lfs, path_bytes("exhaustiondir").as_c_str()));
     assert_ok(lfs_remove(lfs, path_bytes("exhaustiondir").as_ptr()));
     assert_ok(lfs_remove(lfs, path_bytes("exhaustion").as_ptr()));
 
@@ -723,10 +717,10 @@ fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
     }
     assert_ok(lfs_file_close(lfs, file));
 
-    let err = lfs_mkdir(lfs, path_bytes("exhaustiondir").as_ptr() as *const _);
+    let err = lfs_mkdir(lfs, path_bytes("exhaustiondir").as_c_str());
     assert_err(Error::NoSpace, err);
 
-    assert_ok(lfs_remove(lfs, path_bytes("exhaustion").as_ptr()));
+    assert_ok(lfs_remove(lfs, c"exhaustion"));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -749,7 +743,7 @@ fn test_alloc_two_files_ctz() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("pacman").as_ptr(),
+        c"pacman",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let waka = b"waka";
@@ -773,7 +767,7 @@ fn test_alloc_two_files_ctz() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("pacman").as_ptr(),
+        c"pacman",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     for _ in (0..filesize).step_by(waka.len()) {
@@ -794,7 +788,7 @@ fn test_alloc_two_files_ctz() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("ghost").as_ptr(),
+        c"ghost",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let chomp = b"chomp";
@@ -815,12 +809,7 @@ fn test_alloc_two_files_ctz() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("pacman").as_ptr(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, (c"pacman"), LFS_O_RDONLY));
     let open_head = unsafe { (*file).ctz.head };
     assert_eq!(
         open_head, pacman_head,
@@ -863,7 +852,7 @@ fn test_alloc_bad_blocks_body() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("pacman").as_ptr(),
+        c"pacman",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
 
@@ -896,7 +885,7 @@ fn test_alloc_bad_blocks_body() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("pacman").as_ptr(),
+        c"pacman",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     for _ in (0..filesize).step_by(waka.len()) {
@@ -1074,12 +1063,12 @@ fn test_alloc_chained_dir_exhaustion() {
     }
 
     assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_remove(lfs, path_bytes("exhaustion").as_ptr()));
-    assert_ok(lfs_remove(lfs, path_bytes("exhaustiondir").as_ptr()));
+    assert_ok(lfs_remove(lfs, c"exhaustion"));
+    assert_ok(lfs_remove(lfs, c"exhaustiondir"));
     for i in 0..10 {
         assert_ok(lfs_remove(
             lfs,
-            path_bytes(&format!("dirwithanexhaustivelylongnameforpadding{i}")).as_ptr(),
+            path_bytes(&format!("dirwithanexhaustivelylongnameforpadding{i}")).as_c_str(),
         ));
     }
 
@@ -1103,15 +1092,15 @@ fn test_alloc_chained_dir_exhaustion() {
     for i in 0..10 {
         assert_ok(lfs_mkdir(
             lfs,
-            path_bytes(&format!("dirwithanexhaustivelylongnameforpadding{i}")).as_ptr() as *const _,
+            path_bytes(&format!("dirwithanexhaustivelylongnameforpadding{i}")).as_c_str(),
         ));
     }
 
-    let mut err = lfs_mkdir(lfs, path_bytes("exhaustiondir").as_ptr() as *const _);
+    let mut err = lfs_mkdir(lfs, path_bytes("exhaustiondir").as_c_str());
     assert_err(Error::NoSpace, err);
 
     loop {
-        err = lfs_mkdir(lfs, path_bytes("exhaustiondir").as_ptr() as *const _);
+        err = lfs_mkdir(lfs, path_bytes("exhaustiondir").as_c_str());
         if err != Err(Error::NoSpace) {
             break;
         }
@@ -1123,7 +1112,7 @@ fn test_alloc_chained_dir_exhaustion() {
     }
     assert_ok(err);
 
-    err = lfs_mkdir(lfs, path_bytes("exhaustiondir2").as_ptr() as *const _);
+    err = lfs_mkdir(lfs, path_bytes("exhaustiondir2").as_c_str());
     assert_err(Error::NoSpace, err);
 
     assert_ok(lfs_file_close(lfs, file));
@@ -1194,7 +1183,7 @@ fn test_alloc_outdated_lookahead() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("exhaustion1").as_ptr(),
+        c"exhaustion1",
         LFS_O_WRONLY | LFS_O_TRUNC,
     ));
     assert_ok(lfs_file_sync(lfs, file));
@@ -1295,7 +1284,7 @@ fn test_alloc_outdated_lookahead_split_dir() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("exhaustion1").as_ptr() as *const _,
+        path_bytes("exhaustion1").as_c_str(),
         LFS_O_WRONLY | LFS_O_TRUNC,
     ));
     assert_ok(lfs_file_sync(lfs, file));
@@ -1310,13 +1299,13 @@ fn test_alloc_outdated_lookahead_split_dir() {
     }
     assert_ok(lfs_file_close(lfs, file));
 
-    let err = lfs_mkdir(lfs, path_bytes("split").as_ptr() as *const _);
+    let err = lfs_mkdir(lfs, path_bytes("split").as_c_str());
     assert_err(Error::NoSpace, err);
 
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("notasplit").as_ptr() as *const _,
+        path_bytes("notasplit").as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let n = lfs_file_write(lfs, file, b"hi".as_ptr() as *const core::ffi::c_void, 2);

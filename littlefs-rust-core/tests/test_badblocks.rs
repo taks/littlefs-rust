@@ -71,7 +71,9 @@ fn test_badblocks_single(
             buffer[NAMEMULT] = 0;
 
             // mkdir
-            assert_ok(lfs_mkdir(lfs, buffer.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, unsafe {
+                CStr::from_ptr(buffer.as_ptr() as *const _)
+            }));
 
             // Build file path: "dirname/dirname"
             buffer[NAMEMULT] = b'/';
@@ -297,7 +299,9 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         }
         buffer[NAMEMULT] = 0;
 
-        assert_ok(lfs_mkdir(lfs, buffer.as_ptr() as *const _));
+        assert_ok(lfs_mkdir(lfs, unsafe {
+            CStr::from_ptr(buffer.as_ptr() as *const _)
+        }));
 
         buffer[NAMEMULT] = b'/';
         for j in 0..NAMEMULT {

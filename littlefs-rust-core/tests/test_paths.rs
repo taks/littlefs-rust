@@ -52,11 +52,11 @@ fn test_paths_simple_dirs() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let coffee = path_bytes("coffee");
-    assert_ok(lfs_mkdir(lfs, coffee.as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, coffee.as_c_str()));
 
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
-        assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+        assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(lfs, path.as_c_str(), info));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
@@ -78,7 +78,7 @@ fn test_paths_simple_files() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let coffee = path_bytes("coffee");
-    assert_ok(lfs_mkdir(lfs, coffee.as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, coffee.as_c_str()));
 
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
@@ -86,7 +86,7 @@ fn test_paths_simple_files() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_ptr() as *const _,
+            path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         assert_ok(lfs_file_close(lfs, file));
@@ -111,7 +111,7 @@ fn test_paths_absolute_files() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let coffee = path_bytes("coffee");
-    assert_ok(lfs_mkdir(lfs, coffee.as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, coffee.as_c_str()));
 
     for name in PATHS {
         let path = path_bytes(&format!("/coffee/{name}"));
@@ -119,7 +119,7 @@ fn test_paths_absolute_files() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_ptr() as *const _,
+            path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         assert_ok(lfs_file_close(lfs, file));
@@ -147,11 +147,11 @@ fn test_paths_absolute_dirs() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let coffee = path_bytes("coffee");
-    assert_ok(lfs_mkdir(lfs, coffee.as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, coffee.as_c_str()));
 
     for name in PATHS {
         let path = path_bytes(&format!("/coffee/{name}"));
-        assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+        assert_ok(lfs_mkdir(lfs, path.as_c_str()));
     }
     for name in PATHS {
         let path = path_bytes(&format!("/coffee/{name}"));
@@ -176,10 +176,10 @@ fn test_paths_noent() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let coffee = path_bytes("coffee");
-    assert_ok(lfs_mkdir(lfs, coffee.as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, coffee.as_c_str()));
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
-        assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+        assert_ok(lfs_mkdir(lfs, path.as_c_str()));
     }
 
     for bad in &[
@@ -196,7 +196,7 @@ fn test_paths_noent() {
         assert_err(Error::NoEntry, err);
 
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        let err = lfs_file_open(lfs, file, path.as_ptr() as *const _, LFS_O_RDONLY);
+        let err = lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY);
         assert_err(Error::NoEntry, err);
     }
     assert_ok(lfs_unmount(lfs));
@@ -215,7 +215,7 @@ fn test_paths_root() {
 
     let root_path = path_bytes("/");
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, root_path.as_ptr() as *const _));
+    assert_ok(lfs_dir_open(lfs, dir, root_path.as_c_str()));
     assert_ok(lfs_dir_close(lfs, dir));
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -238,7 +238,7 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
     let create_paths = &[
         "/coffee/drip",
         "//coffee//coldbrew",
@@ -250,13 +250,13 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
     for path_str in create_paths {
         let path = path_bytes(path_str);
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -290,7 +290,7 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
         );
     }
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_c_str()));
     let renames = &[
         ("//////coffee//////drip", "/espresso/espresso"),
         ("/////coffee/////coldbrew", "//espresso//americano"),
@@ -302,8 +302,8 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
     for (old, new) in renames {
         assert_ok(lfs_rename(
             lfs,
-            path_bytes(old).as_ptr() as *const _,
-            path_bytes(new).as_ptr() as *const _,
+            path_bytes(old).as_c_str(),
+            path_bytes(new).as_c_str(),
         ));
     }
     let mut info_dummy = core::mem::MaybeUninit::<LfsInfo>::zeroed();
@@ -322,7 +322,7 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
         "/////espresso/////cappuccino",
         "/espresso/mocha",
     ] {
-        assert_ok(lfs_remove(lfs, path_bytes(path_str).as_ptr() as *const _));
+        assert_ok(lfs_remove(lfs, path_bytes(path_str).as_c_str()));
     }
     assert_ok(lfs_unmount(lfs));
 }
@@ -338,7 +338,7 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
     if dir_mode {
         for s in &[
             "coffee/drip/",
@@ -348,7 +348,7 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
             "coffee/vietnamese/////",
             "coffee/thai//////",
         ] {
-            assert_ok(lfs_mkdir(lfs, path_bytes(s).as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path_bytes(s).as_c_str()));
         }
     } else {
         for s in &[
@@ -365,7 +365,7 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
                 lfs_file_open(
                     lfs,
                     file,
-                    path_bytes(s).as_ptr() as *const _,
+                    path_bytes(s).as_c_str(),
                     LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                 ),
             );
@@ -376,7 +376,7 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -404,7 +404,7 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
         }
     }
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_c_str()));
     if dir_mode {
         let renames = &[
             ("coffee/drip//////", "espresso/espresso/"),
@@ -417,8 +417,8 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
         for (old, new) in renames {
             assert_ok(lfs_rename(
                 lfs,
-                path_bytes(old).as_ptr() as *const _,
-                path_bytes(new).as_ptr() as *const _,
+                path_bytes(old).as_c_str(),
+                path_bytes(new).as_c_str(),
             ));
         }
         for s in &[
@@ -429,7 +429,7 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
             "espresso/cappuccino/////",
             "espresso/mocha//////",
         ] {
-            assert_ok(lfs_remove(lfs, path_bytes(s).as_ptr() as *const _));
+            assert_ok(lfs_remove(lfs, path_bytes(s).as_c_str()));
         }
     }
     assert_ok(lfs_unmount(lfs));
@@ -446,7 +446,7 @@ fn test_paths_dots(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
     let create_paths = &[
         "/coffee/drip",
         "/./coffee/./coldbrew",
@@ -458,13 +458,13 @@ fn test_paths_dots(#[case] dir_mode: bool) {
     for path_str in create_paths {
         let path = path_bytes(path_str);
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -498,7 +498,7 @@ fn test_paths_dots(#[case] dir_mode: bool) {
         );
     }
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_c_str()));
     let renames = &[
         ("/no/no/../../no/no/../../coffee/drip", "/espresso/espresso"),
         (
@@ -516,8 +516,8 @@ fn test_paths_dots(#[case] dir_mode: bool) {
     for (old, new) in renames {
         assert_ok(lfs_rename(
             lfs,
-            path_bytes(old).as_ptr() as *const _,
-            path_bytes(new).as_ptr() as *const _,
+            path_bytes(old).as_c_str(),
+            path_bytes(new).as_c_str(),
         ));
     }
     for s in &[
@@ -528,7 +528,7 @@ fn test_paths_dots(#[case] dir_mode: bool) {
         "/././././espresso/././././cappuccino",
         "/./././././espresso/./././././mocha",
     ] {
-        assert_ok(lfs_remove(lfs, path_bytes(s).as_ptr() as *const _));
+        assert_ok(lfs_remove(lfs, path_bytes(s).as_c_str()));
     }
     assert_ok(lfs_unmount(lfs));
 }
@@ -544,7 +544,7 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
     if dir_mode {
         for s in &[
             "coffee/drip/.",
@@ -554,15 +554,12 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
             "coffee/vietnamese/././././.",
             "coffee/thai/./././././.",
         ] {
-            assert_err(
-                Error::NoEntry,
-                lfs_mkdir(lfs, path_bytes(s).as_ptr() as *const _),
-            );
+            assert_err(Error::NoEntry, lfs_mkdir(lfs, path_bytes(s).as_c_str()));
         }
         for name in PATHS {
             assert_ok(lfs_mkdir(
                 lfs,
-                path_bytes(&format!("coffee/{name}")).as_ptr() as *const _,
+                path_bytes(&format!("coffee/{name}")).as_c_str(),
             ));
         }
     } else {
@@ -580,7 +577,7 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
                 lfs_file_open(
                     lfs,
                     file,
-                    path_bytes(s).as_ptr() as *const _,
+                    path_bytes(s).as_c_str(),
                     LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                 ),
             );
@@ -590,7 +587,7 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path_bytes(&format!("coffee/{name}")).as_ptr() as *const _,
+                path_bytes(&format!("coffee/{name}")).as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -618,7 +615,7 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
         }
     }
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_c_str()));
     if dir_mode {
         let renames_ok = &[
             ("coffee/drip/./././././.", "espresso/espresso"),
@@ -631,8 +628,8 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
         for (old, new) in renames_ok {
             assert_ok(lfs_rename(
                 lfs,
-                path_bytes(old).as_ptr() as *const _,
-                path_bytes(new).as_ptr() as *const _,
+                path_bytes(old).as_c_str(),
+                path_bytes(new).as_c_str(),
             ));
         }
         for s in &[
@@ -643,7 +640,7 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
             "espresso/cappuccino/././././.",
             "espresso/mocha/./././././.",
         ] {
-            assert_ok(lfs_remove(lfs, path_bytes(s).as_ptr() as *const _));
+            assert_ok(lfs_remove(lfs, path_bytes(s).as_c_str()));
         }
     }
     assert_ok(lfs_unmount(lfs));
@@ -660,10 +657,10 @@ fn test_paths_dotdots(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("no").as_ptr() as *const _));
-    assert_ok(lfs_mkdir(lfs, path_bytes("no/no").as_ptr() as *const _));
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee/no").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("no").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, path_bytes("no/no").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee/no").as_c_str()));
     let create_paths = &[
         "/coffee/drip",
         "/no/../coffee/coldbrew",
@@ -675,13 +672,13 @@ fn test_paths_dotdots(#[case] dir_mode: bool) {
     for path_str in create_paths {
         let path = path_bytes(path_str);
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -715,7 +712,7 @@ fn test_paths_dotdots(#[case] dir_mode: bool) {
         );
     }
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_c_str()));
     let renames = &[
         ("/./././././coffee/./././././drip", "/espresso/espresso"),
         (
@@ -733,8 +730,8 @@ fn test_paths_dotdots(#[case] dir_mode: bool) {
     for (old, new) in renames {
         assert_ok(lfs_rename(
             lfs,
-            path_bytes(old).as_ptr() as *const _,
-            path_bytes(new).as_ptr() as *const _,
+            path_bytes(old).as_c_str(),
+            path_bytes(new).as_c_str(),
         ));
     }
     for s in &[
@@ -745,7 +742,7 @@ fn test_paths_dotdots(#[case] dir_mode: bool) {
         "/././././espresso/././././cappuccino",
         "/./././././espresso/./././././mocha",
     ] {
-        assert_ok(lfs_remove(lfs, path_bytes(s).as_ptr() as *const _));
+        assert_ok(lfs_remove(lfs, path_bytes(s).as_c_str()));
     }
     assert_ok(lfs_unmount(lfs));
 }
@@ -761,52 +758,40 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
 
     if dir_mode {
         assert_err(
             Error::Exists,
-            lfs_mkdir(lfs, path_bytes("coffee/drip/..").as_ptr() as *const _),
+            lfs_mkdir(lfs, path_bytes("coffee/drip/..").as_c_str()),
         );
         assert_err(
             Error::Exists,
-            lfs_mkdir(
-                lfs,
-                path_bytes("coffee/coldbrew/../..").as_ptr() as *const _,
-            ),
+            lfs_mkdir(lfs, path_bytes("coffee/coldbrew/../..").as_c_str()),
+        );
+        assert_err(
+            Error::Invalid,
+            lfs_mkdir(lfs, path_bytes("coffee/turkish/../../..").as_c_str()),
+        );
+        assert_err(
+            Error::Invalid,
+            lfs_mkdir(lfs, path_bytes("coffee/tubruk/../../../..").as_c_str()),
         );
         assert_err(
             Error::Invalid,
             lfs_mkdir(
                 lfs,
-                path_bytes("coffee/turkish/../../..").as_ptr() as *const _,
+                path_bytes("coffee/vietnamese/../../../../..").as_c_str(),
             ),
         );
         assert_err(
             Error::Invalid,
-            lfs_mkdir(
-                lfs,
-                path_bytes("coffee/tubruk/../../../..").as_ptr() as *const _,
-            ),
-        );
-        assert_err(
-            Error::Invalid,
-            lfs_mkdir(
-                lfs,
-                path_bytes("coffee/vietnamese/../../../../..").as_ptr() as *const _,
-            ),
-        );
-        assert_err(
-            Error::Invalid,
-            lfs_mkdir(
-                lfs,
-                path_bytes("coffee/thai/../../../../../..").as_ptr() as *const _,
-            ),
+            lfs_mkdir(lfs, path_bytes("coffee/thai/../../../../../..").as_c_str()),
         );
         for name in PATHS {
             assert_ok(lfs_mkdir(
                 lfs,
-                path_bytes(&format!("coffee/{name}")).as_ptr() as *const _,
+                path_bytes(&format!("coffee/{name}")).as_c_str(),
             ));
         }
     } else {
@@ -815,7 +800,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             lfs_file_open(
                 lfs,
                 unsafe { &mut *core::mem::MaybeUninit::<LfsFile>::zeroed().as_mut_ptr() },
-                path_bytes("coffee/drip/..").as_ptr() as *const _,
+                path_bytes("coffee/drip/..").as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
         );
@@ -824,7 +809,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             lfs_file_open(
                 lfs,
                 unsafe { &mut *core::mem::MaybeUninit::<LfsFile>::zeroed().as_mut_ptr() },
-                path_bytes("coffee/coldbrew/../..").as_ptr() as *const _,
+                path_bytes("coffee/coldbrew/../..").as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
         );
@@ -833,7 +818,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             lfs_file_open(
                 lfs,
                 unsafe { &mut *core::mem::MaybeUninit::<LfsFile>::zeroed().as_mut_ptr() },
-                path_bytes("coffee/turkish/../../..").as_ptr() as *const _,
+                path_bytes("coffee/turkish/../../..").as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
         );
@@ -842,7 +827,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             lfs_file_open(
                 lfs,
                 unsafe { &mut *core::mem::MaybeUninit::<LfsFile>::zeroed().as_mut_ptr() },
-                path_bytes("coffee/tubruk/../../../..").as_ptr() as *const _,
+                path_bytes("coffee/tubruk/../../../..").as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
         );
@@ -851,7 +836,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             lfs_file_open(
                 lfs,
                 unsafe { &mut *core::mem::MaybeUninit::<LfsFile>::zeroed().as_mut_ptr() },
-                path_bytes("coffee/vietnamese/../../../../..").as_ptr() as *const _,
+                path_bytes("coffee/vietnamese/../../../../..").as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
         );
@@ -860,7 +845,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             lfs_file_open(
                 lfs,
                 unsafe { &mut *core::mem::MaybeUninit::<LfsFile>::zeroed().as_mut_ptr() },
-                path_bytes("coffee/thai/../../../../../..").as_ptr() as *const _,
+                path_bytes("coffee/thai/../../../../../..").as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
         );
@@ -869,7 +854,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path_bytes(&format!("coffee/{name}")).as_ptr() as *const _,
+                path_bytes(&format!("coffee/{name}")).as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -924,49 +909,46 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("no").as_ptr() as *const _));
-    assert_ok(lfs_mkdir(lfs, path_bytes("no/no").as_ptr() as *const _));
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee/no").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("no").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, path_bytes("no/no").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee/no").as_c_str()));
 
     if dir_mode {
+        assert_ok(lfs_mkdir(lfs, path_bytes("/coffee/drip").as_c_str()));
         assert_ok(lfs_mkdir(
             lfs,
-            path_bytes("/coffee/drip").as_ptr() as *const _,
+            path_bytes("/no/./../coffee/coldbrew").as_c_str(),
         ));
         assert_ok(lfs_mkdir(
             lfs,
-            path_bytes("/no/./../coffee/coldbrew").as_ptr() as *const _,
+            path_bytes("/coffee/no/./../turkish").as_c_str(),
         ));
         assert_ok(lfs_mkdir(
             lfs,
-            path_bytes("/coffee/no/./../turkish").as_ptr() as *const _,
+            path_bytes("/no/no/./.././../coffee/tubruk").as_c_str(),
         ));
         assert_ok(lfs_mkdir(
             lfs,
-            path_bytes("/no/no/./.././../coffee/tubruk").as_ptr() as *const _,
+            path_bytes("/no/no/./.././../coffee/no/./../vietnamese").as_c_str(),
         ));
         assert_ok(lfs_mkdir(
             lfs,
-            path_bytes("/no/no/./.././../coffee/no/./../vietnamese").as_ptr() as *const _,
-        ));
-        assert_ok(lfs_mkdir(
-            lfs,
-            path_bytes("/no/no/./.././../no/no/./.././../coffee/thai").as_ptr() as *const _,
+            path_bytes("/no/no/./.././../no/no/./.././../coffee/thai").as_c_str(),
         ));
     } else {
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path_bytes("/coffee/drip").as_ptr() as *const _,
+            path_bytes("/coffee/drip").as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         assert_ok(lfs_file_close(lfs, file));
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path_bytes("/no/./../coffee/coldbrew").as_ptr() as *const _,
+            path_bytes("/no/./../coffee/coldbrew").as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         assert_ok(lfs_file_close(lfs, file));
@@ -980,7 +962,7 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
             assert_ok(lfs_file_open(
                 lfs,
                 &mut f,
-                path_bytes(path).as_ptr() as *const _,
+                path_bytes(path).as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, &mut f));
@@ -1041,19 +1023,14 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
         ] {
             assert_err(
                 Error::IsDir,
-                lfs_file_open(
-                    lfs,
-                    file,
-                    path_bytes(path).as_ptr() as *const _,
-                    LFS_O_RDONLY,
-                ),
+                lfs_file_open(lfs, file, path_bytes(path).as_c_str(), LFS_O_RDONLY),
             );
             assert_err(
                 Error::IsDir,
                 lfs_file_open(
                     lfs,
                     file,
-                    path_bytes(path).as_ptr() as *const _,
+                    path_bytes(path).as_c_str(),
                     LFS_O_WRONLY | LFS_O_CREAT,
                 ),
             );
@@ -1062,7 +1039,7 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
                 lfs_file_open(
                     lfs,
                     file,
-                    path_bytes(path).as_ptr() as *const _,
+                    path_bytes(path).as_c_str(),
                     LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                 ),
             );
@@ -1080,7 +1057,7 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path_bytes(path).as_ptr() as *const _,
+                path_bytes(path).as_c_str(),
                 LFS_O_RDONLY,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1101,21 +1078,18 @@ fn test_paths_dotdotdots(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
-    assert_ok(lfs_mkdir(
-        lfs,
-        path_bytes("coffee/...").as_ptr() as *const _,
-    ));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee/...").as_c_str()));
     for name in PATHS {
         let path = path_bytes(&format!("/coffee/.../{name}"));
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1150,17 +1124,17 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1186,7 +1160,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
             Error::NoEntry,
-            lfs_file_open(lfs, file, path.as_ptr() as *const _, LFS_O_RDONLY),
+            lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY),
         );
     }
     // file_open WRONLY|CREAT => NOTDIR
@@ -1195,12 +1169,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
             Error::NotDir,
-            lfs_file_open(
-                lfs,
-                file,
-                path.as_ptr() as *const _,
-                LFS_O_WRONLY | LFS_O_CREAT,
-            ),
+            lfs_file_open(lfs, file, path.as_c_str(), LFS_O_WRONLY | LFS_O_CREAT),
         );
     }
     // file_open WRONLY|CREAT|EXCL => NOTDIR
@@ -1212,7 +1181,7 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
             lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
         );
@@ -1221,59 +1190,56 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
     for bad in bad_stat {
         let path = path_bytes(bad);
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_err(
-            Error::NoEntry,
-            lfs_dir_open(lfs, dir, path.as_ptr() as *const _),
-        );
+        assert_err(Error::NoEntry, lfs_dir_open(lfs, dir, path.as_c_str()));
     }
     // rename: bad source
-    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_c_str()));
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_rip//////").as_ptr() as *const _,
-            path_bytes("espresso/espresso").as_ptr() as *const _,
+            path_bytes("coffee/_rip//////").as_c_str(),
+            path_bytes("espresso/espresso").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/c_ldbrew/////").as_ptr() as *const _,
-            path_bytes("espresso/americano").as_ptr() as *const _,
+            path_bytes("coffee/c_ldbrew/////").as_c_str(),
+            path_bytes("espresso/americano").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/tu_kish////").as_ptr() as *const _,
-            path_bytes("espresso/macchiato").as_ptr() as *const _,
+            path_bytes("coffee/tu_kish////").as_c_str(),
+            path_bytes("espresso/macchiato").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/tub_uk///").as_ptr() as *const _,
-            path_bytes("espresso/latte").as_ptr() as *const _,
+            path_bytes("coffee/tub_uk///").as_c_str(),
+            path_bytes("espresso/latte").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_vietnamese//").as_ptr() as *const _,
-            path_bytes("espresso/cappuccino").as_ptr() as *const _,
+            path_bytes("coffee/_vietnamese//").as_c_str(),
+            path_bytes("espresso/cappuccino").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/thai_/").as_ptr() as *const _,
-            path_bytes("espresso/mocha").as_ptr() as *const _,
+            path_bytes("coffee/thai_/").as_c_str(),
+            path_bytes("espresso/mocha").as_c_str(),
         ),
     );
     // rename: bad destination (trailing slash on dest)
@@ -1281,48 +1247,48 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_rip").as_ptr() as *const _,
-            path_bytes("espresso/espresso/").as_ptr() as *const _,
+            path_bytes("coffee/_rip").as_c_str(),
+            path_bytes("espresso/espresso/").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/c_ldbrew").as_ptr() as *const _,
-            path_bytes("espresso/americano//").as_ptr() as *const _,
+            path_bytes("coffee/c_ldbrew").as_c_str(),
+            path_bytes("espresso/americano//").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/tu_kish").as_ptr() as *const _,
-            path_bytes("espresso/macchiato///").as_ptr() as *const _,
+            path_bytes("coffee/tu_kish").as_c_str(),
+            path_bytes("espresso/macchiato///").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/tub_uk").as_ptr() as *const _,
-            path_bytes("espresso/latte////").as_ptr() as *const _,
+            path_bytes("coffee/tub_uk").as_c_str(),
+            path_bytes("espresso/latte////").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_vietnamese").as_ptr() as *const _,
-            path_bytes("espresso/cappuccino/////").as_ptr() as *const _,
+            path_bytes("coffee/_vietnamese").as_c_str(),
+            path_bytes("espresso/cappuccino/////").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/thai_").as_ptr() as *const _,
-            path_bytes("espresso/mocha//////").as_ptr() as *const _,
+            path_bytes("coffee/thai_").as_c_str(),
+            path_bytes("espresso/mocha//////").as_c_str(),
         ),
     );
     // rename: bad source and bad destination
@@ -1330,48 +1296,48 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_rip//////").as_ptr() as *const _,
-            path_bytes("espresso/espresso/").as_ptr() as *const _,
+            path_bytes("coffee/_rip//////").as_c_str(),
+            path_bytes("espresso/espresso/").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/c_ldbrew/////").as_ptr() as *const _,
-            path_bytes("espresso/americano//").as_ptr() as *const _,
+            path_bytes("coffee/c_ldbrew/////").as_c_str(),
+            path_bytes("espresso/americano//").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/tu_kish////").as_ptr() as *const _,
-            path_bytes("espresso/macchiato///").as_ptr() as *const _,
+            path_bytes("coffee/tu_kish////").as_c_str(),
+            path_bytes("espresso/macchiato///").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/tub_uk///").as_ptr() as *const _,
-            path_bytes("espresso/latte////").as_ptr() as *const _,
+            path_bytes("coffee/tub_uk///").as_c_str(),
+            path_bytes("espresso/latte////").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_vietnamese//").as_ptr() as *const _,
-            path_bytes("espresso/cappuccino/////").as_ptr() as *const _,
+            path_bytes("coffee/_vietnamese//").as_c_str(),
+            path_bytes("espresso/cappuccino/////").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/thai_/").as_ptr() as *const _,
-            path_bytes("espresso/mocha//////").as_ptr() as *const _,
+            path_bytes("coffee/thai_/").as_c_str(),
+            path_bytes("espresso/mocha//////").as_c_str(),
         ),
     );
     // rename noop (same bad path both sides) => NOENT
@@ -1379,54 +1345,54 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_rip//////").as_ptr() as *const _,
-            path_bytes("coffee/_rip//////").as_ptr() as *const _,
+            path_bytes("coffee/_rip//////").as_c_str(),
+            path_bytes("coffee/_rip//////").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/c_ldbrew/////").as_ptr() as *const _,
-            path_bytes("coffee/c_ldbrew/////").as_ptr() as *const _,
+            path_bytes("coffee/c_ldbrew/////").as_c_str(),
+            path_bytes("coffee/c_ldbrew/////").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/tu_kish////").as_ptr() as *const _,
-            path_bytes("coffee/tu_kish////").as_ptr() as *const _,
+            path_bytes("coffee/tu_kish////").as_c_str(),
+            path_bytes("coffee/tu_kish////").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/tub_uk///").as_ptr() as *const _,
-            path_bytes("coffee/tub_uk///").as_ptr() as *const _,
+            path_bytes("coffee/tub_uk///").as_c_str(),
+            path_bytes("coffee/tub_uk///").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_vietnamese//").as_ptr() as *const _,
-            path_bytes("coffee/_vietnamese//").as_ptr() as *const _,
+            path_bytes("coffee/_vietnamese//").as_c_str(),
+            path_bytes("coffee/_vietnamese//").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/thai_/").as_ptr() as *const _,
-            path_bytes("coffee/thai_/").as_ptr() as *const _,
+            path_bytes("coffee/thai_/").as_c_str(),
+            path_bytes("coffee/thai_/").as_c_str(),
         ),
     );
     // remove => NOENT
     for bad in bad_stat {
         let path = path_bytes(bad);
-        assert_err(Error::NoEntry, lfs_remove(lfs, path.as_ptr() as *const _));
+        assert_err(Error::NoEntry, lfs_remove(lfs, path.as_c_str()));
     }
     // stat espresso/* (renames failed so these don't exist) => NOENT
     for name in [
@@ -1476,17 +1442,17 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1512,7 +1478,12 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
             Error::NoEntry,
-            lfs_file_open(lfs, file, path.as_ptr() as *const _, LFS_O_RDONLY),
+            lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY),
+        );
+        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        assert_err(
+            Error::NoEntry,
+            lfs_file_open(lfs, file, path.as_c_str(), LFS_O_WRONLY | LFS_O_CREAT),
         );
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
@@ -1520,17 +1491,7 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
             lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
-                LFS_O_WRONLY | LFS_O_CREAT,
-            ),
-        );
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_err(
-            Error::NoEntry,
-            lfs_file_open(
-                lfs,
-                file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
         );
@@ -1539,42 +1500,36 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
     for bad in bad_paths {
         let path = path_bytes(bad);
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_err(
-            Error::NoEntry,
-            lfs_dir_open(lfs, dir, path.as_ptr() as *const _),
-        );
+        assert_err(Error::NoEntry, lfs_dir_open(lfs, dir, path.as_c_str()));
     }
     // rename: bad source, bad dest, noop; remove; final stat of valid paths
-    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_c_str()));
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_rip/./././././.").as_ptr() as *const _,
-            path_bytes("espresso/espresso").as_ptr() as *const _,
+            path_bytes("coffee/_rip/./././././.").as_c_str(),
+            path_bytes("espresso/espresso").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_rip").as_ptr() as *const _,
-            path_bytes("espresso/espresso/.").as_ptr() as *const _,
+            path_bytes("coffee/_rip").as_c_str(),
+            path_bytes("espresso/espresso/.").as_c_str(),
         ),
     );
     assert_err(
         Error::NoEntry,
         lfs_rename(
             lfs,
-            path_bytes("coffee/_rip/./././././.").as_ptr() as *const _,
-            path_bytes("coffee/_rip/./././././.").as_ptr() as *const _,
+            path_bytes("coffee/_rip/./././././.").as_c_str(),
+            path_bytes("coffee/_rip/./././././.").as_c_str(),
         ),
     );
     for bad in bad_paths {
-        assert_err(
-            Error::NoEntry,
-            lfs_remove(lfs, path_bytes(bad).as_ptr() as *const _),
-        );
+        assert_err(Error::NoEntry, lfs_remove(lfs, path_bytes(bad).as_c_str()));
     }
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
@@ -1606,17 +1561,17 @@ fn test_paths_noent_trailing_dotdots(#[case] dir_mode: bool) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1630,21 +1585,16 @@ fn test_paths_noent_trailing_dotdots(#[case] dir_mode: bool) {
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::IsDir,
-        lfs_file_open(lfs, file, rip_dotdot.as_ptr() as *const _, LFS_O_RDONLY),
+        lfs_file_open(lfs, file, rip_dotdot.as_c_str(), LFS_O_RDONLY),
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::IsDir,
-        lfs_file_open(
-            lfs,
-            file,
-            rip_dotdot.as_ptr() as *const _,
-            LFS_O_WRONLY | LFS_O_CREAT,
-        ),
+        lfs_file_open(lfs, file, rip_dotdot.as_c_str(), LFS_O_WRONLY | LFS_O_CREAT),
     );
     // dir_open on coffee/_rip/.. => success (resolves to coffee)
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, rip_dotdot.as_ptr() as *const _));
+    assert_ok(lfs_dir_open(lfs, dir, rip_dotdot.as_c_str()));
     assert_ok(lfs_dir_close(lfs, dir));
     // stat coffee/_rip/.. => coffee
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -1656,24 +1606,24 @@ fn test_paths_noent_trailing_dotdots(#[case] dir_mode: bool) {
     assert_ok(lfs_stat(lfs, thai_dotdot.as_c_str(), info));
     assert_eq!(info_name_str(&info), "coffee");
     // rename: valid coffee/thai_/.. → espresso/mocha (moves coffee to espresso/mocha)
-    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_c_str()));
     assert_ok(lfs_rename(
         lfs,
-        path_bytes("coffee/thai_/..").as_ptr() as *const _,
-        path_bytes("espresso/mocha").as_ptr() as *const _,
+        path_bytes("coffee/thai_/..").as_c_str(),
+        path_bytes("espresso/mocha").as_c_str(),
     ));
     // rename: bad source (coffee/_rip/.. to file path when dest parent doesn't exist or similar)
-    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("coffee").as_c_str()));
     for name in PATHS {
         let path = path_bytes(&format!("coffee/{name}"));
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1682,12 +1632,12 @@ fn test_paths_noent_trailing_dotdots(#[case] dir_mode: bool) {
     // remove: NOTEMPTY (coffee has children)
     assert_err(
         Error::NotEmpty,
-        lfs_remove(lfs, path_bytes("coffee/drip/..").as_ptr() as *const _),
+        lfs_remove(lfs, path_bytes("coffee/drip/..").as_c_str()),
     );
     // remove: INVAL (above root)
     assert_err(
         Error::Invalid,
-        lfs_remove(lfs, path_bytes("coffee/drip/../../..").as_ptr() as *const _),
+        lfs_remove(lfs, path_bytes("coffee/drip/../../..").as_c_str()),
     );
     assert_ok(lfs_unmount(lfs));
 }
@@ -1715,17 +1665,17 @@ fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
         "kaː˨˩fe˧˧ɗaː˧˥",
         "ʔoː˧.lia̯ŋ˦˥",
     ];
-    assert_ok(lfs_mkdir(lfs, path_bytes(parent).as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes(parent).as_c_str()));
     for name in children {
         let path = path_bytes(&format!("{parent}/{name}"));
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1747,23 +1697,18 @@ fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
                 Error::IsDir,
-                lfs_file_open(lfs, file, path.as_ptr() as *const _, LFS_O_RDONLY),
+                lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY),
             );
             assert_err(
                 Error::IsDir,
-                lfs_file_open(
-                    lfs,
-                    file,
-                    path.as_ptr() as *const _,
-                    LFS_O_WRONLY | LFS_O_CREAT,
-                ),
+                lfs_file_open(lfs, file, path.as_c_str(), LFS_O_WRONLY | LFS_O_CREAT),
             );
             assert_err(
                 Error::Exists,
                 lfs_file_open(
                     lfs,
                     file,
-                    path.as_ptr() as *const _,
+                    path.as_c_str(),
                     LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                 ),
             );
@@ -1772,17 +1717,12 @@ fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
         for name in children {
             let path = path_bytes(&format!("{parent}/{name}"));
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path.as_ptr() as *const _,
-                LFS_O_RDONLY,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
             assert_ok(lfs_file_close(lfs, file));
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1791,7 +1731,7 @@ fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
                 lfs_file_open(
                     lfs,
                     file,
-                    path.as_ptr() as *const _,
+                    path.as_c_str(),
                     LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                 ),
             );
@@ -1816,17 +1756,17 @@ fn test_paths_oopsallspaces(#[case] dir_mode: bool) {
 
     let root = " ";
     let children = [" ", "  ", "   ", "    ", "     ", "      "];
-    assert_ok(lfs_mkdir(lfs, path_bytes(root).as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes(root).as_c_str()));
     for name in children {
         let path = path_bytes(&format!("{root}/{name}"));
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, path.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, path.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr() as *const _,
+                path.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1848,43 +1788,33 @@ fn test_paths_oopsallspaces(#[case] dir_mode: bool) {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
                 Error::IsDir,
-                lfs_file_open(lfs, file, path.as_ptr() as *const _, LFS_O_RDONLY),
+                lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY),
             );
             assert_err(
                 Error::IsDir,
-                lfs_file_open(
-                    lfs,
-                    file,
-                    path.as_ptr() as *const _,
-                    LFS_O_WRONLY | LFS_O_CREAT,
-                ),
+                lfs_file_open(lfs, file, path.as_c_str(), LFS_O_WRONLY | LFS_O_CREAT),
             );
             let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-            assert_ok(lfs_dir_open(lfs, dir, path.as_ptr() as *const _));
+            assert_ok(lfs_dir_open(lfs, dir, path.as_c_str()));
             assert_ok(lfs_dir_close(lfs, dir));
         }
     } else {
         for name in children {
             let path = path_bytes(&format!("{root}/{name}"));
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path.as_ptr() as *const _,
-                LFS_O_RDONLY,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
             assert_ok(lfs_file_close(lfs, file));
             assert_err(
                 Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     unsafe { &mut *core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr() },
-                    path.as_ptr() as *const _,
+                    path.as_c_str(),
                 ),
             );
         }
     }
-    assert_ok(lfs_mkdir(lfs, path_bytes("  ").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("  ").as_c_str()));
     let renames = [
         (" / ", "  /      "),
         (" /  ", "  /     "),
@@ -1896,17 +1826,13 @@ fn test_paths_oopsallspaces(#[case] dir_mode: bool) {
     for (old, new) in renames {
         let old_path = path_bytes(old);
         let new_path = path_bytes(new);
-        assert_ok(lfs_rename(
-            lfs,
-            old_path.as_ptr() as *const _,
-            new_path.as_ptr() as *const _,
-        ));
+        assert_ok(lfs_rename(lfs, old_path.as_c_str(), new_path.as_c_str()));
     }
     for (_, new) in renames {
-        assert_ok(lfs_remove(lfs, path_bytes(new).as_ptr() as *const _));
+        assert_ok(lfs_remove(lfs, path_bytes(new).as_c_str()));
     }
-    assert_ok(lfs_remove(lfs, path_bytes("  ").as_ptr() as *const _));
-    assert_ok(lfs_remove(lfs, path_bytes(root).as_ptr() as *const _));
+    assert_ok(lfs_remove(lfs, path_bytes("  ").as_c_str()));
+    assert_ok(lfs_remove(lfs, path_bytes(root).as_c_str()));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -1924,7 +1850,9 @@ fn test_paths_oopsalldels(#[case] dir_mode: bool) {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let root = path_bytes_raw(&[0x7f]);
-    assert_ok(lfs_mkdir(lfs, root.as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, unsafe {
+        CStr::from_ptr(root.as_ptr() as *const _)
+    }));
     let mut child_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
     for n in 1..=6 {
         let p: Vec<u8> = (0..n).map(|_| 0x7f).collect();
@@ -1935,13 +1863,13 @@ fn test_paths_oopsalldels(#[case] dir_mode: bool) {
         full.extend_from_slice(&cp[..cp.len().saturating_sub(1)]);
         full.push(0);
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, full.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, full.as_c_str()));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                full.as_ptr() as *const _,
+                full.as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -1967,53 +1895,44 @@ fn test_paths_oopsalldels(#[case] dir_mode: bool) {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
                 Error::IsDir,
-                lfs_file_open(lfs, file, fp.as_ptr() as *const _, LFS_O_RDONLY),
+                lfs_file_open(lfs, file, fp.as_c_str(), LFS_O_RDONLY),
             );
             let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-            assert_ok(lfs_dir_open(lfs, dir, fp.as_ptr() as *const _));
+            assert_ok(lfs_dir_open(lfs, dir, fp.as_c_str()));
             assert_ok(lfs_dir_close(lfs, dir));
         }
     } else {
         for fp in &full_paths {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                fp.as_ptr() as *const _,
-                LFS_O_RDONLY,
-            ));
+            assert_ok(lfs_file_open(lfs, file, fp.as_c_str(), LFS_O_RDONLY));
             assert_ok(lfs_file_close(lfs, file));
             assert_err(
                 Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     unsafe { &mut *core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr() },
-                    fp.as_ptr() as *const _,
+                    fp.as_c_str(),
                 ),
             );
         }
     }
     let new_root = path_bytes_raw(&[0x7f, 0x7f]);
-    assert_ok(lfs_mkdir(lfs, new_root.as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, new_root.as_c_str()));
     for (n, fp) in full_paths.iter().enumerate() {
         let new_name_len = 6 - n;
         let mut new_path = vec![0x7f, 0x7f, b'/'];
         new_path.extend((0..new_name_len).map(|_| 0x7f));
         new_path.push(0);
-        assert_ok(lfs_rename(
-            lfs,
-            fp.as_ptr() as *const _,
-            new_path.as_ptr() as *const _,
-        ));
+        assert_ok(lfs_rename(lfs, fp.as_c_str(), new_path.as_c_str()));
     }
     for n in 1..=6 {
         let mut p = vec![0x7f, 0x7f, b'/'];
         p.extend((0..n).map(|_| 0x7f));
         p.push(0);
-        assert_ok(lfs_remove(lfs, p.as_ptr() as *const _));
+        assert_ok(lfs_remove(lfs, p.as_c_str()));
     }
-    assert_ok(lfs_remove(lfs, new_root.as_ptr() as *const _));
-    assert_ok(lfs_remove(lfs, root.as_ptr() as *const _));
+    assert_ok(lfs_remove(lfs, new_root.as_c_str()));
+    assert_ok(lfs_remove(lfs, root.as_c_str()));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -2031,7 +1950,7 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let root = path_bytes_raw(&[0xff]);
-    assert_ok(lfs_mkdir(lfs, root.as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, root.as_c_str()));
     let mut child_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
     for n in 1..=6 {
         let p: Vec<u8> = (0..n).map(|_| 0xff).collect();
@@ -2042,13 +1961,15 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
         full.extend_from_slice(&cp[..cp.len().saturating_sub(1)]);
         full.push(0);
         if dir_mode {
-            assert_ok(lfs_mkdir(lfs, full.as_ptr() as *const _));
+            assert_ok(lfs_mkdir(lfs, unsafe {
+                CStr::from_ptr(full.as_ptr() as *const _)
+            }));
         } else {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                full.as_ptr() as *const _,
+                unsafe { CStr::from_ptr(full.as_ptr() as *const _) },
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ));
             assert_ok(lfs_file_close(lfs, file));
@@ -2065,7 +1986,7 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(
             lfs,
-            unsafe { CStr::from_ptr(fp.as_ptr() as *const _) },
+            unsafe { CStr::from_ptr(fp.as_c_str() as *const _) },
             info,
         ));
     }
@@ -2074,53 +1995,44 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_err(
                 Error::IsDir,
-                lfs_file_open(lfs, file, fp.as_ptr() as *const _, LFS_O_RDONLY),
+                lfs_file_open(lfs, file, fp.as_c_str(), LFS_O_RDONLY),
             );
             let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-            assert_ok(lfs_dir_open(lfs, dir, fp.as_ptr() as *const _));
+            assert_ok(lfs_dir_open(lfs, dir, fp.as_c_str()));
             assert_ok(lfs_dir_close(lfs, dir));
         }
     } else {
         for fp in &full_paths {
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                fp.as_ptr() as *const _,
-                LFS_O_RDONLY,
-            ));
+            assert_ok(lfs_file_open(lfs, file, fp.as_c_str(), LFS_O_RDONLY));
             assert_ok(lfs_file_close(lfs, file));
             assert_err(
                 Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     unsafe { &mut *core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr() },
-                    fp.as_ptr() as *const _,
+                    fp.as_c_str(),
                 ),
             );
         }
     }
     let new_root = path_bytes_raw(&[0xff, 0xff]);
-    assert_ok(lfs_mkdir(lfs, new_root.as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, new_root.as_c_str()));
     for (n, fp) in full_paths.iter().enumerate() {
         let new_name_len = 6 - n;
         let mut new_path = vec![0xff, 0xff, b'/'];
         new_path.extend((0..new_name_len).map(|_| 0xff));
         new_path.push(0);
-        assert_ok(lfs_rename(
-            lfs,
-            fp.as_ptr() as *const _,
-            new_path.as_ptr() as *const _,
-        ));
+        assert_ok(lfs_rename(lfs, fp.as_c_str(), new_path.as_c_str()));
     }
     for n in 1..=6 {
         let mut p = vec![0xff, 0xff, b'/'];
         p.extend((0..n).map(|_| 0xff));
         p.push(0);
-        assert_ok(lfs_remove(lfs, p.as_ptr() as *const _));
+        assert_ok(lfs_remove(lfs, p.as_c_str()));
     }
-    assert_ok(lfs_remove(lfs, new_root.as_ptr() as *const _));
-    assert_ok(lfs_remove(lfs, root.as_ptr() as *const _));
+    assert_ok(lfs_remove(lfs, new_root.as_c_str()));
+    assert_ok(lfs_remove(lfs, root.as_c_str()));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -2183,7 +2095,7 @@ fn test_paths_notdir_parent() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("f").as_ptr() as *const _,
+        path_bytes("f").as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     assert_ok(lfs_file_close(lfs, file));
@@ -2209,10 +2121,7 @@ fn test_paths_empty(#[case] dir_mode: bool) {
         lfs_stat(lfs, path_bytes("").as_c_str(), info),
     );
     if dir_mode {
-        assert_err(
-            Error::Invalid,
-            lfs_mkdir(lfs, path_bytes("").as_ptr() as *const _),
-        );
+        assert_err(Error::Invalid, lfs_mkdir(lfs, path_bytes("").as_c_str()));
     } else {
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_err(
@@ -2220,32 +2129,21 @@ fn test_paths_empty(#[case] dir_mode: bool) {
             lfs_file_open(
                 lfs,
                 file,
-                path_bytes("").as_ptr() as *const _,
+                path_bytes("").as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
             ),
         );
     }
-    assert_ok(lfs_mkdir(lfs, path_bytes("x").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("x").as_c_str()));
     assert_err(
         Error::Invalid,
-        lfs_rename(
-            lfs,
-            path_bytes("x").as_ptr() as *const _,
-            path_bytes("").as_ptr() as *const _,
-        ),
+        lfs_rename(lfs, path_bytes("x").as_c_str(), path_bytes("").as_c_str()),
     );
     assert_err(
         Error::Invalid,
-        lfs_rename(
-            lfs,
-            path_bytes("").as_ptr() as *const _,
-            path_bytes("y").as_ptr() as *const _,
-        ),
+        lfs_rename(lfs, path_bytes("").as_c_str(), path_bytes("y").as_c_str()),
     );
-    assert_err(
-        Error::Invalid,
-        lfs_remove(lfs, path_bytes("").as_ptr() as *const _),
-    );
+    assert_err(Error::Invalid, lfs_remove(lfs, path_bytes("").as_c_str()));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -2280,7 +2178,7 @@ fn test_paths_magic_noent() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_c_str()));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err(Error::NoEntry, lfs_stat(lfs, c"a/b", info));
     assert_ok(lfs_unmount(lfs));
@@ -2298,13 +2196,13 @@ fn test_paths_magic_conflict(#[case] dir_mode: bool) {
     assert_ok(lfs_mount(lfs, &env.config));
 
     if dir_mode {
-        assert_ok(lfs_mkdir(lfs, path_bytes("littlefs").as_ptr() as *const _));
+        assert_ok(lfs_mkdir(lfs, path_bytes("littlefs").as_c_str()));
     } else {
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path_bytes("littlefs").as_ptr() as *const _,
+            path_bytes("littlefs").as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         assert_ok(lfs_file_close(lfs, file));
@@ -2314,20 +2212,20 @@ fn test_paths_magic_conflict(#[case] dir_mode: bool) {
     assert_eq!(info_name_str(info), "littlefs");
     assert_ok(lfs_rename(
         lfs,
-        path_bytes("littlefs").as_ptr() as *const _,
-        path_bytes("coffee").as_ptr() as *const _,
+        path_bytes("littlefs").as_c_str(),
+        path_bytes("coffee").as_c_str(),
     ));
     assert_ok(lfs_rename(
         lfs,
-        path_bytes("coffee").as_ptr() as *const _,
-        path_bytes("littlefs").as_ptr() as *const _,
+        path_bytes("coffee").as_c_str(),
+        path_bytes("littlefs").as_c_str(),
     ));
     assert_ok(lfs_stat(lfs, path_bytes("littlefs").as_c_str(), info));
     assert_err(
         Error::NoEntry,
         lfs_stat(lfs, path_bytes("coffee").as_c_str(), info),
     );
-    assert_ok(lfs_remove(lfs, path_bytes("littlefs").as_ptr() as *const _));
+    assert_ok(lfs_remove(lfs, path_bytes("littlefs").as_c_str()));
     assert_err(
         Error::NoEntry,
         lfs_stat(lfs, path_bytes("littlefs").as_c_str(), info),
@@ -2346,7 +2244,7 @@ fn test_paths_nametoolong() {
     let long_name = "a".repeat(256);
     assert_err(
         Error::NameTooLong,
-        lfs_mkdir(lfs, path_bytes(&long_name).as_ptr() as *const _),
+        lfs_mkdir(lfs, path_bytes(&long_name).as_c_str()),
     );
     assert_ok(lfs_unmount(lfs));
 }
@@ -2376,7 +2274,7 @@ fn test_paths_utf8() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
     let name = "café_日本_한글";
-    assert_ok(lfs_mkdir(lfs, path_bytes(name).as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes(name).as_c_str()));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, path_bytes(name).as_c_str(), info));
     assert_eq!(info_name_str(info), name);
@@ -2392,7 +2290,7 @@ fn test_paths_spaces() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
     let name = "foo bar";
-    assert_ok(lfs_mkdir(lfs, path_bytes(name).as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, path_bytes(name).as_c_str()));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, path_bytes(name).as_c_str(), info));
     assert_eq!(info_name_str(info), name);
@@ -2410,13 +2308,10 @@ fn test_paths_nonprintable() {
     let mut name: Vec<u8> = vec![b'a'; 10];
     name[5] = 0x01;
     name.push(0);
-    assert_ok(lfs_mkdir(lfs, name.as_ptr() as *const _));
+    let name = unsafe { CStr::from_ptr(name.as_ptr() as *const _) };
+    assert_ok(lfs_mkdir(lfs, name));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(
-        lfs,
-        unsafe { CStr::from_ptr(name.as_ptr() as *const _) },
-        info,
-    ));
+    assert_ok(lfs_stat(lfs, name, info));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -2429,7 +2324,7 @@ fn test_paths_nonutf8() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
     let name = c"foo\xff\xfe\xfdbar";
-    assert_ok(lfs_mkdir(lfs, name.as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, name.as_c_str()));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, name, info));
     assert_ok(lfs_unmount(lfs));

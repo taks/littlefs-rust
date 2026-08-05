@@ -48,7 +48,7 @@ fn run_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) -
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr(),
+                path.as_c_str(),
                 common::LFS_O_WRONLY | common::LFS_O_CREAT | common::LFS_O_TRUNC,
             ));
 
@@ -87,7 +87,7 @@ fn run_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) -
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr(),
+                path.as_c_str(),
                 common::LFS_O_RDONLY,
             ));
 
@@ -145,10 +145,7 @@ fn test_exhaustion_normal(
 
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(
-        lfs,
-        path_bytes("roadrunner").as_ptr() as *const _,
-    ));
+    assert_ok(lfs_mkdir(lfs, path_bytes("roadrunner").as_c_str()));
     assert_ok(lfs_unmount(lfs));
 
     let cycle = run_exhaustion(lfs, &env.config, "roadrunner", files);
@@ -204,7 +201,7 @@ fn run_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) -> u32 {
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr(),
+                path.as_c_str(),
                 common::LFS_O_WRONLY | common::LFS_O_CREAT | common::LFS_O_TRUNC,
             ));
 
@@ -237,7 +234,7 @@ fn run_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) -> u32 {
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr(),
+                path.as_c_str(),
                 common::LFS_O_RDONLY,
             ));
 
@@ -302,10 +299,7 @@ fn test_exhaustion_wear_leveling() {
         let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
         assert_ok(lfs_format(lfs, &env.config));
         assert_ok(lfs_mount(lfs, &env.config));
-        assert_ok(lfs_mkdir(
-            lfs,
-            path_bytes("roadrunner").as_ptr() as *const _,
-        ));
+        assert_ok(lfs_mkdir(lfs, path_bytes("roadrunner").as_c_str()));
         assert_ok(lfs_unmount(lfs));
 
         let cycle = run_exhaustion(lfs, &env.config, "roadrunner", files);
@@ -404,7 +398,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("roadrunner").as_ptr()));
+    assert_ok(lfs_mkdir(lfs, c"roadrunner"));
     assert_ok(lfs_unmount(lfs));
 
     let mut cycle: u32 = 0;
@@ -421,7 +415,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr(),
+                path.as_c_str(),
                 common::LFS_O_WRONLY | common::LFS_O_CREAT | common::LFS_O_TRUNC,
             ));
 
@@ -454,7 +448,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                path.as_ptr(),
+                path.as_c_str(),
                 common::LFS_O_RDONLY,
             ));
 

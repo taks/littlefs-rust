@@ -1174,12 +1174,12 @@ fn test_seek_overflow() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = path_bytes("kitty");
+    let path = c"kitty";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_ptr(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
     let n = lfs_file_write(

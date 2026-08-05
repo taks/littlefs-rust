@@ -94,7 +94,7 @@ fn test_relocations_outdated_head(#[values(8, 1)] block_cycles: i32) {
             path_bytes(&format!("d{i}")).as_ptr() as *const _,
         ));
     }
-    assert_ok(lfs_mkdir(lfs, path_bytes("d0/sub").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, c"d0/sub"));
     for i in 0..COUNT {
         let path = path_bytes(&format!("d0/sub/f{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
