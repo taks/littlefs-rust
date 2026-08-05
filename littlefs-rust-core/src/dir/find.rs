@@ -1,5 +1,7 @@
 //! Directory find. Per lfs.c lfs_dir_find, lfs_dir_find_match.
 
+use core::ffi::CStr;
+
 use crate::bd::bd::lfs_bd_cmp;
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
@@ -241,7 +243,7 @@ pub fn lfs_dir_find(
         'nextname: loop {
             // C: nextname - lfs.c:1510-1512
             if u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_DIR {
-                let skip = lfs_strspn(name, b'/');
+                let skip = lfs_strspn(CStr::from_ptr(name as *const _), b'/');
                 name = name.add(skip as usize);
             }
             let namelen = lfs_strcspn(name, b'/');
@@ -275,7 +277,7 @@ pub fn lfs_dir_find(
                     }
                     path_iter += 1;
                 }
-                let suffix_skip = lfs_strspn(suffix, b'/');
+                let suffix_skip = lfs_strspn(CStr::from_ptr(suffix as *const _), b'/');
                 suffix = suffix.add(suffix_skip as usize);
                 let sufflen = lfs_strcspn(suffix, b'/');
                 if sufflen == 0 {

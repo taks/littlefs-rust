@@ -1,5 +1,7 @@
 //! Utility functions. Per lfs_util.h static inline and lfs.c small type-level utils.
 
+use core::ffi::CStr;
+
 use crate::types::{lfs_block_t, lfs_size_t};
 
 /// Per lfs_util.h lfs_max (lines 129-131)
@@ -12,11 +14,7 @@ use crate::types::{lfs_block_t, lfs_size_t};
 /// ```
 #[inline(always)]
 pub fn lfs_max(a: u32, b: u32) -> u32 {
-    if a > b {
-        a
-    } else {
-        b
-    }
+    if a > b { a } else { b }
 }
 
 /// Per lfs_util.h lfs_min (lines 133-135)
@@ -29,11 +27,7 @@ pub fn lfs_max(a: u32, b: u32) -> u32 {
 /// ```
 #[inline(always)]
 pub fn lfs_min(a: u32, b: u32) -> u32 {
-    if a < b {
-        a
-    } else {
-        b
-    }
+    if a < b { a } else { b }
 }
 
 /// Per lfs_util.h lfs_aligndown (lines 138-140)
@@ -192,33 +186,17 @@ pub fn lfs_tobe32(a: u32) -> u32 {
 
 /// Per C strspn: count leading bytes equal to `c`, stop at first unequal or null.
 #[inline(always)]
-pub fn lfs_strspn(p: *const u8, c: u8) -> u32 {
-    if p.is_null() {
-        return 0;
-    }
+pub fn lfs_strspn(p: &CStr, c: u8) -> u32 {
     let mut n: u32 = 0;
-    unsafe {
-        let mut q = p;
-        #[cfg(feature = "loop_limits")]
-        const MAX_STRSPN_ITER: u32 = 4096;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
-        while *q == c {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_STRSPN_ITER {
-                    panic!(
-                        "loop_limits: MAX_STRSPN_ITER ({}) exceeded",
-                        MAX_STRSPN_ITER
-                    );
-                }
-                iter += 1;
-            }
-            n += 1;
-            q = q.add(1);
+
+    for &q in p.to_bytes_with_nul() {
+        if (q != c) {
+            return n;
         }
+        n += 1;
     }
-    n
+
+    unreachable!()
 }
 
 /// Per C strcspn: count bytes until we hit `c` or null.
@@ -385,11 +363,7 @@ pub fn lfs_pair_cmp(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> i32 {
         || paira[1] == pairb[1]
         || paira[0] == pairb[1]
         || paira[1] == pairb[0];
-    if eq {
-        0
-    } else {
-        1
-    }
+    if eq { 0 } else { 1 }
 }
 
 /// Per lfs.c lfs_pair_issync (lines 319-324)
