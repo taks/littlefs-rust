@@ -1,6 +1,6 @@
 //! Directory traverse. Per lfs.c lfs_dir_traverse, lfs_dir_getslice, lfs_dir_get, lfs_dir_getread.
 
-use zerocopy::{IntoBytes, TryFromBytes, FromBytes};
+use zerocopy::{FromBytes, IntoBytes, TryFromBytes};
 
 use crate::LfsAttr;
 use crate::bd::LfsCache;
@@ -161,7 +161,8 @@ pub fn lfs_dir_getslice(
                 }
                 let diff = lfs_min(lfs_tag_size(tag), gsize);
                 let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                let buf = core::slice::from_raw_parts_mut(gbuffer.as_mut_ptr() as *mut u8, diff as _);
+                let buf =
+                    core::slice::from_raw_parts_mut(gbuffer.as_mut_ptr() as *mut u8, diff as _);
                 lfs_bd_read(
                     lfs,
                     None,
@@ -707,9 +708,7 @@ pub fn lfs_dir_traverse(
     begin: u16,
     end: u16,
     diff: i16,
-    cb: Option<
-        fn(*mut core::ffi::c_void, lfs_tag_t, &[u8]) -> Result<i32, Error>,
-    >,
+    cb: Option<fn(*mut core::ffi::c_void, lfs_tag_t, &[u8]) -> Result<i32, Error>>,
     data: *mut core::ffi::c_void,
 ) -> Result<i32, Error> {
     use crate::bd::bd::lfs_bd_read;
@@ -952,7 +951,16 @@ pub fn lfs_dir_traverse(
                         // C: lfs.c:620-632 — iterate over user attrs, dispatch each to cb
                         let attr_count = crate::tag::lfs_tag_size(tag) as usize;
                         assert_eq!(attr_count * ::core::mem::size_of::<LfsAttr>(), buffer.len());
-                        let attrs = unsafe { ::core::slice::from_raw_parts(buffer.as_ptr() as *const LfsAttr, attr_count) };
+                        let attrs = if buffer.is_empty() {
+                            &[]
+                        } else {
+                            unsafe {
+                                ::core::slice::from_raw_parts(
+                                    buffer.as_ptr() as *const LfsAttr,
+                                    attr_count,
+                                )
+                            }
+                        };
                         for a in attrs {
                             let userattr_tag = lfs_mktag(
                                 crate::lfs_type::lfs_type::LFS_TYPE_USERATTR
@@ -960,13 +968,7 @@ pub fn lfs_dir_traverse(
                                 crate::tag::lfs_tag_id(tag) as u32 + diff as u32,
                                 a.buffer.len() as u32,
                             );
-                            res = dispatch_tag(
-                                cb,
-                                data,
-                                userattr_tag,
-                                a.buffer,
-                                diff,
-                            );
+                            res = dispatch_tag(cb, data, userattr_tag, a.buffer, diff);
                             if let Err(err) = res {
                                 return Err(err);
                             }
@@ -983,7 +985,8 @@ pub fn lfs_dir_traverse(
                             );
                             unsafe {
                                 (*stack[sp - 1].as_mut_ptr()).redundant_tag = tag;
-                                (*stack[sp - 1].as_mut_ptr()).redundant_buffer = buffer.as_ptr() as *const _;
+                                (*stack[sp - 1].as_mut_ptr()).redundant_buffer =
+                                    buffer.as_ptr() as *const _;
                             }
                             phase = TraversePhase::PopAndProcess;
                         } else {
@@ -1007,7 +1010,8 @@ pub fn lfs_dir_traverse(
                                 );
                                 unsafe {
                                     (*stack[sp - 1].as_mut_ptr()).redundant_tag = tag;
-                                    (*stack[sp - 1].as_mut_ptr()).redundant_buffer = buffer.as_ptr() as *const _;
+                                    (*stack[sp - 1].as_mut_ptr()).redundant_buffer =
+                                        buffer.as_ptr() as *const _;
                                 }
                                 phase = TraversePhase::PopAndProcess;
                             } else {
