@@ -86,7 +86,7 @@ fn test_badblocks_single(
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                buffer.as_ptr() as *const _,
+                unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
                 LFS_O_WRONLY | LFS_O_CREAT,
             ));
 
@@ -130,7 +130,7 @@ fn test_badblocks_single(
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                buffer.as_ptr() as *const _,
+                unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
                 LFS_O_RDONLY,
             ));
 
@@ -313,7 +313,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            buffer.as_ptr() as *const _,
+            unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
 
@@ -354,7 +354,7 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            buffer.as_ptr() as *const _,
+            unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
             LFS_O_RDONLY,
         ));
 

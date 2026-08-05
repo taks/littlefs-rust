@@ -532,10 +532,8 @@ pub fn read_block_raw(
     off: u32,
     buf: &mut [u8],
 ) -> Result<(), Error> {
-    unsafe {
-        let read = (*config).read.expect("read callback");
-        read(config, block, off, buf)
-    }
+    let read = (*config).read.expect("read callback");
+    read(config, block, off, buf)
 }
 
 /// Invoke config prog callback for raw block write, bypassing the FS.
@@ -543,10 +541,8 @@ pub fn read_block_raw(
 ///
 /// C: lfs_emubd_prog via cfg->prog callback
 pub fn write_block_raw(config: &LfsConfig, block: u32, off: u32, data: &[u8]) -> Result<(), Error> {
-    unsafe {
-        let prog = (*config).prog.expect("prog callback");
-        prog(config, block, off, data)
-    }
+    let prog = (*config).prog.expect("prog callback");
+    prog(config, block, off, data)
 }
 
 /// Invoke config erase callback for raw block erase, bypassing the FS.

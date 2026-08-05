@@ -354,11 +354,7 @@ fn test_superblocks_expand_power_cycle() {
 
             assert_ok(lfs_mount(lfs, &env.config));
             let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
-            assert_ok(lfs_stat(
-                lfs,
-                unsafe { CStr::from_ptr(dummy.as_c_str()) },
-                info.as_mut_ptr(),
-            ));
+            assert_ok(lfs_stat(lfs, dummy, info.as_mut_ptr()));
             let info = unsafe { info.assume_init() };
             assert_eq!(info.type_, LFS_TYPE_REG as u8);
             assert_ok(lfs_unmount(lfs));

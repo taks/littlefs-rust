@@ -42,14 +42,14 @@ fn test_relocations_dangling_split_dir(#[values(8, 1)] block_cycles: i32) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("d0").as_ptr() as *const _));
+    assert_ok(lfs_mkdir(lfs, c"d0"));
     for i in 0..COUNT {
         let path = path_bytes(&format!("d0/f{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_ptr() as *const _,
+            path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
         let n = lfs_file_write(lfs, file, b"x".as_ptr() as *const core::ffi::c_void, 1);
@@ -89,10 +89,7 @@ fn test_relocations_outdated_head(#[values(8, 1)] block_cycles: i32) {
     assert_ok(lfs_mount(lfs, &env.config));
 
     for i in 0..3 {
-        assert_ok(lfs_mkdir(
-            lfs,
-            path_bytes(&format!("d{i}")).as_ptr() as *const _,
-        ));
+        assert_ok(lfs_mkdir(lfs, path_bytes(&format!("d{i}")).as_c_str()));
     }
     assert_ok(lfs_mkdir(lfs, c"d0/sub"));
     for i in 0..COUNT {
@@ -101,7 +98,7 @@ fn test_relocations_outdated_head(#[values(8, 1)] block_cycles: i32) {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_ptr() as *const _,
+            path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
         let n = lfs_file_write(lfs, file, b"x".as_ptr() as *const core::ffi::c_void, 1);

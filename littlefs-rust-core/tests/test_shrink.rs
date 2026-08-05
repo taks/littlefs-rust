@@ -4,6 +4,8 @@
 
 mod common;
 
+use std::ffi::CString;
+
 use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok,
     clone_config_with_block_count, default_config, init_context,
@@ -93,7 +95,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
 
     // Create FILES_COUNT+1 files of BLOCK_SIZE - 0x40 bytes
     for i in 0..files_count + 1 {
-        let path = format!("file_{:03}\0", i);
+        let path = CString::new(format!("file_{:03}", i)).unwrap();
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
@@ -120,7 +122,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
     if err.is_ok() {
         // Verify all files while still mounted
         for i in 0..files_count + 1 {
-            let path = format!("file_{:03}\0", i);
+            let path = CString::new(format!("file_{:03}", i)).unwrap();
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
 
@@ -157,7 +159,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
         assert_ok(lfs_mount(lfs2, &cfg2.config));
 
         for i in 0..files_count + 1 {
-            let path = CString::new(format!("file_{:03}", i));
+            let path = CString::new(format!("file_{:03}", i)).unwrap();
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(lfs2, file, path.as_c_str(), LFS_O_RDONLY));
 

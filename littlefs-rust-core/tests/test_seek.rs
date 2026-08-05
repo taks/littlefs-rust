@@ -185,12 +185,12 @@ fn test_seek_write(#[case] count: u32, #[case] skip: u32) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = path_bytes("kitty");
+    let path = c"kitty";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_ptr(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
     for _ in 0..count {
@@ -206,7 +206,7 @@ fn test_seek_write(#[case] count: u32, #[case] skip: u32) {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDWR));
+    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDWR));
 
     let mut buf = [0u8; 32];
     let mut pos: i32 = -1;
@@ -297,12 +297,12 @@ fn test_seek_boundary_read() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = path_bytes("kitty");
+    let path = c"kitty";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_ptr(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
     for _ in 0..COUNT {
@@ -318,7 +318,7 @@ fn test_seek_boundary_read() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
 
     let size = KITTY.len() as i64;
     let pattern = b"kittycatcatkittycatcat";
@@ -531,12 +531,12 @@ fn test_seek_boundary_write() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = path_bytes("kitty");
+    let path = c"kitty";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_ptr(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
     for _ in 0..COUNT {
@@ -552,7 +552,7 @@ fn test_seek_boundary_write() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDWR));
+    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDWR));
 
     let size = KITTY.len() as i64;
     let offsets: [i64; 13] = [
@@ -670,12 +670,12 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = path_bytes("kitty");
+    let path = c"kitty";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_ptr(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
     for _ in 0..count {
@@ -691,7 +691,7 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDWR));
+    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDWR));
 
     let size = KITTY.len() as i64;
     let hole_offset = (count as i64 + skip as i64) * size;
@@ -788,14 +788,9 @@ fn test_seek_inline_write(#[case] size: u32) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = path_bytes("tinykitty");
+    let path = c"tinykitty";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path.as_ptr(),
-        LFS_O_RDWR | LFS_O_CREAT,
-    ));
+    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDWR | LFS_O_CREAT));
 
     let alphabet = b"abcdefghijklmnopqrstuvwxyz";
     let mut j = 0usize;
@@ -1063,12 +1058,12 @@ fn test_seek_filemax() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = path_bytes("kitty");
+    let path = c"kitty";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_ptr(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
     let n = lfs_file_write(
@@ -1105,12 +1100,12 @@ fn test_seek_underflow() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = path_bytes("kitty");
+    let path = c"kitty";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_ptr(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
     let n = lfs_file_write(
