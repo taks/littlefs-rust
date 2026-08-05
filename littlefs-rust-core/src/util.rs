@@ -201,32 +201,19 @@ pub fn lfs_strspn(p: &CStr, c: u8) -> u32 {
 
 /// Per C strcspn: count bytes until we hit `c` or null.
 #[inline(always)]
-pub fn lfs_strcspn(p: *const u8, c: u8) -> u32 {
-    if p.is_null() {
+pub fn lfs_strcspn(p: &CStr, c: u8) -> u32 {
+    if p.is_empty() {
         return 0;
     }
     let mut n: u32 = 0;
-    unsafe {
-        let mut q = p;
-        #[cfg(feature = "loop_limits")]
-        const MAX_STRCSPN_ITER: u32 = 4096;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
-        while *q != c && *q != 0 {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_STRCSPN_ITER {
-                    panic!(
-                        "loop_limits: MAX_STRCSPN_ITER ({}) exceeded",
-                        MAX_STRCSPN_ITER
-                    );
-                }
-                iter += 1;
-            }
-            n += 1;
-            q = q.add(1);
+
+    for &q in p.to_bytes() {
+        if (q == c) {
+            break;
         }
+        n += 1;
     }
+
     n
 }
 

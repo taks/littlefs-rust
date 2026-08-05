@@ -246,7 +246,7 @@ pub fn lfs_dir_find(
                 let skip = lfs_strspn(CStr::from_ptr(name as *const _), b'/');
                 name = name.add(skip as usize);
             }
-            let namelen = lfs_strcspn(name, b'/');
+            let namelen = lfs_strcspn(CStr::from_ptr(name as *const _), b'/');
 
             // C: lfs.c:1516-1519 - skip '.'
             if namelen == 1 && *name == b'.' {
@@ -279,7 +279,7 @@ pub fn lfs_dir_find(
                 }
                 let suffix_skip = lfs_strspn(CStr::from_ptr(suffix as *const _), b'/');
                 suffix = suffix.add(suffix_skip as usize);
-                let sufflen = lfs_strcspn(suffix, b'/');
+                let sufflen = lfs_strcspn(CStr::from_ptr(suffix as *const _), b'/');
                 if sufflen == 0 {
                     break;
                 }
