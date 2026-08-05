@@ -7,6 +7,8 @@
 
 mod common;
 
+use std::ffi::CStr;
+
 use common::{
     BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok,
     config_with_wear_leveling_full, init_wear_leveling_context,
@@ -69,7 +71,9 @@ fn test_badblocks_single(
             buffer[NAMEMULT] = 0;
 
             // mkdir
-            assert_ok(lfs_mkdir(lfs, buffer.as_ptr()));
+            assert_ok(lfs_mkdir(lfs, unsafe {
+                CStr::from_ptr(buffer.as_ptr() as *const _)
+            }));
 
             // Build file path: "dirname/dirname"
             buffer[NAMEMULT] = b'/';
@@ -82,7 +86,7 @@ fn test_badblocks_single(
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                buffer.as_ptr(),
+                unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
                 LFS_O_WRONLY | LFS_O_CREAT,
             ));
 
@@ -108,7 +112,11 @@ fn test_badblocks_single(
             buffer[NAMEMULT] = 0;
 
             let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-            assert_ok(lfs_stat(lfs, buffer.as_ptr(), info.as_mut_ptr()));
+            assert_ok(lfs_stat(
+                lfs,
+                unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
+                info.as_mut_ptr(),
+            ));
             let info_ref = unsafe { &*info.as_ptr() };
             assert_eq!(info_ref.type_, LFS_TYPE_DIR);
 
@@ -119,7 +127,12 @@ fn test_badblocks_single(
             buffer[2 * NAMEMULT + 1] = 0;
 
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(lfs, file, buffer.as_ptr(), LFS_O_RDONLY));
+            assert_ok(lfs_file_open(
+                lfs,
+                file,
+                unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
+                LFS_O_RDONLY,
+            ));
 
             let size = NAMEMULT as u32;
             for _j in 0..(i * FILEMULT) {
@@ -286,7 +299,9 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         }
         buffer[NAMEMULT] = 0;
 
-        assert_ok(lfs_mkdir(lfs, buffer.as_ptr()));
+        assert_ok(lfs_mkdir(lfs, unsafe {
+            CStr::from_ptr(buffer.as_ptr() as *const _)
+        }));
 
         buffer[NAMEMULT] = b'/';
         for j in 0..NAMEMULT {
@@ -298,7 +313,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            buffer.as_ptr(),
+            unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
 
@@ -321,7 +336,11 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         buffer[NAMEMULT] = 0;
 
         let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, buffer.as_ptr(), info.as_mut_ptr()));
+        assert_ok(lfs_stat(
+            lfs,
+            unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
+            info.as_mut_ptr(),
+        ));
         let info_ref = unsafe { &*info.as_ptr() };
         assert_eq!(info_ref.type_, LFS_TYPE_DIR);
 
@@ -332,7 +351,12 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         buffer[2 * NAMEMULT + 1] = 0;
 
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, buffer.as_ptr(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(
+            lfs,
+            file,
+            unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
+            LFS_O_RDONLY,
+        ));
 
         let size = NAMEMULT as u32;
         for _j in 0..(i * FILEMULT) {

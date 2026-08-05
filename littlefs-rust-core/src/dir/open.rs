@@ -1,12 +1,14 @@
 //! Directory open/read. Per lfs.c lfs_dir_open_, lfs_dir_close_, lfs_dir_read_, etc.
 
+use core::ffi::CStr;
+
 use crate::borrow_unchecked::borrow_unchecked;
+use crate::dir::LfsDir;
 use crate::dir::fetch::{lfs_dir_fetch, lfs_dir_getinfo};
 use crate::dir::find::lfs_dir_find;
 use crate::dir::lfs_mlist::lfs_mlist_append;
 use crate::dir::lfs_mlist::lfs_mlist_remove;
 use crate::dir::traverse::lfs_dir_get;
-use crate::dir::LfsDir;
 use crate::error::Error;
 use crate::lfs_info::LfsInfo;
 use crate::lfs_type::lfs_type::LFS_TYPE_DIR;
@@ -62,14 +64,18 @@ use crate::util::{lfs_min, lfs_pair_cmp, lfs_pair_fromle32};
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_open_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, path: *const u8) -> Result<(), Error> {
+pub fn lfs_dir_open_(
+    lfs: *mut crate::fs::Lfs,
+    dir: *mut LfsDir,
+    path: *const u8,
+) -> Result<(), Error> {
     if lfs.is_null() || dir.is_null() || path.is_null() {
         return Err(Error::Invalid);
     }
     unsafe {
         let lfs = &mut *lfs;
         let dir = &mut *dir;
-        let mut path_ptr = path;
+        let mut path_ptr = CStr::from_ptr(path as *const _);
 
         let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None)?;
 
@@ -180,7 +186,11 @@ pub fn lfs_dir_close_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir) -> Result<(), 
 ///     return true;
 /// }
 /// ```
-pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsInfo) -> Result<i32, Error> {
+pub fn lfs_dir_read_(
+    lfs: *mut crate::fs::Lfs,
+    dir: *mut LfsDir,
+    info: *mut LfsInfo,
+) -> Result<i32, Error> {
     if lfs.is_null() || dir.is_null() || info.is_null() {
         return Err(Error::Invalid);
     }
@@ -235,7 +245,9 @@ pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsI
             }
 
             let err = lfs_dir_getinfo(lfs, &dir.m, dir.id, info);
-            if let Err(err) = err && err != Error::NoEntry {
+            if let Err(err) = err
+                && err != Error::NoEntry
+            {
                 return crate::lfs_pass_err!(Err(err));
             }
             dir.id += 1;
@@ -290,7 +302,11 @@ pub fn lfs_dir_read_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir, info: *mut LfsI
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_seek_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, off: lfs_off_t) -> Result<(), Error> {
+pub fn lfs_dir_seek_(
+    lfs: &mut crate::fs::Lfs,
+    dir: &mut LfsDir,
+    off: lfs_off_t,
+) -> Result<(), Error> {
     unsafe {
         lfs_dir_rewind_(lfs, dir)?;
 

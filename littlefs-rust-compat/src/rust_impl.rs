@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 
 use littlefs_rust_core::error::Error;
 
-use crate::storage::{check, path_cstr, prng_verify, test_prng, SharedStorage};
+use crate::storage::{prng_verify, test_prng, SharedStorage};
 
 const LFS_O_RDONLY: i32 = 1;
 const LFS_O_WRONLY: i32 = 2;
@@ -18,10 +18,7 @@ pub fn format(storage: &SharedStorage) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    )?;
+    littlefs_rust_core::lfs_format(lfs, &env.config)?;
     littlefs_rust_core::lfs_mount(lfs, &env.config)?;
     littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(())
@@ -51,10 +48,7 @@ pub fn format_mkdir_unmount(storage: &SharedStorage, dir_name: &str) -> Result<(
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    )?;
+    littlefs_rust_core::lfs_format(lfs, &env.config)?;
     littlefs_rust_core::lfs_mount(lfs, &env.config)?;
     mkdir_mounted(lfs, dir_name)?;
     littlefs_rust_core::lfs_unmount(lfs)?;
@@ -69,10 +63,7 @@ pub fn format_mkdir_file_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    )?;
+    littlefs_rust_core::lfs_format(lfs, &env.config)?;
     littlefs_rust_core::lfs_mount(lfs, &env.config)?;
     mkdir_mounted(lfs, dir_name)?;
     create_empty_file_mounted(lfs, file_name)?;
@@ -88,10 +79,7 @@ pub fn format_file_mkdir_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    )?;
+    littlefs_rust_core::lfs_format(lfs, &env.config)?;
     littlefs_rust_core::lfs_mount(lfs, &env.config)?;
     create_empty_file_mounted(lfs, file_name)?;
     mkdir_mounted(lfs, dir_name)?;
@@ -103,10 +91,7 @@ pub fn format_create_three_unmount(storage: &SharedStorage) -> Result<(), Error>
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    )?;
+    littlefs_rust_core::lfs_format(lfs, &env.config)?;
     littlefs_rust_core::lfs_mount(lfs, &env.config)?;
     for name in ["aaa", "zzz", "mmm"] {
         create_empty_file_mounted(lfs, name)?;
@@ -123,19 +108,12 @@ pub fn format_create_rename_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    )?;
+    littlefs_rust_core::lfs_format(lfs, &env.config)?;
     littlefs_rust_core::lfs_mount(lfs, &env.config)?;
     create_empty_file_mounted(lfs, old_name)?;
     let old = path_cstr(old_name);
     let new = path_cstr(new_name);
-    (littlefs_rust_core::lfs_rename(
-        lfs,
-        old.as_ptr(),
-        new.as_ptr(),
-    ))?;
+    (littlefs_rust_core::lfs_rename(lfs, old.as_ptr() as *const _, new.as_ptr() as *const _))?;
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
@@ -144,14 +122,11 @@ pub fn format_create_remove_unmount(storage: &SharedStorage, path: &str) -> Resu
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    (littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    ))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
     (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
     create_empty_file_mounted(lfs, path)?;
     let p = path_cstr(path);
-    (littlefs_rust_core::lfs_remove(lfs, p.as_ptr()))?;
+    (littlefs_rust_core::lfs_remove(lfs, p.as_ptr() as *const _))?;
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
@@ -164,10 +139,7 @@ pub fn format_create_write_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    (littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    ))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
     (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
     write_file_mounted(lfs, path, content)?;
     (littlefs_rust_core::lfs_unmount(lfs))?;
@@ -183,10 +155,7 @@ pub fn format_nested_dir_file_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    (littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    ))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
     (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
     mkdir_mounted(lfs, parent)?;
     let child_path = format!("{parent}/{child}");
@@ -205,24 +174,15 @@ pub fn format_mkdir_file_rmdir_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    (littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    ))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
     (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
     mkdir_mounted(lfs, dir_name)?;
     let file_path = format!("{dir_name}/{file_name}");
     create_empty_file_mounted(lfs, &file_path)?;
     let fp = path_cstr(&file_path);
-    (littlefs_rust_core::lfs_remove(
-        lfs,
-        fp.as_ptr(),
-    ))?;
+    (littlefs_rust_core::lfs_remove(lfs, fp.as_ptr() as *const _))?;
     let dp = path_cstr(dir_name);
-    (littlefs_rust_core::lfs_remove(
-        lfs,
-        dp.as_ptr(),
-    ))?;
+    (littlefs_rust_core::lfs_remove(lfs, dp.as_ptr() as *const _))?;
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
@@ -233,7 +193,7 @@ pub fn mount_mkdir_expect_exist(storage: &SharedStorage, path: &str) -> Result<(
 
     (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
     let p = path_cstr(path);
-    let res = littlefs_rust_core::lfs_mkdir(lfs, p.as_ptr());
+    let res = littlefs_rust_core::lfs_mkdir(lfs, p.as_ptr() as *const _);
     (littlefs_rust_core::lfs_unmount(lfs))?;
     if res == Err(Error::Exists) {
         Ok(())
@@ -249,10 +209,7 @@ pub fn mount_mkdir_expect_exist(storage: &SharedStorage, path: &str) -> Result<(
 pub fn format_only(storage: &SharedStorage) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
-    (littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    ))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
     Ok(())
 }
 
@@ -260,10 +217,7 @@ pub fn format_create_n_dirs(storage: &SharedStorage, count: usize) -> Result<(),
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    (littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    ))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
     (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
     for i in 0..count {
         mkdir_mounted(lfs, &format!("dir{i}"))?;
@@ -281,19 +235,10 @@ pub fn format_create_n_files_prng(
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    (littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    ))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
     (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
     for i in 0..count {
-        write_prng_file_mounted(
-            lfs,
-            &format!("file{i}"),
-            size,
-            chunk,
-            (i + 1) as u32,
-        )?;
+        write_prng_file_mounted(lfs, &format!("file{i}"), size, chunk, (i + 1) as u32)?;
     }
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
@@ -308,21 +253,12 @@ pub fn format_create_n_dirs_with_files_prng(
     let env = storage.build_rust_env();
     let lfs = &mut unsafe { MaybeUninit::<littlefs_rust_core::Lfs>::zeroed().assume_init() };
 
-    (littlefs_rust_core::lfs_format(
-        lfs,
-        &env.config,
-    ))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
     (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
     for i in 0..count {
         let dir = format!("dir{i}");
         mkdir_mounted(lfs, &dir)?;
-        write_prng_file_mounted(
-            lfs,
-            &format!("{dir}/file"),
-            size,
-            chunk,
-            (i + 1) as u32,
-        )?;
+        write_prng_file_mounted(lfs, &format!("{dir}/file"), size, chunk, (i + 1) as u32)?;
     }
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
@@ -446,13 +382,7 @@ pub fn mount_create_files_prng_and_verify_all(
 
     (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
     for i in start..(start + count) {
-        write_prng_file_mounted(
-            lfs,
-            &format!("file{i}"),
-            size,
-            chunk,
-            (i + 1) as u32,
-        )?;
+        write_prng_file_mounted(lfs, &format!("file{i}"), size, chunk, (i + 1) as u32)?;
     }
     let root = dir_names_mounted(lfs, "/")?;
     assert_eq!(
@@ -485,13 +415,7 @@ pub fn mount_create_dirs_files_prng_and_verify_all(
     for i in start..(start + count) {
         let dir = format!("dir{i}");
         mkdir_mounted(lfs, &dir)?;
-        write_prng_file_mounted(
-            lfs,
-            &format!("{dir}/file"),
-            size,
-            chunk,
-            (i + 1) as u32,
-        )?;
+        write_prng_file_mounted(lfs, &format!("{dir}/file"), size, chunk, (i + 1) as u32)?;
     }
     let root = dir_names_mounted(lfs, "/")?;
     assert_eq!(
@@ -514,19 +438,14 @@ pub fn mount_create_dirs_files_prng_and_verify_all(
 
 fn mkdir_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<(), Error> {
     let p = path_cstr(path);
-    littlefs_rust_core::lfs_mkdir(lfs, p.as_ptr())
+    littlefs_rust_core::lfs_mkdir(lfs, p.as_ptr() as *const _)
 }
 
 fn create_empty_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<(), Error> {
     let p = path_cstr(path);
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let mut file = unsafe { MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed().assume_init() };
-    littlefs_rust_core::lfs_file_open(
-        lfs,
-        &mut file,
-        p.as_ptr(),
-        flags,
-    )?;
+    littlefs_rust_core::lfs_file_open(lfs, &mut file, p.as_ptr() as *const _, flags)?;
     littlefs_rust_core::lfs_file_close(lfs, &mut file)
 }
 
@@ -538,12 +457,7 @@ fn write_file_mounted(
     let p = path_cstr(path);
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let file = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed().assume_init() };
-    (littlefs_rust_core::lfs_file_open(
-        lfs,
-        file,
-        p.as_ptr(),
-        flags,
-    ))?;
+    (littlefs_rust_core::lfs_file_open(lfs, file, p.as_ptr() as *const _, flags))?;
     let n = littlefs_rust_core::lfs_file_write(
         lfs,
         file,
@@ -568,12 +482,7 @@ fn write_prng_file_mounted(
     let p = path_cstr(path);
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let file = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed().assume_init() };
-    (littlefs_rust_core::lfs_file_open(
-        lfs,
-        file,
-        p.as_ptr(),
-        flags,
-    ))?;
+    (littlefs_rust_core::lfs_file_open(lfs, file, p.as_ptr() as *const _, flags))?;
 
     let mut prng = seed;
     let mut buf = vec![0u8; chunk as usize];
@@ -592,18 +501,13 @@ fn write_prng_file_mounted(
         assert_eq!(n.unwrap(), c as u32, "short write at offset {i}");
         i += c;
     }
-    (littlefs_rust_core::lfs_file_close(lfs, file))
+    littlefs_rust_core::lfs_file_close(lfs, file)
 }
 
 fn read_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<Vec<u8>, Error> {
     let p = path_cstr(path);
     let file = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed().assume_init() };
-    (littlefs_rust_core::lfs_file_open(
-        lfs,
-        file,
-        p.as_ptr(),
-        LFS_O_RDONLY,
-    ))?;
+    (littlefs_rust_core::lfs_file_open(lfs, file, p.as_ptr() as *const _, LFS_O_RDONLY))?;
 
     let mut buf = Vec::new();
     let mut chunk = [0u8; 256];
@@ -630,11 +534,7 @@ fn read_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<Ve
 fn dir_names_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<Vec<String>, Error> {
     let p = path_cstr(path);
     let dir = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsDir>::zeroed().assume_init() };
-    (littlefs_rust_core::lfs_dir_open(
-        lfs,
-        dir,
-        p.as_ptr(),
-    ))?;
+    (littlefs_rust_core::lfs_dir_open(lfs, dir, p.as_ptr()))?;
 
     let mut names = Vec::new();
     let info = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsInfo>::zeroed().assume_init() };

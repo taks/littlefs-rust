@@ -1,5 +1,7 @@
 //! Stat. Per lfs.c lfs_stat_, lfs_fs_stat_, lfs_fs_size_.
 
+use core::ffi::CStr;
+
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::fs::traverse::lfs_fs_traverse_;
@@ -27,7 +29,7 @@ use crate::types::{lfs_block_t, lfs_size_t};
 /// ```
 pub fn lfs_stat_(
     lfs: *mut super::lfs::Lfs,
-    path: *const u8,
+    path: &CStr,
     info: *mut crate::lfs_info::LfsInfo,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_getinfo;
@@ -35,7 +37,7 @@ pub fn lfs_stat_(
     use crate::lfs_type::lfs_type::LFS_TYPE_DIR;
     use crate::tag::{lfs_tag_id, lfs_tag_type3};
 
-    if lfs.is_null() || path.is_null() || info.is_null() {
+    if lfs.is_null() || info.is_null() {
         return Err(Error::Invalid);
     }
     unsafe {
@@ -45,7 +47,7 @@ pub fn lfs_stat_(
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
         // C: lfs.c:3872-3875 - only allow trailing slashes on dirs (strchr(path, '/') != NULL)
-        let mut p = path_ptr;
+        let mut p = path_ptr.as_ptr() as *const u8;
         #[cfg(feature = "loop_limits")]
         const MAX_STAT_PATH_ITER: u32 = 1024;
         #[cfg(feature = "loop_limits")]
