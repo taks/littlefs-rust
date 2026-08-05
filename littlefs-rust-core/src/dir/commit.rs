@@ -11,6 +11,7 @@ use crate::error::Error;
 use crate::fs::Lfs;
 use crate::fs::stat::lfs_fs_size_;
 use crate::lfs_gstate;
+use crate::tag::Tag;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
 
 /// Per lfs.c lfs_dir_commitprog (lines 1604-1618)
@@ -112,7 +113,7 @@ pub fn lfs_dir_commitprog(
 pub fn lfs_dir_commitattr(
     lfs: &mut crate::fs::Lfs,
     commit: &mut LfsCommit,
-    tag: lfs_tag_t,
+    tag: Tag,
     buffer: *const core::ffi::c_void,
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
@@ -334,7 +335,7 @@ pub fn lfs_dir_commitattr(
 pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_crc, lfs_bd_prog, lfs_bd_sync};
     use crate::crc::lfs_crc;
-    use crate::tag::lfs_mktag;
+    use crate::tag::Tag::mktag;
     use crate::util::{lfs_alignup, lfs_min, lfs_tobe32, lfs_tole32};
 
     unsafe {
@@ -374,7 +375,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
                 }
             }
 
-            let ntag = lfs_mktag(
+            let ntag = Tag::mktag(
                 crate::lfs_type::lfs_type::LFS_TYPE_CCRC + (u32::from(!eperturb) >> 7),
                 0x3ff,
                 noff - ((*commit).off + 4),
@@ -573,7 +574,7 @@ pub fn lfs_dir_drop(
     tail: &LfsMdir,
 ) -> Result<(), Error> {
     use crate::lfs_type::lfs_type::LFS_TYPE_TAIL;
-    use crate::tag::lfs_mktag;
+    use crate::tag::Tag::mktag;
     use crate::util::lfs_pair_tole32;
 
     unsafe {
@@ -584,7 +585,7 @@ pub fn lfs_dir_drop(
         let mut tail_pair = tail_ref.tail;
         lfs_pair_tole32(&mut tail_pair);
         let attrs = [crate::tag::lfs_mattr {
-            tag: lfs_mktag(LFS_TYPE_TAIL + if tail_ref.split { 1 } else { 0 }, 0x3ff, 8),
+            tag: Tag::mktag(LFS_TYPE_TAIL + if tail_ref.split { 1 } else { 0 }, 0x3ff, 8),
             buffer: tail_pair.as_ptr() as *const core::ffi::c_void,
         }];
         lfs_dir_commit(lfs, dir, &attrs)
@@ -958,7 +959,7 @@ pub fn lfs_dir_compact(
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
     use crate::dir::traverse::lfs_dir_traverse;
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_tole32, lfs_gstate_xor};
-    use crate::tag::lfs_mktag;
+    use crate::tag::Tag::mktag;
     use crate::types::LFS_BLOCK_NULL;
     use crate::util::{
         lfs_fromle32, lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_isnull, lfs_pair_swap,
@@ -1096,10 +1097,10 @@ pub fn lfs_dir_compact(
                 lfs,
                 source,
                 0,
-                0xffff_ffff,
+                Tag(0xffff_ffff),
                 attrs_slice,
-                lfs_mktag(0x400, 0x3ff, 0),
-                lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_NAME, 0, 0),
+                Tag::mktag(0x400, 0x3ff, 0),
+                Tag::mktag(crate::lfs_type::lfs_type::LFS_TYPE_NAME, 0, 0),
                 begin,
                 end,
                 -(begin as i16),
@@ -1144,7 +1145,7 @@ pub fn lfs_dir_compact(
                 let err = lfs_dir_commitattr(
                     lfs,
                     &mut commit,
-                    lfs_mktag(
+                    Tag::mktag(
                         crate::lfs_type::lfs_type::LFS_TYPE_TAIL + if dir.split { 1 } else { 0 },
                         0x3ff,
                         8,
@@ -1194,7 +1195,7 @@ pub fn lfs_dir_compact(
                 lfs_gstate_xor(&mut delta, &(*lfs).gstate);
             }
             lfs_gstate_xor(&mut delta, &(*lfs).gdelta);
-            delta.tag &= !lfs_mktag(0, 0, 0x3ff);
+            delta.tag &= !Tag::mktag(0, 0, 0x3ff);
 
             lfs_dir_getgstate(lfs, dir, &mut delta)?;
 
@@ -1203,7 +1204,7 @@ pub fn lfs_dir_compact(
                 let err = lfs_dir_commitattr(
                     lfs,
                     &mut commit,
-                    lfs_mktag(
+                    Tag::mktag(
                         crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
                         0x3ff,
                         core::mem::size_of::<crate::lfs_gstate::LfsGstate>() as u32,
@@ -1423,7 +1424,7 @@ pub fn lfs_dir_splittingcompact(
     end: u16,
 ) -> Result<i32, Error> {
     use crate::dir::traverse::lfs_dir_traverse;
-    use crate::tag::lfs_mktag;
+    use crate::tag::Tag::mktag;
     use crate::types::lfs_size_t;
     use crate::util::{lfs_alignup, lfs_min, lfs_pair_cmp};
 
@@ -1441,8 +1442,8 @@ pub fn lfs_dir_splittingcompact(
                     0,
                     0xffff_ffff,
                     attrs,
-                    lfs_mktag(0x400, 0x3ff, 0),
-                    lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_NAME, 0, 0),
+                    Tag::mktag(0x400, 0x3ff, 0),
+                    Tag::mktag(crate::lfs_type::lfs_type::LFS_TYPE_NAME, 0, 0),
                     split,
                     end_val,
                     -(split as i16),
@@ -1724,7 +1725,6 @@ pub fn lfs_dir_relocatingcommit(
     use crate::dir::traverse::lfs_dir_traverse;
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_tole32, lfs_gstate_xor};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_DELETE, LFS_TYPE_TAIL};
-    use crate::tag::{lfs_mktag, lfs_tag_type1, lfs_tag_type3};
     use crate::types::LFS_BLOCK_NULL;
     use crate::util::{lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_tole32};
 
@@ -1816,12 +1816,12 @@ pub fn lfs_dir_relocatingcommit(
                 lfs_gstate_xor(&mut delta, &(*lfs).gstate);
                 lfs_gstate_xor(&mut delta, &(*lfs).gdisk);
                 lfs_gstate_xor(&mut delta, &(*lfs).gdelta);
-                delta.tag &= !lfs_mktag(0, 0, 0x3ff);
+                delta.tag &= !Tag::mktag(0, 0, 0x3ff);
                 if !lfs_gstate_iszero(&delta) {
                     let err2 = lfs_dir_getgstate(lfs, dir, &mut delta)?;
 
-                    lfs_gstate_tole32(&mut delta);
-                    let movestate_tag = lfs_mktag(
+                    let delta = lfs_gstate_tole32(&delta);
+                    let movestate_tag = Tag::mktag(
                         crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
                         0x3ff,
                         core::mem::size_of::<crate::lfs_gstate::LfsGstate>() as u32,
@@ -1853,7 +1853,7 @@ pub fn lfs_dir_relocatingcommit(
                         dir.etag = commit.ptag;
                         (*lfs).gdisk = (*lfs).gstate;
                         (*lfs).gdelta = crate::lfs_gstate::LfsGstate {
-                            tag: 0,
+                            tag: Tag(0),
                             pair: [0, 0],
                         };
                     }
@@ -2210,7 +2210,7 @@ pub fn lfs_dir_orphaningcommit(
             let plpair = [pdir.pair[0], pdir.pair[1]];
             lfs_pair_tole32(&mut (*dir).tail);
             let tail_attrs = [crate::tag::lfs_mattr {
-                tag: crate::tag::lfs_mktag(
+                tag: crate::tag::Tag::mktag(
                     crate::lfs_type::lfs_type::LFS_TYPE_TAIL + if (*dir).split { 1 } else { 0 },
                     0x3ff,
                     8,
@@ -2282,7 +2282,7 @@ pub fn lfs_dir_orphaningcommit(
                     crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
                     // C: lfs.c:2523-2525
                     if moveid < crate::tag::lfs_tag_id(tag as u32) {
-                        tag -= crate::tag::lfs_mktag(0, 1, 0);
+                        tag -= crate::tag::Tag::mktag(0, 1, 0);
                     }
                 }
 
@@ -2290,7 +2290,7 @@ pub fn lfs_dir_orphaningcommit(
                 lfs_pair_tole32(&mut ldir.pair);
                 let relocate_attrs = [
                     crate::tag::lfs_mattr {
-                        tag: crate::tag::lfs_mktag_if(
+                        tag: crate::tag::Tag::mktag_if(
                             moveid != 0x3ff,
                             crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
                             moveid.into(),
@@ -2349,7 +2349,7 @@ pub fn lfs_dir_orphaningcommit(
                 lfs_pair_tole32(&mut ldir.pair);
                 let tail_attrs = [
                     crate::tag::lfs_mattr {
-                        tag: crate::tag::lfs_mktag_if(
+                        tag: crate::tag::Tag::mktag_if(
                             moveid != 0x3ff,
                             crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
                             moveid.into(),
@@ -2358,7 +2358,7 @@ pub fn lfs_dir_orphaningcommit(
                         buffer: core::ptr::null(),
                     },
                     crate::tag::lfs_mattr {
-                        tag: crate::tag::lfs_mktag(
+                        tag: crate::tag::Tag::mktag(
                             crate::lfs_type::lfs_type::LFS_TYPE_TAIL
                                 + if pdir.split { 1 } else { 0 },
                             0x3ff,

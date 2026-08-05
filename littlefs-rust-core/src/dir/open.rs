@@ -12,7 +12,7 @@ use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::lfs_info::LfsInfo;
 use crate::lfs_type::lfs_type::LFS_TYPE_DIR;
-use crate::tag::{lfs_mktag, lfs_tag_id, lfs_tag_type3};
+use crate::tag::Tag;
 use crate::types::lfs_off_t;
 use crate::util::{lfs_min, lfs_pair_cmp, lfs_pair_fromle32};
 
@@ -77,9 +77,9 @@ pub fn lfs_dir_open_(
         let dir = &mut *dir;
         let mut path_ptr = CStr::from_ptr(path as *const _);
 
-        let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None)?;
+        let tag = Tag(lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None)?);
 
-        if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
+        if u32::from(Tag(tag as u32).lfs_tag_type3()) != LFS_TYPE_DIR {
             return Err(Error::NotDir);
         }
 
@@ -91,8 +91,8 @@ pub fn lfs_dir_open_(
             let res = lfs_dir_get(
                 lfs,
                 &dir.m,
-                lfs_mktag(0x700, 0x3ff, 0),
-                lfs_mktag(
+                Tag::mktag(0x700, 0x3ff, 0),
+                Tag::mktag(
                     crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
                     lfs_tag_id(tag as u32) as u32,
                     8,

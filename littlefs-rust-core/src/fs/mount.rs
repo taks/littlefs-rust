@@ -219,7 +219,7 @@ pub fn lfs_mount_(
     use crate::lfs_gstate::lfs_gstate_iszero;
     use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_fromle32};
     use crate::lfs_type::lfs_type::{LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK};
-    use crate::tag::{lfs_mktag, lfs_tag_isdelete, lfs_tag_isvalid};
+    use crate::tag::{Tag::mktag, lfs_tag_isdelete, lfs_tag_isvalid};
     use crate::types::{LFS_BLOCK_NULL, LFS_DISK_VERSION_MAJOR, LFS_DISK_VERSION_MINOR};
     use crate::util::{lfs_min, lfs_pair_isnull};
 
@@ -278,8 +278,8 @@ pub fn lfs_mount_(
                 lfs,
                 &mut dir,
                 dir_tail,
-                lfs_mktag(0x7ff, 0x3ff, 0),
-                lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
+                Tag::mktag(0x7ff, 0x3ff, 0),
+                Tag::mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
                 &mut None,
                 Some(lfs_dir_find_match),
                 &find_match as *const _ as *mut core::ffi::c_void,
@@ -298,8 +298,8 @@ pub fn lfs_mount_(
                 let sbtag = lfs_dir_get(
                     lfs,
                     &dir,
-                    lfs_mktag(0x7ff, 0x3ff, 0),
-                    lfs_mktag(
+                    Tag::mktag(0x7ff, 0x3ff, 0),
+                    Tag::mktag(
                         LFS_TYPE_INLINESTRUCT,
                         0,
                         core::mem::size_of::<LfsSuperblock>() as u32,

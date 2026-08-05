@@ -12,7 +12,7 @@ use crate::fs::parent::lfs_fs_pred;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_preporphans};
 use crate::lfs_gstate::lfs_gstate_hasorphans;
 use crate::lfs_type::lfs_type::{LFS_TYPE_DELETE, LFS_TYPE_DIR, LFS_TYPE_STRUCT};
-use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_type3};
+use crate::tag::{Tag::mktag, lfs_mattr, lfs_tag_id, lfs_tag_type3};
 use crate::types::lfs_block_t;
 use crate::util::lfs_pair_fromle32;
 
@@ -135,8 +135,8 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
             let res = lfs_dir_get(
                 lfs,
                 &cwd,
-                lfs_mktag(0x700, 0x3ff, 0),
-                lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
+                Tag::mktag(0x700, 0x3ff, 0),
+                Tag::mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
                 pair.as_mut_ptr() as *mut core::ffi::c_void,
             )?;
             lfs_pair_fromle32(&mut pair);
@@ -155,7 +155,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
         }
 
         let attrs = [lfs_mattr {
-            tag: lfs_mktag(LFS_TYPE_DELETE, lfs_tag_id(tag as u32) as u32, 0),
+            tag: Tag::mktag(LFS_TYPE_DELETE, lfs_tag_id(tag as u32) as u32, 0),
             buffer: core::ptr::null(),
         }];
         let err = lfs_dir_commit(lfs, &mut cwd, &attrs);

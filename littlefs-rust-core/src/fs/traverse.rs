@@ -125,7 +125,7 @@ pub fn lfs_fs_traverse_(
     use crate::file::ctz::lfs_ctz_traverse;
     use crate::fs::mount::{LfsTortoise, lfs_tortoise_detectcycles};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CTZSTRUCT, LFS_TYPE_DIRSTRUCT};
-    use crate::tag::{lfs_mktag, lfs_tag_type3};
+    use crate::tag::{Tag::mktag, lfs_tag_type3};
     use crate::types::{LFS_BLOCK_NULL, lfs_block_t};
     use crate::util::{lfs_pair_fromle32, lfs_pair_isnull};
 
@@ -190,8 +190,8 @@ pub fn lfs_fs_traverse_(
                 let tag = lfs_dir_get(
                     lfs,
                     &dir,
-                    lfs_mktag(0x700, 0x3ff, 0),
-                    lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_STRUCT, id as u32, 8),
+                    Tag::mktag(0x700, 0x3ff, 0),
+                    Tag::mktag(crate::lfs_type::lfs_type::LFS_TYPE_STRUCT, id as u32, 8),
                     raw.as_mut_ptr() as *mut core::ffi::c_void,
                 );
                 if let Err(err) = tag {

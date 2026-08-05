@@ -18,8 +18,9 @@ use crate::lfs_type::lfs_type::{
     LFS_TYPE_CCRC, LFS_TYPE_CTZSTRUCT, LFS_TYPE_DELETE, LFS_TYPE_DIR, LFS_TYPE_FCRC,
     LFS_TYPE_INLINESTRUCT, LFS_TYPE_NAME, LFS_TYPE_SPLICE, LFS_TYPE_STRUCT, LFS_TYPE_TAIL,
 };
+use crate::tag::Tag;
 use crate::tag::{
-    lfs_mktag, lfs_tag_chunk, lfs_tag_dsize, lfs_tag_id, lfs_tag_isvalid, lfs_tag_size,
+    Tag::mktag, lfs_tag_chunk, lfs_tag_dsize, lfs_tag_id, lfs_tag_isvalid, lfs_tag_size,
     lfs_tag_splice, lfs_tag_type1, lfs_tag_type2, lfs_tag_type3,
 };
 use crate::types::{LFS_BLOCK_NULL, lfs_block_t, lfs_stag_t, lfs_tag_t};
@@ -316,8 +317,8 @@ pub fn lfs_dir_fetchmatch(
     lfs: &mut crate::fs::Lfs,
     dir: &mut LfsMdir,
     pair: &[lfs_block_t; 2],
-    _fmask: lfs_tag_t,
-    _ftag: lfs_tag_t,
+    _fmask: Tag,
+    _ftag: Tag,
     _id: &mut Option<&mut u16>,
     _cb: Option<
         fn(*mut core::ffi::c_void, lfs_tag_t, *const core::ffi::c_void) -> Result<i32, Error>,
@@ -367,7 +368,7 @@ pub fn lfs_dir_fetchmatch(
         for _block_iter in 0..2 {
             crate::lfs_trace!("fetchmatch: block_iter={}", _block_iter);
             let mut off: u32 = 0;
-            let mut ptag: lfs_tag_t = 0xffff_ffff;
+            let mut ptag = Tag(0xffff_ffff);
 
             let mut tempcount: u16 = 0;
             let mut temptail: [lfs_block_t; 2] = [LFS_BLOCK_NULL, LFS_BLOCK_NULL];
@@ -511,15 +512,15 @@ pub fn lfs_dir_fetchmatch(
                     let delta = lfs_tag_splice(tag) as i32;
                     tempcount = (tempcount as i32 + delta).max(0) as u16;
 
-                    let delete_tag = lfs_mktag(LFS_TYPE_DELETE, 0, 0)
-                        | (lfs_mktag(0, 0x3ff, 0) & tempbesttag as lfs_tag_t);
+                    let delete_tag = Tag::mktag(LFS_TYPE_DELETE, 0, 0)
+                        | (Tag::mktag(0, 0x3ff, 0) & tempbesttag as lfs_tag_t);
                     if tag == delete_tag {
                         tempbesttag = (tempbesttag as u32 | 0x8000_0000) as lfs_stag_t;
                     } else if tempbesttag != -1
                         && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
                     {
                         tempbesttag = (tempbesttag as lfs_tag_t
-                            + lfs_mktag(0, lfs_tag_splice(tag) as u32, 0))
+                            + Tag::mktag(0, lfs_tag_splice(tag) as u32, 0))
                             as lfs_stag_t;
                     }
                 } else if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
@@ -587,14 +588,14 @@ pub fn lfs_dir_fetchmatch(
 
                         if res.unwrap() == LFS_CMP_EQ {
                             tempbesttag = tag as lfs_stag_t;
-                        } else if (lfs_mktag(0x7ff, 0x3ff, 0) & tag)
-                            == (lfs_mktag(0x7ff, 0x3ff, 0) & tempbesttag as lfs_tag_t)
+                        } else if (Tag::mktag(0x7ff, 0x3ff, 0) & tag)
+                            == (Tag::mktag(0x7ff, 0x3ff, 0) & tempbesttag as lfs_tag_t)
                         {
                             tempbesttag = -1;
                         } else if res.unwrap() == LFS_CMP_GT
                             && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
                         {
-                            tempbesttag = (tag | 0x8000_0000) as lfs_stag_t;
+                            tempbesttag = (tag.0 | 0x8000_0000) as lfs_stag_t;
                         }
                     }
                 }
@@ -634,7 +635,7 @@ pub fn lfs_dir_fetchmatch(
                 } else if besttag != -1
                     && lfs_tag_id(lfs.gdisk.tag) < lfs_tag_id(besttag as lfs_tag_t)
                 {
-                    besttag -= lfs_mktag(0, 1, 0) as lfs_stag_t;
+                    besttag -= Tag::mktag(0, 1, 0).0 as lfs_stag_t;
                 }
             }
 
@@ -705,8 +706,8 @@ pub fn lfs_dir_fetch(
         lfs,
         dir,
         pair,
-        0xffff_ffff,
-        0xffff_ffff,
+        Tag(0xffff_ffff),
+        Tag(0xffff_ffff),
         &mut None,
         None,
         core::ptr::null_mut(),
@@ -742,15 +743,15 @@ pub fn lfs_dir_getgstate(
     gstate: &mut LfsGstate,
 ) -> Result<(), Error> {
     unsafe {
-        let mut temp = crate::lfs_gstate::LfsGstate {
+        let mut temp = crate::lfs_gstate::LfsGstateT::<u32> {
             tag: 0,
             pair: [0, 0],
         };
         let res = lfs_dir_get(
             lfs,
             dir,
-            crate::tag::lfs_mktag(0x7ff, 0, 0),
-            crate::tag::lfs_mktag(
+            crate::tag::Tag::mktag(0x7ff, 0, 0),
+            crate::tag::Tag::mktag(
                 crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
                 0,
                 core::mem::size_of::<LfsGstate>() as u32,
@@ -835,8 +836,8 @@ pub fn lfs_dir_getinfo(
         let tag = lfs_dir_get(
             lfs,
             dir,
-            lfs_mktag(0x780, 0x3ff, 0),
-            lfs_mktag(LFS_TYPE_NAME, id as u32, name_max + 1),
+            Tag::mktag(0x780, 0x3ff, 0),
+            Tag::mktag(LFS_TYPE_NAME, id as u32, name_max + 1),
             info.name.as_mut_ptr() as *mut core::ffi::c_void,
         )?;
 
@@ -847,8 +848,8 @@ pub fn lfs_dir_getinfo(
         let tag = lfs_dir_get(
             lfs,
             dir,
-            lfs_mktag(0x700, 0x3ff, 0),
-            lfs_mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>() as u32),
+            Tag::mktag(0x700, 0x3ff, 0),
+            Tag::mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>() as u32),
             &mut ctz as *mut _ as *mut core::ffi::c_void,
         )?;
 

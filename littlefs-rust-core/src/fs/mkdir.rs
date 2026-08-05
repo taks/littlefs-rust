@@ -13,7 +13,7 @@ use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_preporphans};
 use crate::lfs_type::lfs_type::{
     LFS_TYPE_CREATE, LFS_TYPE_DIR, LFS_TYPE_DIRSTRUCT, LFS_TYPE_SOFTTAIL,
 };
-use crate::tag::{lfs_mattr, lfs_mktag, lfs_mktag_if};
+use crate::tag::{Tag::mktag, Tag::mktag_if, lfs_mattr};
 use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_path_islast, lfs_path_namelen};
 
 /// Per lfs.c lfs_mkdir_ (lines 2625-2719)
@@ -172,7 +172,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
 
         lfs_pair_tole32(&mut pred.tail);
         let attrs1 = [lfs_mattr {
-            tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
+            tag: Tag::mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
             buffer: pred.tail.as_ptr() as *const core::ffi::c_void,
         }];
         let err = lfs_dir_commit(lfs, &mut dir, &attrs1);
@@ -190,7 +190,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
 
             lfs_pair_tole32(&mut dir.pair);
             let attrs2 = [lfs_mattr {
-                tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
+                tag: Tag::mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
                 buffer: dir.pair.as_ptr() as *const core::ffi::c_void,
             }];
             let err = lfs_dir_commit(lfs, &mut pred, &attrs2);
@@ -206,19 +206,19 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
         lfs_pair_tole32(&mut dir.pair);
         let attrs3 = [
             lfs_mattr {
-                tag: lfs_mktag(LFS_TYPE_CREATE, id as u32, 0),
+                tag: Tag::mktag(LFS_TYPE_CREATE, id as u32, 0),
                 buffer: core::ptr::null(),
             },
             lfs_mattr {
-                tag: lfs_mktag(LFS_TYPE_DIR, id as u32, nlen),
+                tag: Tag::mktag(LFS_TYPE_DIR, id as u32, nlen),
                 buffer: path_ptr.as_ptr() as *const core::ffi::c_void,
             },
             lfs_mattr {
-                tag: lfs_mktag(LFS_TYPE_DIRSTRUCT, id as u32, 8),
+                tag: Tag::mktag(LFS_TYPE_DIRSTRUCT, id as u32, 8),
                 buffer: dir.pair.as_ptr() as *const core::ffi::c_void,
             },
             lfs_mattr {
-                tag: lfs_mktag_if(!cwd.m.split, LFS_TYPE_SOFTTAIL, 0x3ff, 8),
+                tag: Tag::mktag_if(!cwd.m.split, LFS_TYPE_SOFTTAIL, 0x3ff, 8),
                 buffer: dir.pair.as_ptr() as *const core::ffi::c_void,
             },
         ];

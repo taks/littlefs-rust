@@ -4,6 +4,7 @@ use crate::bd::bd::lfs_cache_zero;
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::fs::lfs;
+use crate::tag::Tag;
 use crate::types::{LFS_ATTR_MAX, LFS_BLOCK_NULL, LFS_FILE_MAX, LFS_NAME_MAX};
 use crate::util::{lfs_min, lfs_npw2};
 
@@ -185,7 +186,10 @@ use crate::util::{lfs_min, lfs_npw2};
 /// }
 /// ```
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn lfs_init(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(), Error> {
+pub fn lfs_init(
+    lfs: &mut super::lfs::Lfs,
+    cfg: &crate::lfs_config::LfsConfig,
+) -> Result<(), Error> {
     unsafe {
         // check that bool is a truthy-preserving type (C: (bool)0x80000000)
         crate::lfs_assert!(0x8000_0000u32 != 0);
@@ -281,15 +285,15 @@ pub fn lfs_init(lfs: &mut super::lfs::Lfs, cfg: &crate::lfs_config::LfsConfig) -
         lfs.mlist = core::ptr::null_mut();
         lfs.seed = 0;
         lfs.gstate = crate::lfs_gstate::LfsGstate {
-            tag: 0,
+            tag: Tag(0),
             pair: [0, 0],
         };
         lfs.gdisk = crate::lfs_gstate::LfsGstate {
-            tag: 0,
+            tag: Tag(0),
             pair: [0, 0],
         };
         lfs.gdelta = crate::lfs_gstate::LfsGstate {
-            tag: 0,
+            tag: Tag(0),
             pair: [0, 0],
         };
     }

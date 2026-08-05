@@ -11,7 +11,8 @@ use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::fs::{Lfs, lfs};
 use crate::lfs_type::lfs_type::LFS_TYPE_USERATTR;
-use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_size};
+use crate::tag::Tag;
+use crate::tag::{Tag::mktag, lfs_mattr, lfs_tag_id, lfs_tag_size};
 use crate::types::lfs_size_t;
 use crate::util::lfs_min;
 
@@ -88,17 +89,17 @@ pub fn lfs_getattr_(
             lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
 
-        let gtag = lfs_mktag(
+        let gtag = Tag::mktag(
             LFS_TYPE_USERATTR + r#type as u32,
             id as u32,
             lfs_min(size, (*lfs).attr_max),
         );
-        let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer);
+        let tag = lfs_dir_get(lfs, &cwd, Tag::mktag(0x7ff, 0x3ff, 0), gtag, buffer);
         if let Err(err) = tag {
             if err == Error::NoEntry {
                 return crate::lfs_err!(Err(Error::NoAttribute));
             }
-            return tag;
+            return Err(err);
         }
 
         Ok(lfs_tag_size(tag.unwrap()))
@@ -166,7 +167,7 @@ pub fn lfs_commitattr(
         }
 
         let attrs = [lfs_mattr {
-            tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size),
+            tag: Tag::mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size),
             buffer,
         }];
         lfs_dir_commit(lfs, &mut cwd, &attrs)

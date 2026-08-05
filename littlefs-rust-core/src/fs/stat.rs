@@ -129,7 +129,7 @@ pub fn lfs_fs_stat_(
     use crate::lfs_gstate::lfs_gstate_needssuperblock;
     use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_fromle32};
     use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
-    use crate::tag::lfs_mktag;
+    use crate::tag::Tag::mktag;
     use crate::types::LFS_DISK_VERSION;
 
     unsafe {
@@ -155,8 +155,8 @@ pub fn lfs_fs_stat_(
             let tag = lfs_dir_get(
                 lfs,
                 &dir,
-                lfs_mktag(0x7ff, 0x3ff, 0),
-                lfs_mktag(
+                Tag::mktag(0x7ff, 0x3ff, 0),
+                Tag::mktag(
                     LFS_TYPE_INLINESTRUCT,
                     0,
                     core::mem::size_of::<LfsSuperblock>() as u32,

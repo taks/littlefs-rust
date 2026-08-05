@@ -10,7 +10,8 @@ use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_NAME, LFS_TYPE_STRUCT};
-use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
+use crate::tag::Tag;
+use crate::tag::{Tag::mktag, lfs_diskoff, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
 use crate::types::{lfs_size_t, lfs_tag_t};
 use crate::util::{lfs_min, lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 
@@ -231,7 +232,7 @@ pub fn lfs_dir_find(
         let mut name = path.as_ptr() as *const u8;
 
         // C: lfs.c:1488-1491
-        let mut tag = lfs_mktag(LFS_TYPE_DIR, 0x3ff, 0);
+        let mut tag = Tag::mktag(LFS_TYPE_DIR, 0x3ff, 0);
         dir.tail[0] = lfs.root[0];
         dir.tail[1] = lfs.root[1];
 
@@ -316,8 +317,8 @@ pub fn lfs_dir_find(
                 let res = lfs_dir_get(
                     lfs,
                     dir,
-                    lfs_mktag(0x700, 0x3ff, 0),
-                    lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
+                    Tag::mktag(0x700, 0x3ff, 0),
+                    Tag::mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
                     dir_tail.as_mut_ptr() as *mut core::ffi::c_void,
                 );
                 if let Err(err) = res {
@@ -362,8 +363,8 @@ pub fn lfs_dir_find(
                     lfs,
                     dir,
                     dir_tail,
-                    lfs_mktag(0x780, 0, 0),
-                    lfs_mktag(LFS_TYPE_NAME, 0, namelen),
+                    Tag::mktag(0x780, 0, 0),
+                    Tag::mktag(LFS_TYPE_NAME, 0, namelen),
                     id,
                     Some(lfs_dir_find_match),
                     &mut match_data as *mut _ as *mut core::ffi::c_void,

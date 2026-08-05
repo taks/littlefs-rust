@@ -1,7 +1,7 @@
 //! Global state. Per lfs.h lfs_gstate_t and lfs.c lfs_gstate_*.
 
-use crate::tag::{lfs_tag_size, lfs_tag_type1};
-use crate::types::lfs_block_t;
+use crate::tag::Tag;
+use crate::types::{lfs_block_t, lfs_tag_t};
 use crate::util::lfs_pair_cmp;
 use crate::util::{lfs_fromle32, lfs_tole32};
 
@@ -16,10 +16,12 @@ use crate::util::{lfs_fromle32, lfs_tole32};
 /// ```
 #[repr(C)]
 #[derive(Clone, Copy)]
-pub struct LfsGstate {
-    pub tag: u32,
+pub struct LfsGstateT<T> {
+    pub tag: T,
     pub pair: [lfs_block_t; 2],
 }
+
+pub type LfsGstate = LfsGstateT<Tag>;
 
 /// Per lfs.c lfs_gstate_xor (lines 407-412)
 ///
@@ -33,7 +35,7 @@ pub struct LfsGstate {
 /// ```
 #[inline(always)]
 pub fn lfs_gstate_xor(a: &mut LfsGstate, b: &LfsGstate) {
-    a.tag ^= b.tag;
+    a.tag.0 ^= b.tag.0;
     a.pair[0] ^= b.pair[0];
     a.pair[1] ^= b.pair[1];
 }
@@ -48,7 +50,7 @@ pub fn lfs_gstate_xor(a: &mut LfsGstate, b: &LfsGstate) {
 /// ```
 #[inline(always)]
 pub fn lfs_gstate_iszero(a: &LfsGstate) -> bool {
-    a.tag == 0 && a.pair[0] == 0 && a.pair[1] == 0
+    a.tag.0 == 0 && a.pair[0] == 0 && a.pair[1] == 0
 }
 
 /// Per lfs.c lfs_gstate_hasorphans (lines 420-422)
@@ -61,7 +63,7 @@ pub fn lfs_gstate_iszero(a: &LfsGstate) -> bool {
 /// ```
 #[inline(always)]
 pub fn lfs_gstate_hasorphans(a: &LfsGstate) -> bool {
-    lfs_tag_size(a.tag) != 0
+    a.tag.size() != 0
 }
 
 /// Per lfs.c lfs_gstate_getorphans (lines 424-426)
@@ -74,7 +76,7 @@ pub fn lfs_gstate_hasorphans(a: &LfsGstate) -> bool {
 /// ```
 #[inline(always)]
 pub fn lfs_gstate_getorphans(a: &LfsGstate) -> u8 {
-    (lfs_tag_size(a.tag) & 0x1ff) as u8
+    (a.tag.size() & 0x1ff) as u8
 }
 
 /// Per lfs.c lfs_gstate_hasmove (lines 428-430)
@@ -87,7 +89,7 @@ pub fn lfs_gstate_getorphans(a: &LfsGstate) -> u8 {
 /// ```
 #[inline(always)]
 pub fn lfs_gstate_hasmove(a: &LfsGstate) -> bool {
-    lfs_tag_type1(a.tag) != 0
+    a.tag.lfs_tag_type1() != 0
 }
 
 /// Per lfs.c lfs_gstate_needssuperblock (lines 433-435)
@@ -100,7 +102,7 @@ pub fn lfs_gstate_hasmove(a: &LfsGstate) -> bool {
 /// ```
 #[inline(always)]
 pub fn lfs_gstate_needssuperblock(a: &LfsGstate) -> bool {
-    (lfs_tag_size(a.tag) >> 9) != 0
+    (a.tag.size() >> 9) != 0
 }
 
 /// Per lfs.c lfs_gstate_hasmovehere (lines 437-440)
@@ -114,7 +116,7 @@ pub fn lfs_gstate_needssuperblock(a: &LfsGstate) -> bool {
 /// ```
 #[inline(always)]
 pub fn lfs_gstate_hasmovehere(a: &LfsGstate, pair: &[lfs_block_t; 2]) -> bool {
-    lfs_tag_type1(a.tag) != 0 && lfs_pair_cmp(&a.pair, pair) == 0
+    a.tag.lfs_tag_type1() != 0 && lfs_pair_cmp(&a.pair, pair) == 0
 }
 
 /// Per lfs.c lfs_gstate_fromle32 (lines 442-446)
@@ -128,10 +130,11 @@ pub fn lfs_gstate_hasmovehere(a: &LfsGstate, pair: &[lfs_block_t; 2]) -> bool {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_gstate_fromle32(a: &mut LfsGstate) {
-    a.tag = lfs_fromle32(a.tag);
-    a.pair[0] = lfs_fromle32(a.pair[0]);
-    a.pair[1] = lfs_fromle32(a.pair[1]);
+pub fn lfs_gstate_fromle32(a: &LfsGstateT<u32>) -> LfsGstate {
+    LfsGstate {
+        tag: Tag(u32::from_le(a.tag)),
+        pair: [u32::from_le(a.pair[0]), u32::from_le(a.pair[1])],
+    }
 }
 
 /// Per lfs.c lfs_gstate_tole32 (lines 449-453)
@@ -145,8 +148,9 @@ pub fn lfs_gstate_fromle32(a: &mut LfsGstate) {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_gstate_tole32(a: &mut LfsGstate) {
-    a.tag = lfs_tole32(a.tag);
-    a.pair[0] = lfs_tole32(a.pair[0]);
-    a.pair[1] = lfs_tole32(a.pair[1]);
+pub fn lfs_gstate_tole32(a: &LfsGstate) -> LfsGstateT<u32> {
+    LfsGstateT::<u32> {
+        tag: a.tag.0.to_le(),
+        pair: [a.pair[0].to_le(), a.pair[1].to_le()],
+    }
 }

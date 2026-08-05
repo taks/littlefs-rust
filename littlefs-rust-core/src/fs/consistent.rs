@@ -5,6 +5,7 @@ use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::error::Error;
+use crate::tag::Tag;
 
 /// Translation docs: Deorphan, complete moves, persist gstate. If pending gstate
 /// (delta != 0), fetches root and commits empty to write MOVESTATE.
@@ -50,7 +51,7 @@ pub fn lfs_fs_mkconsistent_(lfs: &mut Lfs) -> Result<(), Error> {
 
     unsafe {
         let mut delta = crate::lfs_gstate::LfsGstate {
-            tag: 0,
+            tag: Tag(0),
             pair: [0, 0],
         };
         lfs_gstate_xor(&mut delta, &(*lfs).gdisk);

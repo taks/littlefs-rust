@@ -14,7 +14,7 @@ use crate::lfs_gstate::{lfs_gstate_hasmove, lfs_gstate_hasorphans};
 use crate::lfs_type::lfs_type::{
     LFS_FROM_MOVE, LFS_TYPE_CREATE, LFS_TYPE_DELETE, LFS_TYPE_DIR, LFS_TYPE_STRUCT,
 };
-use crate::tag::{lfs_mattr, lfs_mktag, lfs_mktag_if, lfs_tag_id, lfs_tag_type3};
+use crate::tag::{Tag::mktag, Tag::mktag_if, lfs_mattr, lfs_tag_id, lfs_tag_type3};
 use crate::types::lfs_block_t;
 use crate::util::{
     lfs_pair_cmp, lfs_pair_fromle32, lfs_path_isdir, lfs_path_islast, lfs_path_namelen,
@@ -316,8 +316,8 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
             let res = lfs_dir_get(
                 lfs,
                 &newcwd,
-                lfs_mktag(0x700, 0x3ff, 0),
-                lfs_mktag(LFS_TYPE_STRUCT, newid as u32, 8),
+                Tag::mktag(0x700, 0x3ff, 0),
+                Tag::mktag(LFS_TYPE_STRUCT, newid as u32, 8),
                 prevpair.as_mut_ptr() as *mut core::ffi::c_void,
             )?;
 
@@ -342,7 +342,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
         let nlen = lfs_path_namelen(newpath_slice);
         let attrs = [
             lfs_mattr {
-                tag: lfs_mktag_if(
+                tag: Tag::mktag_if(
                     prevtag != Err(Error::NoEntry),
                     LFS_TYPE_DELETE,
                     newid as u32,
@@ -351,15 +351,15 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
                 buffer: core::ptr::null(),
             },
             lfs_mattr {
-                tag: lfs_mktag(LFS_TYPE_CREATE, newid as u32, 0),
+                tag: Tag::mktag(LFS_TYPE_CREATE, newid as u32, 0),
                 buffer: core::ptr::null(),
             },
             lfs_mattr {
-                tag: lfs_mktag(u32::from(lfs_tag_type3(oldtag as u32)), newid as u32, nlen),
+                tag: Tag::mktag(u32::from(lfs_tag_type3(oldtag as u32)), newid as u32, nlen),
                 buffer: newpath_ptr.as_ptr() as *const _,
             },
             lfs_mattr {
-                tag: lfs_mktag(
+                tag: Tag::mktag(
                     LFS_FROM_MOVE,
                     newid as u32,
                     lfs_tag_id(oldtag as u32) as u32,
@@ -367,7 +367,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
                 buffer: &oldcwd as *const _ as *const core::ffi::c_void,
             },
             lfs_mattr {
-                tag: lfs_mktag_if(samepair, LFS_TYPE_DELETE, newoldid as u32, 0),
+                tag: Tag::mktag_if(samepair, LFS_TYPE_DELETE, newoldid as u32, 0),
                 buffer: core::ptr::null(),
             },
         ];
@@ -380,7 +380,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
         if !samepair && lfs_gstate_hasmove(&(*lfs).gstate) {
             lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
             let attrs2 = [lfs_mattr {
-                tag: lfs_mktag(LFS_TYPE_DELETE, lfs_tag_id(oldtag as u32) as u32, 0),
+                tag: Tag::mktag(LFS_TYPE_DELETE, lfs_tag_id(oldtag as u32) as u32, 0),
                 buffer: core::ptr::null(),
             }];
             let err = lfs_dir_commit(lfs, &mut oldcwd, &attrs2);

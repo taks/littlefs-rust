@@ -3,6 +3,7 @@
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::lfs_pass_err;
+use crate::tag::Tag;
 use crate::types::lfs_block_t;
 
 /// Per lfs.c lfs_fs_prepsuperblock (lines 4888-4892)
@@ -15,8 +16,8 @@ use crate::types::lfs_block_t;
 /// }
 /// ```
 pub fn lfs_fs_prepsuperblock(lfs: &mut super::lfs::Lfs, needssuperblock: bool) {
-    use crate::tag::lfs_mktag;
-    lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0, 0, 0x200)) | ((needssuperblock as u32) << 9);
+    lfs.gstate.tag =
+        (lfs.gstate.tag & !Tag::mktag(0, 0, 0x200)) | Tag((needssuperblock as u32) << 9);
 }
 
 /// Translation docs: Prepend orphan count delta to gstate before a commit that may create orphans.
@@ -25,15 +26,14 @@ pub fn lfs_fs_prepsuperblock(lfs: &mut super::lfs::Lfs, needssuperblock: bool) {
 /// C: lfs.c:4894-4904
 pub fn lfs_fs_preporphans(lfs: &mut super::lfs::Lfs, orphans: i8) -> Result<(), Error> {
     use crate::lfs_gstate::lfs_gstate_hasorphans;
-    use crate::tag::{lfs_mktag, lfs_tag_size};
 
     unsafe {
-        let tag_size = lfs_tag_size(lfs.gstate.tag);
+        let tag_size = lfs.gstate.tag.size();
         crate::lfs_assert!(tag_size > 0x000 || orphans >= 0);
         crate::lfs_assert!(tag_size < 0x1ff || orphans <= 0);
-        lfs.gstate.tag = lfs.gstate.tag.wrapping_add(orphans as u32);
-        lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0x800, 0, 0))
-            | ((lfs_gstate_hasorphans(&lfs.gstate) as u32) << 31);
+        lfs.gstate.tag = lfs.gstate.tag.wrapping_add(Tag(orphans as u32));
+        lfs.gstate.tag = (lfs.gstate.tag & !Tag::mktag(0x800, 0, 0))
+            | Tag((lfs_gstate_hasorphans(&lfs.gstate) as u32) << 31);
         Ok(())
     }
 }
@@ -44,15 +44,14 @@ pub fn lfs_fs_preporphans(lfs: &mut super::lfs::Lfs, orphans: i8) -> Result<(), 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn lfs_fs_prepmove(lfs: *mut super::lfs::Lfs, id: u16, pair: *const [lfs_block_t; 2]) {
     use crate::lfs_type::lfs_type::LFS_TYPE_DELETE;
-    use crate::tag::lfs_mktag;
 
     unsafe {
         let lfs = &mut *lfs;
-        lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0x7ff, 0x3ff, 0))
+        lfs.gstate.tag = (lfs.gstate.tag & !Tag::mktag(0x7ff, 0x3ff, 0))
             | if id != 0x3ff {
-                lfs_mktag(LFS_TYPE_DELETE, id as u32, 0)
+                Tag::mktag(LFS_TYPE_DELETE, id as u32, 0)
             } else {
-                0
+                Tag(0)
             };
         if id != 0x3ff && !pair.is_null() {
             lfs.gstate.pair[0] = (*pair)[0];
@@ -74,7 +73,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     use crate::lfs_gstate::lfs_gstate_needssuperblock;
     use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_tole32};
     use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
-    use crate::tag::lfs_mktag;
+    use crate::tag::Tag::mktag;
     use crate::types::LFS_DISK_VERSION;
 
     unsafe {
@@ -100,7 +99,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         lfs_superblock_tole32(&mut superblock);
 
         let attrs = [crate::tag::lfs_mattr {
-            tag: lfs_mktag(
+            tag: Tag::mktag(
                 LFS_TYPE_INLINESTRUCT,
                 0,
                 core::mem::size_of::<LfsSuperblock>() as u32,
@@ -159,7 +158,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::lfs_gstate::lfs_gstate_hasmove;
     use crate::lfs_type::lfs_type::LFS_TYPE_DELETE;
-    use crate::tag::{lfs_mktag, lfs_tag_id, lfs_tag_type3};
+    use crate::tag::{Tag::mktag, lfs_tag_id, lfs_tag_type3};
 
     unsafe {
         if !lfs_gstate_hasmove(&(*lfs).gdisk) {
@@ -178,7 +177,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
 
         let attrs = [crate::tag::lfs_mattr {
-            tag: lfs_mktag(LFS_TYPE_DELETE, moveid as u32, 0),
+            tag: Tag::mktag(LFS_TYPE_DELETE, moveid as u32, 0),
             buffer: core::ptr::null(),
         }];
         lfs_dir_commit(lfs, &mut movedir, &attrs)
@@ -333,7 +332,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
     use crate::fs::parent::lfs_fs_parent;
     use crate::lfs_gstate::{lfs_gstate_getorphans, lfs_gstate_hasmovehere};
     use crate::lfs_type::lfs_type::{LFS_TYPE_SOFTTAIL, LFS_TYPE_TAIL};
-    use crate::tag::{lfs_mktag, lfs_mktag_if, lfs_tag_id};
+    use crate::tag::{Tag::mktag, Tag::mktag_if, lfs_tag_id};
     use crate::types::LFS_BLOCK_NULL;
     use crate::util::{lfs_pair_fromle32, lfs_pair_issync, lfs_pair_tole32};
 
@@ -391,13 +390,15 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                         return Err(err);
                     }
 
-                    if pass == 0 && tag != Err(Error::NoEntry) {
+                    if pass == 0
+                        && let Ok(tag) = tag
+                    {
                         let mut pair: [crate::types::lfs_block_t; 2] = [0, 0];
                         let state = lfs_dir_get(
                             lfs,
                             &parent,
-                            lfs_mktag(0x7ff, 0x3ff, 0),
-                            tag.unwrap(),
+                            Tag::mktag(0x7ff, 0x3ff, 0),
+                            Tag(tag),
                             pair.as_mut_ptr() as *mut core::ffi::c_void,
                         )?;
 
@@ -413,7 +414,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                             lfs_pair_tole32(&mut pair);
                             let attrs = [
                                 crate::tag::lfs_mattr {
-                                    tag: lfs_mktag_if(
+                                    tag: Tag::mktag_if(
                                         moveid != 0x3ff,
                                         crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
                                         moveid as u32,
@@ -422,7 +423,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                                     buffer: core::ptr::null(),
                                 },
                                 crate::tag::lfs_mattr {
-                                    tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
+                                    tag: Tag::mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
                                     buffer: pair.as_ptr() as *const core::ffi::c_void,
                                 },
                             ];
@@ -445,7 +446,11 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                         let mut dir_tail = dir.tail;
                         lfs_pair_tole32(&mut dir_tail);
                         let attrs = [crate::tag::lfs_mattr {
-                            tag: lfs_mktag(LFS_TYPE_TAIL + if dir.split { 1 } else { 0 }, 0x3ff, 8),
+                            tag: Tag::mktag(
+                                LFS_TYPE_TAIL + if dir.split { 1 } else { 0 },
+                                0x3ff,
+                                8,
+                            ),
                             buffer: dir_tail.as_ptr() as *const core::ffi::c_void,
                         }];
                         let state = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);

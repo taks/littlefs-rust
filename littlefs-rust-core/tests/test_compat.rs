@@ -10,9 +10,9 @@ use common::{assert_err, assert_ok, default_config, init_context, init_logger, p
 use littlefs_rust_core::LfsFile;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
-    LFS_DISK_VERSION, Lfs, LfsFsinfo, LfsMdir, LfsSuperblock, error::Error, lfs_dir_commit,
-    lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mattr, lfs_mktag, lfs_mount, lfs_superblock_tole32,
-    lfs_unmount,
+    LFS_DISK_VERSION, Lfs, LfsFsinfo, LfsMdir, LfsSuperblock, Tag::mktag, error::Error,
+    lfs_dir_commit, lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mattr, lfs_mount,
+    lfs_superblock_tole32, lfs_unmount,
 };
 
 /// Upstream: [cases.test_compat_major_incompat]
@@ -52,7 +52,7 @@ fn test_compat_major_incompat() {
     };
     lfs_superblock_tole32(&mut superblock);
     let attrs = [lfs_mattr {
-        tag: lfs_mktag(
+        tag: Tag::mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
             core::mem::size_of::<LfsSuperblock>() as u32,
@@ -102,7 +102,7 @@ fn test_compat_minor_incompat() {
     };
     lfs_superblock_tole32(&mut superblock);
     let attrs = [lfs_mattr {
-        tag: lfs_mktag(
+        tag: Tag::mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
             core::mem::size_of::<LfsSuperblock>() as u32,
@@ -179,7 +179,7 @@ fn test_compat_minor_bump() {
     };
     lfs_superblock_tole32(&mut superblock);
     let attrs = [lfs_mattr {
-        tag: lfs_mktag(
+        tag: Tag::mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
             core::mem::size_of::<LfsSuperblock>() as u32,

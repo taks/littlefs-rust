@@ -17,7 +17,7 @@ use crate::lfs_type::lfs_open_flags::{
     LFS_F_DIRTY, LFS_F_ERRED, LFS_F_INLINE, LFS_F_READING, LFS_F_WRITING, LFS_O_RDONLY,
 };
 use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
-use crate::tag::lfs_mktag;
+use crate::tag::Tag::mktag;
 use crate::types::LFS_BLOCK_INLINE;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 use crate::util::lfs_min;
@@ -214,7 +214,7 @@ pub fn lfs_file_opencfg_(
     use crate::lfs_info::LfsAttr;
     use crate::lfs_type::lfs_open_flags::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_TRUNC, LFS_O_WRONLY};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_REG, LFS_TYPE_USERATTR};
-    use crate::tag::{lfs_mktag, lfs_tag_size, lfs_tag_type3};
+    use crate::tag::{Tag::mktag, lfs_tag_size, lfs_tag_type3};
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{
         lfs_min, lfs_path_isdir, lfs_path_islast, lfs_path_namelen, lfs_path_slice_from_cstr,
@@ -260,15 +260,15 @@ pub fn lfs_file_opencfg_(
             unsafe { lfs_alloc_ckpoint(lfs) };
             let attrs = [
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(LFS_TYPE_CREATE, file.id as u32, 0),
+                    tag: Tag::mktag(LFS_TYPE_CREATE, file.id as u32, 0),
                     buffer: core::ptr::null(),
                 },
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(LFS_TYPE_REG, file.id as u32, nlen),
+                    tag: Tag::mktag(LFS_TYPE_REG, file.id as u32, nlen),
                     buffer: path_ptr.as_ptr() as *const core::ffi::c_void,
                 },
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0),
+                    tag: Tag::mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0),
                     buffer: core::ptr::null(),
                 },
             ];
@@ -290,15 +290,15 @@ pub fn lfs_file_opencfg_(
             return crate::lfs_err!(Err(Error::IsDir));
         } else if (flags & LFS_O_TRUNC) != 0 {
             // C: lfs.c:100-104 — truncate if requested
-            tag = Ok(lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0));
+            tag = Ok(Tag::mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0));
             file.flags |= LFS_F_DIRTY as u32;
         } else {
             // C: tag = lfs_dir_get(...) — overwrite tag with STRUCT tag for later use
             let struct_tag = lfs_dir_get(
                 lfs,
                 &file.m,
-                lfs_mktag(0x700, 0x3ff, 0),
-                lfs_mktag(
+                Tag::mktag(0x700, 0x3ff, 0),
+                Tag::mktag(
                     crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
                     file.id as u32,
                     8,
@@ -322,8 +322,8 @@ pub fn lfs_file_opencfg_(
                     let res = lfs_dir_get(
                         lfs,
                         &file.m,
-                        lfs_mktag(0x7ff, 0x3ff, 0),
-                        lfs_mktag(
+                        Tag::mktag(0x7ff, 0x3ff, 0),
+                        Tag::mktag(
                             LFS_TYPE_USERATTR + attr.type_ as u32,
                             file.id as u32,
                             attr.size,
@@ -370,7 +370,7 @@ pub fn lfs_file_opencfg_(
         lfs_cache_zero(lfs, &mut file.cache);
 
         let tag_val = if tag == Err(Error::NoEntry) {
-            lfs_mktag(LFS_TYPE_INLINESTRUCT, 0, 0)
+            Tag::mktag(LFS_TYPE_INLINESTRUCT, 0, 0)
         } else {
             tag.unwrap()
         };
@@ -389,8 +389,8 @@ pub fn lfs_file_opencfg_(
                 let res = lfs_dir_get(
                     lfs,
                     &file.m,
-                    lfs_mktag(0x700, 0x3ff, 0),
-                    lfs_mktag(
+                    Tag::mktag(0x700, 0x3ff, 0),
+                    Tag::mktag(
                         crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
                         file.id as u32,
                         lfs_min(file.cache.size, 0x3fe),
@@ -554,14 +554,14 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
             for i in 0..file.off {
                 let mut data: u8 = 0;
                 let err = if (file.flags as i32 & LFS_F_INLINE) != 0 {
-                    let gtag = lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0);
+                    let gtag = Tag::mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0);
                     lfs_dir_getread(
                         lfs,
                         &file.m,
                         core::ptr::null(),
                         &mut file.cache,
                         file.off - i,
-                        lfs_mktag(0xfff, 0x1ff, 0),
+                        Tag::mktag(0xfff, 0x1ff, 0),
                         gtag,
                         i,
                         &mut data as *mut u8 as *mut core::ffi::c_void,
@@ -885,7 +885,7 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
 pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
     use crate::dir::commit::lfs_dir_commit;
     use crate::fs::superblock::lfs_fs_deorphan;
-    use crate::tag::lfs_mktag;
+    use crate::tag::Tag::mktag;
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::lfs_pair_isnull;
 
@@ -930,11 +930,11 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
 
             let attrs = [
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(type_, file.id as u32, size),
+                    tag: Tag::mktag(type_, file.id as u32, size),
                     buffer,
                 },
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(
+                    tag: Tag::mktag(
                         crate::lfs_type::lfs_type::LFS_FROM_USERATTRS,
                         file.id as u32,
                         file.cfg.as_ref().map_or(0, |c| c.attr_count),
@@ -1003,14 +1003,14 @@ pub fn lfs_file_flushedread(
 
             let diff = lfs_min(nsize, block_size - file.off);
             if (file.flags as i32 & LFS_F_INLINE) != 0 {
-                let gtag = lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0);
+                let gtag = Tag::mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0);
                 lfs_dir_getread(
                     lfs,
                     &file.m,
                     core::ptr::null(),
                     &mut file.cache,
                     block_size,
-                    lfs_mktag(0xfff, 0x1ff, 0),
+                    Tag::mktag(0xfff, 0x1ff, 0),
                     gtag,
                     file.off,
                     data.as_mut_ptr() as *mut _,

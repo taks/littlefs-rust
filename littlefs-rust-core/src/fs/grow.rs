@@ -8,7 +8,8 @@ use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_fromle32, lfs_superblock_tole32};
 use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
-use crate::tag::{lfs_mattr, lfs_mktag};
+use crate::tag::Tag;
+use crate::tag::{Tag::mktag, lfs_mattr};
 use crate::types::{lfs_block_t, lfs_size_t};
 
 /// Translation docs: Callback for lfs_fs_traverse_ during shrink. Returns
@@ -121,8 +122,8 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
         let tag = lfs_dir_get(
             lfs,
             root,
-            lfs_mktag(0x7ff, 0x3ff, 0),
-            lfs_mktag(
+            Tag::mktag(0x7ff, 0x3ff, 0),
+            Tag::mktag(
                 LFS_TYPE_INLINESTRUCT,
                 0,
                 core::mem::size_of::<LfsSuperblock>() as u32,
@@ -138,7 +139,7 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
         lfs_superblock_tole32(sb);
         // C: lfs_dir_commit(lfs, &root, LFS_MKATTRS({tag, &superblock}))
         let attrs = [lfs_mattr {
-            tag: tag as u32,
+            tag: tag,
             buffer: superblock.as_ptr() as *const core::ffi::c_void,
         }];
         lfs_dir_commit(lfs, root, &attrs)?;

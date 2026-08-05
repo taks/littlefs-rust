@@ -2,7 +2,7 @@
 
 use zerocopy::IntoBytes;
 
-use crate::{borrow_unchecked::borrow_unchecked, error::Error, lfs_pass_err};
+use crate::{borrow_unchecked::borrow_unchecked, error::Error, lfs_pass_err, tag::Tag};
 
 /// Per lfs.c lfs_fs_pred (lines 4796-4833)
 ///
@@ -206,7 +206,6 @@ pub fn lfs_fs_parent(
     use crate::dir::fetch::lfs_dir_fetchmatch;
     use crate::fs::mount::{LfsTortoise, lfs_tortoise_detectcycles};
     use crate::lfs_type::lfs_type::LFS_TYPE_DIRSTRUCT;
-    use crate::tag::lfs_mktag;
     use crate::types::{LFS_BLOCK_NULL, lfs_block_t};
     use crate::util::lfs_pair_isnull;
 
@@ -244,8 +243,8 @@ pub fn lfs_fs_parent(
                 lfs,
                 parent,
                 parent_tail,
-                lfs_mktag(0x7ff, 0, 0x3ff),
-                lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
+                Tag::mktag(0x7ff, 0, 0x3ff),
+                Tag::mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
                 &mut None,
                 Some(lfs_fs_parent_match),
                 &find_match as *const _ as *mut core::ffi::c_void,
