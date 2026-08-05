@@ -1,6 +1,6 @@
 //! Directory traverse. Per lfs.c lfs_dir_traverse, lfs_dir_getslice, lfs_dir_get, lfs_dir_getread.
 
-use zerocopy::{IntoBytes, TryFromBytes};
+use zerocopy::{IntoBytes, TryFromBytes, FromBytes};
 
 use crate::LfsAttr;
 use crate::bd::LfsCache;
@@ -951,10 +951,9 @@ pub fn lfs_dir_traverse(
                     } else if type3 == crate::lfs_type::lfs_type::LFS_FROM_USERATTRS as u16 {
                         // C: lfs.c:620-632 — iterate over user attrs, dispatch each to cb
                         let attr_count = crate::tag::lfs_tag_size(tag) as usize;
-                        let attrs_ptr = buffer.as_ptr() as *const LfsAttr; // crate::lfs_info::LfsAttr::try_ref_from_bytes(buffer);
-                        let mut i = 0;
-                        while i < attr_count {
-                            let a = unsafe { &*attrs_ptr.add(i) };
+                        assert_eq!(attr_count * ::core::mem::size_of::<LfsAttr>(), buffer.len());
+                        let attrs = unsafe { ::core::slice::from_raw_parts(buffer.as_ptr() as *const LfsAttr, attr_count) };
+                        for a in attrs {
                             let userattr_tag = lfs_mktag(
                                 crate::lfs_type::lfs_type::LFS_TYPE_USERATTR
                                     .wrapping_add(u32::from(a.type_)),
@@ -974,7 +973,6 @@ pub fn lfs_dir_traverse(
                             if res != Ok(0) {
                                 break;
                             }
-                            i += 1;
                         }
                         if res == Ok(0) {
                             phase = TraversePhase::GetNextTag;

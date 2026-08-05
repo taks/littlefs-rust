@@ -1,6 +1,6 @@
 //! File and filesystem info. Per lfs.h struct lfs_info, lfs_fsinfo, lfs_attr, lfs_file_config.
 
-use zerocopy_derive::{Immutable, IntoBytes, KnownLayout, TryFromBytes};
+use zerocopy_derive::{FromBytes, Immutable, IntoBytes, KnownLayout, TryFromBytes};
 
 use crate::types::lfs_size_t;
 use core::ffi::c_void;
@@ -26,7 +26,7 @@ pub struct LfsFsinfo {
 
 /// Per lfs.h struct lfs_attr
 #[repr(C)]
-#[derive(Immutable)]
+#[derive(Immutable, KnownLayout, TryFromBytes)]
 pub struct LfsAttr<'a> {
     pub type_: u8,
     pub buffer: &'a mut [u8],
