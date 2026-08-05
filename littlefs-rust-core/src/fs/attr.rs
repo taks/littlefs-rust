@@ -1,16 +1,18 @@
 //! attr. Per lfs.c attr_.
 
+use core::ffi::CStr;
+
 use crate::borrow_unchecked::borrow_unchecked;
+use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
 use crate::dir::traverse::lfs_dir_get;
-use crate::dir::LfsMdir;
 use crate::error::Error;
 use crate::fs::{Lfs, lfs};
 use crate::lfs_type::lfs_type::LFS_TYPE_USERATTR;
 use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_size};
-use crate::types::{lfs_size_t};
+use crate::types::lfs_size_t;
 use crate::util::lfs_min;
 
 /// Per lfs.c lfs_getattr_ (lines 4107-4135)
@@ -76,7 +78,7 @@ pub fn lfs_getattr_(
             tail: [(*lfs).root[0], (*lfs).root[1]],
         };
 
-        let mut path_ptr = path;
+        let mut path_ptr = CStr::from_ptr(path as *const _);
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
         let mut id = lfs_tag_id(tag as u32) as u16;
@@ -156,7 +158,7 @@ pub fn lfs_commitattr(
             tail: [(*lfs).root[0], (*lfs).root[1]],
         };
 
-        let mut path_ptr = path;
+        let mut path_ptr = CStr::from_ptr(path as *const _);
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
         let mut id = lfs_tag_id(tag as u32) as u16;

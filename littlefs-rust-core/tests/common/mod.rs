@@ -10,6 +10,7 @@ pub mod powerloss;
 
 use core::cell::RefCell;
 use littlefs_rust_core::{LfsConfig, error::Error};
+use std::{ffi::CString, str::FromStr};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
@@ -584,10 +585,8 @@ pub fn dump_block_hex(block: &[u8], label: &str, len: usize) {
 }
 
 /// Null-terminated path for lfs_* calls. Caller keeps vec in scope while using pointer.
-pub fn path_bytes(s: &str) -> Vec<u8> {
-    let mut v: Vec<u8> = s.bytes().collect();
-    v.push(0);
-    v
+pub fn path_bytes(s: &str) -> CString {
+    CString::from_str(s).unwrap()
 }
 
 /// Read directory entry names (excluding "." and "..") from path. For use in dir tests.
@@ -600,7 +599,7 @@ pub fn dir_entry_names(
 
     let path = path_bytes(path_str);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    lfs_dir_open(lfs, dir, path.as_ptr())?;
+    lfs_dir_open(lfs, dir, path.as_ptr() as *const _)?;
 
     let mut names = Vec::new();
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -698,7 +697,7 @@ pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
 
     let path = path_bytes(dir_path);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, path.as_ptr()));
+    assert_ok(lfs_dir_open(lfs, dir, path.as_ptr() as *const _));
     let pair = (dir).m.pair;
     assert_ok(lfs_dir_close(lfs, dir));
     [pair[0], pair[1]]

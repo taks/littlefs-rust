@@ -5,6 +5,8 @@
 
 mod common;
 
+use std::ffi::CStr;
+
 #[cfg(feature = "slow_tests")]
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
@@ -240,7 +242,7 @@ fn test_superblocks_expand() {
                 ));
                 assert_ok(lfs_file_close(lfs, file));
                 let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
-                assert_ok(lfs_stat(lfs, dummy.as_ptr(), info.as_mut_ptr()));
+                assert_ok(lfs_stat(lfs, dummy.as_c_str(), info.as_mut_ptr()));
                 let info = unsafe { info.assume_init() };
                 assert_eq!(info.type_, LFS_TYPE_REG as u8);
                 assert_ok(lfs_remove(lfs, dummy.as_ptr()));
@@ -257,7 +259,7 @@ fn test_superblocks_expand() {
             ));
             assert_ok(lfs_file_close(lfs, file));
             let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
-            assert_ok(lfs_stat(lfs, dummy.as_ptr(), info.as_mut_ptr()));
+            assert_ok(lfs_stat(lfs, dummy.as_c_str(), info.as_mut_ptr()));
             let info = unsafe { info.assume_init() };
             assert_eq!(info.type_, LFS_TYPE_REG as u8);
             assert_ok(lfs_unmount(lfs));
@@ -292,7 +294,7 @@ fn test_superblocks_magic_expand() {
                 ));
                 assert_ok(lfs_file_close(lfs, file));
                 let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
-                assert_ok(lfs_stat(lfs, dummy.as_ptr(), info.as_mut_ptr()));
+                assert_ok(lfs_stat(lfs, dummy.as_c_str(), info.as_mut_ptr()));
                 let info = unsafe { info.assume_init() };
                 assert_eq!(info.type_, LFS_TYPE_REG as u8);
                 assert_ok(lfs_remove(lfs, dummy.as_ptr()));
@@ -323,7 +325,11 @@ fn test_superblocks_expand_power_cycle() {
             for i in 0..n {
                 assert_ok(lfs_mount(lfs, &env.config));
                 let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
-                let err = lfs_stat(lfs, dummy.as_ptr(), info.as_mut_ptr());
+                let err = lfs_stat(
+                    lfs,
+                    unsafe { CStr::from_ptr(dummy.as_ptr() as *const _) },
+                    info.as_mut_ptr(),
+                );
                 assert!(
                     err.is_ok() || (err == Err(Error::NoEntry) && i == 0),
                     "stat dummy: err={err:?} i={i}"
@@ -344,7 +350,11 @@ fn test_superblocks_expand_power_cycle() {
                 ));
                 assert_ok(lfs_file_close(lfs, file));
                 let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
-                assert_ok(lfs_stat(lfs, dummy.as_ptr(), info.as_mut_ptr()));
+                assert_ok(lfs_stat(
+                    lfs,
+                    unsafe { CStr::from_ptr(dummy.as_ptr() as *const _) },
+                    info.as_mut_ptr(),
+                ));
                 let info = unsafe { info.assume_init() };
                 assert_eq!(info.type_, LFS_TYPE_REG as u8);
                 assert_ok(lfs_unmount(lfs));
@@ -352,7 +362,11 @@ fn test_superblocks_expand_power_cycle() {
 
             assert_ok(lfs_mount(lfs, &env.config));
             let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
-            assert_ok(lfs_stat(lfs, dummy.as_ptr(), info.as_mut_ptr()));
+            assert_ok(lfs_stat(
+                lfs,
+                unsafe { CStr::from_ptr(dummy.as_ptr() as *const _) },
+                info.as_mut_ptr(),
+            ));
             let info = unsafe { info.assume_init() };
             assert_eq!(info.type_, LFS_TYPE_REG as u8);
             assert_ok(lfs_unmount(lfs));
@@ -814,12 +828,12 @@ fn test_superblocks_metadata_max(
         assert_ok(lfs_file_open(
             lfs,
             file,
-            name.as_ptr(),
+            name.as_ptr() as *const _,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         assert_ok(lfs_file_close(lfs, file));
         let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
-        assert_ok(lfs_stat(lfs, name.as_ptr(), info.as_mut_ptr()));
+        assert_ok(lfs_stat(lfs, name.as_c_str(), info.as_mut_ptr()));
         let info = unsafe { info.assume_init() };
         let nul = info
             .name

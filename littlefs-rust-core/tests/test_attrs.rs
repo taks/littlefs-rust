@@ -6,11 +6,13 @@
 mod common;
 
 use common::{
-    assert_err, assert_ok, default_config, init_context, init_logger, path_bytes, LFS_O_CREAT,
-    LFS_O_RDONLY, LFS_O_WRONLY,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok, default_config, init_context,
+    init_logger, path_bytes,
 };
 use littlefs_rust_core::{
-    Lfs, LfsAttr, LfsFile, LfsFileConfig, error::Error, lfs_file_close, lfs_file_open, lfs_file_opencfg, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_getattr, lfs_mkdir, lfs_mount, lfs_removeattr, lfs_setattr, lfs_unmount,
+    Lfs, LfsAttr, LfsFile, LfsFileConfig, error::Error, lfs_file_close, lfs_file_open,
+    lfs_file_opencfg, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_getattr,
+    lfs_mkdir, lfs_mount, lfs_removeattr, lfs_setattr, lfs_unmount,
 };
 
 /// attr_max from config; tests use ATTR_MAX+1 for NOSPC check.
@@ -24,10 +26,7 @@ fn test_attrs_get_set() {
     init_context(&mut env);
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(
-        lfs,
-        &env.config,
-    ));
+    assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
     assert_ok(lfs_mkdir(lfs, path_bytes("hello").as_ptr()));
@@ -35,15 +34,10 @@ fn test_attrs_get_set() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        b"hello".as_ptr() as *const core::ffi::c_void,
-        5,
-    );
+    let n = lfs_file_write(lfs, file, b"hello".as_ptr() as *const core::ffi::c_void, 5);
     assert_eq!(n, Ok(5));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -53,21 +47,21 @@ fn test_attrs_get_set() {
 
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'A',
         b"aaaa".as_ptr() as *const core::ffi::c_void,
         4,
     ));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'B',
         b"bbbbbb".as_ptr() as *const core::ffi::c_void,
         6,
     ));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'C',
         b"ccccc".as_ptr() as *const core::ffi::c_void,
         5,
@@ -75,7 +69,7 @@ fn test_attrs_get_set() {
 
     let n = lfs_getattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'A',
         buffer[..4].as_mut_ptr() as *mut core::ffi::c_void,
         4,
@@ -83,7 +77,7 @@ fn test_attrs_get_set() {
     assert_eq!(n, Ok(4));
     let n = lfs_getattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'B',
         buffer[4..10].as_mut_ptr() as *mut core::ffi::c_void,
         6,
@@ -91,7 +85,7 @@ fn test_attrs_get_set() {
     assert_eq!(n, Ok(6));
     let n = lfs_getattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'C',
         buffer[10..15].as_mut_ptr() as *mut core::ffi::c_void,
         5,
@@ -103,14 +97,14 @@ fn test_attrs_get_set() {
 
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'B',
         b"".as_ptr() as *const core::ffi::c_void,
         0,
     ));
     let n = lfs_getattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'B',
         buffer[4..10].as_mut_ptr() as *mut core::ffi::c_void,
         6,
@@ -120,12 +114,12 @@ fn test_attrs_get_set() {
 
     assert_ok(lfs_removeattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'B',
     ));
     let err = lfs_getattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'B',
         buffer[4..10].as_mut_ptr() as *mut core::ffi::c_void,
         6,
@@ -134,14 +128,14 @@ fn test_attrs_get_set() {
 
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'B',
         b"dddddd".as_ptr() as *const core::ffi::c_void,
         6,
     ));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'B',
         b"eee".as_ptr() as *const core::ffi::c_void,
         3,
@@ -150,7 +144,7 @@ fn test_attrs_get_set() {
     let oversized = vec![0u8; ATTR_MAX + 1];
     let err = lfs_setattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'A',
         oversized.as_ptr() as *const core::ffi::c_void,
         (ATTR_MAX + 1) as u32,
@@ -159,7 +153,7 @@ fn test_attrs_get_set() {
 
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'B',
         b"fffffffff".as_ptr() as *const core::ffi::c_void,
         9,
@@ -169,7 +163,7 @@ fn test_attrs_get_set() {
     assert_ok(lfs_mount(lfs, &env.config));
     let n = lfs_getattr(
         lfs,
-        path_bytes("hello").as_ptr(),
+        path_bytes("hello").as_ptr() as *const _,
         b'B',
         buffer[4..13].as_mut_ptr() as *mut core::ffi::c_void,
         9,
@@ -181,15 +175,10 @@ fn test_attrs_get_set() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         LFS_O_RDONLY,
     ));
-    let n = lfs_file_read(
-        lfs,
-        file,
-        buffer.as_mut_ptr() as *mut core::ffi::c_void,
-        32,
-    );
+    let n = lfs_file_read(lfs, file, buffer.as_mut_ptr() as *mut core::ffi::c_void, 32);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
     assert_ok(lfs_file_close(lfs, file));
@@ -204,10 +193,7 @@ fn test_attrs_get_set_root() {
     init_context(&mut env);
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(
-        lfs,
-        &env.config,
-    ));
+    assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
     assert_ok(lfs_mkdir(lfs, path_bytes("hello").as_ptr()));
@@ -215,15 +201,10 @@ fn test_attrs_get_set_root() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        b"hello".as_ptr() as *const core::ffi::c_void,
-        5,
-    );
+    let n = lfs_file_write(lfs, file, b"hello".as_ptr() as *const core::ffi::c_void, 5);
     assert_eq!(n, Ok(5));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -233,21 +214,21 @@ fn test_attrs_get_set_root() {
 
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'A',
         b"aaaa".as_ptr() as *const core::ffi::c_void,
         4,
     ));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'B',
         b"bbbbbb".as_ptr() as *const core::ffi::c_void,
         6,
     ));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'C',
         b"ccccc".as_ptr() as *const core::ffi::c_void,
         5,
@@ -255,7 +236,7 @@ fn test_attrs_get_set_root() {
 
     let n = lfs_getattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'A',
         buffer[..4].as_mut_ptr() as *mut core::ffi::c_void,
         4,
@@ -263,7 +244,7 @@ fn test_attrs_get_set_root() {
     assert_eq!(n, Ok(4));
     let n = lfs_getattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'B',
         buffer[4..10].as_mut_ptr() as *mut core::ffi::c_void,
         6,
@@ -271,7 +252,7 @@ fn test_attrs_get_set_root() {
     assert_eq!(n, Ok(6));
     let n = lfs_getattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'C',
         buffer[10..15].as_mut_ptr() as *mut core::ffi::c_void,
         5,
@@ -283,19 +264,19 @@ fn test_attrs_get_set_root() {
 
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'B',
         b"".as_ptr() as *const core::ffi::c_void,
         0,
     ));
     assert_ok(lfs_removeattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'B',
     ));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'B',
         b"fffffffff".as_ptr() as *const core::ffi::c_void,
         9,
@@ -306,7 +287,7 @@ fn test_attrs_get_set_root() {
     let mut buffer = [0u8; 1024];
     let n = lfs_getattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'A',
         buffer[..4].as_mut_ptr() as *mut core::ffi::c_void,
         4,
@@ -314,7 +295,7 @@ fn test_attrs_get_set_root() {
     assert_eq!(n, Ok(4));
     let n = lfs_getattr(
         lfs,
-        path_bytes("/").as_ptr(),
+        path_bytes("/").as_ptr() as *const _,
         b'B',
         buffer[4..13].as_mut_ptr() as *mut core::ffi::c_void,
         9,
@@ -326,15 +307,10 @@ fn test_attrs_get_set_root() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         LFS_O_RDONLY,
     ));
-    let n = lfs_file_read(
-        lfs,
-        file,
-        buffer.as_mut_ptr() as *mut core::ffi::c_void,
-        32,
-    );
+    let n = lfs_file_read(lfs, file, buffer.as_mut_ptr() as *mut core::ffi::c_void, 32);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
     assert_ok(lfs_file_close(lfs, file));
@@ -350,26 +326,18 @@ fn test_attrs_get_set_file() {
     init_context(&mut env);
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(
-        lfs,
-        &env.config,
-    ));
+    assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("hello").as_ptr()));
+    assert_ok(lfs_mkdir(lfs, path_bytes("hello").as_ptr() as *const _));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        b"hello".as_ptr() as *const core::ffi::c_void,
-        5,
-    );
+    let n = lfs_file_write(lfs, file, b"hello".as_ptr() as *const core::ffi::c_void, 5);
     assert_eq!(n, Ok(5));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -406,7 +374,7 @@ fn test_attrs_get_set_file() {
     assert_ok(lfs_file_opencfg(
         lfs,
         file,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         LFS_O_WRONLY,
         &cfg,
     ));
@@ -439,7 +407,7 @@ fn test_attrs_get_set_file() {
     assert_ok(lfs_file_opencfg(
         lfs,
         file,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         LFS_O_RDONLY,
         &cfg_read,
     ));
@@ -455,15 +423,10 @@ fn test_attrs_get_set_file() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         LFS_O_RDONLY,
     ));
-    let n = lfs_file_read(
-        lfs,
-        file,
-        buffer.as_mut_ptr() as *mut core::ffi::c_void,
-        32,
-    );
+    let n = lfs_file_read(lfs, file, buffer.as_mut_ptr() as *mut core::ffi::c_void, 32);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
     assert_ok(lfs_file_close(lfs, file));
@@ -479,26 +442,18 @@ fn test_attrs_deferred_file() {
     init_context(&mut env);
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(
-        lfs,
-        &env.config,
-    ));
+    assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("hello").as_ptr()));
+    assert_ok(lfs_mkdir(lfs, path_bytes("hello").as_ptr() as *const _));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        b"hello".as_ptr() as *const core::ffi::c_void,
-        5,
-    );
+    let n = lfs_file_write(lfs, file, b"hello".as_ptr() as *const core::ffi::c_void, 5);
     assert_eq!(n, Ok(5));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -506,14 +461,14 @@ fn test_attrs_deferred_file() {
     assert_ok(lfs_mount(lfs, &env.config));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         b'B',
         b"fffffffff".as_ptr() as *const core::ffi::c_void,
         9,
     ));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         b'C',
         b"ccccc".as_ptr() as *const core::ffi::c_void,
         5,
@@ -522,7 +477,7 @@ fn test_attrs_deferred_file() {
     let mut buffer = [0u8; 1024];
     let n = lfs_getattr(
         lfs,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         b'B',
         buffer[..9].as_mut_ptr() as *mut core::ffi::c_void,
         9,
@@ -559,7 +514,7 @@ fn test_attrs_deferred_file() {
     assert_ok(lfs_file_opencfg(
         lfs,
         file,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         LFS_O_WRONLY,
         &cfg,
     ));
@@ -568,7 +523,7 @@ fn test_attrs_deferred_file() {
 
     let n = lfs_getattr(
         lfs,
-        path_bytes("hello/hello").as_ptr(),
+        path_bytes("hello/hello").as_ptr() as *const _,
         b'B',
         buffer[..9].as_mut_ptr() as *mut core::ffi::c_void,
         9,

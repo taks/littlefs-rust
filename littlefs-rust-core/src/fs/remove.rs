@@ -1,11 +1,13 @@
 //! remove. Per lfs.c remove_.
 
+use core::ffi::CStr;
+
 use crate::dir::commit::{lfs_dir_commit, lfs_dir_drop};
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::{LfsMdir, LfsMlist};
-use crate::error::{Error};
+use crate::error::Error;
 use crate::fs::parent::lfs_fs_pred;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_preporphans};
 use crate::lfs_gstate::lfs_gstate_hasorphans;
@@ -115,7 +117,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: *const u8) -> Result<(), Err
             tail: [(*lfs).root[0], (*lfs).root[1]],
         };
 
-        let mut path_ptr = path;
+        let mut path_ptr = CStr::from_ptr(path as *const _);
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
         if lfs_tag_id(tag as u32) == 0x3ff {
             return Err(Error::Invalid);

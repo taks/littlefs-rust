@@ -1,5 +1,7 @@
 //! Rename. Per lfs.c lfs_rename_.
 
+use core::ffi::CStr;
+
 use crate::dir::commit::{lfs_dir_commit, lfs_dir_drop};
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
@@ -232,7 +234,11 @@ fn slice_until_nul(ptr: *const u8) -> &'static [u8] {
     }
 }
 
-pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: *const u8, newpath: *const u8) -> Result<(), Error> {
+pub fn lfs_rename_(
+    lfs: &mut super::lfs::Lfs,
+    oldpath: *const u8,
+    newpath: *const u8,
+) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
@@ -246,7 +252,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: *const u8, newpath: *cons
             split: false,
             tail: [(*lfs).root[0], (*lfs).root[1]],
         };
-        let mut oldpath_ptr = oldpath;
+        let mut oldpath_ptr = CStr::from_ptr(oldpath as *const _);
         let oldtag = lfs_dir_find(lfs, &mut oldcwd, &mut oldpath_ptr, &mut None)?;
         if lfs_tag_id(oldtag) == 0x3ff {
             return Err(Error::Invalid);
@@ -262,14 +268,18 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: *const u8, newpath: *cons
             split: false,
             tail: [(*lfs).root[0], (*lfs).root[1]],
         };
-        let mut newpath_ptr = newpath;
+        let mut newpath_ptr = CStr::from_ptr(newpath as *const _);
         let mut newid: u16 = 0;
         let prevtag = lfs_dir_find(lfs, &mut newcwd, &mut newpath_ptr, &mut Some(&mut newid));
-        let newpath_slice = slice_until_nul(newpath_ptr);
+        let newpath_slice = newpath_ptr.to_bytes();
         if (prevtag.is_err() || lfs_tag_id(prevtag.unwrap()) == 0x3ff)
             && !(prevtag == Err(Error::NoEntry) && lfs_path_islast(newpath_slice))
         {
-            return if let Err(err) = prevtag { Err(err) } else { Err(Error::Invalid) };
+            return if let Err(err) = prevtag {
+                Err(err)
+            } else {
+                Err(Error::Invalid)
+            };
         }
 
         let samepair = lfs_pair_cmp(&oldcwd.pair, &newcwd.pair) == 0;
@@ -336,7 +346,12 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: *const u8, newpath: *cons
         let nlen = lfs_path_namelen(newpath_slice);
         let attrs = [
             lfs_mattr {
-                tag: lfs_mktag_if(prevtag != Err(Error::NoEntry), LFS_TYPE_DELETE, newid as u32, 0),
+                tag: lfs_mktag_if(
+                    prevtag != Err(Error::NoEntry),
+                    LFS_TYPE_DELETE,
+                    newid as u32,
+                    0,
+                ),
                 buffer: core::ptr::null(),
             },
             lfs_mattr {
@@ -345,7 +360,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: *const u8, newpath: *cons
             },
             lfs_mattr {
                 tag: lfs_mktag(u32::from(lfs_tag_type3(oldtag as u32)), newid as u32, nlen),
-                buffer: newpath_ptr as *const core::ffi::c_void,
+                buffer: newpath_ptr.as_ptr() as *const _,
             },
             lfs_mattr {
                 tag: lfs_mktag(

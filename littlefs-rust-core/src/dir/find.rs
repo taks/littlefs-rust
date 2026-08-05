@@ -216,19 +216,19 @@ pub fn lfs_dir_find_match(
 pub fn lfs_dir_find(
     lfs: *mut Lfs,
     dir: *mut LfsMdir,
-    path: *mut *const u8,
+    path: &mut &CStr,
     id: &mut Option<&mut u16>,
 ) -> Result<crate::types::lfs_tag_t, Error> {
-    if lfs.is_null() || dir.is_null() || path.is_null() {
+    if lfs.is_null() || dir.is_null() {
         return crate::lfs_err!(Err(Error::Invalid));
     }
     unsafe {
         let lfs = &mut *lfs;
         let dir = &mut *dir;
-        let mut name = *path;
-        if name.is_null() {
+        if path.is_empty() {
             return crate::lfs_err!(Err(Error::Invalid));
         }
+        let mut name = path.as_ptr() as *const u8;
 
         // C: lfs.c:1488-1491
         let mut tag = lfs_mktag(LFS_TYPE_DIR, 0x3ff, 0);
@@ -303,7 +303,7 @@ pub fn lfs_dir_find(
             }
 
             // C: lfs.c:1549
-            *path = name;
+            *path = CStr::from_ptr(name as *const _);
 
             // C: lfs.c:1652-1654
             if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {

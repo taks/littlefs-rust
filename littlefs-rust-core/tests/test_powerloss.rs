@@ -35,7 +35,10 @@ fn test_powerloss_only_rev() {
 
     let path_nb = path_bytes("notebook");
     let path_paper = path_bytes("notebook/paper");
-    assert_ok_at("mkdir notebook", lfs_mkdir(lfs, path_nb.as_ptr()));
+    assert_ok_at(
+        "mkdir notebook",
+        lfs_mkdir(lfs, path_nb.as_ptr() as *const _),
+    );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok_at(
@@ -82,7 +85,7 @@ fn test_powerloss_only_rev() {
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok_at(
         "dir_open notebook",
-        lfs_dir_open(lfs, dir, path_nb.as_ptr()),
+        lfs_dir_open(lfs, dir, path_nb.as_ptr() as *const _),
     );
     let pair = dir.m.pair;
     let rev = dir.m.rev;
@@ -195,7 +198,7 @@ fn test_powerloss_runner_smoke() {
         64,
         |lfs, config| {
             lfs_mount(lfs, config)?;
-            let err = lfs_mkdir(lfs, path_d.as_ptr());
+            let err = lfs_mkdir(lfs, path_d.as_ptr() as *const _);
             if let Err(err) = err {
                 let _ = lfs_unmount(lfs);
                 return Err(err);
@@ -234,7 +237,7 @@ fn test_powerloss_partial_prog() {
             assert_ok_at("format", lfs_format(lfs, cfg));
             assert_ok_at("mount", lfs_mount(lfs, cfg));
             let path_a = path_bytes("a");
-            assert_ok_at("mkdir a", lfs_mkdir(lfs, path_a.as_ptr()));
+            assert_ok_at("mkdir a", lfs_mkdir(lfs, path_a.as_ptr() as *const _));
             assert_ok_at("unmount", lfs_unmount(lfs));
 
             let mut block = vec![0u8; BLOCK_SIZE as usize];
@@ -255,7 +258,7 @@ fn test_powerloss_partial_prog() {
                 lfs_mount(lfs, cfg),
             );
             let mut info = core::mem::MaybeUninit::<littlefs_rust_core::LfsInfo>::zeroed();
-            let r = littlefs_rust_core::lfs_stat(lfs, path_a.as_ptr(), info.as_mut_ptr());
+            let r = littlefs_rust_core::lfs_stat(lfs, path_a.as_c_str(), info.as_mut_ptr());
             assert!(r.is_ok(), "lfs_stat a after corrupt: {r:?}");
             assert_ok_at("unmount after verify", lfs_unmount(lfs));
         }
@@ -379,7 +382,10 @@ fn test_debug_file_subdir_which_sync_fails() {
     let lfs = lfs;
     let path_nb = path_bytes("notebook");
     let path_paper = path_bytes("notebook/paper");
-    assert_ok_at("mkdir notebook", lfs_mkdir(lfs, path_nb.as_ptr()));
+    assert_ok_at(
+        "mkdir notebook",
+        lfs_mkdir(lfs, path_nb.as_ptr() as *const _),
+    );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok_at(
@@ -421,7 +427,10 @@ fn test_debug_powerloss_after_corrupt_append() {
     let lfs = lfs;
     let path_nb = path_bytes("notebook");
     let path_paper = path_bytes("notebook/paper");
-    assert_ok_at("mkdir notebook", lfs_mkdir(lfs, path_nb.as_ptr()));
+    assert_ok_at(
+        "mkdir notebook",
+        lfs_mkdir(lfs, path_nb.as_ptr() as *const _),
+    );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok_at(
@@ -451,7 +460,7 @@ fn test_debug_powerloss_after_corrupt_append() {
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok_at(
         "dir_open notebook",
-        lfs_dir_open(lfs, dir, path_nb.as_ptr()),
+        lfs_dir_open(lfs, dir, path_nb.as_ptr() as *const _),
     );
     let pair = dir.m.pair;
     let rev = dir.m.rev;
@@ -515,7 +524,7 @@ fn test_powerloss_runner_smoke_log() {
         64,
         |lfs, config| {
             let err = lfs_mount(lfs, config)?;
-            let err = lfs_mkdir(lfs, path_d.as_ptr());
+            let err = lfs_mkdir(lfs, path_d.as_ptr() as *const _);
             if let Err(err) = err {
                 let _ = lfs_unmount(lfs);
                 return Err(err);
@@ -552,7 +561,7 @@ fn test_powerloss_runner_smoke_exhaustive() {
         2,
         |lfs, config| {
             let err = lfs_mount(lfs, config)?;
-            let err = lfs_mkdir(lfs, path_d.as_ptr());
+            let err = lfs_mkdir(lfs, path_d.as_ptr() as *const _);
             if let Err(err) = err {
                 let _ = lfs_unmount(lfs);
                 return Err(err);
@@ -588,7 +597,7 @@ fn test_powerloss_ooo_smoke() {
         64,
         |lfs, config| {
             let err = lfs_mount(lfs, config)?;
-            let err = lfs_mkdir(lfs, path_d.as_ptr());
+            let err = lfs_mkdir(lfs, path_d.as_ptr() as *const _);
             if let Err(err) = err {
                 let _ = lfs_unmount(lfs);
                 return Err(err);
@@ -619,7 +628,7 @@ fn test_debug_file_subdir_single_write_sync() {
     let lfs = lfs;
     assert_ok_at(
         "mkdir notebook",
-        lfs_mkdir(lfs, path_bytes("notebook").as_ptr()),
+        lfs_mkdir(lfs, path_bytes("notebook").as_ptr() as *const _),
     );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };

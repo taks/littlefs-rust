@@ -89,7 +89,7 @@ fn evil_invalid_dir_pointer(invalset: u32) {
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs, cfg));
     let dir_name = path_bytes("dir_here");
-    assert_ok(lfs_mkdir(lfs, dir_name.as_ptr()));
+    assert_ok(lfs_mkdir(lfs, dir_name.as_ptr() as *const _));
     assert_ok(lfs_unmount(lfs));
 
     // Corrupt the dir pointer
@@ -125,32 +125,43 @@ fn evil_invalid_dir_pointer(invalset: u32) {
     assert_ok(lfs_mount(lfs, cfg));
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, dir_name.as_ptr(), info.as_mut_ptr()));
+    assert_ok(lfs_stat(lfs, dir_name.as_c_str(), info.as_mut_ptr()));
     let info_ref = unsafe { &*info.as_ptr() };
     let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info_ref.name[..nul], b"dir_here");
     assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_err(Error::Corrupt, lfs_dir_open(lfs, dir, dir_name.as_ptr()));
+    assert_err(
+        Error::Corrupt,
+        lfs_dir_open(lfs, dir, dir_name.as_ptr() as *const _),
+    );
 
     let child_file = path_bytes("dir_here/file_here");
     assert_err(
         Error::Corrupt,
-        lfs_stat(lfs, child_file.as_ptr(), info.as_mut_ptr()),
+        lfs_stat(lfs, child_file.as_c_str(), info.as_mut_ptr()),
     );
 
     let child_dir = path_bytes("dir_here/dir_here");
-    assert_err(Error::Corrupt, lfs_dir_open(lfs, dir, child_dir.as_ptr()));
+    assert_err(
+        Error::Corrupt,
+        lfs_dir_open(lfs, dir, child_dir.as_ptr() as *const _),
+    );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::Corrupt,
-        lfs_file_open(lfs, file, child_file.as_ptr(), LFS_O_RDONLY),
+        lfs_file_open(lfs, file, child_file.as_ptr() as *const _, LFS_O_RDONLY),
     );
     assert_err(
         Error::Corrupt,
-        lfs_file_open(lfs, file, child_file.as_ptr(), LFS_O_WRONLY | LFS_O_CREAT),
+        lfs_file_open(
+            lfs,
+            file,
+            child_file.as_ptr() as *const _,
+            LFS_O_WRONLY | LFS_O_CREAT,
+        ),
     );
 
     assert_ok(lfs_unmount(lfs));
@@ -184,7 +195,7 @@ fn evil_invalid_file_pointer(size: u32) {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        file_name.as_ptr(),
+        file_name.as_ptr() as *const _,
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     assert_ok(lfs_file_close(lfs, file));
@@ -224,14 +235,19 @@ fn evil_invalid_file_pointer(size: u32) {
     assert_ok(lfs_mount(lfs, cfg));
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, file_name.as_ptr(), info.as_mut_ptr()));
+    assert_ok(lfs_stat(lfs, file_name.as_c_str(), info.as_mut_ptr()));
     let info_ref = unsafe { &*info.as_ptr() };
     let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info_ref.name[..nul], b"file_here");
     assert_eq!(info_ref.type_, LFS_TYPE_REG as u8);
     assert_eq!(info_ref.size, size);
 
-    assert_ok(lfs_file_open(lfs, file, file_name.as_ptr(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(
+        lfs,
+        file,
+        file_name.as_ptr() as *const _,
+        LFS_O_RDONLY,
+    ));
     assert_err(
         Error::Corrupt,
         lfs_file_read(
@@ -245,7 +261,10 @@ fn evil_invalid_file_pointer(size: u32) {
 
     if size > 2 * BLOCK_SIZE {
         let dir_name = path_bytes("dir_here");
-        assert_err(Error::Corrupt, lfs_mkdir(lfs, dir_name.as_ptr()));
+        assert_err(
+            Error::Corrupt,
+            lfs_mkdir(lfs, dir_name.as_ptr() as *const _),
+        );
     }
 
     assert_ok(lfs_unmount(lfs));
@@ -279,7 +298,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        file_name.as_ptr(),
+        file_name.as_ptr() as *const _,
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     for _ in 0..size {
@@ -337,13 +356,18 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     assert_ok(lfs_mount(lfs, cfg));
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(lfs, file_name.as_ptr(), info));
+    assert_ok(lfs_stat(lfs, file_name.as_c_str(), info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info.name[..nul], b"file_here");
     assert_eq!(info.type_, LFS_TYPE_REG as u8);
     assert_eq!(info.size, size);
 
-    assert_ok(lfs_file_open(lfs, file, file_name.as_ptr(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(
+        lfs,
+        file,
+        file_name.as_ptr() as *const _,
+        LFS_O_RDONLY,
+    ));
     assert_err(
         Error::Corrupt,
         lfs_file_read(
@@ -357,7 +381,10 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
 
     if size > 2 * BLOCK_SIZE {
         let dir_name = path_bytes("dir_here");
-        assert_err(Error::Corrupt, lfs_mkdir(lfs, dir_name.as_ptr()));
+        assert_err(
+            Error::Corrupt,
+            lfs_mkdir(lfs, dir_name.as_ptr() as *const _),
+        );
     }
 
     assert_ok(lfs_unmount(lfs));
@@ -399,7 +426,10 @@ unsafe fn evil_invalid_gstate_pointer(invalset: u32) {
 
     assert_ok(lfs_mount(lfs, cfg));
     let dir_name = path_bytes("should_fail");
-    assert_err(Error::Corrupt, lfs_mkdir(lfs, dir_name.as_ptr()));
+    assert_err(
+        Error::Corrupt,
+        lfs_mkdir(lfs, dir_name.as_ptr() as *const _),
+    );
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -454,7 +484,7 @@ unsafe fn evil_mdir_loop2() {
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs, cfg));
     let child = path_bytes("child");
-    assert_ok(lfs_mkdir(lfs, child.as_ptr()));
+    assert_ok(lfs_mkdir(lfs, child.as_ptr() as *const _));
     assert_ok(lfs_unmount(lfs));
 
     // Find child's block pair
@@ -517,7 +547,7 @@ unsafe fn evil_mdir_loop_child() {
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs, cfg));
     let child = path_bytes("child");
-    assert_ok(lfs_mkdir(lfs, child.as_ptr()));
+    assert_ok(lfs_mkdir(lfs, child.as_ptr() as *const _));
     assert_ok(lfs_unmount(lfs));
 
     // Find child's block pair

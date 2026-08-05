@@ -98,7 +98,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_ptr(),
+            path.as_ptr() as *const _,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
 
@@ -122,7 +122,12 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
         for i in 0..files_count + 1 {
             let path = format!("file_{:03}\0", i);
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
+            assert_ok(lfs_file_open(
+                lfs,
+                file,
+                path.as_ptr() as *const _,
+                LFS_O_RDONLY,
+            ));
 
             let mut rbuffer = vec![0u8; size as usize];
             let n = lfs_file_read(
@@ -159,7 +164,12 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
         for i in 0..files_count + 1 {
             let path = format!("file_{:03}\0", i);
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(lfs2, file, path.as_ptr(), LFS_O_RDONLY));
+            assert_ok(lfs_file_open(
+                lfs2,
+                file,
+                path.as_ptr() as *const _,
+                LFS_O_RDONLY,
+            ));
 
             let mut rbuffer = vec![0u8; size as usize];
             let n = lfs_file_read(
