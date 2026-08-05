@@ -1,5 +1,7 @@
 //! Tag operations. Per lfs.c LFS_MKTAG, lfs_tag_*, lfs_mattr, lfs_diskoff.
 
+use zerocopy_derive::{Immutable, IntoBytes};
+
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
 
 /// Per lfs.c LFS_MKTAG (lines 342-343)
@@ -174,10 +176,9 @@ pub fn lfs_tag_dsize(tag: lfs_tag_t) -> lfs_size_t {
 ///     const void *buffer;
 /// };
 /// ```
-#[repr(C)]
-pub struct lfs_mattr {
+pub struct lfs_mattr<'a> {
     pub tag: lfs_tag_t,
-    pub buffer: *const core::ffi::c_void,
+    pub buffer: &'a [u8],
 }
 
 /// Per lfs.c struct lfs_diskoff (lines 397-400)
@@ -190,7 +191,7 @@ pub struct lfs_mattr {
 /// };
 /// ```
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, IntoBytes, Immutable)]
 pub struct lfs_diskoff {
     pub block: lfs_block_t,
     pub off: lfs_off_t,

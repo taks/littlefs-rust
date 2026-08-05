@@ -1,5 +1,6 @@
 //! remove. Per lfs.c remove_.
 
+use zerocopy::IntoBytes;
 use core::ffi::CStr;
 
 use crate::dir::commit::{lfs_dir_commit, lfs_dir_drop};
@@ -137,7 +138,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
                 &cwd,
                 lfs_mktag(0x700, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
-                pair.as_mut_ptr() as *mut core::ffi::c_void,
+                pair.as_mut_bytes(),
             )?;
             lfs_pair_fromle32(&mut pair);
 
@@ -156,7 +157,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
 
         let attrs = [lfs_mattr {
             tag: lfs_mktag(LFS_TYPE_DELETE, lfs_tag_id(tag as u32) as u32, 0),
-            buffer: core::ptr::null(),
+            buffer: &[],
         }];
         let err = lfs_dir_commit(lfs, &mut cwd, &attrs);
         (*lfs).mlist = dir.next;

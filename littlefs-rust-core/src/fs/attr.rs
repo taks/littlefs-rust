@@ -87,12 +87,13 @@ pub fn lfs_getattr_(
             let lfs_root = borrow_unchecked(&lfs.root);
             lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
-
+        let size = lfs_min(size, (*lfs).attr_max);
         let gtag = lfs_mktag(
             LFS_TYPE_USERATTR + r#type as u32,
             id as u32,
-            lfs_min(size, (*lfs).attr_max),
+            size,
         );
+        let buffer = core::slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
         let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer);
         if let Err(err) = tag {
             if err == Error::NoEntry {
@@ -138,7 +139,7 @@ pub fn lfs_commitattr(
     lfs: &mut Lfs,
     path: &CStr,
     r#type: u8,
-    buffer: *const core::ffi::c_void,
+    buffer: &[u8],
     size: lfs_size_t,
 ) -> Result<(), Error> {
     unsafe {
@@ -193,7 +194,7 @@ pub fn lfs_setattr_(
     lfs: &mut Lfs,
     path: &CStr,
     r#type: u8,
-    buffer: *const core::ffi::c_void,
+    buffer: &[u8],
     size: lfs_size_t,
 ) -> Result<(), Error> {
     if size > (*lfs).attr_max {
@@ -214,5 +215,5 @@ pub fn lfs_setattr_(
 /// #endif
 /// ```
 pub fn lfs_removeattr_(lfs: &mut Lfs, path: &CStr, r#type: u8) -> Result<(), Error> {
-    lfs_commitattr(lfs, path, r#type, core::ptr::null(), 0x3ff)
+    lfs_commitattr(lfs, path, r#type, &[], 0x3ff)
 }

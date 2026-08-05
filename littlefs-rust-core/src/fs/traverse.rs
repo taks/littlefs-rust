@@ -1,5 +1,7 @@
 //! FS traverse. Per lfs.c lfs_fs_traverse_.
 
+use zerocopy::IntoBytes;
+
 use crate::{borrow_unchecked::borrow_unchecked, error::Error, tag};
 //
 /// Per lfs.c lfs_fs_traverse_ (lines 4693-4794)
@@ -192,7 +194,7 @@ pub fn lfs_fs_traverse_(
                     &dir,
                     lfs_mktag(0x700, 0x3ff, 0),
                     lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_STRUCT, id as u32, 8),
-                    raw.as_mut_ptr() as *mut core::ffi::c_void,
+                    raw.as_mut_bytes(),
                 );
                 if let Err(err) = tag {
                     if err == Error::NoEntry {

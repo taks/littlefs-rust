@@ -1,5 +1,7 @@
 //! Superblock and consistency. Per lfs.c lfs_fs_prepsuperblock, lfs_fs_deorphan, etc.
 
+use zerocopy::IntoBytes;
+
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::lfs_pass_err;
@@ -105,7 +107,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
                 0,
                 core::mem::size_of::<LfsSuperblock>() as u32,
             ),
-            buffer: &superblock as *const _ as *const _,
+            buffer: superblock.as_bytes(),
         }];
         lfs_dir_commit(lfs, &mut root, &attrs)?;
 
@@ -179,7 +181,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 
         let attrs = [crate::tag::lfs_mattr {
             tag: lfs_mktag(LFS_TYPE_DELETE, moveid as u32, 0),
-            buffer: core::ptr::null(),
+            buffer: &[],
         }];
         lfs_dir_commit(lfs, &mut movedir, &attrs)
     }
@@ -398,7 +400,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                             &parent,
                             lfs_mktag(0x7ff, 0x3ff, 0),
                             tag.unwrap(),
-                            pair.as_mut_ptr() as *mut core::ffi::c_void,
+                            pair.as_mut_bytes(),
                         )?;
 
                         lfs_pair_fromle32(&mut pair);
@@ -419,11 +421,11 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                                         moveid as u32,
                                         0,
                                     ),
-                                    buffer: core::ptr::null(),
+                                    buffer: &[],
                                 },
                                 crate::tag::lfs_mattr {
                                     tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
-                                    buffer: pair.as_ptr() as *const core::ffi::c_void,
+                                    buffer: pair.as_bytes(),
                                 },
                             ];
                             let state = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
@@ -446,7 +448,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                         lfs_pair_tole32(&mut dir_tail);
                         let attrs = [crate::tag::lfs_mattr {
                             tag: lfs_mktag(LFS_TYPE_TAIL + if dir.split { 1 } else { 0 }, 0x3ff, 8),
-                            buffer: dir_tail.as_ptr() as *const core::ffi::c_void,
+                            buffer: dir_tail.as_bytes(),
                         }];
                         let state = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
                         lfs_pair_fromle32(&mut dir_tail);

@@ -145,7 +145,7 @@ pub fn lfs_setattr(
     lfs: &mut Lfs,
     path: &CStr,
     r#type: u8,
-    buffer: *const c_void,
+    buffer: &[u8],
     size: lfs_size_t,
 ) -> Result<(), Error> {
     crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer, size)
@@ -170,12 +170,12 @@ pub fn lfs_file_open(
 
 /// Open a file with extra configuration. Per lfs.h lfs_file_opencfg (lfs.c:6193-6197).
 #[inline(never)]
-pub fn lfs_file_opencfg(
+pub fn lfs_file_opencfg<'a>(
     lfs: &mut Lfs,
     file: &mut LfsFile,
     path: &CStr,
     flags: i32,
-    config: *const LfsFileConfig,
+    config: &mut LfsFileConfig<'a>,
 ) -> Result<(), Error> {
     crate::file::ops::lfs_file_opencfg_(lfs, file, path, flags, config)
 }

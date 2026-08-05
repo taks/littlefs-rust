@@ -1,5 +1,6 @@
 //! Stat. Per lfs.c lfs_stat_, lfs_fs_stat_, lfs_fs_size_.
 
+use zerocopy::IntoBytes;
 use core::ffi::CStr;
 
 use crate::borrow_unchecked::borrow_unchecked;
@@ -161,7 +162,7 @@ pub fn lfs_fs_stat_(
                     0,
                     core::mem::size_of::<LfsSuperblock>() as u32,
                 ),
-                &mut superblock as *mut _ as *mut core::ffi::c_void,
+                superblock.as_mut_bytes(),
             )?;
 
             lfs_superblock_fromle32(&mut superblock);

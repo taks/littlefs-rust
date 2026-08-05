@@ -25,6 +25,7 @@ use littlefs_rust_core::{
     lfs_fs_preporphans, lfs_fs_size, lfs_mattr, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32,
     lfs_remove, lfs_stat, lfs_unmount,
 };
+use zerocopy::IntoBytes;
 
 // --- test_orphans_mkconsistent_fresh ---
 // Minimal: format, mount, mkconsistent. No mkdir/remove. Sanity check.
@@ -245,7 +246,7 @@ fn test_orphans_one_orphan() {
     lfs_pair_tole32(&mut orphan.pair);
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
-        buffer: orphan.pair.as_ptr() as *const core::ffi::c_void,
+        buffer: orphan.pair.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
 
@@ -311,7 +312,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     lfs_pair_tole32(&mut orphan.pair);
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
-        buffer: orphan.pair.as_ptr() as *const core::ffi::c_void,
+        buffer: orphan.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
 

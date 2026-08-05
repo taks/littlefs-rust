@@ -1,5 +1,6 @@
 //! mkdir. Per lfs.c mkdir_.
 
+use zerocopy::IntoBytes;
 use core::ffi::CStr;
 
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
@@ -173,7 +174,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
         lfs_pair_tole32(&mut pred.tail);
         let attrs1 = [lfs_mattr {
             tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
-            buffer: pred.tail.as_ptr() as *const core::ffi::c_void,
+            buffer: pred.tail.as_bytes(),
         }];
         let err = lfs_dir_commit(lfs, &mut dir, &attrs1);
         lfs_pair_fromle32(&mut pred.tail);
@@ -191,7 +192,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
             lfs_pair_tole32(&mut dir.pair);
             let attrs2 = [lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
-                buffer: dir.pair.as_ptr() as *const core::ffi::c_void,
+                buffer: dir.pair.as_bytes(),
             }];
             let err = lfs_dir_commit(lfs, &mut pred, &attrs2);
             lfs_pair_fromle32(&mut dir.pair);
@@ -207,19 +208,19 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
         let attrs3 = [
             lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, id as u32, 0),
-                buffer: core::ptr::null(),
+                buffer: &[]
             },
             lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_DIR, id as u32, nlen),
-                buffer: path_ptr.as_ptr() as *const core::ffi::c_void,
+                buffer: path_ptr.to_bytes_with_nul(),
             },
             lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_DIRSTRUCT, id as u32, 8),
-                buffer: dir.pair.as_ptr() as *const core::ffi::c_void,
+                buffer: dir.pair.as_bytes(),
             },
             lfs_mattr {
                 tag: lfs_mktag_if(!cwd.m.split, LFS_TYPE_SOFTTAIL, 0x3ff, 8),
-                buffer: dir.pair.as_ptr() as *const core::ffi::c_void,
+                buffer: dir.pair.as_bytes(),
             },
         ];
         let err = lfs_dir_commit(lfs, &mut cwd.m, &attrs3);

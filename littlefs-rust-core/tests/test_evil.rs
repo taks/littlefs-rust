@@ -19,6 +19,7 @@ use littlefs_rust_core::{
     lfs_file_read, lfs_file_write, lfs_format, lfs_fs_prepmove, lfs_init, lfs_mkdir, lfs_mktag,
     lfs_mount, lfs_pair_fromle32, lfs_stat, lfs_tole32, lfs_unmount,
 };
+use zerocopy::IntoBytes;
 
 const BLOCK_SIZE: u32 = 512;
 const BLOCK_COUNT: u32 = 256;
@@ -58,7 +59,7 @@ unsafe fn evil_invalid_tail_pointer(tail_type: u32, invalset: u32) {
     ];
     let attrs = [lfs_mattr {
         tag: lfs_mktag(tail_type, 0x3ff, 8),
-        buffer: invalid_pair.as_ptr() as *const core::ffi::c_void,
+        buffer: invalid_pair.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
@@ -105,7 +106,7 @@ fn evil_invalid_dir_pointer(invalset: u32) {
         mdir,
         lfs_mktag(0x700, 0x3ff, 0),
         lfs_mktag(LFS_TYPE_NAME, 1, 8), // strlen("dir_here") == 8
-        buffer.as_mut_ptr() as *mut core::ffi::c_void,
+        buffer.as_mut_bytes(),
     );
     assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE_DIR, 1, 8) as u32));
     assert_eq!(&buffer[..8], b"dir_here");
@@ -116,7 +117,7 @@ fn evil_invalid_dir_pointer(invalset: u32) {
     ];
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, 8),
-        buffer: invalid_pair.as_ptr() as *const core::ffi::c_void,
+        buffer: invalid_pair.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
@@ -203,7 +204,7 @@ fn evil_invalid_file_pointer(size: u32) {
         mdir,
         lfs_mktag(0x700, 0x3ff, 0),
         lfs_mktag(LFS_TYPE_NAME, 1, 9), // strlen("file_here") == 9
-        buffer.as_mut_ptr() as *mut core::ffi::c_void,
+        buffer.as_mut_bytes(),
     );
     assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE_REG, 1, 9) as u32));
     assert_eq!(&buffer[..9], b"file_here");
@@ -215,7 +216,7 @@ fn evil_invalid_file_pointer(size: u32) {
     };
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>() as u32),
-        buffer: &fake_ctz as *const _ as *const core::ffi::c_void,
+        buffer: fake_ctz.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
@@ -303,7 +304,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
         mdir,
         lfs_mktag(0x700, 0x3ff, 0),
         lfs_mktag(LFS_TYPE_NAME, 1, 9),
-        buffer.as_mut_ptr() as *mut core::ffi::c_void,
+        buffer.as_mut_bytes(),
     );
     assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE_REG, 1, 9) as u32));
     assert_eq!(&buffer[..9], b"file_here");
@@ -315,7 +316,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
         mdir,
         lfs_mktag(0x700, 0x3ff, 0),
         lfs_mktag(LFS_TYPE_STRUCT, 1, core::mem::size_of::<LfsCtz>() as u32),
-        &mut ctz as *mut _ as *mut core::ffi::c_void,
+        ctz.as_mut_bytes(),
     );
     assert_eq!(
         tag,
@@ -428,7 +429,7 @@ unsafe fn evil_mdir_loop() {
     let self_pair: [u32; 2] = [0, 1];
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
-        buffer: self_pair.as_ptr() as *const core::ffi::c_void,
+        buffer: self_pair.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
@@ -473,7 +474,7 @@ unsafe fn evil_mdir_loop2() {
             1,
             core::mem::size_of::<[u32; 2]>() as u32,
         ),
-        child_pair.as_mut_ptr() as *mut core::ffi::c_void,
+        child_pair.as_mut_bytes(),
     );
     assert_eq!(
         tag,
@@ -490,7 +491,7 @@ unsafe fn evil_mdir_loop2() {
     let root_ptr: [u32; 2] = [0, 1];
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
-        buffer: root_ptr.as_ptr() as *const core::ffi::c_void,
+        buffer: root_ptr.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
@@ -536,7 +537,7 @@ unsafe fn evil_mdir_loop_child() {
             1,
             core::mem::size_of::<[u32; 2]>() as u32,
         ),
-        child_pair.as_mut_ptr() as *mut core::ffi::c_void,
+        child_pair.as_mut_bytes(),
     );
     assert_eq!(
         tag,
@@ -552,7 +553,7 @@ unsafe fn evil_mdir_loop_child() {
     assert_ok(lfs_dir_fetch(lfs, mdir, &child_pair));
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
-        buffer: child_pair.as_ptr() as *const core::ffi::c_void,
+        buffer: child_pair.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
