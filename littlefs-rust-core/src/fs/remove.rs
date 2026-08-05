@@ -1,13 +1,14 @@
 //! remove. Per lfs.c remove_.
 
 use zerocopy::IntoBytes;
+use core::ffi::CStr;
 
 use crate::dir::commit::{lfs_dir_commit, lfs_dir_drop};
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
 use crate::dir::traverse::lfs_dir_get;
 use crate::dir::{LfsMdir, LfsMlist};
-use crate::error::{Error};
+use crate::error::Error;
 use crate::fs::parent::lfs_fs_pred;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_preporphans};
 use crate::lfs_gstate::lfs_gstate_hasorphans;
@@ -102,7 +103,7 @@ use crate::util::lfs_pair_fromle32;
 ///
 /// #ifndef LFS_READONLY
 /// ```
-pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &[u8]) -> Result<(), Error> {
+pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {

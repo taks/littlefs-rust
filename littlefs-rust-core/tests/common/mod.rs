@@ -10,6 +10,7 @@ pub mod powerloss;
 
 use core::cell::RefCell;
 use littlefs_rust_core::{LfsConfig, error::Error};
+use std::{ffi::CString, str::FromStr};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
@@ -501,7 +502,7 @@ where
 /// Check if block has "littlefs" at offset 8 or 12 (layout varies by commit path).
 fn block_has_magic(config: &LfsConfig, block: u32) -> bool {
     let mut buf = [0u8; 24];
-    let err = unsafe {
+    let err = {
         let read = (*config).read.expect("read callback");
         read(config, block, 0, &mut buf)
     };
@@ -531,10 +532,8 @@ pub fn read_block_raw(
     off: u32,
     buf: &mut [u8],
 ) -> Result<(), Error> {
-    unsafe {
-        let read = (*config).read.expect("read callback");
-        read(config, block, off, buf)
-    }
+    let read = (*config).read.expect("read callback");
+    read(config, block, off, buf)
 }
 
 /// Invoke config prog callback for raw block write, bypassing the FS.
@@ -542,10 +541,8 @@ pub fn read_block_raw(
 ///
 /// C: lfs_emubd_prog via cfg->prog callback
 pub fn write_block_raw(config: &LfsConfig, block: u32, off: u32, data: &[u8]) -> Result<(), Error> {
-    unsafe {
-        let prog = (*config).prog.expect("prog callback");
-        prog(config, block, off, data)
-    }
+    let prog = (*config).prog.expect("prog callback");
+    prog(config, block, off, data)
 }
 
 /// Invoke config erase callback for raw block erase, bypassing the FS.
@@ -553,10 +550,8 @@ pub fn write_block_raw(config: &LfsConfig, block: u32, off: u32, data: &[u8]) ->
 ///
 /// C: cfg->erase(cfg, block)
 pub fn erase_block_raw(config: &LfsConfig, block: u32) -> Result<(), Error> {
-    unsafe {
-        let erase = (*config).erase.expect("erase callback");
-        erase(config, block)
-    }
+    let erase = (*config).erase.expect("erase callback");
+    erase(config, block)
 }
 
 /// Pretty-print first `len` bytes of block for inspection. Used when debugging layout.
@@ -584,10 +579,8 @@ pub fn dump_block_hex(block: &[u8], label: &str, len: usize) {
 }
 
 /// Null-terminated path for lfs_* calls. Caller keeps vec in scope while using pointer.
-pub fn path_bytes(s: &str) -> Vec<u8> {
-    let mut v: Vec<u8> = s.bytes().collect();
-    v.push(0);
-    v
+pub fn path_bytes(s: &str) -> CString {
+    CString::from_str(s).unwrap()
 }
 
 /// Read directory entry names (excluding "." and "..") from path. For use in dir tests.
@@ -600,7 +593,7 @@ pub fn dir_entry_names(
 
     let path = path_bytes(path_str);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    lfs_dir_open(lfs, dir, path.as_ptr())?;
+    lfs_dir_open(lfs, dir, path.as_c_str())?;
 
     let mut names = Vec::new();
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -656,10 +649,10 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
 
     lfs_mount(lfs, &env.config as &LfsConfig)?;
 
-    let path = path_bytes("hello");
+    let path = c"hello";
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    let err = lfs_file_open(lfs, file, path.as_ptr(), 0x0100 | 2);
+    let err = lfs_file_open(lfs, file, path, 0x0100 | 2);
     if let Err(err) = err {
         let _ = lfs_unmount(lfs);
         return Err(err);
@@ -698,7 +691,7 @@ pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
 
     let path = path_bytes(dir_path);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, path.as_ptr()));
+    assert_ok(lfs_dir_open(lfs, dir, path.as_c_str()));
     let pair = (dir).m.pair;
     assert_ok(lfs_dir_close(lfs, dir));
     [pair[0], pair[1]]

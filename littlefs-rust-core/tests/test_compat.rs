@@ -138,7 +138,7 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("test").as_ptr(),
+        c"test",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     assert_eq!(
@@ -196,12 +196,7 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(unsafe { (*fsinfo).disk_version }, LFS_DISK_VERSION - 1);
 
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("test").as_ptr(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, c"test", LFS_O_RDONLY));
     let mut buf = [0u8; 8];
     assert_eq!(
         lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 8,),
@@ -222,7 +217,7 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("test").as_ptr(),
+        c"test",
         LFS_O_WRONLY | LFS_O_TRUNC,
     ));
     assert_eq!(
@@ -245,12 +240,7 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(unsafe { (*fsinfo).disk_version }, LFS_DISK_VERSION);
 
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("test").as_ptr(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, c"test", LFS_O_RDONLY));
     assert_eq!(
         lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 8,),
         Ok(8)

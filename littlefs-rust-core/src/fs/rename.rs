@@ -1,6 +1,7 @@
 //! Rename. Per lfs.c lfs_rename_.
 
 use zerocopy::IntoBytes;
+use core::ffi::CStr;
 
 use crate::dir::commit::{lfs_dir_commit, lfs_dir_drop};
 use crate::dir::fetch::lfs_dir_fetch;
@@ -234,7 +235,7 @@ fn slice_until_nul(ptr: *const u8) -> &'static [u8] {
     }
 }
 
-pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &[u8], newpath: &[u8]) -> Result<(), Error> {
+pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
@@ -267,12 +268,15 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &[u8], newpath: &[u8]) ->
         let mut newpath_ptr = newpath;
         let mut newid: u16 = 0;
         let prevtag = lfs_dir_find(lfs, &mut newcwd, &mut newpath_ptr, &mut Some(&mut newid));
-        // TODO: check
-        let newpath_slice = slice_until_nul(newpath_ptr.as_ptr());
+        let newpath_slice = newpath_ptr.to_bytes();
         if (prevtag.is_err() || lfs_tag_id(prevtag.unwrap()) == 0x3ff)
             && !(prevtag == Err(Error::NoEntry) && lfs_path_islast(newpath_slice))
         {
-            return if let Err(err) = prevtag { Err(err) } else { Err(Error::Invalid) };
+            return if let Err(err) = prevtag {
+                Err(err)
+            } else {
+                Err(Error::Invalid)
+            };
         }
 
         let samepair = lfs_pair_cmp(&oldcwd.pair, &newcwd.pair) == 0;
@@ -339,7 +343,12 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &[u8], newpath: &[u8]) ->
         let nlen = lfs_path_namelen(newpath_slice);
         let attrs = [
             lfs_mattr {
-                tag: lfs_mktag_if(prevtag != Err(Error::NoEntry), LFS_TYPE_DELETE, newid as u32, 0),
+                tag: lfs_mktag_if(
+                    prevtag != Err(Error::NoEntry),
+                    LFS_TYPE_DELETE,
+                    newid as u32,
+                    0,
+                ),
                 buffer: &[],
             },
             lfs_mattr {
@@ -348,7 +357,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &[u8], newpath: &[u8]) ->
             },
             lfs_mattr {
                 tag: lfs_mktag(u32::from(lfs_tag_type3(oldtag as u32)), newid as u32, nlen),
-                buffer: newpath_ptr,
+                buffer: newpath_ptr.to_bytes_with_nul(),
             },
             lfs_mattr {
                 tag: lfs_mktag(

@@ -262,13 +262,6 @@ pub fn prng_verify(buf: &[u8], seed: u32) {
     }
 }
 
-/// Null-terminated path bytes from a string.
-pub fn path_cstr(s: &str) -> Vec<u8> {
-    let mut v: Vec<u8> = s.bytes().collect();
-    v.push(0);
-    v
-}
-
 pub fn check(err: i32) -> Result<(), i32> {
     if err != 0 {
         Err(err)

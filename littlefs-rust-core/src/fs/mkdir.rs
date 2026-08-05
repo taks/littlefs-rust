@@ -1,14 +1,15 @@
 //! mkdir. Per lfs.c mkdir_.
 
 use zerocopy::IntoBytes;
+use core::ffi::CStr;
 
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
 use crate::borrow_unchecked::borrow_unchecked;
+use crate::dir::LfsMlist;
 use crate::dir::commit::{lfs_dir_alloc, lfs_dir_commit};
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
-use crate::dir::LfsMlist;
-use crate::error::{Error};
+use crate::error::Error;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_preporphans};
 use crate::lfs_type::lfs_type::{
     LFS_TYPE_CREATE, LFS_TYPE_DIR, LFS_TYPE_DIRSTRUCT, LFS_TYPE_SOFTTAIL,
@@ -116,7 +117,7 @@ use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_path_islast, lfs_path_
 /// }
 /// #endif
 /// ```
-pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &[u8]) -> Result<(), Error> {
+pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
     let err = lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
@@ -131,7 +132,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &[u8]) -> Result<(), Error> {
         let mut path_ptr = path;
         let mut id: u16 = 0;
         let find_err = lfs_dir_find(lfs, &mut cwd.m, &mut path_ptr, &mut Some(&mut id));
-        if !(find_err == Err(Error::NoEntry) && lfs_path_islast(slice_until_nul(path_ptr.as_ptr()))) {
+        if !(find_err == Err(Error::NoEntry) && lfs_path_islast(path_ptr.to_bytes())) {
             return if let Err(err) = find_err {
                 Err(err)
             } else {
@@ -139,7 +140,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &[u8]) -> Result<(), Error> {
             };
         }
 
-        let path_slice = slice_until_nul(path_ptr.as_ptr());
+        let path_slice = path_ptr.to_bytes();
         let nlen = lfs_path_namelen(path_slice);
         if nlen > (*lfs).name_max {
             return crate::lfs_err!(Err(Error::NameTooLong));
@@ -211,7 +212,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &[u8]) -> Result<(), Error> {
             },
             lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_DIR, id as u32, nlen),
-                buffer: path_ptr,
+                buffer: path_ptr.to_bytes_with_nul(),
             },
             lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_DIRSTRUCT, id as u32, 8),

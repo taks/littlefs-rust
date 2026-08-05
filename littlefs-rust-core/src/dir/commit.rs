@@ -1950,7 +1950,7 @@ fn relocatingcommit_fixmlist(
 fn lfs_dir_commit_commit_raw(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
-    buffer: *const core::ffi::c_void,
+    buffer: &[u8],
 ) -> Result<i32, Error> {
     crate::lfs_trace!(
         "commit_commit_raw: tag=0x{:08x} type1={} buffer={:p}",

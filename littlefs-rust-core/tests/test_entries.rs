@@ -44,7 +44,7 @@ fn test_entries_grow() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_ptr(),
+            path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
         let n = lfs_file_write(
@@ -58,12 +58,7 @@ fn test_entries_grow() {
     }
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("hi1").as_ptr(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, c"hi1", LFS_O_RDONLY));
     let mut rb = [0u8; 256];
     let n = lfs_file_read(
         lfs,
@@ -78,7 +73,7 @@ fn test_entries_grow() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hi1").as_ptr(),
+        c"hi1",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(
@@ -94,7 +89,7 @@ fn test_entries_grow() {
         let path = path_bytes(&format!("hi{i}"));
         let size = if i == 1 { 200 } else { 20 };
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
         let n = lfs_file_read(
             lfs,
             file,
@@ -128,7 +123,7 @@ fn test_entries_shrink() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_ptr(),
+            path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
         let n = lfs_file_write(
@@ -142,12 +137,7 @@ fn test_entries_shrink() {
     }
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("hi1").as_ptr(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, c"hi1", LFS_O_RDONLY));
     let mut rb = [0u8; 256];
     let n = lfs_file_read(
         lfs,
@@ -162,7 +152,7 @@ fn test_entries_shrink() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hi1").as_ptr(),
+        c"hi1",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(
@@ -178,7 +168,7 @@ fn test_entries_shrink() {
         let path = path_bytes(&format!("hi{i}"));
         let size = 20;
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
         let n = lfs_file_read(
             lfs,
             file,
@@ -211,7 +201,7 @@ fn test_entries_spill() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_ptr(),
+            path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
         let n = lfs_file_write(
@@ -228,7 +218,7 @@ fn test_entries_spill() {
     for i in 0..4 {
         let path = path_bytes(&format!("hi{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
         let n = lfs_file_read(
             lfs,
             file,
@@ -259,7 +249,7 @@ fn test_entries_push_spill() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hi0").as_ptr(),
+        c"hi0",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(
@@ -278,7 +268,7 @@ fn test_entries_push_spill() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_ptr(),
+            path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
         let n = lfs_file_write(
@@ -292,12 +282,7 @@ fn test_entries_push_spill() {
     }
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("hi1").as_ptr(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, c"hi1", LFS_O_RDONLY));
     let mut rb = [0u8; 256];
     let n = lfs_file_read(
         lfs,
@@ -312,7 +297,7 @@ fn test_entries_push_spill() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hi1").as_ptr(),
+        c"hi1",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(
@@ -327,7 +312,7 @@ fn test_entries_push_spill() {
     for i in 0..4 {
         let path = path_bytes(&format!("hi{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
         let n = lfs_file_read(
             lfs,
             file,
@@ -360,7 +345,7 @@ fn test_entries_drop() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_ptr(),
+            path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
         let n = lfs_file_write(
@@ -373,12 +358,12 @@ fn test_entries_drop() {
         assert_ok(lfs_file_close(lfs, file));
     }
 
-    assert_ok(lfs_remove(lfs, path_bytes("hi1").as_ptr()));
+    assert_ok(lfs_remove(lfs, c"hi1"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("hi1").as_ptr(),
+        c"hi1",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(
@@ -394,7 +379,7 @@ fn test_entries_drop() {
     for i in 0..4 {
         let path = path_bytes(&format!("hi{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
         let n = lfs_file_read(
             lfs,
             file,
@@ -427,7 +412,7 @@ fn test_entries_create_too_big() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_ptr(),
+        path.as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(
@@ -440,7 +425,7 @@ fn test_entries_create_too_big() {
     assert_ok(lfs_file_close(lfs, file));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
     let mut rbuf = [0u8; 1024];
     let n = lfs_file_read(
         lfs,
@@ -477,7 +462,7 @@ fn test_entries_resize_too_big() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_ptr(),
+        path.as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(
@@ -491,7 +476,7 @@ fn test_entries_resize_too_big() {
 
     // Read 40 bytes
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
     let n = lfs_file_read(
         lfs,
         file,
@@ -507,7 +492,7 @@ fn test_entries_resize_too_big() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_ptr(),
+        path.as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(
@@ -521,7 +506,7 @@ fn test_entries_resize_too_big() {
 
     // Read 400 bytes
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path.as_ptr(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
     let n = lfs_file_read(
         lfs,
         file,

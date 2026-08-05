@@ -1,5 +1,7 @@
 //! File operations. Per lfs.c lfs_file_opencfg_, lfs_file_close_, lfs_file_sync_, etc.
 
+use core::ffi::CStr;
+
 use zerocopy::IntoBytes;
 
 use crate::Lfs;
@@ -199,7 +201,7 @@ use crate::util::lfs_min;
 pub fn lfs_file_opencfg_(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
-    path: &[u8],
+    path: &CStr,
     flags: i32,
     cfg: *const LfsFileConfig,
 ) -> Result<(), Error> {
@@ -232,7 +234,7 @@ pub fn lfs_file_opencfg_(
         let mut path_ptr = path;
         let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, &mut Some(&mut file.id));
         if let Err(err) = tag
-            && !(err == Error::NoEntry && lfs_path_islast(lfs_path_slice_from_cstr(path_ptr.as_ptr())))
+            && !(err == Error::NoEntry && lfs_path_islast(path_ptr.to_bytes()))
         {
             lfs_file_close_(lfs, file);
             return crate::lfs_pass_err!(Err(err));
@@ -246,11 +248,11 @@ pub fn lfs_file_opencfg_(
                 lfs_file_close_(lfs, file);
                 return crate::lfs_err!(Err(Error::NoEntry));
             }
-            if lfs_path_isdir(lfs_path_slice_from_cstr(path_ptr.as_ptr())) {
+            if lfs_path_isdir(path_ptr.to_bytes()) {
                 lfs_file_close_(lfs, file);
                 return Err(Error::NotDir);
             }
-            let nlen = lfs_path_namelen(lfs_path_slice_from_cstr(path_ptr.as_ptr()));
+            let nlen = lfs_path_namelen(path_ptr.to_bytes());
             if nlen > (*lfs).name_max {
                 lfs_file_close_(lfs, file);
                 return crate::lfs_err!(Err(Error::NameTooLong));
@@ -263,7 +265,7 @@ pub fn lfs_file_opencfg_(
                 },
                 crate::tag::lfs_mattr {
                     tag: lfs_mktag(LFS_TYPE_REG, file.id as u32, nlen),
-                    buffer: path,
+                    buffer: path_ptr.as_ptr() as *const core::ffi::c_void,
                 },
                 crate::tag::lfs_mattr {
                     tag: lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0),
@@ -421,7 +423,7 @@ static LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
 pub fn lfs_file_open_(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
-    path: &[u8],
+    path: &CStr,
     flags: i32,
 ) -> Result<(), Error> {
     lfs_file_opencfg_(lfs, file, path, flags, &LFS_FILE_DEFAULTS)
