@@ -203,7 +203,7 @@ pub fn lfs_file_opencfg_(
     file: &mut LfsFile,
     path: &CStr,
     flags: i32,
-    cfg: *const LfsFileConfig,
+    cfg: &mut LfsFileConfig,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
     use crate::dir::find::lfs_dir_find;
@@ -225,7 +225,7 @@ pub fn lfs_file_opencfg_(
             lfs_fs_forceconsistency(lfs)?;
         }
 
-        file.cfg = core::mem::transmute(cfg);
+        file.cfg = core::mem::transmute(&mut *cfg);
         file.flags = flags as u32;
         file.pos = 0;
         file.off = 0;
@@ -316,10 +316,8 @@ pub fn lfs_file_opencfg_(
         }
 
         // C: lfs.c:3162-3187 — fetch attrs
-        if !cfg.is_null() && (*cfg).attr_count > 0 && !(*cfg).attrs.is_null() {
-            let attr_count = (*cfg).attr_count as usize;
-            for i in 0..attr_count {
-                let attr = &mut *(*cfg).attrs.add(i);
+            let attrs = &mut cfg.attrs;
+            for attr in attrs.iter_mut() {
                 if (file.flags as i32 & LFS_O_RDONLY) == LFS_O_RDONLY {
                     let res = lfs_dir_get(
                         lfs,
@@ -347,10 +345,10 @@ pub fn lfs_file_opencfg_(
                     file.flags |= LFS_F_DIRTY as u32;
                 }
             }
-        }
 
-        if !cfg.is_null() && !(*cfg).buffer.is_null() {
-            file.cache.buffer = (*cfg).buffer as *mut u8;
+
+        if !(cfg).buffer.is_empty() {
+            file.cache.buffer = cfg.buffer.as_mut_ptr();
         } else {
             #[cfg(feature = "alloc")]
             {
@@ -414,11 +412,11 @@ pub fn lfs_file_opencfg_(
 /// C: Wrapper that calls opencfg with default config.
 /// Static defaults for lfs_file_open (no opencfg). C uses the same;
 /// a stack-local would make file.cfg a dangling pointer after return.
-static LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
-    buffer: core::ptr::null_mut(),
-    attrs: core::ptr::null_mut(),
-    attr_count: 0,
-};
+// static LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
+ //    buffer: &mut [],
+ //    attrs: &mut [],
+    // attr_count: 0,
+// };
 
 pub fn lfs_file_open_(
     lfs: &mut crate::fs::Lfs,
@@ -426,7 +424,10 @@ pub fn lfs_file_open_(
     path: &CStr,
     flags: i32,
 ) -> Result<(), Error> {
-    lfs_file_opencfg_(lfs, file, path, flags, &LFS_FILE_DEFAULTS)
+    lfs_file_opencfg_(lfs, file, path, flags, &mut LfsFileConfig {
+        buffer: &mut [],
+        attrs: &mut [],
+    })
 }
 
 /// Per lfs.c lfs_file_close_ (lines 3246-3264)
@@ -443,7 +444,7 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
         lfs_mlist_remove(lfs, ::core::mem::transmute(::core::ptr::from_mut(file)));
 
         let cfg = file.cfg;
-        if !cfg.is_null() && (*cfg).buffer.is_null() {
+        if !cfg.is_null() && (&(*cfg).buffer).is_empty() {
             #[cfg(feature = "alloc")]
             {
                 crate::lfs_alloc_module::lfs_free(
@@ -939,13 +940,15 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                     tag: lfs_mktag(
                         crate::lfs_type::lfs_type::LFS_FROM_USERATTRS,
                         file.id as u32,
-                        file.cfg.as_ref().map_or(0, |c| c.attr_count),
+                        file.cfg.as_ref().map_or(0, |c| c.attrs.len() as u32),
                     ) as u32,
                     buffer: file.cfg.as_ref().map_or(&[], |c|  {
-                        if (c.attrs.is_null()) {
+                        if (c.attrs.is_empty()) {
                             &[]
                         } else {
-                            (*c.attrs).as_bytes()
+                            &[]
+                            // TODO:
+                            // (*c.attrs).as_bytes()
                         }
                     })
                 },

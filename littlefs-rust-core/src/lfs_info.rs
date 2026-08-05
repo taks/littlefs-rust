@@ -44,9 +44,9 @@ impl<'a> LfsAttr<'a> {
 /// Per lfs.h struct lfs_file_config
 #[repr(C)]
 pub struct LfsFileConfig<'a> {
-    pub buffer: *mut c_void,
-    pub attrs: *mut LfsAttr<'a>,
-    pub attr_count: lfs_size_t,
+    pub buffer: &'a mut [u8],
+    pub attrs: &'a mut [LfsAttr<'a>],
+    // pub attr_count: lfs_size_t,
 }
 
 // Safe: default config (all nulls) is shareable. Callers must not mutate.

@@ -175,7 +175,7 @@ pub fn lfs_file_opencfg<'a>(
     file: &mut LfsFile,
     path: &CStr,
     flags: i32,
-    config: *const LfsFileConfig<'a>,
+    config: &mut LfsFileConfig<'a>,
 ) -> Result<(), Error> {
     crate::file::ops::lfs_file_opencfg_(lfs, file, path, flags, config)
 }

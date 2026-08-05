@@ -355,10 +355,9 @@ fn test_attrs_get_set_file() {
             buffer: &mut buffer[10..],
         },
     ];
-    let cfg = LfsFileConfig {
-        buffer: core::ptr::null_mut(),
-        attrs: attrs.as_mut_ptr(),
-        attr_count: 3,
+    let mut cfg = LfsFileConfig {
+        buffer: &mut [],
+        attrs: &mut attrs,
     };
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_opencfg(
@@ -366,7 +365,7 @@ fn test_attrs_get_set_file() {
         file,
         c"hello/hello",
         LFS_O_WRONLY,
-        &cfg,
+        &mut cfg,
     ));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -388,10 +387,9 @@ fn test_attrs_get_set_file() {
             // size: 5,
         },
     ];
-    let cfg_read = LfsFileConfig {
-        buffer: core::ptr::null_mut(),
-        attrs: attrs_read.as_mut_ptr(),
-        attr_count: 3,
+    let mut cfg_read = LfsFileConfig {
+        buffer: &mut [],
+        attrs: &mut attrs_read
     };
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_opencfg(
@@ -399,7 +397,7 @@ fn test_attrs_get_set_file() {
         file,
         path_bytes("hello/hello").as_c_str(),
         LFS_O_RDONLY,
-        &cfg_read,
+        &mut cfg_read,
     ));
     assert_ok(lfs_file_close(lfs, file));
     assert_eq!(&buffer[0..4], b"aaaa");
@@ -495,10 +493,9 @@ fn test_attrs_deferred_file() {
             // size: 4,
         },
     ];
-    let cfg = LfsFileConfig {
-        buffer: core::ptr::null_mut(),
-        attrs: attrs.as_mut_ptr(),
-        attr_count: 3,
+    let mut cfg = LfsFileConfig {
+        buffer: &mut [],
+        attrs: &mut attrs
     };
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_opencfg(
@@ -506,7 +503,7 @@ fn test_attrs_deferred_file() {
         file,
         path_bytes("hello/hello").as_c_str(),
         LFS_O_WRONLY,
-        &cfg,
+        &mut cfg,
     ));
 
     assert_ok(lfs_file_sync(lfs, file));
