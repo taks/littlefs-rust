@@ -112,17 +112,13 @@ pub fn lfs_unmount(lfs: &mut Lfs) -> Result<(), Error> {
 /// Remove a file or directory. Per lfs.h lfs_remove (lfs.c:6193-6195).
 #[inline(never)]
 pub fn lfs_remove(lfs: &mut Lfs, path: &CStr) -> Result<(), Error> {
-    crate::fs::remove::lfs_remove_(lfs, path.as_ptr() as *const _)
+    crate::fs::remove::lfs_remove_(lfs, path)
 }
 
 /// Rename or move a file or directory. Per lfs.h lfs_rename (lfs.c:6227-6231).
 #[inline(never)]
 pub fn lfs_rename(lfs: &mut Lfs, oldpath: &CStr, newpath: &CStr) -> Result<(), Error> {
-    crate::fs::rename::lfs_rename_(
-        lfs,
-        oldpath.as_ptr() as *const _,
-        newpath.as_ptr() as *const _,
-    )
+    crate::fs::rename::lfs_rename_(lfs, oldpath, newpath)
 }
 
 /// Find info about a file or directory. Per lfs.h lfs_stat (lfs.c:6263-6267).
@@ -140,25 +136,25 @@ pub fn lfs_getattr(
     buffer: *mut c_void,
     size: lfs_size_t,
 ) -> Result<lfs_size_t, Error> {
-    crate::fs::attr::lfs_getattr_(lfs, path.as_ptr() as *const _, r#type, buffer, size)
+    crate::fs::attr::lfs_getattr_(lfs, path, r#type, buffer, size)
 }
 
 /// Set custom attributes. Per lfs.h lfs_setattr (lfs.c:6471-6475).
 #[inline(never)]
 pub fn lfs_setattr(
-    lfs: *mut Lfs,
+    lfs: &mut Lfs,
     path: &CStr,
     r#type: u8,
     buffer: *const c_void,
     size: lfs_size_t,
 ) -> Result<(), Error> {
-    crate::fs::attr::lfs_setattr_(lfs, path.as_ptr() as *const _, r#type, buffer, size)
+    crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer, size)
 }
 
 /// Remove a custom attribute. Per lfs.h lfs_removeattr (lfs.c:6487-6491).
 #[inline(never)]
-pub fn lfs_removeattr(lfs: *mut Lfs, path: &CStr, r#type: u8) -> Result<(), Error> {
-    crate::fs::attr::lfs_removeattr_(lfs, path.as_ptr() as *const _, r#type)
+pub fn lfs_removeattr(lfs: &mut Lfs, path: &CStr, r#type: u8) -> Result<(), Error> {
+    crate::fs::attr::lfs_removeattr_(lfs, path, r#type)
 }
 
 /// Open a file. Per lfs.h lfs_file_open (lfs.c:6140-6146).
@@ -169,7 +165,7 @@ pub fn lfs_file_open(
     path: &CStr,
     flags: i32,
 ) -> Result<(), Error> {
-    crate::file::ops::lfs_file_open_(lfs, file, path.as_ptr() as *const i8, flags)
+    crate::file::ops::lfs_file_open_(lfs, file, path, flags)
 }
 
 /// Open a file with extra configuration. Per lfs.h lfs_file_opencfg (lfs.c:6193-6197).
@@ -181,7 +177,7 @@ pub fn lfs_file_opencfg(
     flags: i32,
     config: *const LfsFileConfig,
 ) -> Result<(), Error> {
-    crate::file::ops::lfs_file_opencfg_(lfs, file, path.as_ptr() as *const i8, flags, config)
+    crate::file::ops::lfs_file_opencfg_(lfs, file, path, flags, config)
 }
 
 /// Close a file. Per lfs.h lfs_file_close (lfs.c:6227-6231).

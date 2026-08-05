@@ -102,7 +102,7 @@ use crate::util::lfs_pair_fromle32;
 ///
 /// #ifndef LFS_READONLY
 /// ```
-pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: *const u8) -> Result<(), Error> {
+pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
@@ -117,7 +117,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: *const u8) -> Result<(), Err
             tail: [(*lfs).root[0], (*lfs).root[1]],
         };
 
-        let mut path_ptr = CStr::from_ptr(path as *const _);
+        let mut path_ptr = path;
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
         if lfs_tag_id(tag as u32) == 0x3ff {
             return Err(Error::Invalid);
