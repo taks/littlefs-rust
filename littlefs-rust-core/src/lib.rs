@@ -145,7 +145,7 @@ pub fn lfs_setattr(
     lfs: &mut Lfs,
     path: &CStr,
     r#type: u8,
-    buffer: *const c_void,
+    buffer: &[u8],
     size: lfs_size_t,
 ) -> Result<(), Error> {
     crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer, size)

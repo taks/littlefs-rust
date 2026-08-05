@@ -942,7 +942,11 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                         file.cfg.as_ref().map_or(0, |c| c.attr_count),
                     ) as u32,
                     buffer: file.cfg.as_ref().map_or(&[], |c|  {
-                        (*c.attrs).as_bytes()
+                        if (c.attrs.is_null()) {
+                            &[]
+                        } else {
+                            (*c.attrs).as_bytes()
+                        }
                     })
                 },
             ];

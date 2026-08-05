@@ -50,21 +50,21 @@ fn test_attrs_get_set() {
         lfs,
         path_bytes("hello").as_c_str(),
         b'A',
-        b"aaaa".as_ptr() as *const core::ffi::c_void,
+        b"aaaa",
         4,
     ));
     assert_ok(lfs_setattr(
         lfs,
         path_bytes("hello").as_c_str(),
         b'B',
-        b"bbbbbb".as_ptr() as *const core::ffi::c_void,
+        b"bbbbbb",
         6,
     ));
     assert_ok(lfs_setattr(
         lfs,
         path_bytes("hello").as_c_str(),
         b'C',
-        b"ccccc".as_ptr() as *const core::ffi::c_void,
+        b"ccccc",
         5,
     ));
 
@@ -100,7 +100,7 @@ fn test_attrs_get_set() {
         lfs,
         path_bytes("hello").as_c_str(),
         b'B',
-        b"".as_ptr() as *const core::ffi::c_void,
+        b"",
         0,
     ));
     let n = lfs_getattr(
@@ -127,14 +127,14 @@ fn test_attrs_get_set() {
         lfs,
         path_bytes("hello").as_c_str(),
         b'B',
-        b"dddddd".as_ptr() as *const core::ffi::c_void,
+        b"dddddd",
         6,
     ));
     assert_ok(lfs_setattr(
         lfs,
         path_bytes("hello").as_c_str(),
         b'B',
-        b"eee".as_ptr() as *const core::ffi::c_void,
+        b"eee",
         3,
     ));
 
@@ -143,7 +143,7 @@ fn test_attrs_get_set() {
         lfs,
         path_bytes("hello").as_c_str(),
         b'A',
-        oversized.as_ptr() as *const core::ffi::c_void,
+        &oversized,
         (ATTR_MAX + 1) as u32,
     );
     assert_err(Error::NoSpace, err);
@@ -152,7 +152,7 @@ fn test_attrs_get_set() {
         lfs,
         path_bytes("hello").as_c_str(),
         b'B',
-        b"fffffffff".as_ptr() as *const core::ffi::c_void,
+        b"fffffffff",
         9,
     ));
     assert_ok(lfs_unmount(lfs));
@@ -213,21 +213,21 @@ fn test_attrs_get_set_root() {
         lfs,
         path_bytes("/").as_c_str(),
         b'A',
-        b"aaaa".as_ptr() as *const core::ffi::c_void,
+        b"aaaa",
         4,
     ));
     assert_ok(lfs_setattr(
         lfs,
         path_bytes("/").as_c_str(),
         b'B',
-        b"bbbbbb".as_ptr() as *const core::ffi::c_void,
+        b"bbbbbb",
         6,
     ));
     assert_ok(lfs_setattr(
         lfs,
         path_bytes("/").as_c_str(),
         b'C',
-        b"ccccc".as_ptr() as *const core::ffi::c_void,
+        b"ccccc",
         5,
     ));
 
@@ -263,7 +263,7 @@ fn test_attrs_get_set_root() {
         lfs,
         path_bytes("/").as_c_str(),
         b'B',
-        b"".as_ptr() as *const core::ffi::c_void,
+        b"",
         0,
     ));
     assert_ok(lfs_removeattr(lfs, c"/", b'B'));
@@ -271,7 +271,7 @@ fn test_attrs_get_set_root() {
         lfs,
         path_bytes("/").as_c_str(),
         b'B',
-        b"fffffffff".as_ptr() as *const core::ffi::c_void,
+        b"fffffffff",
         9,
     ));
     assert_ok(lfs_unmount(lfs));
@@ -453,14 +453,14 @@ fn test_attrs_deferred_file() {
         lfs,
         path_bytes("hello/hello").as_c_str(),
         b'B',
-        b"fffffffff".as_ptr() as *const core::ffi::c_void,
+        b"fffffffff",
         9,
     ));
     assert_ok(lfs_setattr(
         lfs,
         path_bytes("hello/hello").as_c_str(),
         b'C',
-        b"ccccc".as_ptr() as *const core::ffi::c_void,
+        b"ccccc",
         5,
     ));
 

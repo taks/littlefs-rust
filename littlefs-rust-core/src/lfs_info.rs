@@ -33,8 +33,7 @@ pub struct LfsAttr<'a> {
 
 impl<'a> LfsAttr<'a> {
     pub fn as_bytes(&self) -> &'a [u8] {
-        &[]
-        // unsafe { ::core::slice::from_raw_parts(self as *const Self as *const _, 24) } //  core::mem::size_of::<Self>()) }
+        unsafe { ::core::slice::from_raw_parts(self as *const Self as *const _, 24) } //  core::mem::size_of::<Self>()) }
     }
 
     pub fn try_ref_from_bytes(bytes: &[u8]) -> &Self {

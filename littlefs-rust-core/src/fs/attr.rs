@@ -139,7 +139,7 @@ pub fn lfs_commitattr(
     lfs: &mut Lfs,
     path: &CStr,
     r#type: u8,
-    buffer: *const core::ffi::c_void,
+    buffer: &[u8],
     size: lfs_size_t,
 ) -> Result<(), Error> {
     unsafe {
@@ -166,7 +166,6 @@ pub fn lfs_commitattr(
             lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
 
-        let buffer = core::slice::from_raw_parts(buffer as *const u8, size as usize);
         let attrs = [lfs_mattr {
             tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size),
             buffer,
@@ -195,7 +194,7 @@ pub fn lfs_setattr_(
     lfs: &mut Lfs,
     path: &CStr,
     r#type: u8,
-    buffer: *const core::ffi::c_void,
+    buffer: &[u8],
     size: lfs_size_t,
 ) -> Result<(), Error> {
     if size > (*lfs).attr_max {
@@ -216,5 +215,5 @@ pub fn lfs_setattr_(
 /// #endif
 /// ```
 pub fn lfs_removeattr_(lfs: &mut Lfs, path: &CStr, r#type: u8) -> Result<(), Error> {
-    lfs_commitattr(lfs, path, r#type, core::ptr::null(), 0x3ff)
+    lfs_commitattr(lfs, path, r#type, &[], 0x3ff)
 }
