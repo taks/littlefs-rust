@@ -951,8 +951,6 @@ pub fn lfs_dir_traverse(
                     } else if type3 == crate::lfs_type::lfs_type::LFS_FROM_USERATTRS as u16 {
                         // C: lfs.c:620-632 — iterate over user attrs, dispatch each to cb
                         let attr_count = crate::tag::lfs_tag_size(tag) as usize;
-                        // TODO:
-                        ::log::warn!("{} {:?}", attr_count, buffer);
                         let attrs_ptr = buffer.as_ptr() as *const LfsAttr; // crate::lfs_info::LfsAttr::try_ref_from_bytes(buffer);
                         let mut i = 0;
                         while i < attr_count {

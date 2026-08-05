@@ -946,9 +946,7 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                         if (c.attrs.is_empty()) {
                             &[]
                         } else {
-                            // TODO: zerocopy?
-                            // (*c.attrs).as_bytes()
-                            unsafe { ::core::slice::from_raw_parts(c.attrs.as_ptr() as *const _, ::core::mem::size_of::<LfsAttr>() * c.attrs.len()) }
+                            c.attrs.as_bytes()
                         }
                     })
                 },
