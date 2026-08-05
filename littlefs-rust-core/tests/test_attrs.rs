@@ -14,6 +14,7 @@ use littlefs_rust_core::{
     lfs_file_opencfg, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_getattr,
     lfs_mkdir, lfs_mount, lfs_removeattr, lfs_setattr, lfs_unmount,
 };
+use zerocopy::IntoBytes;
 
 /// attr_max from config; tests use ATTR_MAX+1 for NOSPC check.
 const ATTR_MAX: usize = 1022;
@@ -343,11 +344,11 @@ fn test_attrs_get_set_file() {
     let mut attrs = [
         LfsAttr {
             type_: b'A',
-            buffer: &mut buffer[0..4],
+            buffer: unsafe { core::mem::transmute(&mut buffer[0..4]) },
         },
         LfsAttr {
             type_: b'B',
-            buffer: &mut buffer[4..10],
+            buffer: unsafe { core::mem::transmute(&mut buffer[4..10]) },
         },
         LfsAttr {
             type_: b'C',
@@ -373,18 +374,18 @@ fn test_attrs_get_set_file() {
     let mut attrs_read = [
         LfsAttr {
             type_: b'A',
-            buffer: buffer.as_mut_ptr() as *mut core::ffi::c_void,
-            size: 4,
+            buffer: unsafe { core::mem::transmute(&mut buffer[0..4]) },
+            // size: 4,
         },
         LfsAttr {
             type_: b'B',
-            buffer: buffer[4..].as_mut_ptr() as *mut core::ffi::c_void,
-            size: 6,
+            buffer: unsafe { core::mem::transmute(&mut buffer[4..10]) },
+            // size: 6,
         },
         LfsAttr {
             type_: b'C',
-            buffer: buffer[10..].as_mut_ptr() as *mut core::ffi::c_void,
-            size: 5,
+            buffer: &mut buffer[10..],
+            // size: 5,
         },
     ];
     let cfg_read = LfsFileConfig {
@@ -480,18 +481,18 @@ fn test_attrs_deferred_file() {
     let mut attrs = [
         LfsAttr {
             type_: b'B',
-            buffer: attr_buf.as_mut_ptr() as *mut core::ffi::c_void,
-            size: 4,
+            buffer: unsafe { core::mem::transmute(attr_buf[0..4].as_mut_bytes())},
+            // size: 4,
         },
         LfsAttr {
             type_: b'C',
-            buffer: core::ptr::null_mut(),
-            size: 0,
+            buffer: &mut [],
+            //size: 0,
         },
         LfsAttr {
             type_: b'D',
-            buffer: attr_buf[8..].as_mut_ptr() as *mut core::ffi::c_void,
-            size: 4,
+            buffer: attr_buf[8..].as_mut_bytes(),
+            // size: 4,
         },
     ];
     let cfg = LfsFileConfig {

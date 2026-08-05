@@ -265,7 +265,7 @@ pub fn lfs_file_opencfg_(
                 },
                 crate::tag::lfs_mattr {
                     tag: lfs_mktag(LFS_TYPE_REG, file.id as u32, nlen),
-                    buffer: path_ptr.as_ptr() as *const core::ffi::c_void,
+                    buffer: path_ptr.to_bytes_with_nul(),
                 },
                 crate::tag::lfs_mattr {
                     tag: lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0),
@@ -942,8 +942,7 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                         file.cfg.as_ref().map_or(0, |c| c.attr_count),
                     ) as u32,
                     buffer: file.cfg.as_ref().map_or(&[], |c|  {
-                        let a = (*c.attrs);
-                        a.as_bytes()
+                        (*c.attrs).as_bytes()
                     })
                 },
             ];

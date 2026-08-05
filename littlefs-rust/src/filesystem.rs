@@ -43,16 +43,14 @@ pub struct Filesystem<S: Storage> {
 
 // ── Trampolines ─────────────────────────────────────────────────────────────
 
-unsafe extern "C" fn trampoline_read<S: Storage>(
+fn trampoline_read<S: Storage>(
     cfg: *const LfsConfig,
     block: u32,
     off: u32,
-    buffer: *mut u8,
-    size: u32,
+    buffer: &mut [u8],
 ) -> i32 {
-    let storage = &mut *((*cfg).context as *mut S);
-    let buf = core::slice::from_raw_parts_mut(buffer, size as usize);
-    match storage.read(block, off, buf) {
+    let storage = unsafe { &mut *((*cfg).context as *mut S) };
+    match storage.read(block, off, buffer) {
         Ok(()) => 0,
         Err(_) => LFS_ERR_IO,
     }

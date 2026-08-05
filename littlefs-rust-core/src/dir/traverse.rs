@@ -2,6 +2,7 @@
 
 use zerocopy::{IntoBytes, TryFromBytes};
 
+use crate::LfsAttr;
 use crate::bd::LfsCache;
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
@@ -795,7 +796,7 @@ pub fn lfs_dir_traverse(
                             off: off + 4,
                         };
                         ptag = tag_val;
-                        (tag_val, disk.as_bytes())
+                        (tag_val, unsafe { core::mem::transmute(disk.as_bytes()) })
                     } else if attr_i
                         < (if use_empty_attrs {
                             EMPTY_ATTRS
@@ -950,7 +951,7 @@ pub fn lfs_dir_traverse(
                     } else if type3 == crate::lfs_type::lfs_type::LFS_FROM_USERATTRS as u16 {
                         // C: lfs.c:620-632 — iterate over user attrs, dispatch each to cb
                         let attr_count = crate::tag::lfs_tag_size(tag) as usize;
-                        let attrs_ptr = crate::lfs_info::LfsAttr::try_ref_from_bytes(buffer);
+                        let attrs_ptr = buffer.as_ptr() as *const LfsAttr; // crate::lfs_info::LfsAttr::try_ref_from_bytes(buffer);
                         let mut i = 0;
                         while i < attr_count {
                             let a = unsafe { &*attrs_ptr.add(i) };

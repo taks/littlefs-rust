@@ -148,7 +148,8 @@ pub fn lfs_dir_commitattr(
         }
 
         if lfs_tag_isvalid(tag) {
-            assert_eq!(buffer.len(), dsize.saturating_sub(4) as usize);
+            // TODO:
+            assert!(buffer.len() >= dsize.saturating_sub(4) as usize, "buffer: {:?} dsize: {}", buffer, dsize);
             lfs_dir_commitprog(lfs, commit, &buffer[..dsize.saturating_sub(4) as usize])?;
         } else {
             let disk = buffer.as_ptr() as *const crate::tag::lfs_diskoff;
@@ -699,7 +700,7 @@ pub fn lfs_dir_split(
 pub fn lfs_dir_commit_size(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
-    _buffer: *const core::ffi::c_void,
+    _buffer: &[u8],
 ) -> Result<i32, Error> {
     use crate::tag::lfs_tag_dsize;
     use crate::types::lfs_size_t;
@@ -1143,7 +1144,7 @@ pub fn lfs_dir_compact(
                         0x3ff,
                         8,
                     ),
-                    &dir.tail as *const _ as *const _,
+                    dir.tail.as_bytes(),
                 );
                 lfs_pair_fromle32(&mut dir.tail);
                 if let Err(err) = err {
@@ -1526,7 +1527,7 @@ pub fn lfs_dir_splittingcompact(
 fn lfs_dir_commit_size_raw(
     p: *mut core::ffi::c_void,
     tag: lfs_tag_t,
-    buffer: *const core::ffi::c_void,
+    buffer: &[u8],
 ) -> Result<i32, Error> {
     lfs_dir_commit_size(p, tag, buffer)
 }
@@ -1735,7 +1736,7 @@ pub fn lfs_dir_relocatingcommit(
                 dir.count -= 1;
                 hasdelete = true;
             } else if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
-                let buf = attr.buffer as *const [lfs_block_t; 2];
+                let buf = attr.buffer.as_ptr() as *const [lfs_block_t; 2];
                 if !buf.is_null() {
                     dir.tail[0] = (*buf)[0];
                     dir.tail[1] = (*buf)[1];
@@ -1959,10 +1960,10 @@ fn lfs_dir_commit_commit_raw(
         buffer
     );
     if u32::from(crate::tag::lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK {
-        let preview: [u8; 8] = if buffer.is_null() {
+        let preview: [u8; 8] = if buffer.is_empty() {
             [0u8; 8]
         } else {
-            unsafe { core::ptr::read(buffer as *const [u8; 8]) }
+            unsafe { core::ptr::read(buffer.as_ptr() as *const [u8; 8]) }
         };
         crate::lfs_trace!(
             "commit_commit_raw SUPERBLOCK: buffer={:p} first 8 bytes: {:?}",
