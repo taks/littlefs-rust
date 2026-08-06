@@ -321,8 +321,7 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        BALD.len() as u32,
+        &mut buf[..BALD.len()],
     );
     assert_eq!(n, Ok(0));
 
@@ -536,7 +535,7 @@ fn test_truncate_aggressive() {
             let mut j: u32 = 0;
             while j < startsizes[i] {
                 let chunk = lfs_min(size, startsizes[i] - j);
-                let n = lfs_file_write(lfs, file, HAIR.as_ptr() as *const core::ffi::c_void, chunk);
+                let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]);
                 assert_eq!(n, Ok(chunk as u32));
                 j += chunk;
             }

@@ -408,8 +408,7 @@ fn test_alloc_exhaustion(#[values(false, true)] infer_bc: bool) {
     let n = lfs_file_write(
         lfs,
         file,
-        exhaustion.as_ptr() as *const core::ffi::c_void,
-        exhaustion.len() as u32,
+        exhaustion
     );
     assert_eq!(n, Ok(exhaustion.len() as u32));
     assert_ok(lfs_file_sync(lfs, file));
@@ -419,8 +418,7 @@ fn test_alloc_exhaustion(#[values(false, true)] infer_bc: bool) {
         let res = lfs_file_write(
             lfs,
             file,
-            blah.as_ptr() as *const core::ffi::c_void,
-            blah.len() as u32,
+            blah
         );
         if res.is_err() {
             use littlefs_rust_core::error::Error;
@@ -443,8 +441,7 @@ fn test_alloc_exhaustion(#[values(false, true)] infer_bc: bool) {
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        exhaustion.len() as u32,
+        &mut buf[..exhaustion.len()],
     );
     assert_eq!(n, Ok(exhaustion.len() as u32));
     assert_eq!(&buf[..exhaustion.len()], exhaustion);
