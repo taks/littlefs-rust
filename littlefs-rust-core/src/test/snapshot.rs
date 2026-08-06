@@ -3,9 +3,9 @@
 #[cfg(test)]
 extern crate std;
 
+use crate::LfsConfig;
 use crate::error::Error;
 use crate::test::ram::MAGIC_OFFSET;
-use crate::LfsConfig;
 
 /// Captured superblock blocks. Use dump() to pretty-print.
 pub struct SuperblockSnapshot {

@@ -47,11 +47,7 @@ fn test_entries_grow() {
             path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
-        let n = lfs_file_write(
-            lfs,
-            file,
-            &buf[..size],
-        );
+        let n = lfs_file_write(lfs, file, &buf[..size]);
         assert_eq!(n, Ok(size as u32));
         assert_ok(lfs_file_close(lfs, file));
     }
@@ -75,11 +71,7 @@ fn test_entries_grow() {
         c"hi1",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        &buf[..200],
-    );
+    let n = lfs_file_write(lfs, file, &buf[..200]);
     assert_eq!(n, Ok(200));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -124,11 +116,7 @@ fn test_entries_shrink() {
             path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
-        let n = lfs_file_write(
-            lfs,
-            file,
-            &buf[..size],
-        );
+        let n = lfs_file_write(lfs, file, &buf[..size]);
         assert_eq!(n, Ok(size as u32));
         assert_ok(lfs_file_close(lfs, file));
     }
@@ -152,11 +140,7 @@ fn test_entries_shrink() {
         c"hi1",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        &buf[..20],
-    );
+    let n = lfs_file_write(lfs, file, &buf[..20]);
     assert_eq!(n, Ok(20));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -248,11 +232,7 @@ fn test_entries_push_spill() {
         c"hi0",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        &buf[..200],
-    );
+    let n = lfs_file_write(lfs, file, &buf[..200]);
     assert_eq!(n, Ok(200));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -266,11 +246,7 @@ fn test_entries_push_spill() {
             path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
-        let n = lfs_file_write(
-            lfs,
-            file,
-            &buf[..size],
-        );
+        let n = lfs_file_write(lfs, file, &buf[..size]);
         assert_eq!(n, Ok(size as u32));
         assert_ok(lfs_file_close(lfs, file));
     }
@@ -278,11 +254,7 @@ fn test_entries_push_spill() {
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, c"hi1", LFS_O_RDONLY));
     let mut rb = [0u8; 256];
-    let n = lfs_file_read(
-        lfs,
-        file,
-        &mut rb[..20]
-    );
+    let n = lfs_file_read(lfs, file, &mut rb[..20]);
     assert_eq!(n, Ok(20));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -293,11 +265,7 @@ fn test_entries_push_spill() {
         c"hi1",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        &buf[..200]
-    );
+    let n = lfs_file_write(lfs, file, &buf[..200]);
     assert_eq!(n, Ok(200));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -305,11 +273,7 @@ fn test_entries_push_spill() {
         let path = path_bytes(&format!("hi{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
-        let n = lfs_file_read(
-            lfs,
-            file,
-            &mut rb[..200]
-        );
+        let n = lfs_file_read(lfs, file, &mut rb[..200]);
         assert_eq!(n, Ok(200));
         assert_ok(lfs_file_close(lfs, file));
     }
@@ -339,12 +303,7 @@ fn test_entries_drop() {
             path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
-        let n = lfs_file_write(
-            lfs,
-            file,
-            buf[..size].as_ptr() as *const core::ffi::c_void,
-            size as u32,
-        );
+        let n = lfs_file_write(lfs, file, &buf[..size]);
         assert_eq!(n, Ok(size as u32));
         assert_ok(lfs_file_close(lfs, file));
     }
@@ -357,12 +316,7 @@ fn test_entries_drop() {
         c"hi1",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        buf[..20].as_ptr() as *const core::ffi::c_void,
-        20,
-    );
+    let n = lfs_file_write(lfs, file, &buf[..20]);
     assert_eq!(n, Ok(20));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -371,12 +325,7 @@ fn test_entries_drop() {
         let path = path_bytes(&format!("hi{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
-        let n = lfs_file_read(
-            lfs,
-            file,
-            rb[..20].as_mut_ptr() as *mut core::ffi::c_void,
-            20,
-        );
+        let n = lfs_file_read(lfs, file, &mut rb[..20]);
         assert_eq!(n, Ok(20));
         assert_ok(lfs_file_close(lfs, file));
     }

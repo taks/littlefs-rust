@@ -122,11 +122,7 @@ fn test_powerloss_only_rev() {
     );
     let buf2 = b"goodbye";
     for i in 0..5 {
-        let n = lfs_file_write(
-            lfs,
-            file,
-            buf2,
-        );
+        let n = lfs_file_write(lfs, file, buf2);
         assert_eq!(n, Ok(buf2.len() as u32));
         assert_ok_at(
             &format!("file_sync #{} (after corrupt)", i + 1),

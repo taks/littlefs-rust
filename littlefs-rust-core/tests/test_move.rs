@@ -580,26 +580,9 @@ fn test_move_file_corrupt_source() {
         c"a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
-    assert_eq!(
-        lfs_file_write(lfs, file, b"hola\n"),
-        Ok(5)
-    );
-    assert_eq!(
-        lfs_file_write(
-            lfs,
-            file,
-            b"bonjour\n",
-        ),
-        Ok(8)
-    );
-    assert_eq!(
-        lfs_file_write(
-            lfs,
-            file,
-            b"ohayo\n",
-        ),
-        Ok(6)
-    );
+    assert_eq!(lfs_file_write(lfs, file, b"hola\n"), Ok(5));
+    assert_eq!(lfs_file_write(lfs, file, b"bonjour\n",), Ok(8));
+    assert_eq!(lfs_file_write(lfs, file, b"ohayo\n",), Ok(6));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
 
@@ -676,26 +659,9 @@ fn test_move_file_corrupt_source_dest() {
         c"a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
-    assert_eq!(
-        lfs_file_write(lfs, file, b"hola\n"),
-        Ok(5)
-    );
-    assert_eq!(
-        lfs_file_write(
-            lfs,
-            file,
-            b"bonjour\n"
-        ),
-        Ok(8)
-    );
-    assert_eq!(
-        lfs_file_write(
-            lfs,
-            file,
-            b"ohayo\n"
-        ),
-        Ok(6)
-    );
+    assert_eq!(lfs_file_write(lfs, file, b"hola\n"), Ok(5));
+    assert_eq!(lfs_file_write(lfs, file, b"bonjour\n"), Ok(8));
+    assert_eq!(lfs_file_write(lfs, file, b"ohayo\n"), Ok(6));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
 
@@ -766,26 +732,9 @@ fn test_move_file_after_corrupt() {
         c"a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
-    assert_eq!(
-        lfs_file_write(lfs, file, b"hola\n"),
-        Ok(5)
-    );
-    assert_eq!(
-        lfs_file_write(
-            lfs,
-            file,
-            b"bonjour\n"
-        ),
-        Ok(8)
-    );
-    assert_eq!(
-        lfs_file_write(
-            lfs,
-            file,
-            b"ohayo\n"
-        ),
-        Ok(6)
-    );
+    assert_eq!(lfs_file_write(lfs, file, b"hola\n"), Ok(5));
+    assert_eq!(lfs_file_write(lfs, file, b"bonjour\n"), Ok(8));
+    assert_eq!(lfs_file_write(lfs, file, b"ohayo\n"), Ok(6));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
 
@@ -939,7 +888,7 @@ fn test_move_dir_corrupt_source() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, c"c/hi", info));
-    assert_eq!( info.type_ , LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
     assert_err(Error::NoEntry, lfs_stat(lfs, c"a/hi", info));
     assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hi", info));
@@ -996,7 +945,7 @@ fn test_move_dir_corrupt_source_dest() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, c"a/hi", info));
-    assert_eq!( { (*info).type_ }, LFS_TYPE_DIR as u8);
+    assert_eq!({ (*info).type_ }, LFS_TYPE_DIR as u8);
 
     assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hi", info));
     assert_err(Error::NoEntry, lfs_stat(lfs, c"c/hi", info));
@@ -1061,7 +1010,7 @@ fn test_move_dir_after_corrupt() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, c"c/hi", info));
-    assert_eq!( info.type_ , LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
     assert_err(Error::NoEntry, lfs_stat(lfs, c"a/hi", info));
     assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hi", info));
@@ -1148,14 +1097,7 @@ fn test_move_fix_relocation() {
             path_bytes("parent/1.move_me").as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
-        assert_eq!(
-            lfs_file_write(
-                lfs,
-                file,
-                b"move me\0"
-            ),
-            Ok(8)
-        );
+        assert_eq!(lfs_file_write(lfs, file, b"move me\0"), Ok(8));
         assert_ok(lfs_file_close(lfs, file));
 
         for (path, content) in [
@@ -1170,10 +1112,7 @@ fn test_move_fix_relocation() {
                 path_bytes(path).as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT,
             ));
-            assert_eq!(
-                lfs_file_write(lfs, file, content),
-                Ok(7)
-            );
+            assert_eq!(lfs_file_write(lfs, file, content), Ok(7));
             assert_ok(lfs_file_close(lfs, file));
         }
 
@@ -1204,10 +1143,7 @@ fn test_move_fix_relocation() {
                 .iter_mut()
                 .zip([b"test.5\0", b"test.6\0", b"test.7\0", b"test.8\0"])
         {
-            assert_eq!(
-                lfs_file_write(lfs, f, content),
-                Ok(7)
-            );
+            assert_eq!(lfs_file_write(lfs, f, content), Ok(7));
         }
 
         if relocations & 1 != 0 {
@@ -1338,14 +1274,7 @@ fn test_move_fix_relocation_predecessor() {
             path_bytes("parent/sibling/1.move_me").as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
-        assert_eq!(
-            lfs_file_write(
-                lfs,
-                file,
-                b"move me\0",
-            ),
-            Ok(8)
-        );
+        assert_eq!(lfs_file_write(lfs, file, b"move me\0",), Ok(8));
         assert_ok(lfs_file_close(lfs, file));
 
         for (path, content) in [
@@ -1360,10 +1289,7 @@ fn test_move_fix_relocation_predecessor() {
                 path_bytes(path).as_c_str(),
                 LFS_O_WRONLY | LFS_O_CREAT,
             ));
-            assert_eq!(
-                lfs_file_write(lfs, file, content),
-                Ok(7)
-            );
+            assert_eq!(lfs_file_write(lfs, file, content), Ok(7));
             assert_ok(lfs_file_close(lfs, file));
         }
 
@@ -1394,10 +1320,7 @@ fn test_move_fix_relocation_predecessor() {
                 .iter_mut()
                 .zip([b"test.5\0", b"test.6\0", b"test.7\0", b"test.8\0"])
         {
-            assert_eq!(
-                lfs_file_write(lfs, f, content),
-                Ok(7)
-            );
+            assert_eq!(lfs_file_write(lfs, f, content), Ok(7));
         }
 
         if relocations & 1 != 0 {

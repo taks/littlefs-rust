@@ -7,7 +7,7 @@
 ///
 /// C: lfs_util.h:243-252
 pub fn lfs_malloc(size: u32) -> *mut u8 {
-    use alloc::alloc::{alloc, Layout};
+    use alloc::alloc::{Layout, alloc};
     let layout = Layout::from_size_align(size as usize, 4).expect("invalid layout");
 
     unsafe { alloc(layout) }
@@ -22,7 +22,7 @@ pub fn lfs_free(ptr: *mut u8, size: u32) {
     if ptr.is_null() {
         return;
     }
-    use alloc::alloc::{dealloc, Layout};
+    use alloc::alloc::{Layout, dealloc};
     let layout = Layout::from_size_align(size as usize, 4).expect("invalid layout");
     unsafe {
         dealloc(ptr, layout);

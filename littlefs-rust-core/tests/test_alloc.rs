@@ -77,11 +77,7 @@ fn test_alloc_parallel(
         let name = NAMES[n as usize];
         for i in (0..size).step_by(name.len()) {
             let chunk = (size - i).min(name.len());
-            let nw = lfs_file_write(
-                lfs,
-                &mut files[n as usize],
-                &name[..chunk as usize],
-            );
+            let nw = lfs_file_write(lfs, &mut files[n as usize], &name[..chunk as usize]);
             assert_eq!(nw, Ok(chunk as u32));
         }
     }
@@ -168,11 +164,7 @@ fn test_alloc_serial(
                 assert_ok(lfs_fs_gc(lfs));
             }
             let chunk = (size - i).min(name.len());
-            let nw = lfs_file_write(
-                lfs,
-                file,
-                &buf[..chunk as usize],
-            );
+            let nw = lfs_file_write(lfs, file, &buf[..chunk as usize]);
             assert_eq!(nw, Ok(chunk as u32));
         }
         assert_ok(lfs_file_close(lfs, file));
@@ -250,11 +242,7 @@ fn test_alloc_parallel_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)
             let name = NAMES[n as usize];
             for i in (0..size).step_by(name.len()) {
                 let chunk = (size - i).min(name.len());
-                let nw = lfs_file_write(
-                    lfs,
-                    &mut files[n as usize],
-                    &name[..chunk],
-                );
+                let nw = lfs_file_write(lfs, &mut files[n as usize], &name[..chunk]);
                 assert_eq!(nw, Ok(chunk as u32));
             }
         }

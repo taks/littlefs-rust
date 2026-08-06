@@ -1570,8 +1570,7 @@ pub fn lfs_file_truncate_(
             let zero = [0u8];
             #[allow(clippy::while_immutable_condition)] // file.pos updated by lfs_file_write_
             while file.pos < size {
-                let res =
-                    lfs_file_write_(lfs, file, &zero)?;
+                let res = lfs_file_write_(lfs, file, &zero)?;
             }
         }
 

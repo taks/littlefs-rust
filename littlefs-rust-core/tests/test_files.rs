@@ -48,11 +48,7 @@ fn test_files_simple(#[values(0, -1, 8)] inline_max: i32) {
         path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        data,
-    );
+    let n = lfs_file_write(lfs, file, data);
     assert_eq!(n, Ok(data.len() as u32));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -469,11 +465,7 @@ fn test_files_reentrant_write_sync(
             for slot in buf[..chunk as usize].iter_mut() {
                 *slot = (common::test_prng(&mut prng) & 0xff) as u8;
             }
-            let n = littlefs_rust_core::lfs_file_write(
-                lfs,
-                file,
-                &buf[..chunk as usize],
-            )?;
+            let n = littlefs_rust_core::lfs_file_write(lfs, file, &buf[..chunk as usize])?;
 
             assert_eq!(n, chunk as u32);
             littlefs_rust_core::lfs_file_sync(lfs, file)?;
@@ -536,11 +528,7 @@ fn test_files_many() {
         let content = format!("Hi {:03}\0", i);
         let bytes = content.as_bytes();
         assert_eq!(bytes.len(), 7);
-        let n = lfs_file_write(
-            lfs,
-            file,
-            bytes,
-        );
+        let n = lfs_file_write(lfs, file, bytes);
         assert_eq!(n, Ok(bytes.len() as u32));
         assert_ok(lfs_file_close(lfs, file));
 
@@ -581,11 +569,7 @@ fn test_files_many_power_cycle() {
         let content = format!("Hi {:03}\0", i);
         let bytes = content.as_bytes();
         assert_eq!(bytes.len(), 7);
-        let n = lfs_file_write(
-            lfs,
-            file,
-            bytes,
-        );
+        let n = lfs_file_write(lfs, file, bytes);
         assert_eq!(n, Ok(bytes.len() as u32));
         assert_ok(lfs_file_close(lfs, file));
         assert_ok(lfs_unmount(lfs));
@@ -688,11 +672,7 @@ fn test_files_same_session() {
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, path, 0x0100 | 2));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        data,
-    );
+    let n = lfs_file_write(lfs, file, data);
     assert_eq!(n, Ok(data.len() as u32));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -788,11 +768,7 @@ fn test_files_truncate_api() {
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     let data = b"hello world";
-    let _ = lfs_file_write(
-        lfs,
-        file,
-        data,
-    );
+    let _ = lfs_file_write(lfs, file, data);
     assert_ok(lfs_file_truncate(lfs, file, 5));
     assert_ok(lfs_file_sync(lfs, file));
     assert_ok(lfs_file_close(lfs, file));

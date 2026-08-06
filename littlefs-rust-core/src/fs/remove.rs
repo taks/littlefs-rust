@@ -1,7 +1,7 @@
 //! remove. Per lfs.c remove_.
 
-use zerocopy::IntoBytes;
 use core::ffi::CStr;
+use zerocopy::IntoBytes;
 
 use crate::dir::commit::{lfs_dir_commit, lfs_dir_drop};
 use crate::dir::fetch::lfs_dir_fetch;

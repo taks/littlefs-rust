@@ -1,7 +1,7 @@
 //! Stat. Per lfs.c lfs_stat_, lfs_fs_stat_, lfs_fs_size_.
 
-use zerocopy::IntoBytes;
 use core::ffi::CStr;
+use zerocopy::IntoBytes;
 
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;

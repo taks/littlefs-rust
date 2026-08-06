@@ -1,7 +1,7 @@
 //! Directory open/read. Per lfs.c lfs_dir_open_, lfs_dir_close_, lfs_dir_read_, etc.
 
-use zerocopy::IntoBytes;
 use core::ffi::CStr;
+use zerocopy::IntoBytes;
 
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsDir;

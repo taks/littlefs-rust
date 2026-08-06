@@ -207,7 +207,7 @@ pub fn lfs_file_read(
 pub fn lfs_file_write(
     lfs: &mut Lfs,
     file: &mut LfsFile,
-    buffer: &[u8]
+    buffer: &[u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
     crate::file::ops::lfs_file_write_(lfs, file, buffer)
 }

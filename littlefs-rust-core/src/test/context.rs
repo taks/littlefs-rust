@@ -1,8 +1,8 @@
 //! TestContext: env + Lfs, ready for format/mount. Single setup for unit tests.
 
 use crate::borrow_unchecked::borrow_unchecked;
-use crate::test::ram::{make_config, RamStorage, BLOCK_SIZE};
-use crate::{lfs_format, lfs_mount, lfs_unmount, Lfs, LfsConfig};
+use crate::test::ram::{BLOCK_SIZE, RamStorage, make_config};
+use crate::{Lfs, LfsConfig, lfs_format, lfs_mount, lfs_unmount};
 use core::mem::MaybeUninit;
 
 const DEFAULT_BLOCK_COUNT: u32 = 128;

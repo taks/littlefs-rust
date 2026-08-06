@@ -92,8 +92,7 @@ fn test_badblocks_single(
 
             let size = NAMEMULT as u32;
             for _j in 0..(i * FILEMULT) {
-                let n =
-                    lfs_file_write(lfs, file, &buffer[..size as usize]);
+                let n = lfs_file_write(lfs, file, &buffer[..size as usize]);
                 assert_eq!(n, Ok(size as u32));
             }
 
@@ -137,12 +136,7 @@ fn test_badblocks_single(
             let size = NAMEMULT as u32;
             for _j in 0..(i * FILEMULT) {
                 let mut rbuffer = [0u8; 1024];
-                let n = lfs_file_read(
-                    lfs,
-                    file,
-                    rbuffer.as_mut_ptr() as *mut core::ffi::c_void,
-                    size,
-                );
+                let n = lfs_file_read(lfs, file, &mut rbuffer[..size as usize]);
                 assert_eq!(n, Ok(size as u32));
                 assert_eq!(&rbuffer[..size as usize], &buffer[..size as usize]);
             }
@@ -361,12 +355,7 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         let size = NAMEMULT as u32;
         for _j in 0..(i * FILEMULT) {
             let mut rbuffer = [0u8; 1024];
-            let n = lfs_file_read(
-                lfs,
-                file,
-                rbuffer.as_mut_ptr() as *mut core::ffi::c_void,
-                size,
-            );
+            let n = lfs_file_read(lfs, file, &mut rbuffer[..size as usize]);
             assert_eq!(n, Ok(size as u32));
             assert_eq!(&rbuffer[..size as usize], &buffer[..size as usize]);
         }

@@ -657,11 +657,7 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
         let _ = lfs_unmount(lfs);
         return Err(err);
     }
-    let n = lfs_file_write(
-        lfs,
-        file,
-        data,
-    )?;
+    let n = lfs_file_write(lfs, file, data)?;
     if n != data.len() as _ {
         let _ = lfs_file_close(lfs, file);
         let _ = lfs_unmount(lfs);
@@ -1090,11 +1086,7 @@ pub fn write_prng_file(
         for slot in buffer[..chunk as usize].iter_mut() {
             *slot = (test_prng(&mut prng) & 0xff) as u8;
         }
-        let n = littlefs_rust_core::lfs_file_write(
-            lfs,
-            file,
-            &buffer[..chunk as usize],
-        );
+        let n = littlefs_rust_core::lfs_file_write(lfs, file, &buffer[..chunk as usize]);
         assert_eq!(
             n,
             Ok(chunk as u32),
@@ -1125,11 +1117,7 @@ pub fn write_prng_file_result(
         for slot in buffer[..chunk as usize].iter_mut() {
             *slot = (test_prng(&mut prng) & 0xff) as u8;
         }
-        let n = littlefs_rust_core::lfs_file_write(
-            lfs,
-            file,
-            &buffer[..chunk as usize],
-        )?;
+        let n = littlefs_rust_core::lfs_file_write(lfs, file, &buffer[..chunk as usize])?;
 
         if n != chunk as u32 {
             return Err(Error::Invalid);
@@ -1165,11 +1153,7 @@ pub fn verify_prng_file(
     let mut i: u32 = 0;
     while i < size {
         let chunk = core::cmp::min(chunk_size, size - i);
-        let n = littlefs_rust_core::lfs_file_read(
-            lfs,
-            file,
-            &mut buffer[..chunk as usize],
-        );
+        let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buffer[..chunk as usize]);
         assert_eq!(
             n,
             Ok(chunk as u32),
@@ -1207,11 +1191,7 @@ pub fn verify_prng_file_with_state(
     let mut i: u32 = 0;
     while i < size {
         let chunk = core::cmp::min(chunk_size, size - i);
-        let n = littlefs_rust_core::lfs_file_read(
-            lfs,
-            file,
-            &mut buffer[..chunk as usize],
-        );
+        let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buffer[..chunk as usize]);
         assert_eq!(
             n,
             Ok(chunk as u32),

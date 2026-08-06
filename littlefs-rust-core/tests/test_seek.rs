@@ -1066,11 +1066,7 @@ fn test_seek_filemax() {
         path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        KITTY
-    );
+    let n = lfs_file_write(lfs, file, KITTY);
     assert_eq!(n, Ok(KITTY.len() as u32));
 
     assert_eq!(
@@ -1107,11 +1103,7 @@ fn test_seek_underflow() {
         path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        KITTY
-    );
+    let n = lfs_file_write(lfs, file, KITTY);
     assert_eq!(n, Ok(KITTY.len() as u32));
     let size = KITTY.len() as i32;
 
@@ -1175,11 +1167,7 @@ fn test_seek_overflow() {
         path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        KITTY
-    );
+    let n = lfs_file_write(lfs, file, KITTY);
     assert_eq!(n, Ok(KITTY.len() as u32));
     let size = KITTY.len() as i32;
 

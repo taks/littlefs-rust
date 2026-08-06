@@ -1,7 +1,7 @@
 //! mkdir. Per lfs.c mkdir_.
 
-use zerocopy::IntoBytes;
 use core::ffi::CStr;
+use zerocopy::IntoBytes;
 
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
 use crate::borrow_unchecked::borrow_unchecked;
@@ -208,7 +208,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
         let attrs3 = [
             lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, id as u32, 0),
-                buffer: &[]
+                buffer: &[],
             },
             lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_DIR, id as u32, nlen),

@@ -149,7 +149,12 @@ pub fn lfs_dir_commitattr(
 
         if lfs_tag_isvalid(tag) {
             // TODO:
-            assert!(buffer.len() >= dsize.saturating_sub(4) as usize, "buffer: {:?} dsize: {}", buffer, dsize);
+            assert!(
+                buffer.len() >= dsize.saturating_sub(4) as usize,
+                "buffer: {:?} dsize: {}",
+                buffer,
+                dsize
+            );
             lfs_dir_commitprog(lfs, commit, &buffer[..dsize.saturating_sub(4) as usize])?;
         } else {
             let disk = buffer.as_ptr() as *const crate::tag::lfs_diskoff;

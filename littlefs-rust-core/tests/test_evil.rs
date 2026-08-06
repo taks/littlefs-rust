@@ -235,12 +235,7 @@ fn evil_invalid_file_pointer(size: u32) {
     assert_ok(lfs_file_open(lfs, file, file_name.as_c_str(), LFS_O_RDONLY));
     assert_err(
         Error::Corrupt,
-        lfs_file_read(
-            lfs,
-            file,
-            buffer.as_mut_ptr() as *mut core::ffi::c_void,
-            size,
-        ),
+        lfs_file_read(lfs, file, &mut buffer[..size as usize]),
     );
     assert_ok(lfs_file_close(lfs, file));
 

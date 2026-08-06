@@ -1,7 +1,7 @@
 //! Assertion helpers for superblock magic and block content.
 
-use crate::test::ram::{MAGIC, MAGIC_OFFSET};
 use crate::LfsConfig;
+use crate::test::ram::{MAGIC, MAGIC_OFFSET};
 
 /// Read config's block at offset 0, return magic region (8 bytes at MAGIC_OFFSET).
 fn read_magic_region(config: &LfsConfig, block: u32) -> Option<[u8; 8]> {

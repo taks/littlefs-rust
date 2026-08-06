@@ -1,7 +1,7 @@
 //! Directory find. Per lfs.c lfs_dir_find, lfs_dir_find_match.
 
-use zerocopy::IntoBytes;
 use core::ffi::CStr;
+use zerocopy::IntoBytes;
 
 use crate::bd::bd::lfs_bd_cmp;
 use crate::borrow_unchecked::borrow_unchecked;

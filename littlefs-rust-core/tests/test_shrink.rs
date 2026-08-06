@@ -108,12 +108,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
         let header = format!("Hi {:03}", i);
         wbuffer[..header.len()].copy_from_slice(header.as_bytes());
 
-        let n = lfs_file_write(
-            lfs,
-            file,
-            wbuffer.as_ptr() as *const core::ffi::c_void,
-            size,
-        );
+        let n = lfs_file_write(lfs, file, &wbuffer[..size as usize]);
         assert_eq!(n, Ok(size as u32));
         assert_ok(lfs_file_close(lfs, file));
     }
@@ -127,12 +122,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
             assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
 
             let mut rbuffer = vec![0u8; size as usize];
-            let n = lfs_file_read(
-                lfs,
-                file,
-                rbuffer.as_mut_ptr() as *mut core::ffi::c_void,
-                BLOCK_SIZE,
-            );
+            let n = lfs_file_read(lfs, file, &mut rbuffer[..BLOCK_SIZE as usize]);
             assert_eq!(n, Ok(size as u32));
             assert_ok(lfs_file_close(lfs, file));
 
@@ -164,11 +154,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
             assert_ok(lfs_file_open(lfs2, file, path.as_c_str(), LFS_O_RDONLY));
 
             let mut rbuffer = vec![0u8; size as usize];
-            let n = lfs_file_read(
-                lfs2,
-                file,
-                &mut rbuffer[..BLOCK_SIZE as usize],
-            );
+            let n = lfs_file_read(lfs2, file, &mut rbuffer[..BLOCK_SIZE as usize]);
             assert_eq!(n, Ok(size as u32));
             assert_ok(lfs_file_close(lfs2, file));
 

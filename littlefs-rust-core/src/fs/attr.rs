@@ -88,11 +88,7 @@ pub fn lfs_getattr_(
             lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
         let size = lfs_min(size, (*lfs).attr_max);
-        let gtag = lfs_mktag(
-            LFS_TYPE_USERATTR + r#type as u32,
-            id as u32,
-            size,
-        );
+        let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size);
         let buffer = core::slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
         let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer);
         if let Err(err) = tag {
