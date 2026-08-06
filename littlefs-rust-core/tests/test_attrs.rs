@@ -352,7 +352,7 @@ fn test_attrs_get_set_file() {
         },
         LfsAttr {
             type_: b'C',
-            buffer: &mut buffer[10..],
+            buffer: &mut buffer[10..15],
         },
     ];
     let mut cfg = LfsFileConfig {
