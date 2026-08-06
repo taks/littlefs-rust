@@ -14,6 +14,7 @@ use littlefs_rust_core::{
     lfs_dir_commit, lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mattr, lfs_mount,
     lfs_superblock_tole32, lfs_unmount,
 };
+use zerocopy::IntoBytes;
 
 /// Upstream: [cases.test_compat_major_incompat]
 ///
@@ -57,7 +58,7 @@ fn test_compat_major_incompat() {
             0,
             core::mem::size_of::<LfsSuperblock>() as u32,
         ),
-        buffer: &superblock as *const LfsSuperblock as *const core::ffi::c_void,
+        buffer: superblock.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(&mut lfs, &mut mdir, &attrs));
     assert_ok(lfs_unmount(&mut lfs));
@@ -107,7 +108,7 @@ fn test_compat_minor_incompat() {
             0,
             core::mem::size_of::<LfsSuperblock>() as u32,
         ),
-        buffer: &superblock as *const LfsSuperblock as *const core::ffi::c_void,
+        buffer: superblock.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs, &mut mdir, &attrs));
     assert_ok(lfs_unmount(lfs));
@@ -184,7 +185,7 @@ fn test_compat_minor_bump() {
             0,
             core::mem::size_of::<LfsSuperblock>() as u32,
         ),
-        buffer: &superblock as *const LfsSuperblock as *const core::ffi::c_void,
+        buffer: &superblock.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs, &mut mdir, &attrs));
     assert_ok(lfs_unmount(lfs));

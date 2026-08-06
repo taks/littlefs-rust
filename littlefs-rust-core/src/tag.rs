@@ -1,11 +1,12 @@
 //! Tag operations. Per lfs.c LFS_MKTAG, lfs_tag_*, lfs_mattr, lfs_diskoff.
 
 use derive_more::{BitAnd, BitOr, BitXor, Not, SubAssign};
+use zerocopy_derive::{Immutable, IntoBytes};
 
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
 
 #[repr(transparent)]
-#[derive(Copy, Clone, PartialEq, Not, BitAnd, BitOr, BitXor, SubAssign)]
+#[derive(Copy, Clone, PartialEq, Not, BitAnd, BitOr, BitXor, SubAssign, Debug)]
 pub struct Tag(pub u32);
 
 impl Tag {
@@ -187,9 +188,9 @@ impl Tag {
 /// };
 /// ```
 #[repr(C)]
-pub struct lfs_mattr {
+pub struct lfs_mattr<'a> {
     pub tag: Tag,
-    pub buffer: *const core::ffi::c_void,
+    pub buffer: &'a [u8],
 }
 
 /// Per lfs.c struct lfs_diskoff (lines 397-400)
@@ -202,7 +203,7 @@ pub struct lfs_mattr {
 /// };
 /// ```
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, IntoBytes, Immutable)]
 pub struct lfs_diskoff {
     pub block: lfs_block_t,
     pub off: lfs_off_t,

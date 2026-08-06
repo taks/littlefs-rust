@@ -1,5 +1,6 @@
 //! Directory open/read. Per lfs.c lfs_dir_open_, lfs_dir_close_, lfs_dir_read_, etc.
 
+use zerocopy::IntoBytes;
 use core::ffi::CStr;
 
 use crate::borrow_unchecked::borrow_unchecked;
@@ -97,7 +98,7 @@ pub fn lfs_dir_open_(
                     lfs_tag_id(tag as u32) as u32,
                     8,
                 ),
-                pair.as_mut_ptr() as *mut core::ffi::c_void,
+                pair.as_mut_bytes(),
             )?;
 
             lfs_pair_fromle32(&mut pair);

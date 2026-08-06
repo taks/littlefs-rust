@@ -272,7 +272,7 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
                 for i in 0..files {
                     let name = format!("{}", (b'a' + i as u8) as char);
                     let path = path_bytes(&name);
-                    let err = lfs_mkdir(lfs_ptr, path.as_ptr());
+                    let err = lfs_mkdir(lfs_ptr, path.as_c_str());
                     if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
                         return err;
@@ -282,12 +282,12 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
                     let name = format!("{}", (b'a' + i as u8) as char);
                     let path = path_bytes(&name);
                     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-                    let err = lfs_stat(lfs_ptr, path.as_ptr(), info.as_mut_ptr());
+                    let err = lfs_stat(lfs_ptr, path.as_c_str(), info.as_mut_ptr());
                     if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
                         return err;
                     }
-                    let err = lfs_remove(lfs_ptr, path.as_ptr());
+                    let err = lfs_remove(lfs_ptr, path.as_c_str());
                     if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
                         return err;

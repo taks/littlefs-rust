@@ -1,6 +1,7 @@
 //! Stat. Per lfs.c lfs_stat_, lfs_fs_stat_, lfs_fs_size_.
 
 use core::ffi::CStr;
+use zerocopy::IntoBytes;
 
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
@@ -35,7 +36,6 @@ pub fn lfs_stat_(
     use crate::dir::fetch::lfs_dir_getinfo;
     use crate::dir::find::lfs_dir_find;
     use crate::lfs_type::lfs_type::LFS_TYPE_DIR;
-    use crate::tag::{lfs_tag_id, lfs_tag_type3};
 
     if lfs.is_null() || info.is_null() {
         return Err(Error::Invalid);
@@ -64,7 +64,7 @@ pub fn lfs_stat_(
                 iter += 1;
             }
             if *p == b'/' {
-                if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
+                if u32::from((tag).lfs_tag_type3()) != LFS_TYPE_DIR {
                     return Err(Error::NotDir);
                 }
                 break;
@@ -72,7 +72,7 @@ pub fn lfs_stat_(
             p = p.add(1);
         }
 
-        lfs_dir_getinfo(lfs, &cwd, lfs_tag_id(tag as u32), info)
+        lfs_dir_getinfo(lfs, &cwd, (tag).lfs_tag_id(), info)
     }
 }
 
@@ -161,7 +161,7 @@ pub fn lfs_fs_stat_(
                     0,
                     core::mem::size_of::<LfsSuperblock>() as u32,
                 ),
-                &mut superblock as *mut _ as *mut core::ffi::c_void,
+                superblock.as_mut_bytes(),
             )?;
 
             lfs_superblock_fromle32(&mut superblock);

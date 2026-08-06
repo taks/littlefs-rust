@@ -1,5 +1,7 @@
 //! File and filesystem info. Per lfs.h struct lfs_info, lfs_fsinfo, lfs_attr, lfs_file_config.
 
+use zerocopy_derive::{FromBytes, Immutable, IntoBytes, KnownLayout, TryFromBytes};
+
 use crate::types::lfs_size_t;
 use core::ffi::c_void;
 
@@ -24,19 +26,72 @@ pub struct LfsFsinfo {
 
 /// Per lfs.h struct lfs_attr
 #[repr(C)]
-pub struct LfsAttr {
+#[derive(Immutable, KnownLayout, TryFromBytes)]
+pub struct LfsAttr<'a> {
     pub type_: u8,
-    pub buffer: *mut c_void,
-    pub size: lfs_size_t,
+    pub buffer: &'a mut [u8],
+}
+
+impl<'a> LfsAttr<'a> {
+    pub fn as_bytes(&self) -> &'a [u8] {
+        unsafe { ::core::slice::from_raw_parts(self as *const Self as *const _, 24) } //  core::mem::size_of::<Self>()) }
+    }
+
+    pub fn try_ref_from_bytes(bytes: &[u8]) -> &Self {
+        todo!()
+    }
+}
+
+unsafe impl<'a> zerocopy::IntoBytes for LfsAttr<'a> {
+    fn as_bytes(&self) -> &[u8]
+    where
+        Self: zerocopy::Immutable,
+    {
+        todo!()
+    }
+
+    fn as_mut_bytes(&mut self) -> &mut [u8]
+    where
+        Self: zerocopy::FromBytes,
+    {
+        todo!()
+    }
+
+    fn write_to(&self, dst: &mut [u8]) -> Result<(), zerocopy::SizeError<&Self, &mut [u8]>>
+    where
+        Self: zerocopy::Immutable,
+    {
+        todo!()
+    }
+
+    fn write_to_prefix(&self, dst: &mut [u8]) -> Result<(), zerocopy::SizeError<&Self, &mut [u8]>>
+    where
+        Self: zerocopy::Immutable,
+    {
+        todo!()
+    }
+
+    fn write_to_suffix(&self, dst: &mut [u8]) -> Result<(), zerocopy::SizeError<&Self, &mut [u8]>>
+    where
+        Self: zerocopy::Immutable,
+    {
+        todo!()
+    }
+
+    fn only_derive_is_allowed_to_implement_this_trait()
+    where
+        Self: Sized {
+        todo!()
+    }
 }
 
 /// Per lfs.h struct lfs_file_config
 #[repr(C)]
-pub struct LfsFileConfig {
-    pub buffer: *mut c_void,
-    pub attrs: *mut LfsAttr,
-    pub attr_count: lfs_size_t,
+pub struct LfsFileConfig<'a> {
+    pub buffer: &'a mut [u8],
+    pub attrs: &'a mut [LfsAttr<'a>],
+    // pub attr_count: lfs_size_t,
 }
 
 // Safe: default config (all nulls) is shareable. Callers must not mutate.
-unsafe impl Sync for LfsFileConfig {}
+unsafe impl Sync for LfsFileConfig<'_> {}

@@ -1,5 +1,7 @@
 //! FS grow/shrink. Per lfs.c lfs_fs_grow_, lfs_shrink_checkblock.
 
+use zerocopy::IntoBytes;
+
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_commit;
@@ -118,7 +120,7 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
         lfs_dir_fetch(lfs, root, lfs_root)?;
 
         // update the superblock
-        let mut superblock = core::mem::MaybeUninit::<LfsSuperblock>::zeroed();
+        let mut superblock = core::mem::zeroed::<LfsSuperblock>();
         let tag = lfs_dir_get(
             lfs,
             root,
@@ -128,19 +130,17 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
                 0,
                 core::mem::size_of::<LfsSuperblock>() as u32,
             ),
-            superblock.as_mut_ptr() as *mut core::ffi::c_void,
+            superblock.as_mut_bytes(),
         )?;
 
-        let sb = &mut *superblock.as_mut_ptr();
-        lfs_superblock_fromle32(sb);
+        lfs_superblock_fromle32(&mut superblock);
+        superblock.block_count = lfs.block_count;
 
-        sb.block_count = lfs.block_count;
-
-        lfs_superblock_tole32(sb);
+        lfs_superblock_tole32(&mut superblock);
         // C: lfs_dir_commit(lfs, &root, LFS_MKATTRS({tag, &superblock}))
         let attrs = [lfs_mattr {
             tag: tag,
-            buffer: superblock.as_ptr() as *const core::ffi::c_void,
+            buffer: superblock.as_bytes(),
         }];
         lfs_dir_commit(lfs, root, &attrs)?;
 

@@ -9,8 +9,8 @@ use super::lfs_ctz::LfsCtz;
 
 /// Per lfs.h typedef struct lfs_file
 #[repr(C)]
-pub struct LfsFile {
-    pub next: *mut LfsFile,
+pub struct LfsFile<'a> {
+    pub next: *mut LfsFile<'a>,
     pub id: u16,
     pub type_: u8,
     pub m: LfsMdir,
@@ -20,5 +20,5 @@ pub struct LfsFile {
     pub block: lfs_block_t,
     pub off: lfs_off_t,
     pub cache: LfsCache,
-    pub cfg: *const LfsFileConfig,
+    pub cfg: *const LfsFileConfig<'a>,
 }

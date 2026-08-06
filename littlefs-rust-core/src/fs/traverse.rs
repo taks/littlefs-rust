@@ -1,5 +1,7 @@
 //! FS traverse. Per lfs.c lfs_fs_traverse_.
 
+use zerocopy::IntoBytes;
+
 use crate::{borrow_unchecked::borrow_unchecked, error::Error, tag};
 //
 /// Per lfs.c lfs_fs_traverse_ (lines 4693-4794)
@@ -192,7 +194,7 @@ pub fn lfs_fs_traverse_(
                     &dir,
                     Tag::mktag(0x700, 0x3ff, 0),
                     Tag::mktag(crate::lfs_type::lfs_type::LFS_TYPE_STRUCT, id as u32, 8),
-                    raw.as_mut_ptr() as *mut core::ffi::c_void,
+                    raw.as_mut_bytes(),
                 );
                 if let Err(err) = tag {
                     if err == Error::NoEntry {
@@ -203,12 +205,10 @@ pub fn lfs_fs_traverse_(
                 lfs_pair_fromle32(&mut raw);
 
                 let tag = tag.unwrap();
-                if u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_CTZSTRUCT {
+                if u32::from((tag).lfs_tag_type3()) == LFS_TYPE_CTZSTRUCT {
                     let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     lfs_ctz_traverse(lfs, None, lfs_rcache, raw[0], raw[1], Some(cb), data)?;
-                } else if includeorphans
-                    && u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_DIRSTRUCT
-                {
+                } else if includeorphans && u32::from((tag).lfs_tag_type3()) == LFS_TYPE_DIRSTRUCT {
                     #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
                     for i in 0..2 {
                         cb(data, raw[i])?;

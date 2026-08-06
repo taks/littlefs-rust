@@ -1,5 +1,7 @@
 //! Format. Per lfs.c lfs_format_.
 
+use zerocopy::IntoBytes;
+
 use crate::bd::bd::lfs_bd_sync;
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
 use crate::borrow_unchecked::borrow_unchecked;
@@ -150,11 +152,11 @@ pub fn lfs_format_(
         let attrs = [
             crate::tag::lfs_mattr {
                 tag: Tag::mktag(LFS_TYPE_CREATE, 0, 0),
-                buffer: core::ptr::null(),
+                buffer: &[],
             },
             crate::tag::lfs_mattr {
                 tag: Tag::mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-                buffer: magic.as_ptr() as *const core::ffi::c_void,
+                buffer: magic,
             },
             crate::tag::lfs_mattr {
                 tag: Tag::mktag(
@@ -162,7 +164,7 @@ pub fn lfs_format_(
                     0,
                     core::mem::size_of::<LfsSuperblock>() as u32,
                 ),
-                buffer: &superblock as *const _ as *const _,
+                buffer: superblock.as_bytes(),
             },
         ];
         err = lfs_dir_commit(lfs, &mut root, &attrs);
@@ -275,11 +277,11 @@ pub unsafe fn test_traverse_format_attrs(
         let attrs = [
             crate::tag::lfs_mattr {
                 tag: Tag::mktag(LFS_TYPE_CREATE, 0, 0),
-                buffer: core::ptr::null(),
+                buffer: &[],
             },
             crate::tag::lfs_mattr {
                 tag: Tag::mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-                buffer: magic.as_ptr() as *const core::ffi::c_void,
+                buffer: magic,
             },
             crate::tag::lfs_mattr {
                 tag: Tag::mktag(
@@ -287,7 +289,7 @@ pub unsafe fn test_traverse_format_attrs(
                     0,
                     core::mem::size_of::<crate::lfs_superblock::LfsSuperblock>() as u32,
                 ),
-                buffer: &superblock as *const _ as *const _,
+                buffer: superblock.as_bytes(),
             },
         ];
 
@@ -381,11 +383,11 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
         let attrs = [
             crate::tag::lfs_mattr {
                 tag: Tag::mktag(LFS_TYPE_CREATE, 0, 0),
-                buffer: core::ptr::null(),
+                buffer: &[],
             },
             crate::tag::lfs_mattr {
                 tag: Tag::mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-                buffer: magic.as_ptr() as *const core::ffi::c_void,
+                buffer: magic,
             },
             crate::tag::lfs_mattr {
                 tag: Tag::mktag(
@@ -393,7 +395,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
                     0,
                     core::mem::size_of::<crate::lfs_superblock::LfsSuperblock>() as u32,
                 ),
-                buffer: &superblock as *const _ as *const _,
+                buffer: superblock.as_bytes(),
             },
         ];
 
@@ -498,7 +500,7 @@ pub unsafe fn test_format_minimal_superblock(
 
         let rev = 1u32;
         let rev_le = lfs_tole32(rev);
-        let err = lfs_dir_commitprog(lfs, &mut commit, &rev_le as *const _ as *const _, 4);
+        let err = lfs_dir_commitprog(lfs, &mut commit, rev_le.as_bytes());
         if err.is_err() {
             lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
@@ -506,12 +508,7 @@ pub unsafe fn test_format_minimal_superblock(
         commit.ptag = rev & 0x7fff_ffff;
 
         let magic = b"littlefs";
-        let err = lfs_dir_commitattr(
-            lfs,
-            &mut commit,
-            Tag::mktag(LFS_TYPE_CREATE, 0, 0),
-            core::ptr::null(),
-        );
+        let err = lfs_dir_commitattr(lfs, &mut commit, Tag::mktag(LFS_TYPE_CREATE, 0, 0), &[]);
         if err.is_err() {
             lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
@@ -520,7 +517,7 @@ pub unsafe fn test_format_minimal_superblock(
             lfs,
             &mut commit,
             Tag::mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-            magic.as_ptr() as *const core::ffi::c_void,
+            magic,
         );
         if err.is_err() {
             lfs_deinit(lfs);

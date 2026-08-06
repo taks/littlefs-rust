@@ -25,6 +25,7 @@ use littlefs_rust_core::{
     lfs_fs_preporphans, lfs_fs_size, lfs_mattr, lfs_mkdir, lfs_mount, lfs_pair_tole32, lfs_remove,
     lfs_stat, lfs_unmount,
 };
+use zerocopy::IntoBytes;
 
 // --- test_orphans_mkconsistent_fresh ---
 // Minimal: format, mount, mkconsistent. No mkdir/remove. Sanity check.
@@ -244,8 +245,13 @@ fn test_orphans_one_orphan() {
     assert_ok(lfs_dir_fetch(lfs_ptr, &mut mdir, &root_pair));
     lfs_pair_tole32(&mut orphan.pair);
     let attrs = [lfs_mattr {
+<<<<<<< HEAD
         tag: Tag::mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
         buffer: orphan.pair.as_ptr() as *const core::ffi::c_void,
+=======
+        tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
+        buffer: orphan.pair.as_bytes(),
+>>>>>>> test
     }];
     assert_ok(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
 
@@ -310,8 +316,13 @@ fn test_orphans_mkconsistent_one_orphan() {
     assert_ok(lfs_dir_fetch(lfs_ptr, &mut mdir, &root_pair));
     lfs_pair_tole32(&mut orphan.pair);
     let attrs = [lfs_mattr {
+<<<<<<< HEAD
         tag: Tag::mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
         buffer: orphan.pair.as_ptr() as *const core::ffi::c_void,
+=======
+        tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
+        buffer: orphan.as_bytes(),
+>>>>>>> test
     }];
     assert_ok(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
 

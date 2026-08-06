@@ -1,7 +1,9 @@
 //! Global state. Per lfs.h lfs_gstate_t and lfs.c lfs_gstate_*.
 
-use crate::tag::Tag;
-use crate::types::{lfs_block_t, lfs_tag_t};
+use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
+
+use crate::tag::{lfs_tag_size, lfs_tag_type1};
+use crate::types::lfs_block_t;
 use crate::util::lfs_pair_cmp;
 use crate::util::{lfs_fromle32, lfs_tole32};
 
@@ -15,7 +17,7 @@ use crate::util::{lfs_fromle32, lfs_tole32};
 /// } lfs_gstate_t;
 /// ```
 #[repr(C)]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, IntoBytes, Immutable, FromBytes)]
 pub struct LfsGstateT<T> {
     pub tag: T,
     pub pair: [lfs_block_t; 2],
