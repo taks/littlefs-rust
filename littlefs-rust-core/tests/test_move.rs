@@ -1117,7 +1117,7 @@ fn test_reentrant_dir() {
         &snapshot,
         128,
         |lfs_ptr, config| {
-            let err = lfs_mount(lfs_ptr, config)?;
+            lfs_mount(lfs_ptr, config)?;
 
             let err = lfs_rename(lfs_ptr, path_src.as_c_str(), path_dst.as_c_str());
             if let Err(err) = err {

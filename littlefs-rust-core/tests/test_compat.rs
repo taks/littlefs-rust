@@ -6,7 +6,7 @@
 
 mod common;
 
-use common::{assert_err, assert_ok, default_config, init_context, init_logger, path_bytes};
+use common::{assert_err, assert_ok, default_config, init_context, init_logger};
 use littlefs_rust_core::LfsFile;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{

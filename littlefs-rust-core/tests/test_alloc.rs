@@ -230,7 +230,7 @@ fn test_alloc_parallel_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)
 
     for _c in 0..cycles {
         assert_ok(lfs_mount(lfs, &mount_cfg.config));
-        assert_ok(lfs_mkdir(lfs, path_bytes("breakfast").as_c_str()));
+        assert_ok(lfs_mkdir(lfs, c"breakfast"));
         assert_ok(lfs_unmount(lfs));
 
         assert_ok(lfs_mount(lfs, &mount_cfg.config));
