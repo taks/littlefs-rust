@@ -413,7 +413,7 @@ pub fn lfs_file_opencfg_(
 /// a stack-local would make file.cfg a dangling pointer after return.
 static mut BUFFER: [u8; 0] = [];
 static mut ATTRS: [LfsAttr; 0] = [];
-static LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
+static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
     buffer: unsafe { &mut *(&raw mut BUFFER) },
     attrs: unsafe { &mut *(&raw mut ATTRS) },
     // attr_count: 0,
