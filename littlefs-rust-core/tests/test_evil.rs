@@ -198,7 +198,7 @@ fn evil_invalid_file_pointer(size: u32) {
     assert_ok(lfs_dir_fetch(lfs, mdir, &pair));
 
     // Verify id 1 == our file
-    let mut buffer = [0u8; 1024];
+    let mut buffer = [0u8; 100000];
     let tag = lfs_dir_get(
         lfs,
         mdir,

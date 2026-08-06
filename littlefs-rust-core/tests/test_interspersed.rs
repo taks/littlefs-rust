@@ -58,12 +58,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     for _i in 0..size {
         for j in 0..files {
             let byte = [ALPHAS[j]];
-            let n = lfs_file_write(
-                lfs,
-                &mut file_handles[j],
-                byte.as_ptr() as *const core::ffi::c_void,
-                1,
-            );
+            let n = lfs_file_write(lfs, &mut file_handles[j], &byte);
             assert_eq!(n, Ok(1));
         }
     }
@@ -121,12 +116,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     for _i in 0..10 {
         for j in 0..files {
             let mut buffer = [0u8; 1];
-            let n = lfs_file_read(
-                lfs,
-                &mut file_handles[j],
-                buffer.as_mut_ptr() as *mut core::ffi::c_void,
-                1,
-            );
+            let n = lfs_file_read(lfs, &mut file_handles[j], &mut buffer);
             assert_eq!(n, Ok(1));
             assert_eq!(buffer[0], ALPHAS[j]);
         }
@@ -170,7 +160,7 @@ fn test_interspersed_remove_files(
         ));
         for _i in 0..size {
             let byte = [ALPHAS[j]];
-            let n = lfs_file_write(lfs, file, byte.as_ptr() as *const core::ffi::c_void, 1);
+            let n = lfs_file_write(lfs, file, &byte);
             assert_eq!(n, Ok(1));
         }
         assert_ok(lfs_file_close(lfs, file));
@@ -190,7 +180,7 @@ fn test_interspersed_remove_files(
 
     for j in 0..files {
         let tilde = b"~";
-        let n = lfs_file_write(lfs, file, tilde.as_ptr() as *const core::ffi::c_void, 1);
+        let n = lfs_file_write(lfs, file, tilde);
         assert_eq!(n, Ok(1));
         assert_ok(lfs_file_sync(lfs, file));
 
@@ -232,7 +222,7 @@ fn test_interspersed_remove_files(
     assert_ok(lfs_file_open(lfs, file, zzz_path, LFS_O_RDONLY));
     for _i in 0..files {
         let mut buffer = [0u8; 1];
-        let n = lfs_file_read(lfs, file, buffer.as_mut_ptr() as *mut core::ffi::c_void, 1);
+        let n = lfs_file_read(lfs, file, &mut buffer);
         assert_eq!(n, Ok(1));
         assert_eq!(buffer[0], b'~');
     }
@@ -288,33 +278,9 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
 
     // Write SIZE/2 bytes to each
     for _i in 0..(size / 2) {
-        assert_eq!(
-            lfs_file_write(
-                lfs,
-                &mut files[0],
-                b"e".as_ptr() as *const core::ffi::c_void,
-                1
-            ),
-            Ok(1)
-        );
-        assert_eq!(
-            lfs_file_write(
-                lfs,
-                &mut files[1],
-                b"f".as_ptr() as *const core::ffi::c_void,
-                1
-            ),
-            Ok(1)
-        );
-        assert_eq!(
-            lfs_file_write(
-                lfs,
-                &mut files[2],
-                b"g".as_ptr() as *const core::ffi::c_void,
-                1
-            ),
-            Ok(1)
-        );
+        assert_eq!(lfs_file_write(lfs, &mut files[0], b"e"), Ok(1));
+        assert_eq!(lfs_file_write(lfs, &mut files[1], b"f"), Ok(1));
+        assert_eq!(lfs_file_write(lfs, &mut files[2], b"g"), Ok(1));
     }
 
     // Remove "f" while it's still open
@@ -322,33 +288,9 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
 
     // Write another SIZE/2 bytes to all three
     for _i in 0..(size / 2) {
-        assert_eq!(
-            lfs_file_write(
-                lfs,
-                &mut files[0],
-                b"e".as_ptr() as *const core::ffi::c_void,
-                1
-            ),
-            Ok(1)
-        );
-        assert_eq!(
-            lfs_file_write(
-                lfs,
-                &mut files[1],
-                b"f".as_ptr() as *const core::ffi::c_void,
-                1
-            ),
-            Ok(1)
-        );
-        assert_eq!(
-            lfs_file_write(
-                lfs,
-                &mut files[2],
-                b"g".as_ptr() as *const core::ffi::c_void,
-                1
-            ),
-            Ok(1)
-        );
+        assert_eq!(lfs_file_write(lfs, &mut files[0], b"e"), Ok(1));
+        assert_eq!(lfs_file_write(lfs, &mut files[1], b"f"), Ok(1));
+        assert_eq!(lfs_file_write(lfs, &mut files[2], b"g"), Ok(1));
     }
 
     assert_ok(lfs_file_close(lfs, &mut files[0]));
@@ -399,25 +341,9 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
 
     for _i in 0..size {
         let mut buffer = [0u8; 1];
-        assert_eq!(
-            lfs_file_read(
-                lfs,
-                &mut files_r[0],
-                buffer.as_mut_ptr() as *mut core::ffi::c_void,
-                1
-            ),
-            Ok(1)
-        );
+        assert_eq!(lfs_file_read(lfs, &mut files_r[0], &mut buffer), Ok(1));
         assert_eq!(buffer[0], b'e');
-        assert_eq!(
-            lfs_file_read(
-                lfs,
-                &mut files_r[1],
-                buffer.as_mut_ptr() as *mut core::ffi::c_void,
-                1
-            ),
-            Ok(1)
-        );
+        assert_eq!(lfs_file_read(lfs, &mut files_r[1], &mut buffer), Ok(1));
         assert_eq!(buffer[0], b'g');
     }
     assert_ok(lfs_file_close(lfs, &mut files_r[0]));

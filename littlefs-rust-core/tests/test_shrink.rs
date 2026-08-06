@@ -122,7 +122,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
             assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
 
             let mut rbuffer = vec![0u8; size as usize];
-            let n = lfs_file_read(lfs, file, &mut rbuffer[..BLOCK_SIZE as usize]);
+            let n = lfs_file_read(lfs, file, &mut rbuffer);
             assert_eq!(n, Ok(size as u32));
             assert_ok(lfs_file_close(lfs, file));
 
@@ -154,7 +154,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
             assert_ok(lfs_file_open(lfs2, file, path.as_c_str(), LFS_O_RDONLY));
 
             let mut rbuffer = vec![0u8; size as usize];
-            let n = lfs_file_read(lfs2, file, &mut rbuffer[..BLOCK_SIZE as usize]);
+            let n = lfs_file_read(lfs2, file, &mut rbuffer);
             assert_eq!(n, Ok(size as u32));
             assert_ok(lfs_file_close(lfs2, file));
 

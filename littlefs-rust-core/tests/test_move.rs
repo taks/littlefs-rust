@@ -82,21 +82,11 @@ fn test_move_file() {
         a_hello.as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
-    let n1 = lfs_file_write(lfs, file, b"hola\n".as_ptr() as *const core::ffi::c_void, 5);
+    let n1 = lfs_file_write(lfs, file, b"hola\n");
     assert_eq!(n1, Ok(5));
-    let n2 = lfs_file_write(
-        lfs,
-        file,
-        b"bonjour\n".as_ptr() as *const core::ffi::c_void,
-        8,
-    );
+    let n2 = lfs_file_write(lfs, file, b"bonjour\n");
     assert_eq!(n2, Ok(8));
-    let n3 = lfs_file_write(
-        lfs,
-        file,
-        b"ohayo\n".as_ptr() as *const core::ffi::c_void,
-        6,
-    );
+    let n3 = lfs_file_write(lfs, file, b"ohayo\n");
     assert_eq!(n3, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -134,7 +124,7 @@ fn test_move_file() {
         LFS_O_RDONLY,
     ));
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(5 + 8 + 6));
     assert_eq!(&buf[..5], b"hola\n");
     assert_eq!(&buf[5..13], b"bonjour\n");
@@ -214,21 +204,11 @@ fn test_move_state_stealing() {
         c"a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
-    let n1 = lfs_file_write(lfs, file, b"hola\n".as_ptr() as *const core::ffi::c_void, 5);
+    let n1 = lfs_file_write(lfs, file, b"hola\n");
     assert_eq!(n1, Ok(5));
-    let n2 = lfs_file_write(
-        lfs,
-        file,
-        b"bonjour\n".as_ptr() as *const core::ffi::c_void,
-        8,
-    );
+    let n2 = lfs_file_write(lfs, file, b"bonjour\n");
     assert_eq!(n2, Ok(8));
-    let n3 = lfs_file_write(
-        lfs,
-        file,
-        b"ohayo\n".as_ptr() as *const core::ffi::c_void,
-        6,
-    );
+    let n3 = lfs_file_write(lfs, file, b"ohayo\n");
     assert_eq!(n3, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -271,7 +251,7 @@ fn test_move_state_stealing() {
         LFS_O_RDONLY,
     ));
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(5 + 8 + 6));
     assert_eq!(&buf[..5], b"hola\n");
     assert_ok(lfs_file_close(lfs, file));
@@ -308,7 +288,7 @@ fn test_move_create_delete_same() {
         f0.as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"test.1".as_ptr() as *const core::ffi::c_void, 6);
+    let n = lfs_file_write(lfs, file, b"test.1");
     assert_eq!(n, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -320,7 +300,7 @@ fn test_move_create_delete_same() {
         f2.as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"test.2".as_ptr() as *const core::ffi::c_void, 6);
+    let n = lfs_file_write(lfs, file, b"test.2");
     assert_eq!(n, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -332,7 +312,7 @@ fn test_move_create_delete_same() {
         f4.as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"test.3".as_ptr() as *const core::ffi::c_void, 6);
+    let n = lfs_file_write(lfs, file, b"test.3");
     assert_eq!(n, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -357,9 +337,9 @@ fn test_move_create_delete_same() {
         f4.as_c_str(),
         LFS_O_WRONLY | LFS_O_TRUNC,
     ));
-    let _ = lfs_file_write(lfs, fa, b"test.4".as_ptr() as *const core::ffi::c_void, 6);
-    let _ = lfs_file_write(lfs, fb, b"test.5".as_ptr() as *const core::ffi::c_void, 6);
-    let _ = lfs_file_write(lfs, fc, b"test.6".as_ptr() as *const core::ffi::c_void, 6);
+    let _ = lfs_file_write(lfs, fa, b"test.4");
+    let _ = lfs_file_write(lfs, fb, b"test.5");
+    let _ = lfs_file_write(lfs, fc, b"test.6");
 
     assert_ok(lfs_rename(
         lfs,
@@ -385,7 +365,7 @@ fn test_move_create_delete_same() {
         LFS_O_RDONLY,
     ));
     let mut buf = [0u8; 16];
-    let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 16);
+    let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(6));
     assert_eq!(&buf[..6], b"test.4");
     assert_ok(lfs_file_close(lfs, file));
@@ -420,12 +400,7 @@ fn test_move_create_delete_delete_same() {
         path_bytes("3.move_me").as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        b"remove me".as_ptr() as *const core::ffi::c_void,
-        9,
-    );
+    let n = lfs_file_write(lfs, file, b"remove me");
     assert_eq!(n, Ok(9));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -436,7 +411,7 @@ fn test_move_create_delete_delete_same() {
         path_bytes("0.before").as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"test.1".as_ptr() as *const core::ffi::c_void, 6);
+    let n = lfs_file_write(lfs, file, b"test.1");
     assert_eq!(n, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -447,7 +422,7 @@ fn test_move_create_delete_delete_same() {
         path_bytes("2.in_between").as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"test.2".as_ptr() as *const core::ffi::c_void, 6);
+    let n = lfs_file_write(lfs, file, b"test.2");
     assert_eq!(n, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -458,7 +433,7 @@ fn test_move_create_delete_delete_same() {
         path_bytes("4.after").as_c_str(),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"test.3".as_ptr() as *const core::ffi::c_void, 6);
+    let n = lfs_file_write(lfs, file, b"test.3");
     assert_eq!(n, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -483,9 +458,9 @@ fn test_move_create_delete_delete_same() {
         path_bytes("4.after").as_c_str(),
         LFS_O_WRONLY | LFS_O_TRUNC,
     ));
-    let _ = lfs_file_write(lfs, fa, b"test.4".as_ptr() as *const core::ffi::c_void, 6);
-    let _ = lfs_file_write(lfs, fb, b"test.5".as_ptr() as *const core::ffi::c_void, 6);
-    let _ = lfs_file_write(lfs, fc, b"test.6".as_ptr() as *const core::ffi::c_void, 6);
+    let _ = lfs_file_write(lfs, fa, b"test.4");
+    let _ = lfs_file_write(lfs, fb, b"test.5");
+    let _ = lfs_file_write(lfs, fc, b"test.6");
 
     assert_ok(lfs_rename(
         lfs,
@@ -523,7 +498,7 @@ fn test_move_create_delete_different() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("dir.1/1.move_me").as_c_str(),
+        c"dir.1/1.move_me",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     assert_ok(lfs_file_close(lfs, file));
@@ -532,23 +507,14 @@ fn test_move_create_delete_different() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("dir.2/1.move_me").as_c_str(),
+        c"dir.2/1.move_me",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(
-        lfs,
-        file,
-        b"remove me".as_ptr() as *const core::ffi::c_void,
-        9,
-    );
+    let n = lfs_file_write(lfs, file, b"remove me");
     assert_eq!(n, Ok(9));
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("dir.1/1.move_me").as_c_str(),
-        path_bytes("dir.2/1.move_me").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, c"dir.1/1.move_me", c"dir.2/1.move_me"));
 
     let names = dir_entry_names(lfs, &env.config, "dir.2").unwrap();
     assert!(names.contains(&"1.move_me".to_string()));
@@ -606,7 +572,7 @@ fn test_move_file_corrupt_source() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, c"c/hello", info));
-    assert_eq!(unsafe { (*info).size }, 5 + 8 + 6);
+    assert_eq!({ (*info).size }, 5 + 8 + 6);
 
     assert_err(Error::NoEntry, lfs_stat(lfs, c"a/hello", info));
     assert_err(
@@ -622,7 +588,7 @@ fn test_move_file_corrupt_source() {
         LFS_O_RDONLY,
     ));
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(5 + 8 + 6));
     assert_eq!(&buf[..5], b"hola\n");
     assert_eq!(&buf[5..13], b"bonjour\n");
@@ -687,7 +653,7 @@ fn test_move_file_corrupt_source_dest() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, c"a/hello", info));
-    assert_eq!(unsafe { (*info).size }, 5 + 8 + 6);
+    assert_eq!({ (*info).size }, 5 + 8 + 6);
 
     assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hello", info));
     assert_err(Error::NoEntry, lfs_stat(lfs, c"c/hello", info));
@@ -695,7 +661,7 @@ fn test_move_file_corrupt_source_dest() {
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, c"a/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(5 + 8 + 6));
     assert_eq!(&buf[..5], b"hola\n");
     assert_eq!(&buf[5..13], b"bonjour\n");
@@ -781,7 +747,7 @@ fn test_move_file_after_corrupt() {
         LFS_O_RDONLY,
     ));
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(5 + 8 + 6));
     assert_eq!(&buf[..5], b"hola\n");
     assert_eq!(&buf[5..13], b"bonjour\n");
@@ -1226,21 +1192,13 @@ fn test_move_fix_relocation() {
 
         let mut buf = [0u8; 32];
         for (path, expected) in [
-            ("parent/0.before", b"test.5\0"),
-            ("parent/2.after", b"test.6\0"),
-            ("parent/child/0.before", b"test.7\0"),
-            ("parent/child/2.after", b"test.8\0"),
+            (c"parent/0.before", b"test.5\0"),
+            (c"parent/2.after", b"test.6\0"),
+            (c"parent/child/0.before", b"test.7\0"),
+            (c"parent/child/2.after", b"test.8\0"),
         ] {
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path_bytes(path).as_c_str(),
-                LFS_O_RDONLY,
-            ));
-            assert_eq!(
-                lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 7,),
-                Ok(7)
-            );
+            assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+            assert_eq!(lfs_file_read(lfs, file, &mut buf[..7]), Ok(7));
             assert_eq!(&buf[..6], &expected[..6]);
             assert_ok(lfs_file_close(lfs, file));
         }
@@ -1406,10 +1364,7 @@ fn test_move_fix_relocation_predecessor() {
                 path_bytes(path).as_c_str(),
                 LFS_O_RDONLY,
             ));
-            assert_eq!(
-                lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 7,),
-                Ok(7)
-            );
+            assert_eq!(lfs_file_read(lfs, file, &mut buf[..7]), Ok(7));
             assert_eq!(&buf[..6], &expected[..6]);
             assert_ok(lfs_file_close(lfs, file));
         }

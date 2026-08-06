@@ -224,7 +224,7 @@ fn test_wear_leveling_bd_erase_error() {
 
     // Erase 3 times (should succeed, incrementing wear each time)
     for _ in 0..erase_cycles {
-        let result = unsafe {
+        let result = {
             let erase = env.config.erase.expect("erase callback");
             erase(&env.config, 2)
         };
@@ -233,7 +233,7 @@ fn test_wear_leveling_bd_erase_error() {
     assert_eq!(env.bd.get_wear(2), erase_cycles);
 
     // Next erase should fail
-    let result = unsafe {
+    let result = {
         let erase = env.config.erase.expect("erase callback");
         erase(&env.config, 2)
     };
