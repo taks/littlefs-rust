@@ -12,8 +12,8 @@ use common::{
     init_context, init_logger, path_bytes,
 };
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
-    lfs_format, lfs_mount, lfs_remove, lfs_unmount,
+    Lfs, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format,
+    lfs_mount, lfs_remove, lfs_unmount,
 };
 
 fn env_with_cache_512() -> common::TestEnv {

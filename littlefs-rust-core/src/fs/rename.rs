@@ -1,7 +1,7 @@
 //! Rename. Per lfs.c lfs_rename_.
 
-use zerocopy::IntoBytes;
 use core::ffi::CStr;
+use zerocopy::IntoBytes;
 
 use crate::dir::commit::{lfs_dir_commit, lfs_dir_drop};
 use crate::dir::fetch::lfs_dir_fetch;
@@ -333,11 +333,11 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
 
             prevdir.type_ = 0;
             prevdir.id = 0;
-            (*lfs).mlist = &prevdir as *const _ as *mut _;
+            lfs.mlist = &prevdir as *const _ as *mut _;
         }
 
         if !samepair {
-            lfs_fs_prepmove(lfs, newoldid as u16, &oldcwd.pair);
+            lfs_fs_prepmove(lfs, newoldid, &oldcwd.pair);
         }
 
         let nlen = lfs_path_namelen(newpath_slice);
@@ -373,7 +373,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
             },
         ];
         let err = lfs_dir_commit(lfs, &mut newcwd, &attrs);
-        (*lfs).mlist = prevdir.next;
+        lfs.mlist = prevdir.next;
         if err.is_err() {
             return crate::lfs_pass_err!(err);
         }
@@ -385,15 +385,15 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
                 buffer: &[],
             }];
             let err = lfs_dir_commit(lfs, &mut oldcwd, &attrs2);
-            (*lfs).mlist = prevdir.next;
+            lfs.mlist = prevdir.next;
             if err.is_err() {
                 return crate::lfs_pass_err!(err);
             }
         }
 
-        if lfs_gstate_hasorphans(&(*lfs).gstate) {
+        if lfs_gstate_hasorphans(&lfs.gstate) {
             crate::lfs_assert!(prevtag != Err(Error::NoEntry));
-            crate::lfs_assert!(u32::from(lfs_tag_type3(prevtag.unwrap() as u32)) == LFS_TYPE_DIR);
+            crate::lfs_assert!(u32::from(lfs_tag_type3(prevtag.unwrap())) == LFS_TYPE_DIR);
 
             lfs_fs_preporphans(lfs, -1)?;
             lfs_fs_pred(lfs, &prevdir.m.pair, &mut newcwd)?;

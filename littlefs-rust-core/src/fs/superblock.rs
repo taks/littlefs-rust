@@ -407,8 +407,8 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
 
                         if !lfs_pair_issync(&pair, &pdir.tail) {
                             let mut moveid: u16 = 0x3ff;
-                            if lfs_gstate_hasmovehere(&(*lfs).gstate, &pdir.pair) {
-                                moveid = lfs_tag_id((*lfs).gstate.tag);
+                            if lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
+                                moveid = lfs_tag_id(lfs.gstate.tag);
                                 lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
                             }
 
@@ -428,12 +428,12 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                                     buffer: pair.as_bytes(),
                                 },
                             ];
-                            let state = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
-                            lfs_pair_fromle32(&mut pair);
-                            if let Err(err) = state {
-                                return Err(err);
-                            }
-                            if state.unwrap() == LFS_OK_ORPHANED {
+                            let state = {
+                                let ret = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
+                                lfs_pair_fromle32(&mut pair);
+                                ret
+                            }?;
+                            if state == LFS_OK_ORPHANED {
                                 moreorphans = true;
                             }
                             continue;
@@ -450,12 +450,14 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                             tag: lfs_mktag(LFS_TYPE_TAIL + if dir.split { 1 } else { 0 }, 0x3ff, 8),
                             buffer: dir_tail.as_bytes(),
                         }];
-                        let state = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
-                        lfs_pair_fromle32(&mut dir_tail);
-                        if let Err(err) = state {
-                            return Err(err);
-                        }
-                        if state.unwrap() == LFS_OK_ORPHANED {
+
+                        let state = {
+                            let ret = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
+                            lfs_pair_fromle32(&mut dir_tail);
+                            ret
+                        }?;
+
+                        if state == LFS_OK_ORPHANED {
                             moreorphans = true;
                         }
                         continue;

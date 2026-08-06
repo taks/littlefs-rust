@@ -226,7 +226,7 @@ pub fn lfs_fs_traverse_(
         use crate::lfs_type::lfs_open_flags::{LFS_F_DIRTY, LFS_F_INLINE, LFS_F_WRITING};
         use crate::lfs_type::lfs_type::LFS_TYPE_REG;
 
-        let mut m = (*lfs).mlist;
+        let mut m = lfs.mlist;
         #[cfg(feature = "loop_limits")]
         const MAX_MLIST: u32 = 64;
         #[cfg(feature = "loop_limits")]

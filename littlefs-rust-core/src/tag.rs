@@ -176,6 +176,7 @@ pub fn lfs_tag_dsize(tag: lfs_tag_t) -> lfs_size_t {
 ///     const void *buffer;
 /// };
 /// ```
+#[allow(non_camel_case_types)]
 pub struct lfs_mattr<'a> {
     pub tag: lfs_tag_t,
     pub buffer: &'a [u8],

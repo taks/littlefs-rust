@@ -7,9 +7,8 @@ use common::{
     default_config, init_context, path_bytes,
 };
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_seek,
-    lfs_file_size, lfs_file_tell, lfs_file_truncate, lfs_file_write, lfs_format, lfs_mount,
-    lfs_unmount,
+    Lfs, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_seek, lfs_file_size,
+    lfs_file_tell, lfs_file_truncate, lfs_file_write, lfs_format, lfs_mount, lfs_unmount,
 };
 use rstest::rstest;
 

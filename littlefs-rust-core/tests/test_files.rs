@@ -352,7 +352,7 @@ fn test_files_reentrant_write(
         let err = littlefs_rust_core::lfs_mount(lfs, cfg);
         if err.is_err() {
             let _ = littlefs_rust_core::lfs_format(lfs, cfg);
-            let e = littlefs_rust_core::lfs_mount(lfs, cfg)?;
+            littlefs_rust_core::lfs_mount(lfs, cfg)?;
         }
 
         let path = path_bytes("avacado");
@@ -361,20 +361,15 @@ fn test_files_reentrant_write(
         if open_err.is_ok() {
             let sz = littlefs_rust_core::lfs_file_size(lfs, file);
             assert!(sz == 0 || sz == size as i32, "size must be 0 or SIZE");
-            let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
+            littlefs_rust_core::lfs_file_close(lfs, file)?;
         } else {
             assert_eq!(open_err, Err(Error::NoEntry));
         }
 
-        let e = littlefs_rust_core::lfs_file_open(
-            lfs,
-            file,
-            path.as_c_str(),
-            LFS_O_WRONLY | LFS_O_CREAT,
-        )?;
+        littlefs_rust_core::lfs_file_open(lfs, file, path.as_c_str(), LFS_O_WRONLY | LFS_O_CREAT)?;
         write_prng_file_result(lfs, file, size, chunk_size, 1)?;
-        let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
-        let e = littlefs_rust_core::lfs_unmount(lfs)?;
+        littlefs_rust_core::lfs_file_close(lfs, file)?;
+        littlefs_rust_core::lfs_unmount(lfs)?;
 
         Ok(())
     };
@@ -395,8 +390,8 @@ fn test_files_reentrant_write(
         if sz == size as i32 {
             verify_prng_file(lfs, file, size, chunk_size, 1);
         }
-        let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
-        let e = littlefs_rust_core::lfs_unmount(lfs)?;
+        littlefs_rust_core::lfs_file_close(lfs, file)?;
+        littlefs_rust_core::lfs_unmount(lfs)?;
 
         Ok(())
     };
@@ -436,7 +431,7 @@ fn test_files_reentrant_write_sync(
         let err = littlefs_rust_core::lfs_mount(lfs, cfg);
         if err.is_err() {
             let _ = littlefs_rust_core::lfs_format(lfs, cfg);
-            let e = littlefs_rust_core::lfs_mount(lfs, cfg)?;
+            littlefs_rust_core::lfs_mount(lfs, cfg)?;
         }
 
         let path = path_bytes("avacado");
@@ -463,12 +458,12 @@ fn test_files_reentrant_write_sync(
                 }
                 i += chunk as u32;
             }
-            let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
+            littlefs_rust_core::lfs_file_close(lfs, file)?;
         } else {
             assert_eq!(open_err, Err(Error::NoEntry));
         }
 
-        let e = littlefs_rust_core::lfs_file_open(
+        littlefs_rust_core::lfs_file_open(
             lfs,
             file,
             path.as_c_str(),
@@ -493,12 +488,12 @@ fn test_files_reentrant_write_sync(
             )?;
 
             assert_eq!(n, chunk as u32);
-            let e = littlefs_rust_core::lfs_file_sync(lfs, file)?;
+            littlefs_rust_core::lfs_file_sync(lfs, file)?;
 
             i += chunk;
         }
-        let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
-        let e = littlefs_rust_core::lfs_unmount(lfs)?;
+        littlefs_rust_core::lfs_file_close(lfs, file)?;
+        littlefs_rust_core::lfs_unmount(lfs)?;
 
         Ok(())
     };
@@ -517,8 +512,8 @@ fn test_files_reentrant_write_sync(
         if sz == size as i32 {
             verify_prng_file(lfs, file, size, chunk_size, 1);
         }
-        let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
-        let e = littlefs_rust_core::lfs_unmount(lfs)?;
+        littlefs_rust_core::lfs_file_close(lfs, file)?;
+        littlefs_rust_core::lfs_unmount(lfs)?;
 
         Ok(())
     };
