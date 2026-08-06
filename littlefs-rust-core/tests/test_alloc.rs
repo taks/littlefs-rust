@@ -80,8 +80,7 @@ fn test_alloc_parallel(
             let nw = lfs_file_write(
                 lfs,
                 &mut files[n as usize],
-                name.as_ptr() as *const core::ffi::c_void,
-                chunk as u32,
+                &name[..chunk as usize],
             );
             assert_eq!(nw, Ok(chunk as u32));
         }
@@ -172,8 +171,7 @@ fn test_alloc_serial(
             let nw = lfs_file_write(
                 lfs,
                 file,
-                buf.as_ptr() as *const core::ffi::c_void,
-                chunk as u32,
+                &buf[..chunk as usize],
             );
             assert_eq!(nw, Ok(chunk as u32));
         }
@@ -255,8 +253,7 @@ fn test_alloc_parallel_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)
                 let nw = lfs_file_write(
                     lfs,
                     &mut files[n as usize],
-                    name.as_ptr() as *const core::ffi::c_void,
-                    chunk as u32,
+                    &name[..chunk],
                 );
                 assert_eq!(nw, Ok(chunk as u32));
             }

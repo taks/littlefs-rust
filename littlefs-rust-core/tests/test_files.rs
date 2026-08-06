@@ -51,8 +51,7 @@ fn test_files_simple(#[values(0, -1, 8)] inline_max: i32) {
     let n = lfs_file_write(
         lfs,
         file,
-        data.as_ptr() as *const core::ffi::c_void,
-        data.len() as u32,
+        data,
     );
     assert_eq!(n, Ok(data.len() as u32));
     assert_ok(lfs_file_close(lfs, file));
@@ -62,7 +61,7 @@ fn test_files_simple(#[values(0, -1, 8)] inline_max: i32) {
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(data.len() as u32));
     assert_eq!(&buf[..(n.unwrap()) as usize], data);
     assert_ok(lfs_file_close(lfs, file));
@@ -473,8 +472,7 @@ fn test_files_reentrant_write_sync(
             let n = littlefs_rust_core::lfs_file_write(
                 lfs,
                 file,
-                buf.as_ptr() as *const core::ffi::c_void,
-                chunk,
+                &buf[..chunk as usize],
             )?;
 
             assert_eq!(n, chunk as u32);
@@ -541,8 +539,7 @@ fn test_files_many() {
         let n = lfs_file_write(
             lfs,
             file,
-            bytes.as_ptr() as *const core::ffi::c_void,
-            bytes.len() as u32,
+            bytes,
         );
         assert_eq!(n, Ok(bytes.len() as u32));
         assert_ok(lfs_file_close(lfs, file));
@@ -587,8 +584,7 @@ fn test_files_many_power_cycle() {
         let n = lfs_file_write(
             lfs,
             file,
-            bytes.as_ptr() as *const core::ffi::c_void,
-            bytes.len() as u32,
+            bytes,
         );
         assert_eq!(n, Ok(bytes.len() as u32));
         assert_ok(lfs_file_close(lfs, file));
@@ -695,8 +691,7 @@ fn test_files_same_session() {
     let n = lfs_file_write(
         lfs,
         file,
-        data.as_ptr() as *const core::ffi::c_void,
-        data.len() as u32,
+        data,
     );
     assert_eq!(n, Ok(data.len() as u32));
     assert_ok(lfs_file_close(lfs, file));
@@ -796,8 +791,7 @@ fn test_files_truncate_api() {
     let _ = lfs_file_write(
         lfs,
         file,
-        data.as_ptr() as *const core::ffi::c_void,
-        data.len() as u32,
+        data,
     );
     assert_ok(lfs_file_truncate(lfs, file, 5));
     assert_ok(lfs_file_sync(lfs, file));

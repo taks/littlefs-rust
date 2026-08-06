@@ -1319,8 +1319,7 @@ pub fn lfs_file_flushedwrite(
 pub fn lfs_file_write_(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
-    buffer: *const core::ffi::c_void,
-    size: lfs_size_t,
+    buffer: &[u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
     crate::lfs_assert!((unsafe { (*file).flags as i32 } & 2) == 2);
 
@@ -1331,7 +1330,7 @@ pub fn lfs_file_write_(
         if ((*file).flags as i32 & 0x0800) != 0 && (*file).pos < (*file).ctz.size {
             (*file).pos = (*file).ctz.size;
         }
-        if (*file).pos + size > (*lfs).file_max {
+        if (*file).pos + (buffer.len() as u32) > (*lfs).file_max {
             return Err(Error::FileTooBig);
         }
 
@@ -1346,7 +1345,6 @@ pub fn lfs_file_write_(
             }
         }
 
-        let buffer = core::slice::from_raw_parts(buffer as *const u8, size as usize);
         let nsize = lfs_file_flushedwrite(lfs, file, buffer);
         if nsize.is_ok() {
             (*file).flags &= !0x080000;
@@ -1569,11 +1567,11 @@ pub fn lfs_file_truncate_(
             // C: lfs.c:3807-3818 — grow
             let res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_END)?;
 
-            let mut zero = 0u8;
+            let zero = [0u8];
             #[allow(clippy::while_immutable_condition)] // file.pos updated by lfs_file_write_
             while file.pos < size {
                 let res =
-                    lfs_file_write_(lfs, file, &zero as *const u8 as *const core::ffi::c_void, 1)?;
+                    lfs_file_write_(lfs, file, &zero)?;
             }
         }
 

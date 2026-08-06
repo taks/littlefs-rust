@@ -167,8 +167,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
             let n = lfs_file_read(
                 lfs2,
                 file,
-                rbuffer.as_mut_ptr() as *mut core::ffi::c_void,
-                BLOCK_SIZE,
+                &mut rbuffer[..BLOCK_SIZE as usize],
             );
             assert_eq!(n, Ok(size as u32));
             assert_ok(lfs_file_close(lfs2, file));

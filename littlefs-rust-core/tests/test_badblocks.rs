@@ -93,7 +93,7 @@ fn test_badblocks_single(
             let size = NAMEMULT as u32;
             for _j in 0..(i * FILEMULT) {
                 let n =
-                    lfs_file_write(lfs, file, buffer.as_ptr() as *const core::ffi::c_void, size);
+                    lfs_file_write(lfs, file, &buffer[..size as usize]);
                 assert_eq!(n, Ok(size as u32));
             }
 
@@ -319,7 +319,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
 
         let size = NAMEMULT as u32;
         for _j in 0..(i * FILEMULT) {
-            let n = lfs_file_write(lfs, file, buffer.as_ptr() as *const core::ffi::c_void, size);
+            let n = lfs_file_write(lfs, file, &buffer[..size as usize]);
             assert_eq!(n, Ok(size as u32));
         }
 

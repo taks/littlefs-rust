@@ -38,7 +38,7 @@ fn test_attrs_get_set() {
         c"hello/hello",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"hello".as_ptr() as *const core::ffi::c_void, 5);
+    let n = lfs_file_write(lfs, file, b"hello");
     assert_eq!(n, Ok(5));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -148,7 +148,7 @@ fn test_attrs_get_set_root() {
         c"hello/hello",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"hello".as_ptr() as *const core::ffi::c_void, 5);
+    let n = lfs_file_write(lfs, file, b"hello");
     assert_eq!(n, Ok(5));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -266,7 +266,7 @@ fn test_attrs_get_set_file() {
         c"hello/hello",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"hello".as_ptr() as *const core::ffi::c_void, 5);
+    let n = lfs_file_write(lfs, file, b"hello");
     assert_eq!(n, Ok(5));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -372,7 +372,7 @@ fn test_attrs_deferred_file() {
         c"hello/hello",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"hello".as_ptr() as *const core::ffi::c_void, 5);
+    let n = lfs_file_write(lfs, file, b"hello");
     assert_eq!(n, Ok(5));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));

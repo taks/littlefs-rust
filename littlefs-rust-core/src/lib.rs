@@ -197,11 +197,9 @@ pub fn lfs_file_sync(lfs: &mut Lfs, file: &mut LfsFile) -> Result<(), Error> {
 pub fn lfs_file_read(
     lfs: &mut Lfs,
     file: &mut LfsFile,
-    buffer: *mut c_void,
-    size: lfs_size_t,
+    buffer: &mut [u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
-    let slice = unsafe { core::slice::from_raw_parts_mut(buffer as *mut u8, size as usize) };
-    crate::file::ops::lfs_file_read_(lfs, file, slice)
+    crate::file::ops::lfs_file_read_(lfs, file, buffer)
 }
 
 /// Write data to file. Per lfs.h lfs_file_write (lfs.c:6228-6242).
@@ -209,10 +207,9 @@ pub fn lfs_file_read(
 pub fn lfs_file_write(
     lfs: &mut Lfs,
     file: &mut LfsFile,
-    buffer: *const c_void,
-    size: lfs_size_t,
+    buffer: &[u8]
 ) -> Result<crate::types::lfs_size_t, Error> {
-    crate::file::ops::lfs_file_write_(lfs, file, buffer, size)
+    crate::file::ops::lfs_file_write_(lfs, file, buffer)
 }
 
 /// Change the position of the file. Per lfs.h lfs_file_seek (lfs.c:6246-6260).

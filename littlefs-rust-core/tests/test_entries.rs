@@ -50,8 +50,7 @@ fn test_entries_grow() {
         let n = lfs_file_write(
             lfs,
             file,
-            buf[..size].as_ptr() as *const core::ffi::c_void,
-            size as u32,
+            &buf[..size],
         );
         assert_eq!(n, Ok(size as u32));
         assert_ok(lfs_file_close(lfs, file));
@@ -79,8 +78,7 @@ fn test_entries_grow() {
     let n = lfs_file_write(
         lfs,
         file,
-        buf[..200].as_ptr() as *const core::ffi::c_void,
-        200,
+        &buf[..200],
     );
     assert_eq!(n, Ok(200));
     assert_ok(lfs_file_close(lfs, file));
@@ -129,8 +127,7 @@ fn test_entries_shrink() {
         let n = lfs_file_write(
             lfs,
             file,
-            buf[..size].as_ptr() as *const core::ffi::c_void,
-            size as u32,
+            &buf[..size],
         );
         assert_eq!(n, Ok(size as u32));
         assert_ok(lfs_file_close(lfs, file));
@@ -158,8 +155,7 @@ fn test_entries_shrink() {
     let n = lfs_file_write(
         lfs,
         file,
-        buf[..20].as_ptr() as *const core::ffi::c_void,
-        20,
+        &buf[..20],
     );
     assert_eq!(n, Ok(20));
     assert_ok(lfs_file_close(lfs, file));
@@ -255,8 +251,7 @@ fn test_entries_push_spill() {
     let n = lfs_file_write(
         lfs,
         file,
-        buf[..200].as_ptr() as *const core::ffi::c_void,
-        200,
+        &buf[..200],
     );
     assert_eq!(n, Ok(200));
     assert_ok(lfs_file_close(lfs, file));
@@ -274,8 +269,7 @@ fn test_entries_push_spill() {
         let n = lfs_file_write(
             lfs,
             file,
-            buf[..size].as_ptr() as *const core::ffi::c_void,
-            size as u32,
+            &buf[..size],
         );
         assert_eq!(n, Ok(size as u32));
         assert_ok(lfs_file_close(lfs, file));
@@ -287,8 +281,7 @@ fn test_entries_push_spill() {
     let n = lfs_file_read(
         lfs,
         file,
-        rb[..20].as_mut_ptr() as *mut core::ffi::c_void,
-        20,
+        &mut rb[..20]
     );
     assert_eq!(n, Ok(20));
     assert_ok(lfs_file_close(lfs, file));
@@ -303,8 +296,7 @@ fn test_entries_push_spill() {
     let n = lfs_file_write(
         lfs,
         file,
-        buf[..200].as_ptr() as *const core::ffi::c_void,
-        200,
+        &buf[..200]
     );
     assert_eq!(n, Ok(200));
     assert_ok(lfs_file_close(lfs, file));
@@ -316,8 +308,7 @@ fn test_entries_push_spill() {
         let n = lfs_file_read(
             lfs,
             file,
-            rb[..200].as_mut_ptr() as *mut core::ffi::c_void,
-            200,
+            &mut rb[..200]
         );
         assert_eq!(n, Ok(200));
         assert_ok(lfs_file_close(lfs, file));

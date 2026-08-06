@@ -69,21 +69,21 @@ impl RamStorage {
 }
 
 fn ram_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {
-    let ctx = unsafe { (*cfg).context as *mut RamStorage };
+    let ctx = { (*cfg).context as *mut RamStorage };
     let ram = unsafe { &mut *ctx };
     ram.read(block, off, buffer);
     Ok(())
 }
 
 fn ram_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
-    let ctx = unsafe { (*cfg).context as *mut RamStorage };
+    let ctx = { (*cfg).context as *mut RamStorage };
     let ram = unsafe { &mut *ctx };
     ram.prog(block, off, buffer);
     Ok(())
 }
 
 fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
-    let ctx = unsafe { (*cfg).context as *mut RamStorage };
+    let ctx = { (*cfg).context as *mut RamStorage };
     let ram = unsafe { &mut *ctx };
     ram.erase(block);
     Ok(())
@@ -181,7 +181,7 @@ fn badblock_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Re
 /// PROGNOOP or ERASENOOP → return 0 (silently skip the prog)
 /// All others → prog normally
 fn badblock_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
-    let ctx = unsafe { (*cfg).context as *mut BadBlockRamStorage };
+    let ctx = { (*cfg).context as *mut BadBlockRamStorage };
     let badblock = unsafe { &mut *ctx };
     if badblock.is_bad(block) {
         match badblock.behavior {
@@ -199,7 +199,7 @@ fn badblock_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result
 /// ERASENOOP → return 0 (silently skip the erase)
 /// All others → erase normally
 fn badblock_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
-    let ctx = unsafe { (*cfg).context as *mut BadBlockRamStorage };
+    let ctx = { (*cfg).context as *mut BadBlockRamStorage };
     let badblock = unsafe { &mut *ctx };
     if badblock.is_bad(block) {
         match badblock.behavior {
@@ -660,8 +660,7 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
     let n = lfs_file_write(
         lfs,
         file,
-        data.as_ptr() as *mut core::ffi::c_void,
-        data.len() as u32,
+        data,
     )?;
     if n != data.len() as _ {
         let _ = lfs_file_close(lfs, file);
@@ -1094,8 +1093,7 @@ pub fn write_prng_file(
         let n = littlefs_rust_core::lfs_file_write(
             lfs,
             file,
-            buffer.as_ptr() as *mut core::ffi::c_void,
-            chunk,
+            &buffer[..chunk as usize],
         );
         assert_eq!(
             n,
@@ -1130,8 +1128,7 @@ pub fn write_prng_file_result(
         let n = littlefs_rust_core::lfs_file_write(
             lfs,
             file,
-            buffer.as_ptr() as *mut core::ffi::c_void,
-            chunk,
+            &buffer[..chunk as usize],
         )?;
 
         if n != chunk as u32 {
@@ -1171,8 +1168,7 @@ pub fn verify_prng_file(
         let n = littlefs_rust_core::lfs_file_read(
             lfs,
             file,
-            buffer.as_mut_ptr() as *mut core::ffi::c_void,
-            chunk,
+            &mut buffer[..chunk as usize],
         );
         assert_eq!(
             n,
@@ -1214,8 +1210,7 @@ pub fn verify_prng_file_with_state(
         let n = littlefs_rust_core::lfs_file_read(
             lfs,
             file,
-            buffer.as_mut_ptr() as *mut core::ffi::c_void,
-            chunk,
+            &mut buffer[..chunk as usize],
         );
         assert_eq!(
             n,

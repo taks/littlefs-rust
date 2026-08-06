@@ -10,7 +10,7 @@ use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_
 #[cfg(feature = "slow_tests")]
 use common::test_prng;
 use common::{
-    assert_ok, default_config, dir_block, erase_block_raw, init_context, init_logger, path_bytes,
+    assert_ok, default_config, dir_block, erase_block_raw, init_context, init_logger,
     read_block_raw, write_block_raw,
 };
 #[cfg(feature = "slow_tests")]

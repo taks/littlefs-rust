@@ -146,8 +146,7 @@ fn test_compat_minor_bump() {
         lfs_file_write(
             lfs,
             file,
-            b"testtest".as_ptr() as *const core::ffi::c_void,
-            8,
+            b"testtest",
         ),
         Ok(8)
     );
@@ -225,8 +224,7 @@ fn test_compat_minor_bump() {
         lfs_file_write(
             lfs,
             file,
-            b"teeeeest".as_ptr() as *const core::ffi::c_void,
-            8,
+            b"teeeeest"
         ),
         Ok(8)
     );

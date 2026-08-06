@@ -54,7 +54,7 @@ fn run_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) -
 
             for _ in 0..size {
                 let c = b'a' + (test_prng(&mut prng) % 26) as u8;
-                let res = lfs_file_write(lfs, file, &c as *const u8 as *const core::ffi::c_void, 1);
+                let res = lfs_file_write(lfs, file, &[c]);
                 assert!(
                     res == Ok(1) || res == Err(Error::NoSpace),
                     "write returned {res:?} at cycle={cycle} file={i}"
@@ -207,7 +207,7 @@ fn run_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) -> u32 {
 
             for _ in 0..size {
                 let c = b'a' + (test_prng(&mut prng) % 26) as u8;
-                let res = lfs_file_write(lfs, file, &c as *const u8 as *const core::ffi::c_void, 1);
+                let res = lfs_file_write(lfs, file, &[c]);
                 assert!(res == Ok(1) || res == Err(Error::NoSpace));
                 if res == Err(Error::NoSpace) {
                     let err = lfs_file_close(lfs, file);
@@ -421,7 +421,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
 
             for _ in 0..size {
                 let c = b'a' + (test_prng(&mut prng) % 26) as u8;
-                let res = lfs_file_write(lfs, file, &c as *const u8 as *const core::ffi::c_void, 1);
+                let res = lfs_file_write(lfs, file, &[c]);
                 assert!(res == Ok(1) || res == Err(Error::NoSpace));
                 if res == Err(Error::NoSpace) {
                     let err = lfs_file_close(lfs, file);

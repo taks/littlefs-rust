@@ -798,7 +798,7 @@ fn test_seek_inline_write(#[case] size: u32) {
 
     for i in 0..size {
         let c = alphabet[j % 26];
-        let n = lfs_file_write(lfs, file, &c as *const u8 as *const core::ffi::c_void, 1);
+        let n = lfs_file_write(lfs, file, &[c]);
         assert_eq!(n, Ok(1));
         assert_eq!(lfs_file_tell(lfs, file), (i + 1) as i32);
         assert_eq!(lfs_file_size(lfs, file), (i + 1) as i32);
@@ -811,7 +811,7 @@ fn test_seek_inline_write(#[case] size: u32) {
 
     let mut c = [0u8; 1];
     for _ in 0..size {
-        let n = lfs_file_read(lfs, file, c.as_mut_ptr() as *mut core::ffi::c_void, 1);
+        let n = lfs_file_read(lfs, file, &mut c);
         assert_eq!(n, Ok(1));
         assert_eq!(c[0], alphabet[k % 26]);
         k += 1;
@@ -825,7 +825,7 @@ fn test_seek_inline_write(#[case] size: u32) {
 
     for i in 0..size {
         let c = alphabet[j % 26];
-        let n = lfs_file_write(lfs, file, &c as *const u8 as *const core::ffi::c_void, 1);
+        let n = lfs_file_write(lfs, file, &[c]);
         assert_eq!(n, Ok(1));
         assert_eq!(lfs_file_tell(lfs, file), (i + 1) as i32);
         assert_eq!(lfs_file_size(lfs, file), size as i32);
@@ -836,7 +836,7 @@ fn test_seek_inline_write(#[case] size: u32) {
         if i < size - 2 {
             let mut buf3 = [0u8; 3];
             assert_eq!(lfs_file_seek(lfs, file, -1, LFS_SEEK_CUR), Ok(i as i32));
-            let n = lfs_file_read(lfs, file, buf3.as_mut_ptr() as *mut core::ffi::c_void, 3);
+            let n = lfs_file_read(lfs, file, &mut buf3);
             assert_eq!(n, Ok(3));
             assert_eq!(lfs_file_tell(lfs, file), (i + 3) as i32);
             assert_eq!(lfs_file_size(lfs, file), size as i32);
@@ -856,7 +856,7 @@ fn test_seek_inline_write(#[case] size: u32) {
 
     let mut c = [0u8; 1];
     for _ in 0..size {
-        let n = lfs_file_read(lfs, file, c.as_mut_ptr() as *mut core::ffi::c_void, 1);
+        let n = lfs_file_read(lfs, file, &mut c);
         assert_eq!(n, Ok(1));
         assert_eq!(c[0], alphabet[k % 26]);
         k += 1;
@@ -1069,8 +1069,7 @@ fn test_seek_filemax() {
     let n = lfs_file_write(
         lfs,
         file,
-        KITTY.as_ptr() as *const core::ffi::c_void,
-        KITTY.len() as u32,
+        KITTY
     );
     assert_eq!(n, Ok(KITTY.len() as u32));
 
@@ -1111,8 +1110,7 @@ fn test_seek_underflow() {
     let n = lfs_file_write(
         lfs,
         file,
-        KITTY.as_ptr() as *const core::ffi::c_void,
-        KITTY.len() as u32,
+        KITTY
     );
     assert_eq!(n, Ok(KITTY.len() as u32));
     let size = KITTY.len() as i32;
@@ -1180,8 +1178,7 @@ fn test_seek_overflow() {
     let n = lfs_file_write(
         lfs,
         file,
-        KITTY.as_ptr() as *const core::ffi::c_void,
-        KITTY.len() as u32,
+        KITTY
     );
     assert_eq!(n, Ok(KITTY.len() as u32));
     let size = KITTY.len() as i32;

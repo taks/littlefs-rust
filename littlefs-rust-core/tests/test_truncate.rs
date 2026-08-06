@@ -211,7 +211,7 @@ fn test_truncate_write_read() {
         wb[j as usize] = j as u8;
     }
 
-    let n = lfs_file_write(lfs, file, wb.as_ptr() as *const core::ffi::c_void, size);
+    let n = lfs_file_write(lfs, file, &wb);
     assert_eq!(n, Ok(size as u32));
     assert_eq!(lfs_file_size(lfs, file), size as i32);
     assert_eq!(lfs_file_tell(lfs, file), size as i32);
