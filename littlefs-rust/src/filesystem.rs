@@ -15,7 +15,7 @@ use crate::metadata::{DirEntry, Metadata, OpenFlags};
 use crate::storage::Storage;
 
 pub(crate) struct FsInner<S: Storage> {
-    pub(crate) lfs: MaybeUninit<Lfs>,
+    pub(crate) lfs: Lfs,
     pub(crate) config: LfsConfig,
     pub(crate) storage: S,
     _read_buf: Vec<u8>,
@@ -56,16 +56,9 @@ fn trampoline_read<S: Storage>(
     }
 }
 
-unsafe extern "C" fn trampoline_prog<S: Storage>(
-    cfg: *const LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: *const u8,
-    size: u32,
-) -> i32 {
-    let storage = &mut *((*cfg).context as *mut S);
-    let buf = core::slice::from_raw_parts(buffer, size as usize);
-    match storage.write(block, off, buf) {
+fn trampoline_prog<S: Storage>(cfg: *const LfsConfig, block: u32, off: u32, buffer: &[u8]) -> i32 {
+    let storage = unsafe { &mut *((*cfg).context as *mut S) };
+    match storage.write(block, off, buffer) {
         Ok(()) => 0,
         Err(_) => LFS_ERR_IO,
     }
@@ -322,10 +315,9 @@ impl<S: Storage> Filesystem<S> {
     }
 
     /// Run garbage collection to reclaim unused blocks.
-    pub fn gc(&self) -> Result<(), Error> {
+    pub fn gc(&mut self) -> Result<(), Error> {
         let mut inner = self.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_fs_gc(inner.lfs.as_mut_ptr());
-        from_lfs_result(rc)
+        littlefs_rust_core::lfs_fs_gc(&mut inner.lfs)
     }
 }
 

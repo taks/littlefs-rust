@@ -5,38 +5,10 @@ use littlefs_rust_core::{
 };
 
 /// LittleFS operation error.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Error {
-    Io,
-    Corrupt,
-    NoEntry,
-    Exists,
-    NotDir,
-    IsDir,
-    NotEmpty,
-    Invalid,
-    NoSpace,
-    NoMemory,
-    NoAttribute,
-    NameTooLong,
-}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Error::Io => write!(f, "I/O error"),
-            Error::Corrupt => write!(f, "filesystem corrupt"),
-            Error::NoEntry => write!(f, "no such file or directory"),
-            Error::Exists => write!(f, "file or directory already exists"),
-            Error::NotDir => write!(f, "not a directory"),
-            Error::IsDir => write!(f, "is a directory"),
-            Error::NotEmpty => write!(f, "directory not empty"),
-            Error::Invalid => write!(f, "invalid parameter"),
-            Error::NoSpace => write!(f, "no space left on device"),
-            Error::NoMemory => write!(f, "out of memory"),
-            Error::NoAttribute => write!(f, "no such attribute"),
-            Error::NameTooLong => write!(f, "name too long"),
-        }
+        match self {}
     }
 }
 

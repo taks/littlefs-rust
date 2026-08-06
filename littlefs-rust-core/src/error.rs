@@ -4,17 +4,29 @@
 /// LittleFS operation error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
+    /// I/O error
     Io,
+    /// filesystem corrupt
     Corrupt,
+    /// no such file or directory
     NoEntry,
+    /// file or directory already exists
     Exists,
+    /// not a directory
     NotDir,
+    /// is a directory
     IsDir,
+    /// directory not empty
     NotEmpty,
+    /// invalid parameter
     Invalid,
+    /// no space left on device
     NoSpace,
+    /// out of memory
     NoMemory,
+    /// no such attribute
     NoAttribute,
+    /// name too long
     NameTooLong,
     FileTooBig,
 }
