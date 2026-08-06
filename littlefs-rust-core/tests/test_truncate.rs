@@ -224,7 +224,7 @@ fn test_truncate_write_read() {
     assert_eq!(lfs_file_tell(lfs, file), 0);
     assert_eq!(lfs_file_size(lfs, file), trunc as i32);
 
-    let n = lfs_file_read(lfs, file, rb.as_mut_ptr() as *mut core::ffi::c_void, size);
+    let n = lfs_file_read(lfs, file, &mut rb[..size as usize]);
     assert_eq!(n, Ok(trunc as u32));
     assert_eq!(&rb[..trunc as usize], &wb[..trunc as usize]);
 
@@ -240,7 +240,7 @@ fn test_truncate_write_read() {
     assert_eq!(lfs_file_tell(lfs, file), qsize as i32);
     assert_eq!(lfs_file_size(lfs, file), trunc2 as i32);
 
-    let n = lfs_file_read(lfs, file, rb.as_mut_ptr() as *mut core::ffi::c_void, size);
+    let n = lfs_file_read(lfs, file, &mut rb[..size as usize]);
     assert_eq!(n, Ok((trunc2 - qsize) as u32));
     assert_eq!(
         &rb[..(trunc2 - qsize) as usize],
@@ -296,7 +296,7 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
     j = 0;
     while j < medium {
         let chunk = lfs_min(BALD.len() as u32, medium - j);
-        let n = lfs_file_write(lfs, file, BALD.as_ptr() as *const core::ffi::c_void, chunk);
+        let n = lfs_file_write(lfs, file, &BALD[..chunk as usize]);
         assert_eq!(n, Ok(chunk as u32));
         j += chunk;
     }

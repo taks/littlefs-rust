@@ -256,8 +256,7 @@ fn test_seek_write(#[case] count: u32, #[case] skip: u32) {
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        DOGGO.len() as u32,
+        &mut buf[..DOGGO.len()],
     );
     assert_eq!(n, Ok(DOGGO.len() as u32));
     assert_eq!(&buf[..DOGGO.len()], DOGGO);
@@ -266,8 +265,7 @@ fn test_seek_write(#[case] count: u32, #[case] skip: u32) {
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        KITTY.len() as u32,
+        &mut buf[..KITTY.len()],
     );
     assert_eq!(n, Ok(KITTY.len() as u32));
     assert_eq!(&buf[..KITTY.len()], KITTY);
@@ -708,8 +706,7 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        KITTY.len() as u32,
+        &mut buf[..KITTY.len()],
     );
     assert_eq!(n, Ok(0));
 
@@ -728,8 +725,7 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        PORCUPINE.len() as u32,
+        &mut buf[..PORCUPINE.len()],
     );
     assert_eq!(n, Ok(PORCUPINE.len() as u32));
     assert_eq!(&buf[..PORCUPINE.len()], PORCUPINE);
@@ -741,8 +737,7 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        KITTY.len() as u32,
+        &mut buf[..KITTY.len()],
     );
     assert_eq!(n, Ok(KITTY.len() as u32));
     assert!(

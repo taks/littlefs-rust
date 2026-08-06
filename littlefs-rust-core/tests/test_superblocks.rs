@@ -481,8 +481,7 @@ fn test_superblocks_unknown_blocks() {
         lfs_file_write(
             lfs,
             file,
-            data.as_ptr() as *const core::ffi::c_void,
-            data.len() as u32,
+            data,
         ),
         Ok(data.len() as u32)
     );
@@ -499,8 +498,7 @@ fn test_superblocks_unknown_blocks() {
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        buf.len() as u32,
+        &mut buf
     );
     assert_eq!(n, Ok(data.len() as u32));
     assert_eq!(&buf[..data.len()], data);
@@ -542,7 +540,7 @@ fn test_superblocks_fewer_blocks() {
             LFS_O_CREAT | LFS_O_EXCL | LFS_O_WRONLY,
         ));
         assert_eq!(
-            lfs_file_write(lfs, file, b"hello!".as_ptr() as *const core::ffi::c_void, 6,),
+            lfs_file_write(lfs, file, b"hello!"),
             Ok(6)
         );
         assert_ok(lfs_file_close(lfs, file));
@@ -556,8 +554,7 @@ fn test_superblocks_fewer_blocks() {
             lfs_file_read(
                 lfs,
                 file,
-                buf.as_mut_ptr() as *mut core::ffi::c_void,
-                buf.len() as u32,
+                &mut buf,
             ),
             Ok(6)
         );
@@ -621,8 +618,7 @@ fn test_superblocks_grow(
         lfs_file_write(
             lfs,
             file,
-            buf.as_ptr() as *const core::ffi::c_void,
-            buf.len() as u32,
+            buf,
         ),
         Ok(buf.len() as u32),
     );
@@ -642,8 +638,7 @@ fn test_superblocks_grow(
     let n = lfs_file_read(
         lfs,
         file,
-        rbuf.as_mut_ptr() as *mut core::ffi::c_void,
-        rbuf.len() as u32,
+        &mut rbuf
     );
     assert_eq!(n, Ok(buf.len() as u32));
     assert_eq!(&rbuf[..buf.len()], buf);

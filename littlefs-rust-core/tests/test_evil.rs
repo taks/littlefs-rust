@@ -345,8 +345,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
         lfs_file_read(
             lfs,
             file,
-            buffer.as_mut_ptr() as *mut core::ffi::c_void,
-            size,
+            &mut buffer[..size as usize],
         ),
     );
     assert_ok(lfs_file_close(lfs, file));

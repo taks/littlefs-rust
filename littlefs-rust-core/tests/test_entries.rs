@@ -58,8 +58,7 @@ fn test_entries_grow() {
     let n = lfs_file_read(
         lfs,
         file,
-        rb[..20].as_mut_ptr() as *mut core::ffi::c_void,
-        20,
+        &mut rb[..20]
     );
     assert_eq!(n, Ok(20));
     assert_ok(lfs_file_close(lfs, file));
@@ -83,8 +82,7 @@ fn test_entries_grow() {
         let n = lfs_file_read(
             lfs,
             file,
-            rb[..size].as_mut_ptr() as *mut core::ffi::c_void,
-            size as u32,
+            &mut rb[..size]
         );
         assert_eq!(n, Ok(size as u32));
         assert_eq!(&rb[..size], &buf[..size]);
@@ -127,8 +125,7 @@ fn test_entries_shrink() {
     let n = lfs_file_read(
         lfs,
         file,
-        rb[..200].as_mut_ptr() as *mut core::ffi::c_void,
-        200,
+        &mut rb[..200]
     );
     assert_eq!(n, Ok(200));
     assert_ok(lfs_file_close(lfs, file));
@@ -152,8 +149,7 @@ fn test_entries_shrink() {
         let n = lfs_file_read(
             lfs,
             file,
-            rb[..size].as_mut_ptr() as *mut core::ffi::c_void,
-            size as u32,
+            &mut rb[..size],
         );
         assert_eq!(n, Ok(size as u32));
         assert_eq!(&rb[..size], &buf[..size]);
@@ -187,8 +183,7 @@ fn test_entries_spill() {
         let n = lfs_file_write(
             lfs,
             file,
-            buf[..200].as_ptr() as *const core::ffi::c_void,
-            200,
+            &buf[..200]
         );
         assert_eq!(n, Ok(200));
         assert_ok(lfs_file_close(lfs, file));
@@ -202,8 +197,7 @@ fn test_entries_spill() {
         let n = lfs_file_read(
             lfs,
             file,
-            rb[..200].as_mut_ptr() as *mut core::ffi::c_void,
-            200,
+            &mut rb[..200]
         );
         assert_eq!(n, Ok(200));
         assert_eq!(&rb[..200], &buf[..200]);
@@ -358,8 +352,7 @@ fn test_entries_create_too_big() {
     let n = lfs_file_write(
         lfs,
         file,
-        wbuf[..size].as_ptr() as *const core::ffi::c_void,
-        size as u32,
+        &wbuf[..size]
     );
     assert_eq!(n, Ok(size as u32));
     assert_ok(lfs_file_close(lfs, file));
@@ -370,8 +363,7 @@ fn test_entries_create_too_big() {
     let n = lfs_file_read(
         lfs,
         file,
-        rbuf[..size].as_mut_ptr() as *mut core::ffi::c_void,
-        size as u32,
+        &mut rbuf[..size],
     );
     assert_eq!(n, Ok(size as u32));
     assert_eq!(&rbuf[..size], &wbuf[..size]);
@@ -408,8 +400,7 @@ fn test_entries_resize_too_big() {
     let n = lfs_file_write(
         lfs,
         file,
-        wbuf[..40].as_ptr() as *const core::ffi::c_void,
-        40,
+        &wbuf[..40]
     );
     assert_eq!(n, Ok(40));
     assert_ok(lfs_file_close(lfs, file));
@@ -420,8 +411,7 @@ fn test_entries_resize_too_big() {
     let n = lfs_file_read(
         lfs,
         file,
-        rbuf[..40].as_mut_ptr() as *mut core::ffi::c_void,
-        40,
+        &mut rbuf[..40],
     );
     assert_eq!(n, Ok(40));
     assert_eq!(&rbuf[..40], &wbuf[..40]);
@@ -438,8 +428,7 @@ fn test_entries_resize_too_big() {
     let n = lfs_file_write(
         lfs,
         file,
-        wbuf[..400].as_ptr() as *const core::ffi::c_void,
-        400,
+        &wbuf[..400]
     );
     assert_eq!(n, Ok(400));
     assert_ok(lfs_file_close(lfs, file));
@@ -450,8 +439,7 @@ fn test_entries_resize_too_big() {
     let n = lfs_file_read(
         lfs,
         file,
-        rbuf[..400].as_mut_ptr() as *mut core::ffi::c_void,
-        400,
+        &mut rbuf[..400],
     );
     assert_eq!(n, Ok(400));
     assert_eq!(&rbuf[..400], &wbuf[..400]);

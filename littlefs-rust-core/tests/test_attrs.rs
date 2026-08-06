@@ -122,7 +122,7 @@ fn test_attrs_get_set() {
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, c"hello/hello", LFS_O_RDONLY));
-    let n = lfs_file_read(lfs, file, buffer.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buffer[..32]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
     assert_ok(lfs_file_close(lfs, file));
@@ -239,7 +239,7 @@ fn test_attrs_get_set_root() {
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, c"hello/hello", LFS_O_RDONLY));
-    let n = lfs_file_read(lfs, file, buffer.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buffer[..32]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
     assert_ok(lfs_file_close(lfs, file));
@@ -345,7 +345,7 @@ fn test_attrs_get_set_file() {
     assert_ok(lfs_mount(lfs, &env.config));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, c"hello/hello", LFS_O_RDONLY));
-    let n = lfs_file_read(lfs, file, buffer.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buffer[..32]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
     assert_ok(lfs_file_close(lfs, file));

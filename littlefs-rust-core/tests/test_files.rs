@@ -107,8 +107,7 @@ fn test_files_large(
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        chunk_size,
+        &mut buf[..chunk_size as usize],
     );
     assert_eq!(n, Ok(0));
     assert_ok(lfs_file_close(lfs, file));
@@ -181,8 +180,7 @@ fn test_files_rewrite(
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        chunk_size,
+        &mut buf[..chunk_size as usize],
     );
     assert_eq!(n, Ok(0));
     assert_ok(lfs_file_close(lfs, file));
@@ -292,8 +290,7 @@ fn test_files_truncate(
     let n = lfs_file_read(
         lfs,
         file,
-        buf.as_mut_ptr() as *mut core::ffi::c_void,
-        chunk_size,
+        &mut buf[..chunk_size as usize],
     );
     assert_eq!(n, Ok(0));
     assert_ok(lfs_file_close(lfs, file));
@@ -433,8 +430,7 @@ fn test_files_reentrant_write_sync(
                 let n = littlefs_rust_core::lfs_file_read(
                     lfs,
                     file,
-                    buf.as_mut_ptr() as *mut core::ffi::c_void,
-                    chunk as u32,
+                    &mut buf[..chunk],
                 );
                 assert_eq!(n, Ok(chunk as u32));
                 for slot in buf[..chunk].iter() {
@@ -535,7 +531,7 @@ fn test_files_many() {
         let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY));
         let mut buf = [0u8; 32];
-        let n = lfs_file_read(lfs, rfile, buf.as_mut_ptr() as *mut core::ffi::c_void, 7);
+        let n = lfs_file_read(lfs, rfile, &mut buf[..7]);
         assert_eq!(n, Ok(7));
         assert_eq!(&buf[..7], bytes);
         assert_ok(lfs_file_close(lfs, rfile));
@@ -578,7 +574,7 @@ fn test_files_many_power_cycle() {
         let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY));
         let mut buf = [0u8; 32];
-        let n = lfs_file_read(lfs, rfile, buf.as_mut_ptr() as *mut core::ffi::c_void, 7);
+        let n = lfs_file_read(lfs, rfile, &mut buf[..7]);
         assert_eq!(n, Ok(7));
         assert_eq!(&buf[..7], bytes);
         assert_ok(lfs_file_close(lfs, rfile));
@@ -680,7 +676,7 @@ fn test_files_same_session() {
     assert_ok(lfs_file_open(lfs, file2, path, 1));
     assert_eq!(lfs_file_size(lfs, file2), 13);
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file2, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file2, &mut buf[..32]);
     assert_eq!(n, Ok(13));
     assert_eq!(&buf[..13], b"Hello World!\0");
     assert_ok(lfs_file_close(lfs, file2));
@@ -703,11 +699,11 @@ fn test_files_simple_read() {
     assert_eq!(lfs_file_tell(lfs, file), 0);
 
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buf[..32]);
     assert_eq!(n, Ok(13));
     assert_eq!(&buf[..13], b"Hello World!\0");
 
-    let n2 = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n2 = lfs_file_read(lfs, file, &mut buf[..32]);
     assert_eq!(n2, Ok(0));
 
     assert_ok(lfs_file_close(lfs, file));
@@ -728,7 +724,7 @@ fn test_files_seek_tell() {
     assert_ok(lfs_file_open(lfs, file, path, 1));
 
     let mut buf = [0u8; 4];
-    let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 4);
+    let n = lfs_file_read(lfs, file, &mut buf[..4]);
     assert_eq!(n, Ok(4));
     assert_eq!(&buf[..4], b"Hell");
     assert_eq!(lfs_file_tell(lfs, file), 4);
@@ -736,13 +732,13 @@ fn test_files_seek_tell() {
     assert_ok(lfs_file_rewind(lfs, file));
     assert_eq!(lfs_file_tell(lfs, file), 0);
 
-    let n2 = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 4);
+    let n2 = lfs_file_read(lfs, file, &mut buf[..4]);
     assert_eq!(n2, Ok(4));
     assert_eq!(&buf[..4], b"Hell");
 
     let pos = lfs_file_seek(lfs, file, 6, 0);
     assert_eq!(pos, Ok(6));
-    let n3 = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 4);
+    let n3 = lfs_file_read(lfs, file, &mut buf[..4]);
     assert_eq!(n3, Ok(4));
     assert_eq!(&buf[..4], b"Worl");
 
@@ -780,7 +776,7 @@ fn test_files_truncate_api() {
     assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), 5);
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
+    let n = lfs_file_read(lfs, file, &mut buf[..32]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buf[..5], b"hello");
     assert_ok(lfs_file_close(lfs, file));

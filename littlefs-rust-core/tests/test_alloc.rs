@@ -101,8 +101,7 @@ fn test_alloc_parallel(
             let nr = lfs_file_read(
                 lfs,
                 file,
-                buf.as_mut_ptr() as *mut core::ffi::c_void,
-                chunk as u32,
+                &mut buf[..chunk],
             );
             assert_eq!(nr, Ok(chunk as u32));
             assert_eq!(&buf[..chunk], &name[..chunk]);
@@ -186,8 +185,7 @@ fn test_alloc_serial(
             let nr = lfs_file_read(
                 lfs,
                 file,
-                buf.as_mut_ptr() as *mut core::ffi::c_void,
-                chunk as u32,
+                &mut buf[..chunk],
             );
             assert_eq!(nr, Ok(chunk as u32));
             assert_eq!(&buf[..chunk], &name[..chunk]);
@@ -266,8 +264,7 @@ fn test_alloc_parallel_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)
                 let nr = lfs_file_read(
                     lfs,
                     file,
-                    buf.as_mut_ptr() as *mut core::ffi::c_void,
-                    chunk as u32,
+                    &mut buf[..chunk],
                 );
                 assert_eq!(nr, Ok(chunk as u32));
                 assert_eq!(&buf[..chunk], &name[..chunk]);
@@ -336,8 +333,7 @@ fn test_alloc_serial_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)] 
                 let nw = lfs_file_write(
                     lfs,
                     file,
-                    buf.as_ptr() as *const core::ffi::c_void,
-                    chunk as u32,
+                    &buf[..chunk],
                 );
                 assert_eq!(nw, Ok(chunk as u32));
             }
@@ -360,8 +356,7 @@ fn test_alloc_serial_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)] 
                 let nr = lfs_file_read(
                     lfs,
                     file,
-                    buf.as_mut_ptr() as *mut core::ffi::c_void,
-                    chunk as u32,
+                    &mut buf[..chunk],
                 );
                 assert_eq!(nr, Ok(chunk as u32));
                 assert_eq!(&buf[..chunk], &name[..chunk]);

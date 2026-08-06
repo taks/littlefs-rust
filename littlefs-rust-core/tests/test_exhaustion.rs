@@ -93,10 +93,10 @@ fn run_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) -
 
             for _ in 0..size {
                 let expected = b'a' + (test_prng(&mut prng) % 26) as u8;
-                let mut r: u8 = 0;
-                let n = lfs_file_read(lfs, file, &mut r as *mut u8 as *mut core::ffi::c_void, 1);
+                let mut r = [0u8];
+                let n = lfs_file_read(lfs, file, &mut r);
                 assert_eq!(n, Ok(1));
-                assert_eq!(r, expected);
+                assert_eq!(r[0], expected);
             }
 
             assert_ok(lfs_file_close(lfs, file));
@@ -240,10 +240,10 @@ fn run_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) -> u32 {
 
             for _ in 0..size {
                 let expected = b'a' + (test_prng(&mut prng) % 26) as u8;
-                let mut r: u8 = 0;
-                let n = lfs_file_read(lfs, file, &mut r as *mut u8 as *mut core::ffi::c_void, 1);
+                let mut r = [0u8];
+                let n = lfs_file_read(lfs, file, &mut r);
                 assert_eq!(n, Ok(1));
-                assert_eq!(r, expected);
+                assert_eq!(r[0], expected);
             }
 
             assert_ok(lfs_file_close(lfs, file));
@@ -454,10 +454,10 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
 
             for _ in 0..size {
                 let expected = b'a' + (test_prng(&mut prng) % 26) as u8;
-                let mut r: u8 = 0;
-                let n = lfs_file_read(lfs, file, &mut r as *mut u8 as *mut core::ffi::c_void, 1);
+                let mut r = [0u8];
+                let n = lfs_file_read(lfs, file, &mut r);
                 assert_eq!(n, Ok(1));
-                assert_eq!(r, expected);
+                assert_eq!(r[0], expected);
             }
 
             assert_ok(lfs_file_close(lfs, file));
