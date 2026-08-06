@@ -104,11 +104,7 @@ fn test_files_large(
     verify_prng_file(lfs, file, size, chunk_size, 1);
     // Final read past EOF returns 0
     let mut buf = [0u8; 1024];
-    let n = lfs_file_read(
-        lfs,
-        file,
-        &mut buf[..chunk_size as usize],
-    );
+    let n = lfs_file_read(lfs, file, &mut buf[..chunk_size as usize]);
     assert_eq!(n, Ok(0));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -177,11 +173,7 @@ fn test_files_rewrite(
     }
     // Final read past EOF returns 0
     let mut buf = [0u8; 1024];
-    let n = lfs_file_read(
-        lfs,
-        file,
-        &mut buf[..chunk_size as usize],
-    );
+    let n = lfs_file_read(lfs, file, &mut buf[..chunk_size as usize]);
     assert_eq!(n, Ok(0));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -287,11 +279,7 @@ fn test_files_truncate(
     assert_eq!(lfs_file_size(lfs, file), size2 as i32);
     verify_prng_file(lfs, file, size2, chunk_size, 2);
     let mut buf = [0u8; 1024];
-    let n = lfs_file_read(
-        lfs,
-        file,
-        &mut buf[..chunk_size as usize],
-    );
+    let n = lfs_file_read(lfs, file, &mut buf[..chunk_size as usize]);
     assert_eq!(n, Ok(0));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -427,11 +415,7 @@ fn test_files_reentrant_write_sync(
             let mut i: u32 = 0;
             while i < sz as u32 {
                 let chunk = (chunk_size.min(sz as u32 - i)) as usize;
-                let n = littlefs_rust_core::lfs_file_read(
-                    lfs,
-                    file,
-                    &mut buf[..chunk],
-                );
+                let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..chunk]);
                 assert_eq!(n, Ok(chunk as u32));
                 for slot in buf[..chunk].iter() {
                     let expected = (common::test_prng(&mut prng) & 0xff) as u8;

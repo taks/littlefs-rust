@@ -477,14 +477,7 @@ fn test_superblocks_unknown_blocks() {
         LFS_O_CREAT | LFS_O_EXCL | LFS_O_WRONLY,
     ));
     let data = b"hello!";
-    assert_eq!(
-        lfs_file_write(
-            lfs,
-            file,
-            data,
-        ),
-        Ok(data.len() as u32)
-    );
+    assert_eq!(lfs_file_write(lfs, file, data,), Ok(data.len() as u32));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
 
@@ -495,11 +488,7 @@ fn test_superblocks_unknown_blocks() {
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, test_path.as_c_str(), LFS_O_RDONLY));
     let mut buf = [0u8; 256];
-    let n = lfs_file_read(
-        lfs,
-        file,
-        &mut buf
-    );
+    let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(data.len() as u32));
     assert_eq!(&buf[..data.len()], data);
     assert_ok(lfs_file_close(lfs, file));
@@ -539,10 +528,7 @@ fn test_superblocks_fewer_blocks() {
             test_path.as_c_str(),
             LFS_O_CREAT | LFS_O_EXCL | LFS_O_WRONLY,
         ));
-        assert_eq!(
-            lfs_file_write(lfs, file, b"hello!"),
-            Ok(6)
-        );
+        assert_eq!(lfs_file_write(lfs, file, b"hello!"), Ok(6));
         assert_ok(lfs_file_close(lfs, file));
         assert_ok(lfs_unmount(lfs));
 
@@ -550,14 +536,7 @@ fn test_superblocks_fewer_blocks() {
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(lfs, file, test_path.as_c_str(), LFS_O_RDONLY));
         let mut buf = [0u8; 16];
-        assert_eq!(
-            lfs_file_read(
-                lfs,
-                file,
-                &mut buf,
-            ),
-            Ok(6)
-        );
+        assert_eq!(lfs_file_read(lfs, file, &mut buf,), Ok(6));
         assert_eq!(&buf[..6], b"hello!");
         assert_ok(lfs_file_close(lfs, file));
         assert_ok(lfs_unmount(lfs));
@@ -614,14 +593,7 @@ fn test_superblocks_grow(
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     let buf = b"hello";
-    assert_eq!(
-        lfs_file_write(
-            lfs,
-            file,
-            buf,
-        ),
-        Ok(buf.len() as u32),
-    );
+    assert_eq!(lfs_file_write(lfs, file, buf,), Ok(buf.len() as u32),);
     assert_ok(lfs_file_close(lfs, file));
 
     assert_ok(lfs_fs_grow(lfs, large_count));
@@ -635,11 +607,7 @@ fn test_superblocks_grow(
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
     let mut rbuf = [0u8; 16];
-    let n = lfs_file_read(
-        lfs,
-        file,
-        &mut rbuf
-    );
+    let n = lfs_file_read(lfs, file, &mut rbuf);
     assert_eq!(n, Ok(buf.len() as u32));
     assert_eq!(&rbuf[..buf.len()], buf);
     assert_ok(lfs_file_close(lfs, file));

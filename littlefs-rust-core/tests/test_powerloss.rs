@@ -49,11 +49,7 @@ fn test_powerloss_only_rev() {
     );
     let buf = b"hello";
     for i in 0..5 {
-        let n = lfs_file_write(
-            lfs,
-            file,
-            buf
-        );
+        let n = lfs_file_write(lfs, file, buf);
         assert_eq!(n, Ok(buf.len() as u32));
         assert_ok_at(
             &format!("file_sync #{} (first loop)", i + 1),
@@ -301,11 +297,7 @@ fn test_debug_file_root_single_write_sync() {
         lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND),
     );
     let buf = b"hello";
-    let n = lfs_file_write(
-        lfs,
-        file,
-        buf,
-    );
+    let n = lfs_file_write(lfs, file, buf);
     assert_eq!(n, Ok(buf.len() as u32));
     assert_ok_at("file_sync", lfs_file_sync(lfs, file));
     assert_ok_at("file_close", lfs_file_close(lfs, file));
@@ -332,11 +324,7 @@ fn test_debug_file_root_repeated_write_sync() {
     );
     let buf = b"hello";
     for i in 0..5 {
-        let n = lfs_file_write(
-            lfs,
-            file,
-            buf
-        );
+        let n = lfs_file_write(lfs, file, buf);
         assert_eq!(n, Ok(buf.len() as u32));
         assert_ok_at(&format!("file_sync #{}", i + 1), lfs_file_sync(lfs, file));
     }
@@ -372,11 +360,7 @@ fn test_debug_file_subdir_which_sync_fails() {
     );
     let buf = b"hello";
     for i in 0..5 {
-        let n = lfs_file_write(
-            lfs,
-            file,
-            buf
-        );
+        let n = lfs_file_write(lfs, file, buf);
         assert_eq!(n, Ok(buf.len() as u32));
         let err = lfs_file_sync(lfs, file);
         assert_ok_at(&format!("file_sync #{}", i + 1), err);
@@ -413,11 +397,7 @@ fn test_debug_powerloss_after_corrupt_append() {
     );
     let buf = b"hello";
     for i in 0..5 {
-        let n = lfs_file_write(
-            lfs,
-            file,
-            buf
-        );
+        let n = lfs_file_write(lfs, file, buf);
         assert_eq!(n, Ok(buf.len() as u32));
         assert_ok_at(&format!("file_sync #{}", i + 1), lfs_file_sync(lfs, file));
     }
@@ -454,11 +434,7 @@ fn test_debug_powerloss_after_corrupt_append() {
     );
     let buf2 = b"goodbye";
     for i in 0..5 {
-        let n = lfs_file_write(
-            lfs,
-            file,
-            buf2,
-        );
+        let n = lfs_file_write(lfs, file, buf2);
         assert_eq!(n, Ok(buf2.len() as u32));
         assert_ok_at(
             &format!("file_sync #{} (after corrupt)", i + 1),
@@ -487,13 +463,13 @@ fn test_powerloss_runner_smoke_log() {
         &snapshot,
         64,
         |lfs, config| {
-            let err = lfs_mount(lfs, config)?;
+            lfs_mount(lfs, config)?;
             let err = lfs_mkdir(lfs, path_d);
             if let Err(err) = err {
                 let _ = lfs_unmount(lfs);
                 return Err(err);
             }
-            let err = lfs_unmount(lfs)?;
+            lfs_unmount(lfs)?;
             Ok(())
         },
         |lfs, config| {
@@ -560,17 +536,17 @@ fn test_powerloss_ooo_smoke() {
         &snapshot,
         64,
         |lfs, config| {
-            let err = lfs_mount(lfs, config)?;
+            lfs_mount(lfs, config)?;
             let err = lfs_mkdir(lfs, path_d);
             if let Err(err) = err {
                 let _ = lfs_unmount(lfs);
                 return Err(err);
             }
-            let err = lfs_unmount(lfs)?;
+            lfs_unmount(lfs)?;
             Ok(())
         },
         |lfs, config| {
-            let err = lfs_mount(lfs, config)?;
+            lfs_mount(lfs, config)?;
             let _ = lfs_unmount(lfs);
             Ok(())
         },
@@ -603,11 +579,7 @@ fn test_debug_file_subdir_single_write_sync() {
         ),
     );
     let buf = b"hello";
-    let n = lfs_file_write(
-        lfs,
-        file,
-        buf
-    );
+    let n = lfs_file_write(lfs, file, buf);
     assert_eq!(n, Ok(buf.len() as u32));
     assert_ok_at("file_sync", lfs_file_sync(lfs, file));
     assert_ok_at("file_close", lfs_file_close(lfs, file));
