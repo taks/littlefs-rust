@@ -819,11 +819,11 @@ pub fn lfs_dir_traverse(
 
                 if (mask & tmask & tag) != (mask & tmask & ttag) {
                     phase = TraversePhase::GetNextTag;
-                } else if crate::tag::lfs_tag_id(tmask) != 0 {
+                } else if (tmask).lfs_tag_id() != 0 {
                     crate::lfs_trace!(
-                        "traverse GetNextTag: push tag=0x{:08x} type3={} buffer={:p} attr_i={}",
+                        "traverse GetNextTag: push tag=0x{:?} type3={} buffer={:p} attr_i={}",
                         tag,
-                        crate::tag::lfs_tag_type3(tag),
+                        (tag).lfs_tag_type3(),
                         buffer,
                         attr_i
                     );
@@ -875,10 +875,10 @@ pub fn lfs_dir_traverse(
                 disk_override,
             } => {
                 crate::lfs_trace!(
-                    "traverse ProcessTag: sp={} tag=0x{:08x} type3={} buffer={:p}",
+                    "traverse ProcessTag: sp={} tag=0x{:?} type3={} buffer={:p}",
                     sp,
                     tag,
-                    crate::tag::lfs_tag_type3(tag),
+                    (tag).lfs_tag_type3(),
                     buffer
                 );
                 if tmask.lfs_tag_id() != 0 && !(tag.lfs_tag_id() >= begin && tag.lfs_tag_id() < end)

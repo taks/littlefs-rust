@@ -308,18 +308,18 @@ pub fn lfs_dir_find(
             *path = CStr::from_ptr(name.as_ptr() as *const _);
 
             // C: lfs.c:1652-1654
-            if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
+            if u32::from((tag).lfs_tag_type3()) != LFS_TYPE_DIR {
                 return crate::lfs_err!(Err(Error::NotDir));
             }
 
             // C: lfs.c:1557-1564
-            if lfs_tag_id(tag as u32) != 0x3ff {
+            if (tag).lfs_tag_id() != 0x3ff {
                 let dir_tail = borrow_unchecked(&mut dir.tail);
                 let res = lfs_dir_get(
                     lfs,
                     dir,
                     Tag::mktag(0x700, 0x3ff, 0),
-                    Tag::mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
+                    Tag::mktag(LFS_TYPE_STRUCT, (tag).lfs_tag_id() as u32, 8),
                     dir_tail.as_mut_bytes(),
                 );
                 if let Err(err) = res {
