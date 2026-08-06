@@ -4,7 +4,6 @@ use core::ffi::CStr;
 
 use zerocopy::IntoBytes;
 
-use crate::{Lfs, LfsAttr};
 use crate::bd::bd::{lfs_bd_read, lfs_cache_drop, lfs_cache_zero};
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
@@ -21,6 +20,7 @@ use crate::tag::lfs_mktag;
 use crate::types::LFS_BLOCK_INLINE;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 use crate::util::lfs_min;
+use crate::{Lfs, LfsAttr};
 
 /// Per lfs.c lfs_file_opencfg_ (lines 3065-3236)
 ///
@@ -316,36 +316,35 @@ pub fn lfs_file_opencfg_(
         }
 
         // C: lfs.c:3162-3187 — fetch attrs
-            let attrs = &mut cfg.attrs;
-            for attr in attrs.iter_mut() {
-                if (file.flags as i32 & LFS_O_RDONLY) == LFS_O_RDONLY {
-                    let res = lfs_dir_get(
-                        lfs,
-                        &file.m,
-                        lfs_mktag(0x7ff, 0x3ff, 0),
-                        lfs_mktag(
-                            LFS_TYPE_USERATTR + attr.type_ as u32,
-                            file.id as u32,
-                            attr.buffer.len() as u32,
-                        ),
-                        attr.buffer,
-                    );
-                    if let Err(err) = res
-                        && err != Error::NoEntry
-                    {
-                        lfs_file_close_(lfs, file);
-                        return Err(err);
-                    }
-                }
-                if (file.flags as i32 & LFS_O_WRONLY) == LFS_O_WRONLY {
-                    if attr.buffer.len() as u32 > (*lfs).attr_max {
-                        lfs_file_close_(lfs, file);
-                        return crate::lfs_err!(Err(Error::NoSpace));
-                    }
-                    file.flags |= LFS_F_DIRTY as u32;
+        let attrs = &mut cfg.attrs;
+        for attr in attrs.iter_mut() {
+            if (file.flags as i32 & LFS_O_RDONLY) == LFS_O_RDONLY {
+                let res = lfs_dir_get(
+                    lfs,
+                    &file.m,
+                    lfs_mktag(0x7ff, 0x3ff, 0),
+                    lfs_mktag(
+                        LFS_TYPE_USERATTR + attr.type_ as u32,
+                        file.id as u32,
+                        attr.buffer.len() as u32,
+                    ),
+                    attr.buffer,
+                );
+                if let Err(err) = res
+                    && err != Error::NoEntry
+                {
+                    lfs_file_close_(lfs, file);
+                    return Err(err);
                 }
             }
-
+            if (file.flags as i32 & LFS_O_WRONLY) == LFS_O_WRONLY {
+                if attr.buffer.len() as u32 > (*lfs).attr_max {
+                    lfs_file_close_(lfs, file);
+                    return crate::lfs_err!(Err(Error::NoSpace));
+                }
+                file.flags |= LFS_F_DIRTY as u32;
+            }
+        }
 
         if !(cfg).buffer.is_empty() {
             file.cache.buffer = cfg.buffer.as_mut_ptr();
@@ -412,11 +411,13 @@ pub fn lfs_file_opencfg_(
 /// C: Wrapper that calls opencfg with default config.
 /// Static defaults for lfs_file_open (no opencfg). C uses the same;
 /// a stack-local would make file.cfg a dangling pointer after return.
-// static LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
- //    buffer: &mut [],
- //    attrs: &mut [],
+static mut BUFFER: [u8; 0] = [];
+static mut ATTRS: [LfsAttr; 0] = [];
+static LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
+    buffer: unsafe { &mut *(&raw mut BUFFER) },
+    attrs: unsafe { &mut *(&raw mut ATTRS) },
     // attr_count: 0,
-// };
+};
 
 pub fn lfs_file_open_(
     lfs: &mut crate::fs::Lfs,
@@ -424,9 +425,8 @@ pub fn lfs_file_open_(
     path: &CStr,
     flags: i32,
 ) -> Result<(), Error> {
-    lfs_file_opencfg_(lfs, file, path, flags, &mut LfsFileConfig {
-        buffer: &mut [],
-        attrs: &mut [],
+    lfs_file_opencfg_(lfs, file, path, flags, unsafe {
+        &mut *(&raw mut LFS_FILE_DEFAULTS)
     })
 }
 
@@ -942,13 +942,13 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                         file.id as u32,
                         file.cfg.as_ref().map_or(0, |c| c.attrs.len() as u32),
                     ) as u32,
-                    buffer: file.cfg.as_ref().map_or(&[], |c|  {
+                    buffer: file.cfg.as_ref().map_or(&[], |c| {
                         if (c.attrs.is_empty()) {
                             &[]
                         } else {
                             c.attrs.as_bytes()
                         }
-                    })
+                    }),
                 },
             ];
             let err = lfs_dir_commit(lfs, &mut file.m, &attrs);
