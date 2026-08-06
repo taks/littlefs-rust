@@ -20,10 +20,10 @@ use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit, lfs_dir_fetch,
-    lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
-    lfs_fs_preporphans, lfs_fs_size, lfs_mattr, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32,
-    lfs_remove, lfs_stat, lfs_unmount,
+    Lfs, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit, lfs_dir_fetch, lfs_format,
+    lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent, lfs_fs_preporphans,
+    lfs_fs_size, lfs_mattr, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32, lfs_remove, lfs_stat,
+    lfs_unmount,
 };
 use zerocopy::IntoBytes;
 
@@ -59,32 +59,32 @@ fn test_orphans_mkconsistent_no_orphans() {
 
     let lfs_ptr = lfs;
     assert_ok(lfs_fs_preporphans(lfs_ptr, 1));
-    assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) });
+    assert!(lfs_fs_hasorphans(lfs_ptr));
 
     let path = c"_p";
     assert_ok(lfs_mkdir(lfs_ptr, path));
     assert_ok(lfs_remove(lfs_ptr, path));
     assert!(
-        !unsafe { lfs_fs_hasorphans(lfs_ptr) },
+        !lfs_fs_hasorphans(lfs_ptr),
         "force_consistency before mkdir clears orphans"
     );
     assert_ok(lfs_unmount(lfs_ptr));
 
     assert_ok(lfs_mount(lfs_ptr, &env.config));
     assert!(
-        !unsafe { lfs_fs_hasorphans(lfs_ptr) },
+        !lfs_fs_hasorphans(lfs_ptr),
         "persisted gstate has no orphans"
     );
     assert_ok(lfs_fs_mkconsistent(lfs_ptr));
     assert!(
-        !unsafe { lfs_fs_hasorphans(lfs_ptr) },
+        !lfs_fs_hasorphans(lfs_ptr),
         "after mkconsistent, gstate should have no orphans"
     );
     assert_ok(lfs_unmount(lfs_ptr));
 
     assert_ok(lfs_mount(lfs_ptr, &env.config));
     assert!(
-        !unsafe { lfs_fs_hasorphans(lfs_ptr) },
+        !lfs_fs_hasorphans(lfs_ptr),
         "after remount, gstate persisted to disk has no orphans"
     );
     assert_ok(lfs_unmount(lfs_ptr));
@@ -104,12 +104,12 @@ fn test_orphans_no_orphans() {
 
     let lfs_ptr = lfs;
     assert_ok(lfs_fs_preporphans(lfs_ptr, 1));
-    assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) });
+    assert!(lfs_fs_hasorphans(lfs_ptr));
 
     let path = c"_x";
     assert_ok(lfs_mkdir(lfs_ptr, path));
     assert_ok(lfs_remove(lfs_ptr, path));
-    assert!(!unsafe { lfs_fs_hasorphans(lfs_ptr) });
+    assert!(!lfs_fs_hasorphans(lfs_ptr));
     assert_ok(lfs_unmount(lfs_ptr));
 }
 
@@ -130,7 +130,7 @@ fn test_orphans_nonreentrant() {
     let path = c"a";
     assert_ok(lfs_mkdir(lfs_ptr, path));
     assert_ok(lfs_remove(lfs_ptr, path));
-    assert!(!unsafe { lfs_fs_hasorphans(lfs_ptr) });
+    assert!(!lfs_fs_hasorphans(lfs_ptr));
     assert_ok(lfs_unmount(lfs_ptr));
 }
 
@@ -225,7 +225,7 @@ fn test_orphans_one_orphan() {
         split: false,
         tail: [0, 0],
     };
-    unsafe { lfs_alloc_ckpoint(lfs_ptr) };
+    lfs_alloc_ckpoint(lfs_ptr);
     assert_ok(unsafe { lfs_dir_alloc(lfs_ptr, &mut orphan) });
     assert_ok(lfs_dir_commit(lfs_ptr, &mut orphan, &[]));
 
@@ -250,17 +250,14 @@ fn test_orphans_one_orphan() {
     }];
     assert_ok(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
 
-    assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) }, "should have orphans");
+    assert!(lfs_fs_hasorphans(lfs_ptr), "should have orphans");
     assert_ok(lfs_unmount(lfs_ptr));
 
     assert_ok(lfs_mount(lfs_ptr, &env.config));
-    assert!(
-        unsafe { lfs_fs_hasorphans(lfs_ptr) },
-        "orphans should persist"
-    );
+    assert!(lfs_fs_hasorphans(lfs_ptr), "orphans should persist");
     assert_ok(lfs_fs_forceconsistency(lfs_ptr));
     assert!(
-        !unsafe { lfs_fs_hasorphans(lfs_ptr) },
+        !lfs_fs_hasorphans(lfs_ptr),
         "forceconsistency should clear orphans"
     );
     assert_ok(lfs_unmount(lfs_ptr));
@@ -291,7 +288,7 @@ fn test_orphans_mkconsistent_one_orphan() {
         split: false,
         tail: [0, 0],
     };
-    unsafe { lfs_alloc_ckpoint(lfs_ptr) };
+    lfs_alloc_ckpoint(lfs_ptr);
     assert_ok(unsafe { lfs_dir_alloc(lfs_ptr, &mut orphan) });
     assert_ok(lfs_dir_commit(lfs_ptr, &mut orphan, &[]));
 
@@ -316,14 +313,11 @@ fn test_orphans_mkconsistent_one_orphan() {
     }];
     assert_ok(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
 
-    assert!(unsafe { lfs_fs_hasorphans(lfs_ptr) }, "should have orphans");
+    assert!(lfs_fs_hasorphans(lfs_ptr), "should have orphans");
     assert_ok(lfs_unmount(lfs_ptr));
 
     assert_ok(lfs_mount(lfs_ptr, &env.config));
-    assert!(
-        unsafe { lfs_fs_hasorphans(lfs_ptr) },
-        "orphans should persist"
-    );
+    assert!(lfs_fs_hasorphans(lfs_ptr), "orphans should persist");
     assert_ok(lfs_fs_mkconsistent(lfs_ptr));
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),

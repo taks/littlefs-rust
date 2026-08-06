@@ -77,7 +77,7 @@ fn test_badblock_behavior_erase_error() {
     env.badblock_ram.set_bad_block(5);
 
     // Use the erase callback directly
-    let result = unsafe {
+    let result = {
         let erase = env.config.erase.expect("erase callback");
         erase(&env.config, 5)
     };
@@ -115,7 +115,7 @@ fn test_badblock_behavior_prog_noop() {
     init_badblock_context(&mut env);
 
     // Erase block 5, then mark it bad
-    unsafe {
+    {
         let erase = env.config.erase.expect("erase callback");
         erase(&env.config, 5);
     }
@@ -144,7 +144,7 @@ fn test_badblock_behavior_erase_noop() {
     env.badblock_ram.set_bad_block(5);
 
     // Erase should succeed (return 0) but not actually erase
-    let result = unsafe {
+    let result = {
         let erase = env.config.erase.expect("erase callback");
         erase(&env.config, 5)
     };
@@ -169,7 +169,7 @@ fn test_wear_leveling_bd_exhaustion() {
 
     // Erase block 3 exactly erase_cycles times — should all succeed
     for i in 0..erase_cycles {
-        let result = unsafe {
+        let result = {
             let erase = env.config.erase.expect("erase callback");
             erase(&env.config, 3)
         };
@@ -189,7 +189,7 @@ fn test_wear_leveling_bd_exhaustion() {
     // (no increment since worn block path doesn't increment).
     // So with default ProgError, erase on worn block just erases normally
     // (no increment, no error).
-    let result = unsafe {
+    let result = {
         let erase = env.config.erase.expect("erase callback");
         erase(&env.config, 3)
     };

@@ -14,10 +14,10 @@ use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_mattr;
 use littlefs_rust_core::lfs_type::lfs_type::*;
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMdir, lfs_ctz_fromle32, lfs_deinit,
-    lfs_dir_commit, lfs_dir_fetch, lfs_dir_get, lfs_dir_open, lfs_file_close, lfs_file_open,
-    lfs_file_read, lfs_file_write, lfs_format, lfs_fs_prepmove, lfs_init, lfs_mkdir, lfs_mktag,
-    lfs_mount, lfs_pair_fromle32, lfs_stat, lfs_tole32, lfs_unmount,
+    Lfs, LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMdir, lfs_ctz_fromle32, lfs_deinit, lfs_dir_commit,
+    lfs_dir_fetch, lfs_dir_get, lfs_dir_open, lfs_file_close, lfs_file_open, lfs_file_read,
+    lfs_file_write, lfs_format, lfs_fs_prepmove, lfs_init, lfs_mkdir, lfs_mktag, lfs_mount,
+    lfs_pair_fromle32, lfs_stat, lfs_tole32, lfs_unmount,
 };
 use zerocopy::IntoBytes;
 
@@ -77,7 +77,7 @@ unsafe fn evil_invalid_tail_pointer(tail_type: u32, invalset: u32) {
 #[test]
 fn test_evil_invalid_dir_pointer() {
     for &invalset in &[0x3u32, 0x1, 0x2] {
-        unsafe { evil_invalid_dir_pointer(invalset) };
+        evil_invalid_dir_pointer(invalset);
     }
 }
 
@@ -167,7 +167,7 @@ fn evil_invalid_dir_pointer(invalset: u32) {
 #[test]
 fn test_evil_invalid_file_pointer() {
     for &size in &[10u32, 1000, 100000] {
-        unsafe { evil_invalid_file_pointer(size) };
+        evil_invalid_file_pointer(size);
     }
 }
 

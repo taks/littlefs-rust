@@ -5,8 +5,6 @@
 
 mod common;
 
-use std::ffi::CStr;
-
 use common::{
     LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, assert_err, assert_ok,
     clone_config_with_block_count, config_badblock, config_with_geometry, default_config,
@@ -795,8 +793,8 @@ fn test_alloc_two_files_ctz() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, (c"pacman"), LFS_O_RDONLY));
-    let open_head = unsafe { (*file).ctz.head };
+    assert_ok(lfs_file_open(lfs, file, c"pacman", LFS_O_RDONLY));
+    let open_head = file.ctz.head;
     assert_eq!(
         open_head, pacman_head,
         "pacman ctz.head after ghost fill+GC: expected {} got {}",

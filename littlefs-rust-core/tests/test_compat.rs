@@ -207,13 +207,13 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_file_close(lfs, file));
 
     assert_ok(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(unsafe { (*fsinfo).disk_version }, LFS_DISK_VERSION - 1);
+    assert_eq!({ (*fsinfo).disk_version }, LFS_DISK_VERSION - 1);
     assert_ok(lfs_unmount(lfs));
 
     // Write should bump minor version
     assert_ok(lfs_mount(lfs, cfg));
     assert_ok(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(unsafe { (*fsinfo).disk_version }, LFS_DISK_VERSION - 1);
+    assert_eq!({ (*fsinfo).disk_version }, LFS_DISK_VERSION - 1);
 
     assert_ok(lfs_file_open(
         lfs,
@@ -233,7 +233,7 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_file_close(lfs, file));
 
     assert_ok(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(unsafe { (*fsinfo).disk_version }, LFS_DISK_VERSION);
+    assert_eq!(fsinfo.disk_version, LFS_DISK_VERSION);
     assert_ok(lfs_unmount(lfs));
 
     // Remount, verify version stayed bumped
