@@ -104,7 +104,7 @@ fn test_move_file() {
     assert_ok(lfs_mount(lfs, &env.config));
     assert_ok(lfs_rename(
         lfs,
-        path_bytes("a/hello").as_c_str(),
+        c"a/hello",
         path_bytes("c/hello").as_c_str(),
     ));
     assert_ok(lfs_unmount(lfs));
@@ -121,7 +121,7 @@ fn test_move_file() {
     assert_eq!(info.size, 5 + 8 + 6);
 
     let info_dummy = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    let err_a = lfs_stat(lfs, path_bytes("a/hello").as_c_str(), info_dummy);
+    let err_a = lfs_stat(lfs, c"a/hello", info_dummy);
     assert_err(Error::NoEntry, err_a);
     let err_b = lfs_stat(lfs, path_bytes("b/hello").as_c_str(), info_dummy);
     assert_err(Error::NoEntry, err_b);
@@ -211,7 +211,7 @@ fn test_move_state_stealing() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("a/hello").as_c_str(),
+        c"a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n1 = lfs_file_write(lfs, file, b"hola\n".as_ptr() as *const core::ffi::c_void, 5);
@@ -236,7 +236,7 @@ fn test_move_state_stealing() {
     assert_ok(lfs_mount(lfs, &env.config));
     assert_ok(lfs_rename(
         lfs,
-        path_bytes("a/hello").as_c_str(),
+        c"a/hello",
         path_bytes("b/hello").as_c_str(),
     ));
     assert_ok(lfs_unmount(lfs));
@@ -577,7 +577,7 @@ fn test_move_file_corrupt_source() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("a/hello").as_c_str(),
+        c"a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     assert_eq!(
@@ -608,7 +608,7 @@ fn test_move_file_corrupt_source() {
     assert_ok(lfs_mount(lfs, &env.config));
     assert_ok(lfs_rename(
         lfs,
-        path_bytes("a/hello").as_c_str(),
+        c"a/hello",
         path_bytes("c/hello").as_c_str(),
     ));
 
@@ -627,10 +627,7 @@ fn test_move_file_corrupt_source() {
     assert_ok(lfs_stat(lfs, c"c/hello", info));
     assert_eq!(unsafe { (*info).size }, 5 + 8 + 6);
 
-    assert_err(
-        Error::NoEntry,
-        lfs_stat(lfs, path_bytes("a/hello").as_c_str(), info),
-    );
+    assert_err(Error::NoEntry, lfs_stat(lfs, c"a/hello", info));
     assert_err(
         Error::NoEntry,
         lfs_stat(lfs, path_bytes("b/hello").as_c_str(), info),
@@ -678,7 +675,7 @@ fn test_move_file_corrupt_source_dest() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("a/hello").as_c_str(),
+        c"a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     assert_eq!(
@@ -709,7 +706,7 @@ fn test_move_file_corrupt_source_dest() {
     assert_ok(lfs_mount(lfs, &env.config));
     assert_ok(lfs_rename(
         lfs,
-        path_bytes("a/hello").as_c_str(),
+        c"a/hello",
         path_bytes("c/hello").as_c_str(),
     ));
 
@@ -734,12 +731,7 @@ fn test_move_file_corrupt_source_dest() {
     assert_err(Error::NoEntry, lfs_stat(lfs, c"c/hello", info));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("a/hello").as_c_str(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, c"a/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, buf.as_mut_ptr() as *mut core::ffi::c_void, 32);
     assert_eq!(n, Ok(5 + 8 + 6));
@@ -775,7 +767,7 @@ fn test_move_file_after_corrupt() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("a/hello").as_c_str(),
+        c"a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     assert_eq!(
@@ -806,7 +798,7 @@ fn test_move_file_after_corrupt() {
     assert_ok(lfs_mount(lfs, &env.config));
     assert_ok(lfs_rename(
         lfs,
-        path_bytes("a/hello").as_c_str(),
+        c"a/hello",
         path_bytes("c/hello").as_c_str(),
     ));
 
@@ -819,7 +811,7 @@ fn test_move_file_after_corrupt() {
     assert_ok(lfs_mount(lfs, &env.config));
     assert_ok(lfs_rename(
         lfs,
-        path_bytes("a/hello").as_c_str(),
+        c"a/hello",
         path_bytes("c/hello").as_c_str(),
     ));
     assert_ok(lfs_unmount(lfs));

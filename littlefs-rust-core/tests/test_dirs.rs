@@ -738,7 +738,7 @@ fn test_dirs_nested() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("potato").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, c"potato"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
@@ -757,14 +757,11 @@ fn test_dirs_nested() {
     names_sorted.sort();
     assert_eq!(names_sorted, vec!["baked", "fried", "sweet"]);
 
-    assert_err(
-        Error::NotEmpty,
-        lfs_remove(lfs, path_bytes("potato").as_c_str()),
-    );
+    assert_err(Error::NotEmpty, lfs_remove(lfs, c"potato"));
 
     assert_ok(lfs_rename(
         lfs,
-        path_bytes("potato").as_c_str(),
+        c"potato",
         path_bytes("coldpotato").as_c_str(),
     ));
     assert_ok(lfs_rename(
@@ -778,10 +775,7 @@ fn test_dirs_nested() {
         path_bytes("hotpotato").as_c_str(),
     ));
 
-    assert_err(
-        Error::NoEntry,
-        lfs_remove(lfs, path_bytes("potato").as_c_str()),
-    );
+    assert_err(Error::NoEntry, lfs_remove(lfs, c"potato"));
     assert_err(
         Error::NoEntry,
         lfs_remove(lfs, path_bytes("coldpotato").as_c_str()),
@@ -960,7 +954,7 @@ fn test_dirs_other_errors() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("potato").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, c"potato"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
@@ -970,10 +964,7 @@ fn test_dirs_other_errors() {
     ));
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_err(
-        Error::Exists,
-        lfs_mkdir(lfs, path_bytes("potato").as_c_str()),
-    );
+    assert_err(Error::Exists, lfs_mkdir(lfs, c"potato"));
     assert_err(
         Error::Exists,
         lfs_mkdir(lfs, path_bytes("burito").as_c_str()),
@@ -995,7 +986,7 @@ fn test_dirs_other_errors() {
         lfs_file_open(
             lfs,
             file,
-            path_bytes("potato").as_c_str(),
+            c"potato",
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ),
     );
@@ -1019,7 +1010,7 @@ fn test_dirs_other_errors() {
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::IsDir,
-        lfs_file_open(lfs, file, path_bytes("potato").as_c_str(), LFS_O_RDONLY),
+        lfs_file_open(lfs, file, c"potato", LFS_O_RDONLY),
     );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
@@ -1030,18 +1021,13 @@ fn test_dirs_other_errors() {
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::IsDir,
-        lfs_file_open(lfs, file, path_bytes("potato").as_c_str(), LFS_O_WRONLY),
+        lfs_file_open(lfs, file, c"potato", LFS_O_WRONLY),
     );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::IsDir,
-        lfs_file_open(
-            lfs,
-            file,
-            path_bytes("potato").as_c_str(),
-            LFS_O_WRONLY | LFS_O_CREAT,
-        ),
+        lfs_file_open(lfs, file, c"potato", LFS_O_WRONLY | LFS_O_CREAT),
     );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
@@ -1055,19 +1041,11 @@ fn test_dirs_other_errors() {
 
     assert_err(
         Error::IsDir,
-        lfs_rename(
-            lfs,
-            path_bytes("tacoto").as_c_str(),
-            path_bytes("potato").as_c_str(),
-        ),
+        lfs_rename(lfs, path_bytes("tacoto").as_c_str(), c"potato"),
     );
     assert_err(
         Error::NotDir,
-        lfs_rename(
-            lfs,
-            path_bytes("potato").as_c_str(),
-            path_bytes("tacoto").as_c_str(),
-        ),
+        lfs_rename(lfs, c"potato", path_bytes("tacoto").as_c_str()),
     );
 
     assert_err(Error::Exists, lfs_mkdir(lfs, c"/"));
