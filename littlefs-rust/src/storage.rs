@@ -1,4 +1,4 @@
-use crate::error::Error;
+use littlefs_rust_core::error::Error;
 
 /// Block device storage backend.
 ///

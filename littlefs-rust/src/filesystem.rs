@@ -1,15 +1,15 @@
 use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
+use littlefs_rust_core::error::Error;
 use core::cell::RefCell;
 use core::ffi::c_void;
 use core::mem::{ManuallyDrop, MaybeUninit};
 
-use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo, LFS_ERR_IO};
+use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
 use crate::config::Config;
 use crate::dir::{dir_entry_from_info, ReadDir};
-use crate::error::{from_lfs_result, from_lfs_size, Error};
 use crate::file::File;
 use crate::metadata::{DirEntry, Metadata, OpenFlags};
 use crate::storage::Storage;
@@ -48,36 +48,24 @@ fn trampoline_read<S: Storage>(
     block: u32,
     off: u32,
     buffer: &mut [u8],
-) -> i32 {
+) -> Result<(), Error> {
     let storage = unsafe { &mut *((*cfg).context as *mut S) };
-    match storage.read(block, off, buffer) {
-        Ok(()) => 0,
-        Err(_) => LFS_ERR_IO,
-    }
+    storage.read(block, off, buffer)
 }
 
-fn trampoline_prog<S: Storage>(cfg: *const LfsConfig, block: u32, off: u32, buffer: &[u8]) -> i32 {
+fn trampoline_prog<S: Storage>(cfg: *const LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
     let storage = unsafe { &mut *((*cfg).context as *mut S) };
-    match storage.write(block, off, buffer) {
-        Ok(()) => 0,
-        Err(_) => LFS_ERR_IO,
-    }
+    storage.write(block, off, buffer)
 }
 
-unsafe extern "C" fn trampoline_erase<S: Storage>(cfg: *const LfsConfig, block: u32) -> i32 {
+unsafe extern "C" fn trampoline_erase<S: Storage>(cfg: *const LfsConfig, block: u32) -> Result<(), Error> {
     let storage = &mut *((*cfg).context as *mut S);
-    match storage.erase(block) {
-        Ok(()) => 0,
-        Err(_) => LFS_ERR_IO,
-    }
+    storage.erase(block)
 }
 
-unsafe extern "C" fn trampoline_sync<S: Storage>(cfg: *const LfsConfig) -> i32 {
+unsafe extern "C" fn trampoline_sync<S: Storage>(cfg: *const LfsConfig) -> Result<(), Error> {
     let storage = &mut *((*cfg).context as *mut S);
-    match storage.sync() {
-        Ok(()) => 0,
-        Err(_) => LFS_ERR_IO,
-    }
+    storage.sync()
 }
 
 // ── FsInner construction ────────────────────────────────────────────────────

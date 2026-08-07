@@ -40,7 +40,6 @@ extern crate alloc;
 
 mod config;
 mod dir;
-mod error;
 mod file;
 mod filesystem;
 mod metadata;
@@ -49,7 +48,6 @@ mod storage;
 
 pub use config::Config;
 pub use dir::ReadDir;
-pub use error::Error;
 pub use file::File;
 pub use filesystem::Filesystem;
 pub use metadata::{DirEntry, FileType, Metadata, OpenFlags, SeekFrom};

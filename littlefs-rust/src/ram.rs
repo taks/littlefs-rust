@@ -1,7 +1,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
+use littlefs_rust_core::error::Error;
 
-use crate::error::Error;
 use crate::storage::Storage;
 
 /// In-memory block device for testing and examples.

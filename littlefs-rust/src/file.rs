@@ -6,7 +6,6 @@ use core::mem::MaybeUninit;
 
 use littlefs_rust_core::{LfsFile, LfsFileConfig};
 
-use crate::error::{from_lfs_result, from_lfs_size, Error};
 use crate::filesystem::Filesystem;
 use crate::metadata::{OpenFlags, SeekFrom};
 use crate::storage::Storage;

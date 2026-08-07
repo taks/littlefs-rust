@@ -1,10 +1,11 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
+use littlefs_rust_core::error::Error;
+use core::ffi::CStr;
 use core::mem::MaybeUninit;
 
 use littlefs_rust_core::{LfsDir, LfsInfo};
 
-use crate::error::{from_lfs_result, Error};
 use crate::filesystem::Filesystem;
 use crate::metadata::{DirEntry, FileType};
 use crate::storage::Storage;
@@ -33,15 +34,14 @@ pub struct ReadDir<'a, S: Storage> {
 }
 
 impl<'a, S: Storage> ReadDir<'a, S> {
-    pub(crate) fn open(fs: &'a Filesystem<S>, path: &str) -> Result<Self, Error> {
+    pub(crate) fn open(fs: &'a Filesystem<S>, path: &CStr) -> Result<Self, Error> {
         let mut alloc = Box::new(DirAllocation::new());
-        let path_bytes = null_terminate(path);
         {
             let mut inner = fs.inner.borrow_mut();
             let rc = littlefs_rust_core::lfs_dir_open(
                 inner.lfs.as_mut_ptr(),
                 alloc.dir.as_mut_ptr(),
-                path_bytes.as_ptr(),
+                path_bytes,
             );
             from_lfs_result(rc)?;
         }
