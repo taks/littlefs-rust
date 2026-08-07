@@ -448,15 +448,13 @@ pub unsafe fn test_format_minimal_superblock(
     }
 
     unsafe {
-        let lfs = &mut *lfs;
-        let cfg_ref = &*cfg;
-        crate::lfs_assert!(cfg_ref.block_count != 0);
+        crate::lfs_assert!(cfg.block_count != 0);
 
         if !lfs.lookahead.buffer.is_null() {
-            core::ptr::write_bytes(lfs.lookahead.buffer, 0, cfg_ref.lookahead_size as usize);
+            core::ptr::write_bytes(lfs.lookahead.buffer, 0, cfg.lookahead_size as usize);
         }
         lfs.lookahead.start = 0;
-        lfs.lookahead.size = lfs_min(8 * cfg_ref.lookahead_size, lfs.block_count);
+        lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
         lfs.lookahead.next = 0;
         unsafe { lfs_alloc_ckpoint(lfs) };
 
@@ -485,7 +483,7 @@ pub unsafe fn test_format_minimal_superblock(
             return crate::lfs_pass_err!(err);
         }
 
-        let end = cfg_ref.block_size - 8;
+        let end = cfg.block_size - 8;
         let mut commit = LfsCommit {
             block,
             off: 0,

@@ -178,9 +178,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
         }];
         let err = lfs_dir_commit(lfs, &mut dir, &attrs1);
         lfs_pair_fromle32(&mut pred.tail);
-        if err.is_err() {
-            return crate::lfs_pass_err!(err);
-        }
+        crate::lfs_pass_err!(err)?;
 
         if cwd.m.split {
             lfs_fs_preporphans(lfs, 1)?;
@@ -194,12 +192,11 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
                 tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
                 buffer: dir.pair.as_bytes(),
             }];
+
             let err = lfs_dir_commit(lfs, &mut pred, &attrs2);
             lfs_pair_fromle32(&mut dir.pair);
-            (*lfs).mlist = cwd.next;
-            if err.is_err() {
-                return crate::lfs_pass_err!(err);
-            }
+            lfs.mlist = cwd.next;
+            crate::lfs_pass_err!(err)?;
 
             lfs_fs_preporphans(lfs, -1)?;
         }

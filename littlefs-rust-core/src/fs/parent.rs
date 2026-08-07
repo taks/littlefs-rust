@@ -50,7 +50,7 @@ pub fn lfs_fs_pred(
     use crate::util::{lfs_pair_cmp, lfs_pair_isnull};
 
     unsafe {
-        (*pdir).tail = [0, 1];
+        pdir.tail = [0, 1];
         let mut tortoise = LfsTortoise {
             pair: [LFS_BLOCK_NULL, LFS_BLOCK_NULL],
             i: 1,
