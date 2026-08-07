@@ -72,30 +72,27 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok(lfs_dir_open(lfs, dir, root.as_c_str()));
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-    let info_ref = unsafe { &*info.as_ptr() };
-    assert_eq!(&info_ref.name[..1], b".");
-    assert_eq!(info_ref.type_, LFS_TYPE_DIR);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(&info.name[..1], b".");
+    assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-    let info_ref = unsafe { &*info.as_ptr() };
-    assert_eq!(&info_ref.name[..2], b"..");
-    assert_eq!(info_ref.type_, LFS_TYPE_DIR);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(&info.name[..2], b"..");
+    assert_eq!(info.type_, LFS_TYPE_DIR);
 
     for j in 0..files {
         let expected_name = String::from(ALPHAS[j] as char);
-        assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-        let info_ref = unsafe { &*info.as_ptr() };
-        let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
-        let name = core::str::from_utf8(&info_ref.name[..nul]).unwrap();
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+        let name = core::str::from_utf8(&info.name[..nul]).unwrap();
         assert_eq!(name, expected_name);
-        assert_eq!(info_ref.type_, LFS_TYPE_REG);
-        assert_eq!(info_ref.size, size as u32);
+        assert_eq!(info.type_, LFS_TYPE_REG);
+        assert_eq!(info.size, size as u32);
     }
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(0));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
     assert_ok(lfs_dir_close(lfs, dir));
 
     // Re-open for reading and verify first 10 bytes
@@ -194,27 +191,24 @@ fn test_interspersed_remove_files(
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok(lfs_dir_open(lfs, dir, root.as_c_str()));
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-    let info_ref = unsafe { &*info.as_ptr() };
-    assert_eq!(&info_ref.name[..1], b".");
-    assert_eq!(info_ref.type_, LFS_TYPE_DIR);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(&info.name[..1], b".");
+    assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-    let info_ref = unsafe { &*info.as_ptr() };
-    assert_eq!(&info_ref.name[..2], b"..");
-    assert_eq!(info_ref.type_, LFS_TYPE_DIR);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(&info.name[..2], b"..");
+    assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-    let info_ref = unsafe { &*info.as_ptr() };
-    let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
-    let name = core::str::from_utf8(&info_ref.name[..nul]).unwrap();
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+    let name = core::str::from_utf8(&info.name[..nul]).unwrap();
     assert_eq!(name, "zzz");
-    assert_eq!(info_ref.type_, LFS_TYPE_REG);
-    assert_eq!(info_ref.size, files as u32);
+    assert_eq!(info.type_, LFS_TYPE_REG);
+    assert_eq!(info.size, files as u32);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(0));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
     assert_ok(lfs_dir_close(lfs, dir));
 
     // Verify "zzz" content
@@ -302,33 +296,29 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok(lfs_dir_open(lfs, dir, root.as_c_str()));
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-    let info_ref = unsafe { &*info.as_ptr() };
-    assert_eq!(&info_ref.name[..1], b".");
-    assert_eq!(info_ref.type_, LFS_TYPE_DIR);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(&info.name[..1], b".");
+    assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-    let info_ref = unsafe { &*info.as_ptr() };
-    assert_eq!(&info_ref.name[..2], b"..");
-    assert_eq!(info_ref.type_, LFS_TYPE_DIR);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(&info.name[..2], b"..");
+    assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-    let info_ref = unsafe { &*info.as_ptr() };
-    let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
-    assert_eq!(core::str::from_utf8(&info_ref.name[..nul]).unwrap(), "e");
-    assert_eq!(info_ref.type_, LFS_TYPE_REG);
-    assert_eq!(info_ref.size, size as u32);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+    assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "e");
+    assert_eq!(info.type_, LFS_TYPE_REG);
+    assert_eq!(info.size, size as u32);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-    let info_ref = unsafe { &*info.as_ptr() };
-    let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
-    assert_eq!(core::str::from_utf8(&info_ref.name[..nul]).unwrap(), "g");
-    assert_eq!(info_ref.type_, LFS_TYPE_REG);
-    assert_eq!(info_ref.size, size as u32);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+    assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "g");
+    assert_eq!(info.type_, LFS_TYPE_REG);
+    assert_eq!(info.size, size as u32);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(0));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
     assert_ok(lfs_dir_close(lfs, dir));
 
     // Read "e" and "g", verify SIZE bytes

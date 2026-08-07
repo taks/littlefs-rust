@@ -118,7 +118,7 @@ use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_path_islast, lfs_path_
 /// #endif
 /// ```
 pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
-    let err = lfs_fs_forceconsistency(lfs)?;
+    lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
         let mut cwd = LfsMlist {

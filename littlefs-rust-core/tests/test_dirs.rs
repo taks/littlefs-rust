@@ -40,25 +40,23 @@ fn test_dirs_root() {
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok(lfs_dir_open(lfs, dir, ROOT_PATH));
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    let n = lfs_dir_read(lfs, dir, info.as_mut_ptr());
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+    let n = lfs_dir_read(lfs, dir, info);
     assert_eq!(n, Ok(1));
-    let info = unsafe { info.assume_init() };
     assert_eq!(info.name[0], b'.');
     assert_eq!(info.name[1], 0);
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    let n = lfs_dir_read(lfs, dir, info.as_mut_ptr());
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+    let n = lfs_dir_read(lfs, dir, info);
     assert_eq!(n, Ok(1));
-    let info = unsafe { info.assume_init() };
     assert_eq!(info.name[0], b'.');
     assert_eq!(info.name[1], b'.');
     assert_eq!(info.name[2], 0);
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    let n = lfs_dir_read(lfs, dir, info.as_mut_ptr());
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+    let n = lfs_dir_read(lfs, dir, info);
     assert_eq!(n, Ok(0));
 
     assert_ok(lfs_dir_close(lfs, dir));
@@ -248,38 +246,35 @@ fn test_dirs_many_rename_append() {
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
         assert_ok(lfs_dir_open(lfs, dir, ROOT_PATH));
 
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-        let info_ref = unsafe { &*info.as_ptr() };
-        assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
-        assert_eq!(info_ref.name[0], b'.');
-        assert_eq!(info_ref.name[1], 0);
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+        assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+        assert_eq!(info.name[0], b'.');
+        assert_eq!(info.name[1], 0);
 
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-        let info_ref = unsafe { &*info.as_ptr() };
-        assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
-        assert_eq!(info_ref.name[0], b'.');
-        assert_eq!(info_ref.name[1], b'.');
-        assert_eq!(info_ref.name[2], 0);
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+        assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+        assert_eq!(info.name[0], b'.');
+        assert_eq!(info.name[1], b'.');
+        assert_eq!(info.name[2], 0);
 
         for i in 0..n {
             let expected = format!("z{i:02}");
-            let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_eq!(
-                lfs_dir_read(lfs, dir, info.as_mut_ptr()),
+                lfs_dir_read(lfs, dir, info),
                 Ok(1),
                 "N={n}, expected entry {i}"
             );
-            let info_ref = unsafe { &*info.as_ptr() };
-            assert_eq!(info_ref.type_, LFS_TYPE_DIR as u8);
-            let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
-            let name = core::str::from_utf8(&info_ref.name[..nul]).unwrap();
+            assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+            let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+            let name = core::str::from_utf8(&info.name[..nul]).unwrap();
             assert_eq!(name, expected, "N={n}, entry {i}");
         }
 
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(0));
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
 
         assert_ok(lfs_dir_close(lfs, dir));
         assert_ok(lfs_unmount(lfs));
@@ -453,31 +448,30 @@ fn test_dirs_file_creation() {
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
         assert_ok(lfs_dir_open(lfs, dir, ROOT_PATH));
 
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-        assert_eq!(unsafe { (*info.as_ptr()).type_ }, LFS_TYPE_DIR as u8);
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+        assert_eq!({ (*info).type_ }, LFS_TYPE_DIR as u8);
 
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(1));
-        assert_eq!(unsafe { (*info.as_ptr()).type_ }, LFS_TYPE_DIR as u8);
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+        assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
         for i in 0..n {
             let expected = format!("file{i:03}");
-            let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_eq!(
-                lfs_dir_read(lfs, dir, info.as_mut_ptr()),
+                lfs_dir_read(lfs, dir, info),
                 Ok(1),
                 "N={n}, expected entry {i}"
             );
-            let info_ref = unsafe { &*info.as_ptr() };
-            assert_eq!(info_ref.type_, LFS_TYPE_REG as u8, "N={n}, entry {i} type");
-            let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
-            let name = core::str::from_utf8(&info_ref.name[..nul]).unwrap();
+            assert_eq!(info.type_, LFS_TYPE_REG as u8, "N={n}, entry {i} type");
+            let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+            let name = core::str::from_utf8(&info.name[..nul]).unwrap();
             assert_eq!(name, expected, "N={n}, entry {i} name");
         }
 
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_eq!(lfs_dir_read(lfs, dir, info.as_mut_ptr()), Ok(0));
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
 
         assert_ok(lfs_dir_close(lfs, dir));
         assert_ok(lfs_unmount(lfs));
@@ -859,19 +853,18 @@ fn test_dirs_recursive_remove() {
             dir,
             path_bytes("prickly-pear").as_c_str(),
         ));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         loop {
-            let rc = lfs_dir_read(lfs, dir, info.as_mut_ptr());
+            let rc = lfs_dir_read(lfs, dir, info);
             if rc == Ok(0) {
                 break;
             }
             assert_eq!(rc, Ok(1), "N={n}, unexpected dir_read result");
-            let info_ref = unsafe { &*info.as_ptr() };
-            if info_ref.name[0] == b'.' {
+            if info.name[0] == b'.' {
                 continue;
             }
-            let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
-            let name = core::str::from_utf8(&info_ref.name[..nul]).unwrap();
+            let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+            let name = core::str::from_utf8(&info.name[..nul]).unwrap();
             let child_path = path_bytes(&format!("prickly-pear/{name}"));
             assert_ok(lfs_remove(lfs, child_path.as_c_str()));
         }
@@ -925,8 +918,8 @@ fn test_dirs_remove_read() {
                 lfs,
                 path_bytes(&format!("prickly-pear/cactus{k:03}")).as_c_str(),
             ));
-            let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-            while let Ok(x) = lfs_dir_read(lfs, dir, info.as_mut_ptr())
+            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+            while let Ok(x) = lfs_dir_read(lfs, dir, info)
                 && x > 0
             {}
             assert_ok(lfs_dir_close(lfs, dir));
@@ -1128,9 +1121,9 @@ fn test_dirs_seek() {
         let pos0 = lfs_dir_tell(lfs, dir);
         assert!(pos0 >= 0, "tell after rewind");
 
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         let mut n = 0usize;
-        while let Ok(x) = lfs_dir_read(lfs, dir, info.as_mut_ptr())
+        while let Ok(x) = lfs_dir_read(lfs, dir, info)
             && x > 0
         {
             n += 1;
@@ -1184,9 +1177,9 @@ fn test_dirs_toot_seek() {
         let pos0 = lfs_dir_tell(lfs, dir);
         assert!(pos0 >= 0, "tell after rewind");
 
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         let mut n = 0usize;
-        while let Ok(x) = lfs_dir_read(lfs, dir, info.as_mut_ptr())
+        while let Ok(x) = lfs_dir_read(lfs, dir, info)
             && x > 0
         {
             n += 1;

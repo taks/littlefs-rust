@@ -193,7 +193,7 @@ pub fn lfs_setattr_(
     buffer: &[u8],
     size: lfs_size_t,
 ) -> Result<(), Error> {
-    if size > (*lfs).attr_max {
+    if size > lfs.attr_max {
         return crate::lfs_err!(Err(Error::NoSpace));
     }
     lfs_commitattr(lfs, path, r#type, buffer, size)

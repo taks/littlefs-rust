@@ -188,18 +188,12 @@ pub fn lfs_dir_close_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir) -> Result<(), 
 /// }
 /// ```
 pub fn lfs_dir_read_(
-    lfs: *mut crate::fs::Lfs,
-    dir: *mut LfsDir,
-    info: *mut LfsInfo,
+    lfs: &mut crate::fs::Lfs,
+    dir: &mut LfsDir,
+    info: &mut LfsInfo,
 ) -> Result<i32, Error> {
-    if lfs.is_null() || dir.is_null() || info.is_null() {
-        return Err(Error::Invalid);
-    }
-    unsafe {
-        let lfs = &mut *lfs;
-        let dir = &mut *dir;
-        let info = &mut *info;
 
+    unsafe {
         info.type_ = 0;
         info.size = 0;
         core::ptr::write_bytes(info.name.as_mut_ptr(), 0, info.name.len());

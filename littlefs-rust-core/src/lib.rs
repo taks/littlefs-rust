@@ -267,7 +267,7 @@ pub fn lfs_dir_close(lfs: &mut Lfs, dir: &mut LfsDir) -> Result<(), Error> {
 
 /// Read an entry in the directory. Per lfs.h lfs_dir_read.
 #[inline(never)]
-pub fn lfs_dir_read(lfs: &mut Lfs, dir: &mut LfsDir, info: *mut LfsInfo) -> Result<i32, Error> {
+pub fn lfs_dir_read(lfs: &mut Lfs, dir: &mut LfsDir, info: &mut LfsInfo) -> Result<i32, Error> {
     crate::dir::open::lfs_dir_read_(lfs, dir, info)
 }
 
