@@ -165,7 +165,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
             return crate::lfs_pass_err!(err);
         }
 
-        if lfs_gstate_hasorphans(&(*lfs).gstate) {
+        if lfs_gstate_hasorphans(&lfs.gstate) {
             crate::lfs_assert!(u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_DIR);
 
             lfs_fs_preporphans(lfs, -1)?;

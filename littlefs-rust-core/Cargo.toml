@@ -20,11 +20,11 @@ zerocopy = "0.8"
 zerocopy-derive = "0.8"
 
 [dev-dependencies]
-env_logger = "0.10"
+env_logger = "0.11"
 rstest = "0.26"
 
 [features]
-default = ["alloc", "loop_limits", "slow_tests"]
+default = ["alloc", "loop_limits"]
 alloc = []
 loop_limits = []  # iteration caps to detect/avoid infinite loops (mount, traverse, fetch, etc.)
 # Enable for debugging: RUST_LOG=littlefs_rust=trace cargo test --features log ...

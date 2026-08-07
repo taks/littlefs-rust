@@ -80,7 +80,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     use crate::types::LFS_DISK_VERSION;
 
     unsafe {
-        if !lfs_gstate_needssuperblock(&(*lfs).gstate) {
+        if !lfs_gstate_needssuperblock(&lfs.gstate) {
             crate::lfs_trace!("desuperblock: no need, return 0");
             return Ok(());
         }
@@ -93,11 +93,11 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         // write a new superblock
         let mut superblock = LfsSuperblock {
             version: LFS_DISK_VERSION,
-            block_size: (*lfs).cfg.as_ref().expect("cfg").block_size,
-            block_count: (*lfs).block_count,
-            name_max: (*lfs).name_max,
-            file_max: (*lfs).file_max,
-            attr_max: (*lfs).attr_max,
+            block_size: lfs.cfg.as_ref().expect("cfg").block_size,
+            block_count: lfs.block_count,
+            name_max: lfs.name_max,
+            file_max: lfs.file_max,
+            attr_max: lfs.attr_max,
         };
         lfs_superblock_tole32(&mut superblock);
 
@@ -164,19 +164,19 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     use crate::tag::{lfs_mktag, lfs_tag_id, lfs_tag_type3};
 
     unsafe {
-        if !lfs_gstate_hasmove(&(*lfs).gdisk) {
+        if !lfs_gstate_hasmove(&lfs.gdisk) {
             crate::lfs_trace!("demove: no move, return 0");
             return Ok(());
         }
         crate::lfs_trace!("demove: has move, fixing");
 
-        crate::lfs_assert!(u32::from(lfs_tag_type3((*lfs).gdisk.tag)) == LFS_TYPE_DELETE);
+        crate::lfs_assert!(u32::from(lfs_tag_type3(lfs.gdisk.tag)) == LFS_TYPE_DELETE);
 
         let mut movedir = core::mem::zeroed();
         let lfs_gdisk = borrow_unchecked(&lfs.gdisk);
         lfs_dir_fetch(lfs, &mut movedir, &lfs_gdisk.pair)?;
 
-        let moveid = lfs_tag_id((*lfs).gdisk.tag);
+        let moveid = lfs_tag_id(lfs.gdisk.tag);
         lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
 
         let attrs = [crate::tag::lfs_mattr {
