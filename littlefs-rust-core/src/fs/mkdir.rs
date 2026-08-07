@@ -127,7 +127,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
             type_: 0,
             id: 0,
         };
-        cwd.m.tail = [(*lfs).root[0], (*lfs).root[1]];
+        cwd.m.tail = [lfs.root[0], lfs.root[1]];
 
         let mut path_ptr = path;
         let mut id: u16 = 0;
@@ -142,7 +142,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
 
         let path_slice = path_ptr.to_bytes();
         let nlen = lfs_path_namelen(path_slice);
-        if nlen > (*lfs).name_max {
+        if nlen > lfs.name_max {
             return crate::lfs_err!(Err(Error::NameTooLong));
         }
 
@@ -187,7 +187,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
 
             cwd.type_ = 0;
             cwd.id = 0;
-            (*lfs).mlist = &cwd as *const _ as *mut _;
+            lfs.mlist = &cwd as *const _ as *mut _;
 
             lfs_pair_tole32(&mut dir.pair);
             let attrs2 = [lfs_mattr {

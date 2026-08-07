@@ -62,7 +62,7 @@ pub fn lfs_fs_pred(
         #[cfg(feature = "loop_limits")]
         let mut iter: u32 = 0;
 
-        while !lfs_pair_isnull(&(*pdir).tail) {
+        while !lfs_pair_isnull(&pdir.tail) {
             #[cfg(feature = "loop_limits")]
             {
                 if iter >= MAX_PARENT_ITER {
@@ -78,14 +78,14 @@ pub fn lfs_fs_pred(
                 return Err(Error::Corrupt);
             }
 
-            if lfs_pair_cmp(&(*pdir).tail, pair) == 0 {
+            if lfs_pair_cmp(&pdir.tail, pair) == 0 {
                 if !have_fetched {
                     // Matched before any fetch: tail [0,1] == pair (root).
                     // The root has no predecessor.
                     let pdir_tail = borrow_unchecked(&pdir.tail);
                     lfs_dir_fetch(lfs, pdir, pdir_tail)?;
 
-                    if lfs_pair_isnull(&(*pdir).tail) {
+                    if lfs_pair_isnull(&pdir.tail) {
                         return Err(crate::error::Error::NoEntry);
                     }
                 }
@@ -211,7 +211,7 @@ pub fn lfs_fs_parent(
     use crate::util::lfs_pair_isnull;
 
     unsafe {
-        (*parent).tail = [0, 1];
+        parent.tail = [0, 1];
         let mut tortoise = LfsTortoise {
             pair: [LFS_BLOCK_NULL, LFS_BLOCK_NULL],
             i: 1,
@@ -222,7 +222,7 @@ pub fn lfs_fs_parent(
         #[cfg(feature = "loop_limits")]
         let mut iter: u32 = 0;
 
-        while !lfs_pair_isnull(&(*parent).tail) {
+        while !lfs_pair_isnull(&parent.tail) {
             #[cfg(feature = "loop_limits")]
             {
                 if iter >= MAX_PARENT_ITER {

@@ -13,7 +13,7 @@ use crate::file::LfsFile;
 use crate::file::ctz::lfs_ctz_find;
 use crate::lfs_info::LfsFileConfig;
 use crate::lfs_type::lfs_open_flags::{
-    LFS_F_DIRTY, LFS_F_ERRED, LFS_F_INLINE, LFS_F_READING, LFS_F_WRITING, LFS_O_RDONLY,
+    LFS_F_DIRTY, LFS_F_ERRED, LFS_F_INLINE, LFS_F_READING, LFS_F_WRITING, LFS_O_APPEND, LFS_O_RDONLY,
 };
 use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use crate::tag::lfs_mktag;
@@ -1324,11 +1324,11 @@ pub fn lfs_file_write_(
     crate::lfs_assert!((unsafe { (*file).flags as i32 } & 2) == 2);
 
     unsafe {
-        if ((*file).flags as i32 & LFS_F_READING) != 0 {
+        if (file.flags as i32 & LFS_F_READING) != 0 {
             lfs_file_flush(lfs, file)?;
         }
-        if ((*file).flags as i32 & 0x0800) != 0 && (*file).pos < (*file).ctz.size {
-            (*file).pos = (*file).ctz.size;
+        if (file.flags as i32 & LFS_O_APPEND) != 0 && (*file).pos < (*file).ctz.size {
+            file.pos = file.ctz.size;
         }
         if (*file).pos + (buffer.len() as u32) > (*lfs).file_max {
             return Err(Error::FileTooBig);
@@ -1340,7 +1340,7 @@ pub fn lfs_file_write_(
             file.pos = file.ctz.size;
             let zero: u8 = 0;
             #[allow(clippy::while_immutable_condition)] // pos mutated via raw ptr in flushedwrite
-            while (*file).pos < pos {
+            while file.pos < pos {
                 let res = lfs_file_flushedwrite(lfs, file, zero.as_bytes())?;
             }
         }
@@ -1406,7 +1406,7 @@ pub fn lfs_file_seek_(
 
         lfs_file_flush(lfs, file)?;
 
-        (*file).pos = npos;
+        file.pos = npos;
         Ok(npos as crate::types::lfs_soff_t)
     }
 }
@@ -1629,7 +1629,7 @@ pub fn lfs_file_rewind_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<
 pub fn lfs_file_size_(_lfs: &Lfs, file: &LfsFile) -> crate::types::lfs_soff_t {
     unsafe {
         if ((*file).flags as i32 & LFS_F_WRITING) != 0 {
-            return crate::util::lfs_max((*file).pos, (*file).ctz.size) as crate::types::lfs_soff_t;
+            return crate::util::lfs_max(file.pos, file.ctz.size) as crate::types::lfs_soff_t;
         }
         (*file).ctz.size as crate::types::lfs_soff_t
     }

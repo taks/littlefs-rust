@@ -106,8 +106,6 @@ pub fn lfs_format_(
     }
 
     unsafe {
-        let lfs = &mut *lfs;
-        let cfg = &*cfg;
         crate::lfs_assert!(cfg.block_count != 0);
 
         // create free lookahead

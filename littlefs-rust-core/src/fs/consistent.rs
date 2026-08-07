@@ -53,8 +53,8 @@ pub fn lfs_fs_mkconsistent_(lfs: &mut Lfs) -> Result<(), Error> {
             tag: 0,
             pair: [0, 0],
         };
-        lfs_gstate_xor(&mut delta, &(*lfs).gdisk);
-        lfs_gstate_xor(&mut delta, &(*lfs).gstate);
+        lfs_gstate_xor(&mut delta, &lfs.gdisk);
+        lfs_gstate_xor(&mut delta, &lfs.gstate);
 
         if !lfs_gstate_iszero(&delta) {
             let mut root = core::mem::zeroed::<LfsMdir>();

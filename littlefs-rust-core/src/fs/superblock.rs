@@ -340,7 +340,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
     use crate::util::{lfs_pair_fromle32, lfs_pair_issync, lfs_pair_tole32};
 
     unsafe {
-        if !crate::lfs_gstate::lfs_gstate_hasorphans(&(*lfs).gstate) {
+        if !crate::lfs_gstate::lfs_gstate_hasorphans(&lfs.gstate) {
             return Ok(());
         }
 

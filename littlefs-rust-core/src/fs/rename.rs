@@ -247,7 +247,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
             count: 0,
             erased: false,
             split: false,
-            tail: [(*lfs).root[0], (*lfs).root[1]],
+            tail: [lfs.root[0], lfs.root[1]],
         };
         let mut oldpath_ptr = oldpath;
         let oldtag = lfs_dir_find(lfs, &mut oldcwd, &mut oldpath_ptr, &mut None)?;
@@ -263,7 +263,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
             count: 0,
             erased: false,
             split: false,
-            tail: [(*lfs).root[0], (*lfs).root[1]],
+            tail: [lfs.root[0], lfs.root[1]],
         };
         let mut newpath_ptr = newpath;
         let mut newid: u16 = 0;
@@ -280,7 +280,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
         }
 
         let samepair = lfs_pair_cmp(&oldcwd.pair, &newcwd.pair) == 0;
-        let mut newoldid = lfs_tag_id(oldtag as u32);
+        let mut newoldid = lfs_tag_id(oldtag);
 
         let mut prevdir = LfsMlist {
             next: lfs.mlist,
@@ -291,12 +291,12 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
 
         if prevtag == Err(Error::NoEntry) {
             if lfs_path_isdir(newpath_slice)
-                && u32::from(lfs_tag_type3(oldtag as u32)) != LFS_TYPE_DIR
+                && u32::from(lfs_tag_type3(oldtag)) != LFS_TYPE_DIR
             {
                 return crate::lfs_err!(Err(Error::NotDir));
             }
             let nlen = lfs_path_namelen(newpath_slice);
-            if nlen > (*lfs).name_max {
+            if nlen > lfs.name_max {
                 return crate::lfs_err!(Err(Error::NameTooLong));
             }
             if samepair && newid <= newoldid {

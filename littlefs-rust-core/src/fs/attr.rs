@@ -75,13 +75,13 @@ pub fn lfs_getattr_(
             count: 0,
             erased: false,
             split: false,
-            tail: [(*lfs).root[0], (*lfs).root[1]],
+            tail: [lfs.root[0], lfs.root[1]],
         };
 
         let mut path_ptr = path;
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
-        let mut id = lfs_tag_id(tag as u32) as u16;
+        let mut id = lfs_tag_id(tag) as u16;
         if id == 0x3ff {
             id = 0;
             let lfs_root = borrow_unchecked(&lfs.root);
@@ -149,13 +149,13 @@ pub fn lfs_commitattr(
             count: 0,
             erased: false,
             split: false,
-            tail: [(*lfs).root[0], (*lfs).root[1]],
+            tail: [lfs.root[0], lfs.root[1]],
         };
 
         let mut path_ptr = path;
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
-        let mut id = lfs_tag_id(tag as u32) as u16;
+        let mut id = lfs_tag_id(tag) as u16;
         if id == 0x3ff {
             id = 0;
             let lfs_root = borrow_unchecked(&lfs.root);

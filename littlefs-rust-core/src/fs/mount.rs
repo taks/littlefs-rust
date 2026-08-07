@@ -228,9 +228,6 @@ pub fn lfs_mount_(
     lfs_init(lfs, cfg)?;
 
     unsafe {
-        let lfs = &mut *lfs;
-        let cfg = &*cfg;
-
         let mut dir = crate::dir::LfsMdir {
             pair: [0, 0],
             rev: 0,

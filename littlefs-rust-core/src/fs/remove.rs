@@ -115,29 +115,29 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
             count: 0,
             erased: false,
             split: false,
-            tail: [(*lfs).root[0], (*lfs).root[1]],
+            tail: [lfs.root[0], lfs.root[1]],
         };
 
         let mut path_ptr = path;
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
-        if lfs_tag_id(tag as u32) == 0x3ff {
+        if lfs_tag_id(tag) == 0x3ff {
             return Err(Error::Invalid);
         }
 
         let mut dir = LfsMlist {
-            next: (*lfs).mlist,
+            next: lfs.mlist,
             id: 0,
             type_: 0,
             m: core::mem::zeroed(),
         };
 
-        if u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_DIR {
+        if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DIR {
             let mut pair: [lfs_block_t; 2] = [0, 0];
             let res = lfs_dir_get(
                 lfs,
                 &cwd,
                 lfs_mktag(0x700, 0x3ff, 0),
-                lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
+                lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag) as u32, 8),
                 pair.as_mut_bytes(),
             )?;
             lfs_pair_fromle32(&mut pair);
@@ -152,21 +152,21 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
 
             dir.type_ = 0;
             dir.id = 0;
-            (*lfs).mlist = &dir as *const _ as *mut _;
+            lfs.mlist = &dir as *const _ as *mut _;
         }
 
         let attrs = [lfs_mattr {
-            tag: lfs_mktag(LFS_TYPE_DELETE, lfs_tag_id(tag as u32) as u32, 0),
+            tag: lfs_mktag(LFS_TYPE_DELETE, lfs_tag_id(tag) as u32, 0),
             buffer: &[],
         }];
         let err = lfs_dir_commit(lfs, &mut cwd, &attrs);
-        (*lfs).mlist = dir.next;
+        lfs.mlist = dir.next;
         if err.is_err() {
             return crate::lfs_pass_err!(err);
         }
 
         if lfs_gstate_hasorphans(&lfs.gstate) {
-            crate::lfs_assert!(u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_DIR);
+            crate::lfs_assert!(u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DIR);
 
             lfs_fs_preporphans(lfs, -1)?;
 
