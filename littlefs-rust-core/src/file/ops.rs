@@ -1056,10 +1056,10 @@ pub fn lfs_file_read_(
     file: &mut LfsFile,
     buffer: &mut [u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
-    crate::lfs_assert!((unsafe { (*file).flags as i32 } & LFS_O_RDONLY) == LFS_O_RDONLY);
+    crate::lfs_assert!(((file.flags as i32) & LFS_O_RDONLY) == LFS_O_RDONLY);
 
     unsafe {
-        if ((*file).flags as i32 & LFS_F_WRITING) != 0 {
+        if (file.flags as i32 & LFS_F_WRITING) != 0 {
             lfs_file_flush(lfs, file)?;
         }
     }

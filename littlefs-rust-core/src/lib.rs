@@ -193,7 +193,7 @@ pub fn lfs_file_sync(lfs: &mut Lfs, file: &mut LfsFile) -> Result<(), Error> {
 }
 
 /// Read data from file. Per lfs.h lfs_file_read (lfs.c:6210-6224).
-#[inline(never)]
+#[inline(always)]
 pub fn lfs_file_read(
     lfs: &mut Lfs,
     file: &mut LfsFile,
