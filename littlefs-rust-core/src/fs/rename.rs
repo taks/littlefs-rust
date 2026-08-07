@@ -302,9 +302,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
             if samepair && newid <= newoldid {
                 newoldid += 1;
             }
-        } else if u32::from(lfs_tag_type3(prevtag.unwrap()))
-            != u32::from(lfs_tag_type3(oldtag))
-        {
+        } else if u32::from(lfs_tag_type3(prevtag.unwrap())) != u32::from(lfs_tag_type3(oldtag)) {
             return if u32::from(lfs_tag_type3(prevtag.unwrap())) == LFS_TYPE_DIR {
                 Err(Error::IsDir)
             } else {
@@ -360,11 +358,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
                 buffer: newpath_ptr.to_bytes_with_nul(),
             },
             lfs_mattr {
-                tag: lfs_mktag(
-                    LFS_FROM_MOVE,
-                    newid as u32,
-                    lfs_tag_id(oldtag) as u32,
-                ),
+                tag: lfs_mktag(LFS_FROM_MOVE, newid as u32, lfs_tag_id(oldtag) as u32),
                 buffer: oldcwd.as_bytes(),
             },
             lfs_mattr {

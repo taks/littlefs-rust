@@ -15,9 +15,8 @@ use common::{
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;
 use littlefs_rust_core::{
-    Lfs, LfsFile, LfsFsinfo, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
-    lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_mount, lfs_remove, lfs_stat,
-    lfs_unmount,
+    Lfs, LfsFile, LfsFsinfo, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
+    lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_mount, lfs_remove, lfs_stat, lfs_unmount,
 };
 use rstest::rstest;
 
@@ -714,10 +713,7 @@ fn test_superblocks_shrink(
         test_path.as_c_str(),
         LFS_O_CREAT | LFS_O_EXCL | LFS_O_WRONLY,
     ));
-    assert_eq!(
-        lfs_file_write(lfs, file, b"hello!"),
-        Ok(6)
-    );
+    assert_eq!(lfs_file_write(lfs, file, b"hello!"), Ok(6));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
 
@@ -729,14 +725,7 @@ fn test_superblocks_shrink(
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, test_path.as_c_str(), LFS_O_RDONLY));
     let mut buf = [0u8; 256];
-    assert_eq!(
-        lfs_file_read(
-            lfs,
-            file,
-            &mut buf
-        ),
-        Ok(6)
-    );
+    assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(6));
     assert_eq!(&buf[..6], b"hello!");
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
