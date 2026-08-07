@@ -243,7 +243,7 @@ pub fn lfs_dir_find(
 
         'nextname: loop {
             // C: nextname - lfs.c:1510-1512
-            if u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_DIR {
+            if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DIR {
                 let skip = lfs_strspn(CStr::from_ptr(name.as_ptr() as *const _), b'/');
                 name = &name[(skip as usize)..];
             }
@@ -307,7 +307,7 @@ pub fn lfs_dir_find(
             *path = CStr::from_ptr(name.as_ptr() as *const _);
 
             // C: lfs.c:1652-1654
-            if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
+            if u32::from(lfs_tag_type3(tag)) != LFS_TYPE_DIR {
                 return crate::lfs_err!(Err(Error::NotDir));
             }
 

@@ -65,7 +65,7 @@ pub fn lfs_stat_(
                 iter += 1;
             }
             if *p == b'/' {
-                if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
+                if u32::from(lfs_tag_type3(tag)) != LFS_TYPE_DIR {
                     return Err(Error::NotDir);
                 }
                 break;

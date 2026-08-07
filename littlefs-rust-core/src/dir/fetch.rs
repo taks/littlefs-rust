@@ -855,9 +855,9 @@ pub fn lfs_dir_getinfo(
 
         lfs_ctz_fromle32(&mut ctz);
 
-        if u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_CTZSTRUCT {
+        if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
             info.size = ctz.size;
-        } else if u32::from(lfs_tag_type3(tag as u32)) == LFS_TYPE_INLINESTRUCT {
+        } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_INLINESTRUCT {
             info.size = lfs_tag_size(tag as u32);
         }
 

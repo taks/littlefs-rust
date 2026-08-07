@@ -80,7 +80,7 @@ pub fn lfs_dir_open_(
 
         let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None)?;
 
-        if u32::from(lfs_tag_type3(tag as u32)) != LFS_TYPE_DIR {
+        if u32::from(lfs_tag_type3(tag)) != LFS_TYPE_DIR {
             return Err(Error::NotDir);
         }
 
