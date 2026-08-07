@@ -334,7 +334,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
     const LARGE: u32 = 2048;
     let medium_sizes = [0u32, 3, 4, 5, 31, 32, 33, 511, 512, 513, 1023, 1024, 1025];
     for &medium in &medium_sizes {
-        use littlefs_rust_core::error::Error;
+        use littlefs_rust_core::{LfsConfig, error::Error};
 
         if medium >= LARGE || small_size > medium {
             continue;
@@ -370,8 +370,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
                         let n = littlefs_rust_core::lfs_file_read(
                             lfs_ptr,
                             file,
-                            buf.as_mut_ptr() as *mut core::ffi::c_void,
-                            chunk,
+                            &mut buf[..chunk as usize],
                         )?;
                         if n != chunk as u32 {
                             return Err(Error::Invalid);
@@ -403,8 +402,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
                 let n = littlefs_rust_core::lfs_file_write(
                     lfs_ptr,
                     file,
-                    HAIR.as_ptr() as *const core::ffi::c_void,
-                    chunk,
+                    &HAIR[..chunk as usize],
                 )?;
 
                 assert_eq!(n, chunk as u32);
@@ -422,8 +420,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
                 let n = littlefs_rust_core::lfs_file_write(
                     lfs_ptr,
                     file,
-                    BALD.as_ptr() as *const core::ffi::c_void,
-                    chunk,
+                    &BALD[..chunk as usize],
                 )?;
 
                 j += chunk;
@@ -438,8 +435,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
                 let n = littlefs_rust_core::lfs_file_write(
                     lfs_ptr,
                     file,
-                    COMB.as_ptr() as *const core::ffi::c_void,
-                    chunk,
+                    &COMB[..chunk as usize],
                 )?;
                 j += chunk;
             }

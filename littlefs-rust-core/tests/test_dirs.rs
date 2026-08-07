@@ -326,7 +326,7 @@ fn test_dirs_many_reentrant() {
                 }
 
                 let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_c_str()).is_err() {
+                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH).is_err() {
                     return Err(Error::Invalid);
                 }
                 let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
@@ -363,7 +363,7 @@ fn test_dirs_many_reentrant() {
                     }
                 }
 
-                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_c_str()).is_err() {
+                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH).is_err() {
                     return Err(Error::Invalid);
                 }
                 let _ = lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr());
@@ -398,7 +398,7 @@ fn test_dirs_many_reentrant() {
                     }
                 }
 
-                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_c_str()).is_err() {
+                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH).is_err() {
                     return Err(Error::Invalid);
                 }
                 let _ = lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr());
@@ -635,7 +635,7 @@ fn test_dirs_file_reentrant() {
                 }
 
                 let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_c_str()).is_err() {
+                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH).is_err() {
                     return Err(Error::Invalid);
                 }
                 let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
@@ -676,7 +676,7 @@ fn test_dirs_file_reentrant() {
                     }
                 }
 
-                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH.as_c_str()).is_err() {
+                if lfs_dir_open(lfs_ptr, dir, ROOT_PATH).is_err() {
                     return Err(Error::Invalid);
                 }
                 let _ = lfs_dir_read(lfs_ptr, dir, info.as_mut_ptr());

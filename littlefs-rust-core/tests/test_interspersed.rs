@@ -388,7 +388,7 @@ fn test_interspersed_reentrant_files(
         assert_ok(lfs_file_open(
             lfs,
             &mut file_handles[j],
-            path.as_ptr(),
+            path.as_c_str(),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
         ));
     }
@@ -402,8 +402,7 @@ fn test_interspersed_reentrant_files(
                 let n = lfs_file_write(
                     lfs,
                     &mut file_handles[j],
-                    byte.as_ptr() as *const core::ffi::c_void,
-                    1,
+                    &byte
                 );
                 assert_eq!(n, Ok(1));
                 assert_ok(lfs_file_sync(lfs, &mut file_handles[j]));
@@ -455,7 +454,7 @@ fn test_interspersed_reentrant_files(
         assert_ok(lfs_file_open(
             lfs,
             &mut file_handles[j],
-            path.as_ptr(),
+            path.as_c_str(),
             LFS_O_RDONLY,
         ));
     }
@@ -466,8 +465,7 @@ fn test_interspersed_reentrant_files(
             let n = lfs_file_read(
                 lfs,
                 &mut file_handles[j],
-                buffer.as_mut_ptr() as *mut core::ffi::c_void,
-                1,
+                &mut buffer
             );
             assert_eq!(n, Ok(1));
             assert_eq!(buffer[0], ALPHAS[j]);

@@ -391,12 +391,11 @@ fn test_superblocks_reentrant_expand() {
                     let e = lfs_mount(lfs_ptr, config)?;
                 }
                 for i in 0..N {
-                    let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
-                    let err = lfs_stat(lfs_ptr, dummy.as_ptr(), info.as_mut_ptr());
+                    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+                    let err = lfs_stat(lfs_ptr, dummy.as_c_str(), info);
                     if err.is_ok() {
-                        let info = unsafe { info.assume_init() };
                         if info.type_ == LFS_TYPE_REG as u8 {
-                            let e = lfs_remove(lfs_ptr, dummy.as_ptr());
+                            let e = lfs_remove(lfs_ptr, dummy.as_c_str());
                             if e.is_err() {
                                 let _ = lfs_unmount(lfs_ptr);
                                 return e;
@@ -411,7 +410,7 @@ fn test_superblocks_reentrant_expand() {
                     let e = lfs_file_open(
                         lfs_ptr,
                         file,
-                        dummy.as_ptr(),
+                        dummy.as_c_str(),
                         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
                     );
                     if e.is_err() {
@@ -423,14 +422,14 @@ fn test_superblocks_reentrant_expand() {
                         let _ = lfs_unmount(lfs_ptr);
                         return e;
                     }
-                    let mut info = core::mem::MaybeUninit::<LfsInfo>::uninit();
-                    let e = lfs_stat(lfs_ptr, dummy.as_ptr(), info.as_mut_ptr());
+                    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+                    let e = lfs_stat(lfs_ptr, dummy.as_c_str(), info);
                     if e.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
                         return e;
                     }
                 }
-                let e = lfs_unmount(lfs_ptr)?;
+                lfs_unmount(lfs_ptr)?;
                 Ok(())
             },
             |_, _| Ok(()),

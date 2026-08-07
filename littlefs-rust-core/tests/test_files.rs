@@ -597,7 +597,7 @@ fn test_files_many_power_loss() {
         for i in 0..N {
             let path = path_bytes(&format!("file_{:03}", i));
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            let e = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT)?;
+            let e = littlefs_rust_core::lfs_file_open(lfs, file, path.as_c_str(), LFS_O_WRONLY | LFS_O_CREAT)?;
             let content = format!("Hi {:03}\0", i);
             let bytes = content.as_bytes();
             assert_eq!(bytes.len(), 7);
@@ -606,21 +606,19 @@ fn test_files_many_power_loss() {
                 let n = littlefs_rust_core::lfs_file_write(
                     lfs,
                     file,
-                    bytes.as_ptr() as *const core::ffi::c_void,
-                    bytes.len() as u32,
+                    bytes,
                 )?;
                 assert_eq!(n, bytes.len() as u32);
             }
             let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
 
             let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            let e = littlefs_rust_core::lfs_file_open(lfs, rfile, path, LFS_O_RDONLY)?;
+            let e = littlefs_rust_core::lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY)?;
             let mut buf = [0u8; 32];
             let n = littlefs_rust_core::lfs_file_read(
                 lfs,
                 rfile,
-                buf.as_mut_ptr() as *mut core::ffi::c_void,
-                7,
+                &mut buf[..7],
             )?;
             assert_eq!(n, 7);
             assert_eq!(&buf[..7], bytes);

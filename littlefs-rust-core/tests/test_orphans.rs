@@ -27,6 +27,9 @@ use littlefs_rust_core::{
 };
 use zerocopy::IntoBytes;
 
+#[cfg(feature = "slow_tests")]
+use crate::common::path_bytes;
+
 // --- test_orphans_mkconsistent_fresh ---
 // Minimal: format, mount, mkconsistent. No mkdir/remove. Sanity check.
 #[test]
@@ -375,22 +378,22 @@ fn test_orphans_reentrant() {
                     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
                     let res = lfs_stat(
                         lfs_ptr,
-                        path_bytes(&full_path).as_ptr() as *const _,
+                        path_bytes(&full_path).as_c_str(),
                         info.as_mut_ptr(),
                     );
                     if res == Err(Error::NoEntry) {
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
-                            let err = lfs_mkdir(lfs_ptr, path_bytes(&sub).as_ptr() as *const _);
+                            let err = lfs_mkdir(lfs_ptr, path_bytes(&sub).as_c_str());
                             if err.is_err() && err != Err(Error::Exists) {
-                                return (err);
+                                return err;
                             }
                         }
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
                             let r = lfs_stat(
                                 lfs_ptr,
-                                path_bytes(&sub).as_ptr() as *const _,
+                                path_bytes(&sub).as_c_str(),
                                 info.as_mut_ptr(),
                             )?;
 
@@ -415,21 +418,21 @@ fn test_orphans_reentrant() {
                         }
                         for d in (0..depth).rev() {
                             let sub = "/".to_string() + &components[..=d].join("/");
-                            let err = lfs_remove(lfs_ptr, path_bytes(&sub).as_ptr() as *const _);
+                            let err = lfs_remove(lfs_ptr, path_bytes(&sub).as_c_str());
                             if err.is_err() && err != Err(Error::NotEmpty) {
-                                return (err);
+                                return err;
                             }
                         }
                         let r = lfs_stat(
                             lfs_ptr,
-                            path_bytes(&full_path).as_ptr() as *const _,
+                            path_bytes(&full_path).as_c_str(),
                             info.as_mut_ptr(),
                         );
                         if r != Err(Error::NoEntry) {
                             return Err(if let Err(r) = r { r } else { Error::Invalid });
                         }
                     } else {
-                        return (res);
+                        return res;
                     }
                 }
 
