@@ -23,6 +23,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo build
       - run: cargo test --all-features --verbose
+      - run: cargo test --all-features --verbose --release
 
   compat:
     runs-on: ubuntu-latest
