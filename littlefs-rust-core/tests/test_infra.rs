@@ -117,7 +117,7 @@ fn test_badblock_behavior_prog_noop() {
     // Erase block 5, then mark it bad
     {
         let erase = env.config.erase.expect("erase callback");
-        erase(&env.config, 5);
+        let _ = erase(&env.config, 5);
     }
     env.badblock_ram.set_bad_block(5);
 

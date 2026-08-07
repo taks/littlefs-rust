@@ -5,8 +5,6 @@
 
 mod common;
 
-use std::ffi::CStr;
-
 #[cfg(feature = "slow_tests")]
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
@@ -17,7 +15,7 @@ use common::{
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsFile, LfsFsinfo, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
+    Lfs, LfsFile, LfsFsinfo, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_mount, lfs_remove, lfs_stat,
     lfs_unmount,
 };
@@ -132,7 +130,7 @@ fn test_superblocks_stat() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::uninit().assume_init() };
+    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_size, env.config.block_size);
     assert_eq!(fsinfo.block_count, env.config.block_count);
@@ -178,11 +176,11 @@ fn test_superblocks_reentrant_format() {
         |lfs_ptr, config| {
             let err = lfs_mount(lfs_ptr, config);
             if err.is_err() {
-                let e = lfs_format(lfs_ptr, config)?;
+                lfs_format(lfs_ptr, config)?;
 
-                let e = lfs_mount(lfs_ptr, config)?;
+                lfs_mount(lfs_ptr, config)?;
             }
-            let e = lfs_unmount(lfs_ptr)?;
+            lfs_unmount(lfs_ptr)?;
             Ok(())
         },
         |_, _| Ok(()),
@@ -208,7 +206,7 @@ fn test_superblocks_stat_tweaked() {
     env.config.attr_max = 1022;
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::uninit().assume_init() };
+    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.name_max, 63);
     assert_eq!(fsinfo.file_max, 65535);
@@ -387,11 +385,12 @@ fn test_superblocks_reentrant_expand() {
             |lfs_ptr, config| {
                 let err = lfs_mount(lfs_ptr, config);
                 if err.is_err() {
-                    let e = lfs_format(lfs_ptr, config)?;
-                    let e = lfs_mount(lfs_ptr, config)?;
+                    lfs_format(lfs_ptr, config)?;
+                    lfs_mount(lfs_ptr, config)?;
                 }
                 for i in 0..N {
-                    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+                    let info =
+                        &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
                     let err = lfs_stat(lfs_ptr, dummy.as_c_str(), info);
                     if err.is_ok() {
                         if info.type_ == LFS_TYPE_REG as u8 {
@@ -422,7 +421,8 @@ fn test_superblocks_reentrant_expand() {
                         let _ = lfs_unmount(lfs_ptr);
                         return e;
                     }
-                    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+                    let info =
+                        &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
                     let e = lfs_stat(lfs_ptr, dummy.as_c_str(), info);
                     if e.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
@@ -451,20 +451,20 @@ fn test_superblocks_unknown_blocks() {
     assert_ok(lfs_format(lfs, &env.config));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::uninit().assume_init() };
+    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_count, BLOCK_COUNT);
     assert_ok(lfs_unmount(lfs));
 
     let cfg0 = clone_config_with_block_count(&env, 0);
     assert_ok(lfs_mount(lfs, &cfg0.config));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::uninit().assume_init() };
+    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_count, BLOCK_COUNT);
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &cfg0.config));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::uninit().assume_init() };
+    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_count, BLOCK_COUNT);
     let test_path = path_bytes("test");
@@ -481,7 +481,7 @@ fn test_superblocks_unknown_blocks() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &cfg0.config));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::uninit().assume_init() };
+    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_count, BLOCK_COUNT);
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
@@ -513,7 +513,7 @@ fn test_superblocks_fewer_blocks() {
 
         let cfg0 = clone_config_with_block_count(&env, 0);
         assert_ok(lfs_mount(lfs, &cfg0.config));
-        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::uninit().assume_init() };
+        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
         assert_ok(lfs_fs_stat(lfs, fsinfo));
         assert_eq!(fsinfo.block_count, block_count);
         assert_ok(lfs_unmount(lfs));

@@ -307,7 +307,7 @@ fn test_dirs_many_reentrant() {
                 let err = lfs_mount(lfs_ptr, config);
                 if err.is_err() {
                     let _ = lfs_format(lfs_ptr, config);
-                    let e = lfs_mount(lfs_ptr, config)?;
+                    lfs_mount(lfs_ptr, config)?;
                 }
 
                 for i in 0..n {
@@ -610,7 +610,7 @@ fn test_dirs_file_reentrant() {
                 let err = lfs_mount(lfs_ptr, config);
                 if err.is_err() {
                     let _ = lfs_format(lfs_ptr, config);
-                    let e = lfs_mount(lfs_ptr, config)?;
+                    lfs_mount(lfs_ptr, config)?;
                 }
 
                 let file =

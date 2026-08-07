@@ -17,7 +17,7 @@ use common::{
     init_logger, path_bytes,
 };
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_write, lfs_format,
+    Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_write, lfs_format,
     lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
 use rstest::rstest;
@@ -206,21 +206,9 @@ fn test_relocations_nonreentrant_renames(
         assert_ok(lfs_file_close(lfs, file));
     }
 
-    assert_ok(lfs_rename(
-        lfs,
-        c"x",
-        c"z",
-    ));
-    assert_ok(lfs_rename(
-        lfs,
-        c"y",
-        c"x",
-    ));
-    assert_ok(lfs_rename(
-        lfs,
-        c"z",
-        c"y",
-    ));
+    assert_ok(lfs_rename(lfs, c"x", c"z"));
+    assert_ok(lfs_rename(lfs, c"y", c"x"));
+    assert_ok(lfs_rename(lfs, c"z", c"y"));
 
     let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
     assert_ok(lfs_stat(lfs, c"x", info.as_mut_ptr()));
@@ -266,7 +254,7 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
         &snapshot,
         block_count,
         |lfs_ptr, config| {
-            let err = lfs_mount(lfs_ptr, config)?;
+            lfs_mount(lfs_ptr, config)?;
 
             for _ in 0..cycles {
                 for i in 0..files {
@@ -294,12 +282,12 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
                     }
                 }
             }
-            let err = lfs_unmount(lfs_ptr)?;
+            lfs_unmount(lfs_ptr)?;
 
             Ok(())
         },
         |lfs_ptr, config| {
-            let err = lfs_mount(lfs_ptr, config)?;
+            lfs_mount(lfs_ptr, config)?;
             let _ = lfs_unmount(lfs_ptr);
             Ok(())
         },
@@ -350,7 +338,7 @@ fn test_relocations_reentrant_renames(
         &snapshot,
         128,
         |lfs_ptr, config| {
-            let err = lfs_mount(lfs_ptr, config)?;
+            lfs_mount(lfs_ptr, config)?;
             let err = lfs_rename(lfs_ptr, c"x", c"z");
             if err.is_err() {
                 let _ = lfs_unmount(lfs_ptr);
@@ -383,7 +371,7 @@ fn test_relocations_reentrant_renames(
             Ok(())
         },
         |lfs_ptr, config| {
-            let err = lfs_mount(lfs_ptr, config)?;
+            lfs_mount(lfs_ptr, config)?;
             let _ = lfs_unmount(lfs_ptr);
             Ok(())
         },

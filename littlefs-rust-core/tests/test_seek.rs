@@ -696,7 +696,7 @@ fn test_seek_reentrant_write(#[case] count: u32) {
         let err = littlefs_rust_core::lfs_mount(lfs, cfg);
         if err.is_err() {
             let _ = littlefs_rust_core::lfs_format(lfs, cfg);
-            let e = littlefs_rust_core::lfs_mount(lfs, cfg)?;
+            littlefs_rust_core::lfs_mount(lfs, cfg)?;
         }
 
         let path = c"kitty";
@@ -709,11 +709,7 @@ fn test_seek_reentrant_write(#[case] count: u32) {
             if sz != 0 {
                 assert_eq!(sz, (count * 11) as i32);
                 for _ in 0..count {
-                    let n = littlefs_rust_core::lfs_file_read(
-                        lfs,
-                        file,
-                        &mut buf[..11],
-                    )?;
+                    let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11])?;
                     if n != 11 {
                         return Err(Error::Invalid);
                     }
@@ -723,32 +719,23 @@ fn test_seek_reentrant_write(#[case] count: u32) {
                     );
                 }
             }
-            let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
+            littlefs_rust_core::lfs_file_close(lfs, file)?;
         } else {
             assert_eq!(open_err, Err(Error::NoEntry));
         }
 
-        let e = littlefs_rust_core::lfs_file_open(
-            lfs,
-            file,
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT,
-        )?;
+        littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT)?;
 
         if littlefs_rust_core::lfs_file_size(lfs, file) == 0 {
             for _ in 0..count {
-                let n = littlefs_rust_core::lfs_file_write(
-                    lfs,
-                    file,
-                    KITTY
-                )?;
+                let n = littlefs_rust_core::lfs_file_write(lfs, file, KITTY)?;
 
                 assert_eq!(n, KITTY.len() as u32);
             }
         }
-        let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
+        littlefs_rust_core::lfs_file_close(lfs, file)?;
 
-        let e = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDWR)?;
+        littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDWR)?;
 
         assert_eq!(
             littlefs_rust_core::lfs_file_size(lfs, file),
@@ -763,12 +750,7 @@ fn test_seek_reentrant_write(#[case] count: u32) {
             if seek_res != pos {
                 return Err(Error::Invalid);
             }
-            let n = littlefs_rust_core::lfs_file_read(
-                lfs,
-                file,
-                &mut buf[..11],
-
-            )?;
+            let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11])?;
             if n != 11 {
                 return Err(Error::Invalid);
             }
@@ -778,36 +760,24 @@ fn test_seek_reentrant_write(#[case] count: u32) {
                 if seek_res != pos {
                     return Err(Error::Invalid);
                 }
-                let n = littlefs_rust_core::lfs_file_write(
-                    lfs,
-                    file,
-                    DOGGO
-                )?;
+                let n = littlefs_rust_core::lfs_file_write(lfs, file, DOGGO)?;
 
                 assert_eq!(n, DOGGO.len() as u32);
                 let seek_res = littlefs_rust_core::lfs_file_seek(lfs, file, pos, LFS_SEEK_SET)?;
                 if seek_res != pos {
                     return Err(Error::Invalid);
                 }
-                let n = littlefs_rust_core::lfs_file_read(
-                    lfs,
-                    file,
-                    &mut buf[..11]
-                )?;
+                let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11])?;
                 if n != 11 {
                     return Err(Error::Invalid);
                 }
                 assert_eq!(&buf[..11], DOGGO);
-                let e = littlefs_rust_core::lfs_file_sync(lfs, file)?;
+                littlefs_rust_core::lfs_file_sync(lfs, file)?;
                 let seek_res = littlefs_rust_core::lfs_file_seek(lfs, file, pos, LFS_SEEK_SET)?;
                 if seek_res != pos {
                     return Err(Error::Invalid);
                 }
-                let n = littlefs_rust_core::lfs_file_read(
-                    lfs,
-                    file,
-                    &mut buf[..11],
-                )?;
+                let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11])?;
                 if n != 11 {
                     return Err(Error::Invalid);
                 }
@@ -815,27 +785,23 @@ fn test_seek_reentrant_write(#[case] count: u32) {
             }
         }
 
-        let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
+        littlefs_rust_core::lfs_file_close(lfs, file)?;
 
-        let e = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDWR)?;
+        littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDWR)?;
         assert_eq!(
             littlefs_rust_core::lfs_file_size(lfs, file),
             (count * 11) as i32
         );
         for _ in 0..count {
-            let n = littlefs_rust_core::lfs_file_read(
-                lfs,
-                file,
-                &mut buf[..11],
-            )?;
+            let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11])?;
             if n != 11 {
                 return Err(Error::Invalid);
             }
             assert_eq!(&buf[..11], DOGGO);
         }
-        let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
+        littlefs_rust_core::lfs_file_close(lfs, file)?;
 
-        let e = littlefs_rust_core::lfs_unmount(lfs)?;
+        littlefs_rust_core::lfs_unmount(lfs)?;
 
         Ok(())
     };

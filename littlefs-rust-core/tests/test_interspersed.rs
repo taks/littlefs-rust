@@ -399,11 +399,7 @@ fn test_interspersed_reentrant_files(
             assert!(file_sz >= 0);
             if (file_sz as usize) <= i {
                 let byte = [ALPHAS[j]];
-                let n = lfs_file_write(
-                    lfs,
-                    &mut file_handles[j],
-                    &byte
-                );
+                let n = lfs_file_write(lfs, &mut file_handles[j], &byte);
                 assert_eq!(n, Ok(1));
                 assert_ok(lfs_file_sync(lfs, &mut file_handles[j]));
             }
@@ -462,11 +458,7 @@ fn test_interspersed_reentrant_files(
     for _i in 0..10 {
         for j in 0..files {
             let mut buffer = [0u8; 1];
-            let n = lfs_file_read(
-                lfs,
-                &mut file_handles[j],
-                &mut buffer
-            );
+            let n = lfs_file_read(lfs, &mut file_handles[j], &mut buffer);
             assert_eq!(n, Ok(1));
             assert_eq!(buffer[0], ALPHAS[j]);
         }

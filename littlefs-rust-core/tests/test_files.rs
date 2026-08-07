@@ -592,39 +592,36 @@ fn test_files_many_power_loss() {
         let err = littlefs_rust_core::lfs_mount(lfs, cfg);
         if err.is_err() {
             let _ = littlefs_rust_core::lfs_format(lfs, cfg);
-            let e = littlefs_rust_core::lfs_mount(lfs, cfg)?;
+            littlefs_rust_core::lfs_mount(lfs, cfg)?;
         }
         for i in 0..N {
             let path = path_bytes(&format!("file_{:03}", i));
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            let e = littlefs_rust_core::lfs_file_open(lfs, file, path.as_c_str(), LFS_O_WRONLY | LFS_O_CREAT)?;
+            littlefs_rust_core::lfs_file_open(
+                lfs,
+                file,
+                path.as_c_str(),
+                LFS_O_WRONLY | LFS_O_CREAT,
+            )?;
             let content = format!("Hi {:03}\0", i);
             let bytes = content.as_bytes();
             assert_eq!(bytes.len(), 7);
             let sz = littlefs_rust_core::lfs_file_size(lfs, file);
             if sz != bytes.len() as i32 {
-                let n = littlefs_rust_core::lfs_file_write(
-                    lfs,
-                    file,
-                    bytes,
-                )?;
+                let n = littlefs_rust_core::lfs_file_write(lfs, file, bytes)?;
                 assert_eq!(n, bytes.len() as u32);
             }
-            let e = littlefs_rust_core::lfs_file_close(lfs, file)?;
+            littlefs_rust_core::lfs_file_close(lfs, file)?;
 
             let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            let e = littlefs_rust_core::lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY)?;
+            littlefs_rust_core::lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY)?;
             let mut buf = [0u8; 32];
-            let n = littlefs_rust_core::lfs_file_read(
-                lfs,
-                rfile,
-                &mut buf[..7],
-            )?;
+            let n = littlefs_rust_core::lfs_file_read(lfs, rfile, &mut buf[..7])?;
             assert_eq!(n, 7);
             assert_eq!(&buf[..7], bytes);
-            let e = littlefs_rust_core::lfs_file_close(lfs, rfile)?;
+            littlefs_rust_core::lfs_file_close(lfs, rfile)?;
         }
-        let e = littlefs_rust_core::lfs_unmount(lfs)?;
+        littlefs_rust_core::lfs_unmount(lfs)?;
         Ok(())
     };
 

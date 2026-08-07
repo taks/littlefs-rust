@@ -361,9 +361,8 @@ fn test_orphans_reentrant() {
             |lfs_ptr, config| {
                 let err = lfs_mount(lfs_ptr, config);
                 if err.is_err() {
-                    let e = lfs_format(lfs_ptr, config)?;
-
-                    let e = lfs_mount(lfs_ptr, config)?;
+                    lfs_format(lfs_ptr, config)?;
+                    lfs_mount(lfs_ptr, config)?;
                 }
 
                 let mut prng: u32 = 1;
@@ -391,11 +390,8 @@ fn test_orphans_reentrant() {
                         }
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
-                            let r = lfs_stat(
-                                lfs_ptr,
-                                path_bytes(&sub).as_c_str(),
-                                info.as_mut_ptr(),
-                            )?;
+
+                            lfs_stat(lfs_ptr, path_bytes(&sub).as_c_str(), info.as_mut_ptr())?;
 
                             let info_ref = unsafe { &*info.as_ptr() };
                             let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);

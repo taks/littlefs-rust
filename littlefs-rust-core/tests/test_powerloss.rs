@@ -16,9 +16,8 @@ use common::{
     read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsDir, LfsFile, error::Error, lfs_dir_close, lfs_dir_open, lfs_file_close,
-    lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
-    lfs_unmount,
+    Lfs, LfsDir, LfsFile, error::Error, lfs_dir_close, lfs_dir_open, lfs_file_close, lfs_file_open,
+    lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_unmount,
 };
 
 // --- test_powerloss_only_rev ---
@@ -85,16 +84,15 @@ fn test_powerloss_only_rev() {
     let block_size = env.config.block_size as usize;
     let mut block_buf = vec![0u8; block_size];
     let read_fn = env.config.read.expect("read");
-    unsafe {
-        read_fn(&env.config, pair[1], 0, &mut block_buf);
-    }
+
+    let _ = read_fn(&env.config, pair[1], 0, &mut block_buf);
+
     block_buf[0..4].copy_from_slice(&(rev + 1).to_le_bytes());
     let erase_fn = env.config.erase.expect("erase");
     let prog_fn = env.config.prog.expect("prog");
-    unsafe {
-        erase_fn(&env.config, pair[1]);
-        prog_fn(&env.config, pair[1], 0, &block_buf);
-    }
+
+    let _ = erase_fn(&env.config, pair[1]);
+    let _ = prog_fn(&env.config, pair[1], 0, &block_buf);
 
     assert_ok_at("mount after corrupt", lfs_mount(lfs, &env.config));
 
@@ -415,16 +413,15 @@ fn test_debug_powerloss_after_corrupt_append() {
     let block_size = env.config.block_size as usize;
     let mut block_buf = vec![0u8; block_size];
     let read_fn = env.config.read.expect("read");
-    unsafe {
-        read_fn(&env.config, pair[1], 0, &mut block_buf);
-    }
+
+    let _ = read_fn(&env.config, pair[1], 0, &mut block_buf);
+
     block_buf[0..4].copy_from_slice(&(rev + 1).to_le_bytes());
     let erase_fn = env.config.erase.expect("erase");
     let prog_fn = env.config.prog.expect("prog");
-    unsafe {
-        erase_fn(&env.config, pair[1]);
-        prog_fn(&env.config, pair[1], 0, &block_buf);
-    }
+
+    let _ = erase_fn(&env.config, pair[1]);
+    let _ = prog_fn(&env.config, pair[1], 0, &block_buf);
 
     assert_ok_at("mount after corrupt", lfs_mount(lfs, &env.config));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
