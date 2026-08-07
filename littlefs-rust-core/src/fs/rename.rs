@@ -290,9 +290,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
         };
 
         if prevtag == Err(Error::NoEntry) {
-            if lfs_path_isdir(newpath_slice)
-                && u32::from(lfs_tag_type3(oldtag)) != LFS_TYPE_DIR
-            {
+            if lfs_path_isdir(newpath_slice) && u32::from(lfs_tag_type3(oldtag)) != LFS_TYPE_DIR {
                 return crate::lfs_err!(Err(Error::NotDir));
             }
             let nlen = lfs_path_namelen(newpath_slice);

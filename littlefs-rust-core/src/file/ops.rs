@@ -13,7 +13,8 @@ use crate::file::LfsFile;
 use crate::file::ctz::lfs_ctz_find;
 use crate::lfs_info::LfsFileConfig;
 use crate::lfs_type::lfs_open_flags::{
-    LFS_F_DIRTY, LFS_F_ERRED, LFS_F_INLINE, LFS_F_READING, LFS_F_WRITING, LFS_O_APPEND, LFS_O_RDONLY,
+    LFS_F_DIRTY, LFS_F_ERRED, LFS_F_INLINE, LFS_F_READING, LFS_F_WRITING, LFS_O_APPEND,
+    LFS_O_RDONLY,
 };
 use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use crate::tag::lfs_mktag;
