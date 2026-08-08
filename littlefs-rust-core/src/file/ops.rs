@@ -358,7 +358,7 @@ pub fn lfs_file_opencfg_(
             #[cfg(not(feature = "alloc"))]
             {
                 lfs_file_close_(lfs, file);
-                return crate::lfs_err!(LFS_ERR_NOMEM);
+                return crate::lfs_err!(Err(Error::NoMemory));
             }
             if file.cache.buffer.is_null() {
                 lfs_file_close_(lfs, file);
