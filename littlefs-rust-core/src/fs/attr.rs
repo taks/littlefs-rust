@@ -81,13 +81,13 @@ pub fn lfs_getattr_(
         let mut path_ptr = path;
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
-        let mut id = lfs_tag_id(tag) as u16;
+        let mut id = lfs_tag_id(tag);
         if id == 0x3ff {
             id = 0;
             let lfs_root = borrow_unchecked(&lfs.root);
             lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
-        let size = lfs_min(size, (*lfs).attr_max);
+        let size = lfs_min(size, lfs.attr_max);
         let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size);
         let buffer = core::slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
         let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer);
@@ -155,7 +155,7 @@ pub fn lfs_commitattr(
         let mut path_ptr = path;
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
-        let mut id = lfs_tag_id(tag) as u16;
+        let mut id = lfs_tag_id(tag);
         if id == 0x3ff {
             id = 0;
             let lfs_root = borrow_unchecked(&lfs.root);

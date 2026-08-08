@@ -353,7 +353,7 @@ pub fn lfs_file_opencfg_(
             #[cfg(feature = "alloc")]
             {
                 file.cache.buffer = crate::lfs_alloc_module::lfs_malloc(
-                    (*lfs).cfg.as_ref().expect("cfg").cache_size,
+                    lfs.cfg.as_ref().expect("cfg").cache_size,
                 );
             }
             #[cfg(not(feature = "alloc"))]
@@ -384,7 +384,7 @@ pub fn lfs_file_opencfg_(
             file.flags |= LFS_F_INLINE as u32;
             file.cache.block = file.ctz.head;
             file.cache.off = 0;
-            file.cache.size = (*lfs).cfg.as_ref().expect("cfg").cache_size;
+            file.cache.size = lfs.cfg.as_ref().expect("cfg").cache_size;
             if file.ctz.size > 0 {
                 let res = lfs_dir_get(
                     lfs,
@@ -786,7 +786,7 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                 lfs_cache_drop(lfs, lfs_rcache);
 
                 #[allow(clippy::while_immutable_condition)] // file.pos updated by flushedwrite
-                while (*file).pos < (*file).ctz.size {
+                while file.pos < file.ctz.size {
                     let mut data: u8 = 0;
                     let res = lfs_file_flushedread(lfs, &mut orig, data.as_mut_bytes())?;
 
@@ -1322,22 +1322,22 @@ pub fn lfs_file_write_(
     file: &mut LfsFile,
     buffer: &[u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
-    crate::lfs_assert!((unsafe { (*file).flags as i32 } & 2) == 2);
+    crate::lfs_assert!(({ file.flags as i32 } & 2) == 2);
 
     unsafe {
         if (file.flags as i32 & LFS_F_READING) != 0 {
             lfs_file_flush(lfs, file)?;
         }
-        if (file.flags as i32 & LFS_O_APPEND) != 0 && (*file).pos < (*file).ctz.size {
+        if (file.flags as i32 & LFS_O_APPEND) != 0 && file.pos < file.ctz.size {
             file.pos = file.ctz.size;
         }
-        if (*file).pos + (buffer.len() as u32) > (*lfs).file_max {
+        if file.pos + (buffer.len() as u32) > lfs.file_max {
             return Err(Error::FileTooBig);
         }
 
         // C: lfs.c:3677-3688 — zero-fill gap when writing past end of file
         if (file.flags as i32 & LFS_F_WRITING) == 0 && file.pos > file.ctz.size {
-            let pos = (*file).pos;
+            let pos = file.pos;
             file.pos = file.ctz.size;
             let zero: u8 = 0;
             #[allow(clippy::while_immutable_condition)] // pos mutated via raw ptr in flushedwrite
@@ -1348,7 +1348,7 @@ pub fn lfs_file_write_(
 
         let nsize = lfs_file_flushedwrite(lfs, file, buffer);
         if nsize.is_ok() {
-            (*file).flags &= !0x080000;
+            file.flags &= !0x080000;
         }
         nsize
     }
@@ -1527,7 +1527,7 @@ pub fn lfs_file_truncate_(
                 // Read existing data from CTZ blocks into rcache temporarily
                 let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 crate::bd::bd::lfs_cache_drop(lfs, lfs_rcache);
-                let buffer = core::slice::from_raw_parts_mut((*lfs).rcache.buffer, size as usize);
+                let buffer = core::slice::from_raw_parts_mut(lfs.rcache.buffer, size as usize);
                 let res = lfs_file_flushedread(lfs, file, buffer)?;
 
                 file.ctz.head = LFS_BLOCK_INLINE;
@@ -1539,7 +1539,7 @@ pub fn lfs_file_truncate_(
 
                 // Copy data from rcache into file cache
                 core::ptr::copy_nonoverlapping(
-                    (*lfs).rcache.buffer,
+                    lfs.rcache.buffer,
                     file.cache.buffer,
                     size as usize,
                 );
@@ -1632,6 +1632,6 @@ pub fn lfs_file_size_(_lfs: &Lfs, file: &LfsFile) -> crate::types::lfs_soff_t {
         if ((*file).flags as i32 & LFS_F_WRITING) != 0 {
             return crate::util::lfs_max(file.pos, file.ctz.size) as crate::types::lfs_soff_t;
         }
-        (*file).ctz.size as crate::types::lfs_soff_t
+        file.ctz.size as crate::types::lfs_soff_t
     }
 }

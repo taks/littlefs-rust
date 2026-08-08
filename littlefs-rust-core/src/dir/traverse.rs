@@ -725,7 +725,7 @@ pub fn lfs_dir_traverse(
     let mut stack: [core::mem::MaybeUninit<LfsDirTraverseStack>; LFS_DIR_TRAVERSE_DEPTH - 1] =
         core::array::from_fn(|_| core::mem::MaybeUninit::uninit());
     let mut sp: usize = 0;
-    let mut res: Result<i32, Error> = Ok(0);
+    let mut res: i32= 0;
 
     let mut dir = dir;
     let mut off = off;
@@ -819,9 +819,9 @@ pub fn lfs_dir_traverse(
                         attr_i += 1;
                         (attr.tag, attr.buffer)
                     } else {
-                        res = Ok(0);
+                        res = 0;
                         if sp == 0 {
-                            return res;
+                            return Ok(res);
                         }
                         phase = TraversePhase::PopAndProcess;
                         continue;
@@ -968,15 +968,12 @@ pub fn lfs_dir_traverse(
                                 crate::tag::lfs_tag_id(tag) as u32 + diff as u32,
                                 a.buffer.len() as u32,
                             );
-                            res = dispatch_tag(cb, data, userattr_tag, a.buffer, diff);
-                            if let Err(err) = res {
-                                return Err(err);
-                            }
-                            if res != Ok(0) {
+                            res = dispatch_tag(cb, data, userattr_tag, a.buffer, diff)?;
+                            if res != 0 {
                                 break;
                             }
                         }
-                        if res == Ok(0) {
+                        if res == 0 {
                             phase = TraversePhase::GetNextTag;
                         } else if sp > 0 {
                             crate::lfs_trace!(
@@ -990,18 +987,15 @@ pub fn lfs_dir_traverse(
                             }
                             phase = TraversePhase::PopAndProcess;
                         } else {
-                            return res;
+                            return Ok(res);
                         }
                     } else {
                         let actual_buffer: &[u8] = match disk_override {
                             Some(ref d) => d.as_bytes(),
                             None => buffer,
                         };
-                        res = dispatch_tag(cb, data, tag, actual_buffer, diff);
-                        if res.is_err() {
-                            return res;
-                        }
-                        if res != Ok(0) {
+                        res = dispatch_tag(cb, data, tag, actual_buffer, diff)?;
+                        if res != 0 {
                             if sp > 0 {
                                 crate::lfs_trace!(
                                     "traverse ProcessTag: res=1 storing redundant tag=0x{:08x} buffer={:p}",
@@ -1015,7 +1009,7 @@ pub fn lfs_dir_traverse(
                                 }
                                 phase = TraversePhase::PopAndProcess;
                             } else {
-                                return res;
+                                return Ok(res);
                             }
                         } else {
                             phase = TraversePhase::GetNextTag;
@@ -1026,7 +1020,7 @@ pub fn lfs_dir_traverse(
             TraversePhase::PopAndProcess => {
                 crate::lfs_trace!("traverse PopAndProcess: sp={}", sp);
                 if sp == 0 {
-                    return res;
+                    return Ok(res);
                 }
                 let frame = unsafe { &*stack[sp - 1].as_ptr() };
                 dir = frame.dir;
@@ -1093,13 +1087,13 @@ pub fn lfs_dir_traverse_test_cb(
     if (*out).call_count as usize >= 8 {
         return Ok(0);
     }
-    let i = (*out).call_count as usize;
-    (*out).tags[i] = lfs_tag_type3(tag);
-    (*out).first_bytes[i] = if buffer.is_empty() {
+    let i = out.call_count as usize;
+    out.tags[i] = lfs_tag_type3(tag);
+    out.first_bytes[i] = if buffer.is_empty() {
         0
     } else {
         unsafe { *((buffer.as_ptr() as *const u8).add(0)) }
     };
-    (*out).call_count += 1;
+    out.call_count += 1;
     Ok(0)
 }

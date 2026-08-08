@@ -122,7 +122,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
 
     unsafe {
         let mut cwd = LfsMlist {
-            next: (*lfs).mlist,
+            next: lfs.mlist,
             m: core::mem::zeroed(),
             type_: 0,
             id: 0,
