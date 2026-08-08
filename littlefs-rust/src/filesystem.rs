@@ -44,7 +44,7 @@ pub struct Filesystem<S: Storage> {
 // ── Trampolines ─────────────────────────────────────────────────────────────
 
 fn trampoline_read<S: Storage>(
-    cfg: *const LfsConfig,
+    cfg: &LfsConfig,
     block: u32,
     off: u32,
     buffer: &mut [u8],
@@ -53,18 +53,18 @@ fn trampoline_read<S: Storage>(
     storage.read(block, off, buffer)
 }
 
-fn trampoline_prog<S: Storage>(cfg: *const LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
+fn trampoline_prog<S: Storage>(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
     let storage = unsafe { &mut *((*cfg).context as *mut S) };
     storage.write(block, off, buffer)
 }
 
-unsafe extern "C" fn trampoline_erase<S: Storage>(cfg: *const LfsConfig, block: u32) -> Result<(), Error> {
-    let storage = &mut *((*cfg).context as *mut S);
+fn trampoline_erase<S: Storage>(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
+    let storage = unsafe { &mut *((*cfg).context as *mut S) };
     storage.erase(block)
 }
 
-unsafe extern "C" fn trampoline_sync<S: Storage>(cfg: *const LfsConfig) -> Result<(), Error> {
-    let storage = &mut *((*cfg).context as *mut S);
+fn trampoline_sync<S: Storage>(cfg: &LfsConfig) -> Result<(), Error> {
+    let storage = unsafe { &mut *((*cfg).context as *mut S) };
     storage.sync()
 }
 
@@ -132,11 +132,10 @@ impl<S: Storage> Filesystem<S> {
     pub fn format(storage: &mut S, config: &Config) -> Result<(), Error> {
         let mut inner = build_inner_borrowed(storage, config);
         wire_context_borrowed(&mut inner);
-        let rc = littlefs_rust_core::lfs_format(
+        littlefs_rust_core::lfs_format(
             inner.lfs.as_mut_ptr(),
-            &inner.config as *const LfsConfig,
-        );
-        from_lfs_result(rc)
+            &inner.config,
+        )
     }
 
     /// Mount an existing filesystem. Takes ownership of the storage.
@@ -168,9 +167,9 @@ impl<S: Storage> Filesystem<S> {
         let mut inner = this.inner.borrow_mut();
         let rc = if inner.mounted {
             inner.mounted = false;
-            littlefs_rust_core::lfs_unmount(inner.lfs.as_mut_ptr())
+            littlefs_rust_core::lfs_unmount(&mut inner.lfs)
         } else {
-            0
+            Ok(())
         };
         drop(inner);
         // Safety: we prevented Drop from running via ManuallyDrop, and we've

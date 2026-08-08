@@ -73,7 +73,7 @@ impl<S: Storage> Iterator for ReadDir<'_, S> {
             let rc = {
                 let mut inner = self.fs.inner.borrow_mut();
                 littlefs_rust_core::lfs_dir_read(
-                    inner.lfs.as_mut_ptr(),
+                    &mut inner.lfs,
                     self.alloc.dir.as_mut_ptr(),
                     info.as_mut_ptr(),
                 )
