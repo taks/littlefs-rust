@@ -1,7 +1,6 @@
 //! Directory commit. Per lfs.c lfs_dir_commit, lfs_dir_commitattr, lfs_dir_alloc, etc.
 
-use alloc::borrow;
-use zerocopy::{IntoBytes, FromBytes};
+use zerocopy::{FromBytes, IntoBytes};
 
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsCommit;
