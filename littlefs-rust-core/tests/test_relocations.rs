@@ -59,9 +59,8 @@ fn test_relocations_dangling_split_dir(#[values(8, 1)] block_cycles: i32) {
 
     for i in 0..COUNT {
         let path = path_bytes(&format!("d0/f{i}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_c_str(), info.as_mut_ptr()));
-        let info = unsafe { info.assume_init() };
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_ok(lfs_stat(lfs, path.as_c_str(), info));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(
             core::str::from_utf8(&info.name[..nul]).unwrap(),
@@ -108,13 +107,12 @@ fn test_relocations_outdated_head(#[values(8, 1)] block_cycles: i32) {
 
     for i in 0..COUNT {
         let path = path_bytes(&format!("d0/sub/f{i}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok(lfs_stat(
             lfs,
             unsafe { CStr::from_ptr(path.as_ptr() as *const _) },
-            info.as_mut_ptr(),
+            info,
         ));
-        let info = unsafe { info.assume_init() };
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(
             core::str::from_utf8(&info.name[..nul]).unwrap(),
@@ -158,9 +156,8 @@ fn test_relocations_nonreentrant(
         for i in 0..files {
             let name = format!("{}", (b'a' + i as u8) as char);
             let path = path_bytes(&name);
-            let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-            assert_ok(lfs_stat(lfs, path.as_c_str(), info.as_mut_ptr()));
-            let info = unsafe { info.assume_init() };
+            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+            assert_ok(lfs_stat(lfs, path.as_c_str(), info));
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), name);
             assert_ok(lfs_remove(lfs, path.as_c_str()));
@@ -210,15 +207,13 @@ fn test_relocations_nonreentrant_renames(
     assert_ok(lfs_rename(lfs, c"y", c"x"));
     assert_ok(lfs_rename(lfs, c"z", c"y"));
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, c"x", info.as_mut_ptr()));
-    let info = unsafe { info.assume_init() };
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+    assert_ok(lfs_stat(lfs, c"x", info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "x");
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, c"y", info.as_mut_ptr()));
-    let info = unsafe { info.assume_init() };
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+    assert_ok(lfs_stat(lfs, c"y", info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "y");
 
@@ -269,8 +264,8 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
                 for i in 0..files {
                     let name = format!("{}", (b'a' + i as u8) as char);
                     let path = path_bytes(&name);
-                    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-                    let err = lfs_stat(lfs_ptr, path.as_c_str(), info.as_mut_ptr());
+                    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+                    let err = lfs_stat(lfs_ptr, path.as_c_str(), info);
                     if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
                         return err;

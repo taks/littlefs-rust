@@ -115,8 +115,8 @@ fn verify_after_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, file
     assert_ok(lfs_mount(lfs, config));
     for i in 0..files {
         let path = path_bytes(&format!("{prefix}/test{i}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_c_str(), info.as_mut_ptr()));
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_ok(lfs_stat(lfs, path.as_c_str(), info));
     }
     assert_ok(lfs_unmount(lfs));
 }
@@ -259,8 +259,8 @@ fn verify_after_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) {
     assert_ok(lfs_mount(lfs, config));
     for i in 0..files {
         let path = path_bytes(&format!("test{i}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_ok(lfs_stat(lfs, path.as_c_str(), info.as_mut_ptr()));
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_ok(lfs_stat(lfs, path.as_c_str(), info));
     }
     assert_ok(lfs_unmount(lfs));
 }
@@ -471,11 +471,11 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
     assert_ok(lfs_mount(lfs, &env.config));
     for i in 0..files {
         let path = path_bytes(&format!("roadrunner/test{i}"));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok(lfs_stat(
             lfs,
             unsafe { CStr::from_ptr(path.as_ptr()) },
-            info.as_mut_ptr(),
+            info,
         ));
     }
     assert_ok(lfs_unmount(lfs));

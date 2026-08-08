@@ -83,13 +83,14 @@ pub fn lfs_getattr_(
         }
         let size = lfs_min(buffer.len() as u32, lfs.attr_max);
         let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size);
-        let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer).map_err(|err| {
-            if err == Error::NoEntry {
-                crate::lfs_err!(Error::NoAttribute)
-            } else {
-                err
-            }
-        })?;
+        let tag =
+            lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer).map_err(|err| {
+                if err == Error::NoEntry {
+                    crate::lfs_err!(Error::NoAttribute)
+                } else {
+                    err
+                }
+            })?;
 
         Ok(lfs_tag_size(tag))
     }

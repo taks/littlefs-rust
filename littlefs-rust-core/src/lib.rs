@@ -130,13 +130,12 @@ pub fn lfs_stat(lfs: &mut Lfs, path: &CStr, info: &mut LfsInfo) -> Result<(), Er
 /// Get a custom attribute. Per lfs.h lfs_getattr (lfs.c:6090-6105).
 #[inline(never)]
 pub fn lfs_getattr(
-    lfs: *mut Lfs,
+    lfs: &mut Lfs,
     path: &CStr,
     r#type: u8,
-    buffer: *mut c_void,
-    size: lfs_size_t,
+    buffer: &mut [u8],
 ) -> Result<lfs_size_t, Error> {
-    crate::fs::attr::lfs_getattr_(lfs, path, r#type, buffer, size)
+    crate::fs::attr::lfs_getattr_(lfs, path, r#type, buffer)
 }
 
 /// Set custom attributes. Per lfs.h lfs_setattr (lfs.c:6471-6475).

@@ -78,9 +78,8 @@ fn test_dirs_one_mkdir() {
     let path = c"d0";
     assert_ok(lfs_mkdir(lfs, path));
 
-    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-    assert_ok(lfs_stat(lfs, path, info.as_mut_ptr()));
-    let info = unsafe { info.assume_init() };
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+    assert_ok(lfs_stat(lfs, path, info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "d0");
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
@@ -870,11 +869,8 @@ fn test_dirs_recursive_remove() {
         assert_ok(lfs_unmount(lfs));
 
         assert_ok(lfs_mount(lfs, &env.config));
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-        assert_err(
-            Error::NoEntry,
-            lfs_stat(lfs, c"prickly-pear", info.as_mut_ptr()),
-        );
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_err(Error::NoEntry, lfs_stat(lfs, c"prickly-pear", info));
         assert_ok(lfs_unmount(lfs));
     }
 }

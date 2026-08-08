@@ -16,8 +16,9 @@ use common::{
     read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::{
-    Lfs, LfsDir, LfsFile, error::Error, lfs_dir_close, lfs_dir_open, lfs_file_close, lfs_file_open,
-    lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_unmount,
+    Lfs, LfsDir, LfsFile, LfsInfo, error::Error, lfs_dir_close, lfs_dir_open, lfs_file_close,
+    lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
+    lfs_unmount,
 };
 
 // --- test_powerloss_only_rev ---
@@ -239,8 +240,8 @@ fn test_powerloss_partial_prog() {
                 &format!("mount after corrupt off={byte_off} val=0x{byte_value:02x}"),
                 lfs_mount(lfs, cfg),
             );
-            let mut info = core::mem::MaybeUninit::<littlefs_rust_core::LfsInfo>::zeroed();
-            let r = littlefs_rust_core::lfs_stat(lfs, path_a, info.as_mut_ptr());
+            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+            let r = littlefs_rust_core::lfs_stat(lfs, path_a, info);
             assert!(r.is_ok(), "lfs_stat a after corrupt: {r:?}");
             assert_ok_at("unmount after verify", lfs_unmount(lfs));
         }

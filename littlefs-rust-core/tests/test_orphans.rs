@@ -181,12 +181,12 @@ fn test_orphans_normal() {
 
     // Mount and verify orphan is gone, child exists, size is 8
     assert_ok(lfs_mount(lfs_ptr, cfg));
-    let mut info = core::mem::MaybeUninit::<littlefs_rust_core::LfsInfo>::zeroed();
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_eq!(
-        lfs_stat(lfs_ptr, c"parent/orphan", info.as_mut_ptr()),
+        lfs_stat(lfs_ptr, c"parent/orphan", info),
         Err(Error::NoEntry)
     );
-    assert_ok(lfs_stat(lfs_ptr, c"parent/child", info.as_mut_ptr()));
+    assert_ok(lfs_stat(lfs_ptr, c"parent/child", info));
     assert_eq!(lfs_fs_size(lfs_ptr), Ok(8));
     assert_ok(lfs_unmount(lfs_ptr));
 
@@ -194,11 +194,11 @@ fn test_orphans_normal() {
     assert_ok(lfs_mount(lfs_ptr, cfg));
     assert_ok(lfs_mkdir(lfs_ptr, c"parent/otherchild"));
     assert_eq!(
-        lfs_stat(lfs_ptr, c"parent/orphan", info.as_mut_ptr()),
+        lfs_stat(lfs_ptr, c"parent/orphan", info),
         Err(Error::NoEntry)
     );
-    assert_ok(lfs_stat(lfs_ptr, c"parent/child", info.as_mut_ptr()));
-    assert_ok(lfs_stat(lfs_ptr, c"parent/otherchild", info.as_mut_ptr()));
+    assert_ok(lfs_stat(lfs_ptr, c"parent/child", info));
+    assert_ok(lfs_stat(lfs_ptr, c"parent/otherchild", info));
     assert_eq!(lfs_fs_size(lfs_ptr), Ok(8));
     assert_ok(lfs_unmount(lfs_ptr));
 }
@@ -374,12 +374,8 @@ fn test_orphans_reentrant() {
                     }
                     let full_path = "/".to_string() + &components.join("/");
 
-                    let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
-                    let res = lfs_stat(
-                        lfs_ptr,
-                        path_bytes(&full_path).as_c_str(),
-                        info.as_mut_ptr(),
-                    );
+                    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+                    let res = lfs_stat(lfs_ptr, path_bytes(&full_path).as_c_str(), info);
                     if res == Err(Error::NoEntry) {
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
@@ -391,25 +387,23 @@ fn test_orphans_reentrant() {
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
 
-                            lfs_stat(lfs_ptr, path_bytes(&sub).as_c_str(), info.as_mut_ptr())?;
+                            lfs_stat(lfs_ptr, path_bytes(&sub).as_c_str(), info)?;
 
-                            let info_ref = unsafe { &*info.as_ptr() };
-                            let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
-                            let name = core::str::from_utf8(&info_ref.name[..nul]).unwrap();
+                            let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+                            let name = core::str::from_utf8(&info.name[..nul]).unwrap();
                             let expected = &components[d];
                             if name != *expected {
                                 return Err(Error::Invalid);
                             }
-                            if info_ref.type_ != LFS_TYPE_DIR as u8 {
+                            if info.type_ != LFS_TYPE_DIR as u8 {
                                 return Err(Error::Invalid);
                             }
                         }
                     } else if res.is_ok() {
-                        let info_ref = unsafe { &*info.as_ptr() };
                         let expected = &components[depth - 1];
-                        let nul = info_ref.name.iter().position(|&b| b == 0).unwrap_or(256);
-                        let name = core::str::from_utf8(&info_ref.name[..nul]).unwrap();
-                        if name != *expected || info_ref.type_ != LFS_TYPE_DIR as u8 {
+                        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+                        let name = core::str::from_utf8(&info.name[..nul]).unwrap();
+                        if name != *expected || info.type_ != LFS_TYPE_DIR as u8 {
                             return Err(Error::Invalid);
                         }
                         for d in (0..depth).rev() {
@@ -419,11 +413,7 @@ fn test_orphans_reentrant() {
                                 return err;
                             }
                         }
-                        let r = lfs_stat(
-                            lfs_ptr,
-                            path_bytes(&full_path).as_c_str(),
-                            info.as_mut_ptr(),
-                        );
+                        let r = lfs_stat(lfs_ptr, path_bytes(&full_path).as_c_str(), info);
                         if r != Err(Error::NoEntry) {
                             return Err(if let Err(r) = r { r } else { Error::Invalid });
                         }

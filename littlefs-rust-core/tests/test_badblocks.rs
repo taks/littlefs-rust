@@ -110,14 +110,13 @@ fn test_badblocks_single(
             }
             buffer[NAMEMULT] = 0;
 
-            let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_ok(lfs_stat(
                 lfs,
                 unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
-                info.as_mut_ptr(),
+                info,
             ));
-            let info_ref = unsafe { &*info.as_ptr() };
-            assert_eq!(info_ref.type_, LFS_TYPE_DIR);
+            assert_eq!(info.type_, LFS_TYPE_DIR);
 
             buffer[NAMEMULT] = b'/';
             for j in 0..NAMEMULT {
@@ -329,14 +328,13 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         }
         buffer[NAMEMULT] = 0;
 
-        let mut info = core::mem::MaybeUninit::<LfsInfo>::zeroed();
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok(lfs_stat(
             lfs,
             unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
-            info.as_mut_ptr(),
+            info,
         ));
-        let info_ref = unsafe { &*info.as_ptr() };
-        assert_eq!(info_ref.type_, LFS_TYPE_DIR);
+        assert_eq!(info.type_, LFS_TYPE_DIR);
 
         buffer[NAMEMULT] = b'/';
         for j in 0..NAMEMULT {
