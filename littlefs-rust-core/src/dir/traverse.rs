@@ -100,12 +100,12 @@ pub fn lfs_dir_getslice(
         let mut ntag = dir.etag;
         let mut gdiff: lfs_stag_t = 0;
 
-        if crate::lfs_gstate::lfs_gstate_hasmovehere(&(*lfs).gdisk, &dir.pair)
+        if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gdisk, &dir.pair)
             && lfs_tag_id(gmask) != 0
         {
-            if lfs_tag_id((*lfs).gdisk.tag) == lfs_tag_id(gtag) {
+            if lfs_tag_id(lfs.gdisk.tag) == lfs_tag_id(gtag) {
                 return Err(Error::NoEntry);
-            } else if lfs_tag_id((*lfs).gdisk.tag) < lfs_tag_id(gtag) {
+            } else if lfs_tag_id(lfs.gdisk.tag) < lfs_tag_id(gtag) {
                 gdiff = gdiff.wrapping_sub(lfs_mktag(0, 1, 0) as i32);
             }
         }
@@ -1084,7 +1084,7 @@ pub fn lfs_dir_traverse_test_cb(
         return Ok(0);
     };
 
-    if (*out).call_count as usize >= 8 {
+    if out.call_count as usize >= 8 {
         return Ok(0);
     }
     let i = out.call_count as usize;

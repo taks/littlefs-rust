@@ -76,9 +76,9 @@ pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &CStr) ->
         }
 
         let mut pair = [0u32; 2];
-        if lfs_tag_id(tag as u32) == 0x3ff {
-            pair[0] = (*lfs).root[0];
-            pair[1] = (*lfs).root[1];
+        if lfs_tag_id(tag) == 0x3ff {
+            pair[0] = lfs.root[0];
+            pair[1] = lfs.root[1];
         } else {
             let res = lfs_dir_get(
                 lfs,
@@ -86,7 +86,7 @@ pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &CStr) ->
                 lfs_mktag(0x700, 0x3ff, 0),
                 lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
-                    lfs_tag_id(tag as u32) as u32,
+                    lfs_tag_id(tag) as u32,
                     8,
                 ),
                 pair.as_mut_bytes(),
@@ -299,7 +299,7 @@ pub fn lfs_dir_seek_(
         let mut off = off - dir.pos;
 
         // skip superblock entry
-        dir.id = if off > 0 && lfs_pair_cmp(&dir.head, &(*lfs).root) == 0 {
+        dir.id = if off > 0 && lfs_pair_cmp(&dir.head, &lfs.root) == 0 {
             1
         } else {
             0

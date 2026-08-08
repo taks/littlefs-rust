@@ -321,9 +321,7 @@ pub fn lfs_dir_find(
                     lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
                     dir_tail.as_mut_bytes(),
                 );
-                if let Err(err) = res {
-                    return Err(err);
-                }
+                res?;
                 lfs_pair_fromle32(&mut dir.tail);
             }
 

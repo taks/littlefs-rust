@@ -254,7 +254,7 @@ pub fn lfs_file_opencfg_(
                 return Err(Error::NotDir);
             }
             let nlen = lfs_path_namelen(path_ptr.to_bytes());
-            if nlen > (*lfs).name_max {
+            if nlen > lfs.name_max {
                 lfs_file_close_(lfs, file);
                 return crate::lfs_err!(Err(Error::NameTooLong));
             }
@@ -286,7 +286,7 @@ pub fn lfs_file_opencfg_(
         } else if (flags & LFS_O_EXCL) != 0 {
             lfs_file_close_(lfs, file);
             return crate::lfs_err!(Err(Error::Exists));
-        } else if u32::from(lfs_tag_type3(tag.unwrap() as u32)) != LFS_TYPE_REG {
+        } else if u32::from(lfs_tag_type3(tag.unwrap())) != LFS_TYPE_REG {
             lfs_file_close_(lfs, file);
             return crate::lfs_err!(Err(Error::IsDir));
         } else if (flags & LFS_O_TRUNC) != 0 {
@@ -339,7 +339,7 @@ pub fn lfs_file_opencfg_(
                 }
             }
             if (file.flags as i32 & LFS_O_WRONLY) == LFS_O_WRONLY {
-                if attr.buffer.len() as u32 > (*lfs).attr_max {
+                if attr.buffer.len() as u32 > lfs.attr_max {
                     lfs_file_close_(lfs, file);
                     return crate::lfs_err!(Err(Error::NoSpace));
                 }
@@ -446,7 +446,7 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
         lfs_mlist_remove(lfs, ::core::mem::transmute(::core::ptr::from_mut(file)));
 
         let cfg = file.cfg;
-        if !cfg.is_null() && (&(*cfg).buffer).is_empty() {
+        if !cfg.is_null() && (*cfg).buffer.is_empty() {
             #[cfg(feature = "alloc")]
             {
                 crate::lfs_alloc_module::lfs_free(
@@ -793,7 +793,7 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
 
                     let res = lfs_file_flushedwrite(lfs, file, data.as_bytes())?;
 
-                    if (*lfs).rcache.block != crate::types::LFS_BLOCK_NULL {
+                    if lfs.rcache.block != crate::types::LFS_BLOCK_NULL {
                         lfs_cache_drop(lfs, &mut orig.cache);
                         let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                         lfs_cache_drop(lfs, lfs_rcache);
@@ -1626,7 +1626,7 @@ pub fn lfs_file_rewind_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<
 /// ```
 pub fn lfs_file_size_(_lfs: &Lfs, file: &LfsFile) -> crate::types::lfs_soff_t {
     unsafe {
-        if ((*file).flags as i32 & LFS_F_WRITING) != 0 {
+        if (file.flags as i32 & LFS_F_WRITING) != 0 {
             return crate::util::lfs_max(file.pos, file.ctz.size) as crate::types::lfs_soff_t;
         }
         file.ctz.size as crate::types::lfs_soff_t

@@ -19,7 +19,7 @@ use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
 /// ```
 #[inline(always)]
 pub fn lfs_cache_drop(_lfs: &Lfs, rcache: &mut LfsCache) {
-    (*rcache).block = crate::types::LFS_BLOCK_NULL;
+    rcache.block = crate::types::LFS_BLOCK_NULL;
 }
 
 /// Per lfs.c lfs_cache_zero (lines 38-42)
@@ -35,13 +35,13 @@ pub fn lfs_cache_drop(_lfs: &Lfs, rcache: &mut LfsCache) {
 #[inline(always)]
 pub fn lfs_cache_zero(lfs: &Lfs, pcache: &mut LfsCache) {
     unsafe {
-        let cfg = (*lfs).cfg;
+        let cfg = lfs.cfg;
         let cache_size = (*cfg).cache_size as usize;
-        let buf = (*pcache).buffer;
+        let buf = pcache.buffer;
         if !buf.is_null() {
             core::ptr::write_bytes(buf, 0xff, cache_size);
         }
-        (*pcache).block = crate::types::LFS_BLOCK_NULL;
+        pcache.block = crate::types::LFS_BLOCK_NULL;
     }
 }
 
@@ -463,9 +463,7 @@ pub fn lfs_bd_flush(
                     pcache.buffer,
                     diff,
                 );
-                if let Err(e) = res {
-                    return Err(e);
-                }
+                res?;
                 if let Ok(res) = res
                     && res != 0
                 {

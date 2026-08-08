@@ -77,7 +77,7 @@ pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: *mut lfs_off_t) -> i32 {
     }
     unsafe {
         let size = *off;
-        let block_size = (*lfs).cfg.as_ref().expect("cfg").block_size;
+        let block_size = lfs.cfg.as_ref().expect("cfg").block_size;
         let b = block_size - 8;
         let mut i = size / b;
         if i == 0 {
@@ -472,8 +472,7 @@ pub fn lfs_ctz_extend(
             if noff != block_size {
                 for i in 0..noff {
                     let mut data: u8 = 0;
-                    let err =
-                        lfs_bd_read(lfs, None, rcache, noff - i, head, i, data.as_mut_bytes())?;
+                    lfs_bd_read(lfs, None, rcache, noff - i, head, i, data.as_mut_bytes())?;
 
                     let err = lfs_bd_prog(lfs, pcache, rcache, true, nblock, i, data.as_bytes());
                     if let Err(err) = err {
