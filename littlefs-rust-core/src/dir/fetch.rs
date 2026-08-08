@@ -19,7 +19,8 @@ use crate::lfs_type::lfs_type::{
     LFS_TYPE_INLINESTRUCT, LFS_TYPE_NAME, LFS_TYPE_SPLICE, LFS_TYPE_STRUCT, LFS_TYPE_TAIL,
 };
 use crate::tag::{
-    lfs_diskoff, lfs_mktag, lfs_tag_chunk, lfs_tag_dsize, lfs_tag_id, lfs_tag_isvalid, lfs_tag_size, lfs_tag_splice, lfs_tag_type1, lfs_tag_type2, lfs_tag_type3,
+    lfs_diskoff, lfs_mktag, lfs_tag_chunk, lfs_tag_dsize, lfs_tag_id, lfs_tag_isvalid,
+    lfs_tag_size, lfs_tag_splice, lfs_tag_type1, lfs_tag_type2, lfs_tag_type3,
 };
 use crate::types::{LFS_BLOCK_NULL, lfs_block_t, lfs_stag_t, lfs_tag_t};
 use crate::util::{lfs_fromle32, lfs_min, lfs_pair_swap, lfs_scmp, lfs_tole32};
@@ -318,9 +319,7 @@ pub fn lfs_dir_fetchmatch(
     _fmask: lfs_tag_t,
     _ftag: lfs_tag_t,
     _id: &mut Option<&mut u16>,
-    cb: Option<
-        fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<i32, Error>,
-    >,
+    cb: Option<fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<i32, Error>>,
     data: *mut core::ffi::c_void,
 ) -> Result<lfs_tag_t, Error> {
     // Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2
