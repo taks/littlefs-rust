@@ -69,10 +69,10 @@ pub fn lfs_ctz_tole32(ctz: *mut LfsCtz) {
 ///     return i;
 /// }
 /// ```
-pub fn lfs_ctz_index(lfs: *const crate::fs::Lfs, off: *mut lfs_off_t) -> i32 {
+pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: *mut lfs_off_t) -> i32 {
     use crate::util::lfs_popc;
 
-    if lfs.is_null() || off.is_null() {
+    if off.is_null() {
         return 0;
     }
     unsafe {
@@ -157,8 +157,8 @@ pub fn lfs_ctz_find(
         let block_size = lfs_ref.cfg.as_ref().expect("cfg").block_size;
         let mut current_off = size - 1;
         let mut target_off = pos;
-        let mut current = lfs_ctz_index(lfs as *const crate::fs::Lfs, &mut current_off);
-        let target = lfs_ctz_index(lfs as *const crate::fs::Lfs, &mut target_off);
+        let mut current = lfs_ctz_index(lfs, &mut current_off);
+        let target = lfs_ctz_index(lfs, &mut target_off);
 
         let mut head_val = head;
         #[cfg(feature = "loop_limits")]
@@ -466,7 +466,7 @@ pub fn lfs_ctz_extend(
             }
 
             let mut noff = size - 1;
-            let mut index = lfs_ctz_index(lfs as *const crate::fs::Lfs, &mut noff);
+            let mut index = lfs_ctz_index(lfs, &mut noff);
             noff += 1;
 
             if noff != block_size {

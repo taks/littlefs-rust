@@ -152,7 +152,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
 
             dir.type_ = 0;
             dir.id = 0;
-            lfs.mlist = &dir as *const _ as *mut _;
+            lfs.mlist = &mut dir as *mut _;
         }
 
         let attrs = [lfs_mattr {

@@ -1392,8 +1392,8 @@ pub fn lfs_file_seek_(
         if (file.flags as i32 & LFS_F_READING) != 0 && file.off != block_size {
             let mut opos = file.pos;
             let mut npos_off = npos;
-            let oindex = lfs_ctz_index(lfs as *const crate::fs::Lfs, &mut opos);
-            let nindex = lfs_ctz_index(lfs as *const crate::fs::Lfs, &mut npos_off);
+            let oindex = lfs_ctz_index(lfs, &mut opos);
+            let nindex = lfs_ctz_index(lfs, &mut npos_off);
             if oindex == nindex
                 && npos_off >= file.cache.off
                 && npos_off < file.cache.off + file.cache.size
