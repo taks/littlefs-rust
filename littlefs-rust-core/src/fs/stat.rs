@@ -213,7 +213,7 @@ pub fn lfs_fs_size_(lfs: &mut super::lfs::Lfs) -> Result<lfs_size_t, Error> {
     let mut size: lfs_size_t = 0;
     lfs_fs_traverse_(
         lfs,
-        Some(lfs_fs_size_count),
+        lfs_fs_size_count,
         &mut size as *mut _ as *mut core::ffi::c_void,
         false,
     )?;

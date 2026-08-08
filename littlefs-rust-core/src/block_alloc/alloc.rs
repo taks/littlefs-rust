@@ -133,7 +133,7 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
         core::ptr::write_bytes(buf, 0, cfg.lookahead_size as usize);
 
         let lfs_ptr = lfs as *mut _ as *mut core::ffi::c_void;
-        let err = lfs_fs_traverse_(lfs, Some(lfs_alloc_lookahead_cb), lfs_ptr, true);
+        let err = lfs_fs_traverse_(lfs, lfs_alloc_lookahead_cb, lfs_ptr, true);
         if err.is_err() {
             crate::lfs_trace!("alloc_scan: traverse err={:?}", err);
             lfs_alloc_drop(lfs);

@@ -104,7 +104,7 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
             let mut threshold = block_count;
             super::traverse::lfs_fs_traverse_(
                 lfs,
-                Some(lfs_shrink_checkblock),
+                lfs_shrink_checkblock,
                 &mut threshold as *mut _ as *mut core::ffi::c_void,
                 true,
             )?;

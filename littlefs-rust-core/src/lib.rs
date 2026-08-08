@@ -306,7 +306,7 @@ pub type LfsTraverseCb = fn(data: *mut c_void, block: lfs_block_t) -> Result<(),
 /// Traverse through all blocks in use by the filesystem. Per lfs.h lfs_fs_traverse.
 #[inline(never)]
 pub fn lfs_fs_traverse(lfs: &mut Lfs, cb: LfsTraverseCb, data: *mut c_void) -> Result<(), Error> {
-    crate::fs::traverse::lfs_fs_traverse_(lfs, Some(cb), data, false)
+    crate::fs::traverse::lfs_fs_traverse_(lfs, cb, data, false)
 }
 
 /// Attempt to make the filesystem consistent. Per lfs.h lfs_fs_mkconsistent (lfs.c:6479-6483).

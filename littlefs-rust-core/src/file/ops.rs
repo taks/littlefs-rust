@@ -584,9 +584,8 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                         data.as_mut_bytes(),
                     )
                 };
-                if err.is_err() {
-                    return crate::lfs_pass_err!(err);
-                }
+                crate::lfs_pass_err!(err)?;
+
                 let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
                 let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 let err = lfs_bd_prog(

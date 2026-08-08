@@ -118,7 +118,7 @@ use crate::{borrow_unchecked::borrow_unchecked, error::Error, tag};
 /// C: lfs.c:4693-4794
 pub fn lfs_fs_traverse_(
     lfs: &mut super::lfs::Lfs,
-    cb: Option<fn(*mut core::ffi::c_void, crate::types::lfs_block_t) -> Result<(), Error>>,
+    cb: fn(*mut core::ffi::c_void, crate::types::lfs_block_t) -> Result<(), Error>,
     data: *mut core::ffi::c_void,
     includeorphans: bool,
 ) -> Result<(), Error> {
@@ -130,11 +130,6 @@ pub fn lfs_fs_traverse_(
     use crate::tag::{lfs_mktag, lfs_tag_type3};
     use crate::types::{LFS_BLOCK_NULL, lfs_block_t};
     use crate::util::{lfs_pair_fromle32, lfs_pair_isnull};
-
-    if cb.is_none() {
-        return Ok(());
-    }
-    let cb = cb.unwrap();
 
     unsafe {
         // iterate over metadata pairs

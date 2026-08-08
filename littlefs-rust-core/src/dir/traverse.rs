@@ -173,11 +173,7 @@ pub fn lfs_dir_getslice(
                     buf,
                 )?;
                 if !gbuffer.is_empty() && diff < gsize {
-                    core::ptr::write_bytes(
-                        (gbuffer.as_mut_ptr() as *mut u8).add(diff as usize),
-                        0,
-                        (gsize - diff) as usize,
-                    );
+                    gbuffer[(diff as usize)..(gsize as usize)].fill(0);
                 }
                 return Ok((tag as i32).wrapping_add(gdiff) as u32);
             }
@@ -795,7 +791,7 @@ pub fn lfs_dir_traverse(
                             off: off + 4,
                         };
                         ptag = tag_val;
-                        (tag_val, unsafe { core::mem::transmute(disk.as_bytes()) })
+                        (tag_val, unsafe { borrow_unchecked(&disk).as_bytes() })
                     } else if attr_i
                         < (if use_empty_attrs {
                             EMPTY_ATTRS
