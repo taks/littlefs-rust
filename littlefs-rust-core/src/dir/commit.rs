@@ -1,7 +1,7 @@
 //! Directory commit. Per lfs.c lfs_dir_commit, lfs_dir_commitattr, lfs_dir_alloc, etc.
 
 use alloc::borrow;
-use zerocopy::IntoBytes;
+use zerocopy::{IntoBytes, FromBytes};
 
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsCommit;
@@ -157,8 +157,7 @@ pub fn lfs_dir_commitattr(
             );
             lfs_dir_commitprog(lfs, commit, &buffer[..dsize.saturating_sub(4) as usize])?;
         } else {
-            let disk = buffer.as_ptr() as *const crate::tag::lfs_diskoff;
-            let disk_ref = &*disk;
+            let disk = crate::tag::lfs_diskoff::ref_from_bytes(buffer).unwrap();
             let data_size = dsize.saturating_sub(4);
             for i in 0..data_size {
                 let mut dat: u8 = 0;
@@ -168,8 +167,8 @@ pub fn lfs_dir_commitattr(
                     None,
                     lfs_rcache,
                     data_size - i,
-                    disk_ref.block,
-                    disk_ref.off + i,
+                    disk.block,
+                    disk.off + i,
                     dat.as_mut_bytes(),
                 )?;
 
