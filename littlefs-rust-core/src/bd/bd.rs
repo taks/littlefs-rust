@@ -421,7 +421,7 @@ pub fn lfs_bd_crc(
 /// ```
 pub fn lfs_bd_flush(
     lfs: &mut Lfs,
-    pcache: *mut LfsCache,
+    pcache: &mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
 ) -> Result<(), Error> {
@@ -429,7 +429,6 @@ pub fn lfs_bd_flush(
     use crate::util::lfs_alignup;
 
     unsafe {
-        let pcache = &mut *pcache;
         let cfg = &*lfs.cfg;
 
         if pcache.block != crate::types::LFS_BLOCK_NULL && pcache.block != LFS_BLOCK_INLINE {

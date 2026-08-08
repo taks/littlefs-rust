@@ -192,7 +192,6 @@ pub fn lfs_dir_read_(
     dir: &mut LfsDir,
     info: &mut LfsInfo,
 ) -> Result<i32, Error> {
-
     unsafe {
         info.type_ = 0;
         info.size = 0;

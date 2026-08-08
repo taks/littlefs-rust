@@ -725,7 +725,7 @@ pub fn lfs_dir_traverse(
     let mut stack: [core::mem::MaybeUninit<LfsDirTraverseStack>; LFS_DIR_TRAVERSE_DEPTH - 1] =
         core::array::from_fn(|_| core::mem::MaybeUninit::uninit());
     let mut sp: usize = 0;
-    let mut res: i32= 0;
+    let mut res: i32 = 0;
 
     let mut dir = dir;
     let mut off = off;

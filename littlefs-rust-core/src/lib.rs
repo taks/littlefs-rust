@@ -123,7 +123,7 @@ pub fn lfs_rename(lfs: &mut Lfs, oldpath: &CStr, newpath: &CStr) -> Result<(), E
 
 /// Find info about a file or directory. Per lfs.h lfs_stat (lfs.c:6263-6267).
 #[inline(never)]
-pub fn lfs_stat(lfs: *mut Lfs, path: &CStr, info: *mut LfsInfo) -> Result<(), Error> {
+pub fn lfs_stat(lfs: &mut Lfs, path: &CStr, info: &mut LfsInfo) -> Result<(), Error> {
     crate::fs::stat::lfs_stat_(lfs, path, info)
 }
 

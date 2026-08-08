@@ -352,9 +352,8 @@ pub fn lfs_file_opencfg_(
         } else {
             #[cfg(feature = "alloc")]
             {
-                file.cache.buffer = crate::lfs_alloc_module::lfs_malloc(
-                    lfs.cfg.as_ref().expect("cfg").cache_size,
-                );
+                file.cache.buffer =
+                    crate::lfs_alloc_module::lfs_malloc(lfs.cfg.as_ref().expect("cfg").cache_size);
             }
             #[cfg(not(feature = "alloc"))]
             {
@@ -1538,11 +1537,7 @@ pub fn lfs_file_truncate_(
                 file.cache.size = lfs.cfg.as_ref().expect("cfg").cache_size;
 
                 // Copy data from rcache into file cache
-                core::ptr::copy_nonoverlapping(
-                    lfs.rcache.buffer,
-                    file.cache.buffer,
-                    size as usize,
-                );
+                core::ptr::copy_nonoverlapping(lfs.rcache.buffer, file.cache.buffer, size as usize);
             } else {
                 // C: lfs.c:3787-3806 — shrink CTZ
                 lfs_file_flush(lfs, file)?;

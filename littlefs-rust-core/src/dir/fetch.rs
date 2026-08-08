@@ -809,19 +809,12 @@ pub fn lfs_dir_getgstate(
 /// }
 /// ```
 pub fn lfs_dir_getinfo(
-    lfs: *mut crate::fs::Lfs,
-    dir: *const LfsMdir,
+    lfs: &mut crate::fs::Lfs,
+    dir: &LfsMdir,
     id: u16,
-    info: *mut LfsInfo,
+    info: &mut LfsInfo,
 ) -> Result<(), Error> {
-    if lfs.is_null() || dir.is_null() || info.is_null() {
-        return Err(Error::Invalid);
-    }
     unsafe {
-        let info = &mut *info;
-        let lfs = &mut *lfs;
-        let dir = &*dir;
-
         // C: lfs.c:1415-1420
         if id == 0x3ff {
             info.type_ = LFS_TYPE_DIR as u8;

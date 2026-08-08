@@ -29,18 +29,15 @@ use crate::types::{lfs_block_t, lfs_size_t};
 /// }
 /// ```
 pub fn lfs_stat_(
-    lfs: *mut super::lfs::Lfs,
+    lfs: &mut super::lfs::Lfs,
     path: &CStr,
-    info: *mut crate::lfs_info::LfsInfo,
+    info: &mut crate::lfs_info::LfsInfo,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_getinfo;
     use crate::dir::find::lfs_dir_find;
     use crate::lfs_type::lfs_type::LFS_TYPE_DIR;
     use crate::tag::{lfs_tag_id, lfs_tag_type3};
 
-    if lfs.is_null() || info.is_null() {
-        return Err(Error::Invalid);
-    }
     unsafe {
         let mut cwd = core::mem::zeroed::<crate::dir::LfsMdir>();
         let mut path_ptr = path;
