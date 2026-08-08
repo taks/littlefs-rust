@@ -413,12 +413,14 @@ pub fn lfs_file_opencfg_(
 /// a stack-local would make file.cfg a dangling pointer after return.
 static mut BUFFER: [u8; 0] = [];
 static mut ATTRS: [LfsAttr; 0] = [];
+#[allow(clippy::deref_addrof)]
 static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
     buffer: unsafe { &mut *(&raw mut BUFFER) },
     attrs: unsafe { &mut *(&raw mut ATTRS) },
     // attr_count: 0,
 };
 
+#[allow(clippy::deref_addrof)]
 pub fn lfs_file_open_(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
@@ -448,8 +450,8 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
             #[cfg(feature = "alloc")]
             {
                 crate::lfs_alloc_module::lfs_free(
-                    (*file).cache.buffer,
-                    (*lfs).cfg.as_ref().expect("cfg").cache_size,
+                    file.cache.buffer,
+                    lfs.cfg.as_ref().expect("cfg").cache_size,
                 );
             }
         }
@@ -658,7 +660,7 @@ pub fn lfs_file_outline(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<
     lfs_file_relocate(lfs, file)?;
 
     unsafe {
-        (*file).flags &= !LFS_F_INLINE as u32;
+        file.flags &= !LFS_F_INLINE as u32;
     }
     Ok(())
 }
@@ -800,7 +802,7 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
 
                 'flush: loop {
                     let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                    let err = lfs_bd_flush(lfs, &mut (*file).cache, lfs_rcache, true);
+                    let err = lfs_bd_flush(lfs, &mut file.cache, lfs_rcache, true);
                     if let Err(err) = err {
                         if err == Error::Corrupt {
                             lfs_file_relocate(lfs, file)?;
@@ -1216,7 +1218,7 @@ pub fn lfs_file_flushedwrite(
                     let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     let err = lfs_ctz_extend(
                         lfs,
-                        &mut (*file).cache,
+                        &mut file.cache,
                         lfs_rcache,
                         file.block,
                         file.pos,
@@ -1508,7 +1510,7 @@ pub fn lfs_file_truncate_(
     use crate::file::ctz::lfs_ctz_find;
     use crate::lfs_type::lfs_whence_flags::{LFS_SEEK_END, LFS_SEEK_SET};
 
-    crate::lfs_assert!((unsafe { (*file).flags as i32 } & 2) == 2);
+    crate::lfs_assert!(({ file.flags as i32 } & 2) == 2);
 
     unsafe {
         if size > lfs.file_max {

@@ -366,9 +366,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
         ];
         let err = lfs_dir_commit(lfs, &mut newcwd, &attrs);
         lfs.mlist = prevdir.next;
-        if err.is_err() {
-            return crate::lfs_pass_err!(err);
-        }
+        crate::lfs_pass_err!(err)?;
 
         if !samepair && lfs_gstate_hasmove(&lfs.gstate) {
             lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
@@ -378,9 +376,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
             }];
             let err = lfs_dir_commit(lfs, &mut oldcwd, &attrs2);
             lfs.mlist = prevdir.next;
-            if err.is_err() {
-                return crate::lfs_pass_err!(err);
-            }
+            crate::lfs_pass_err!(err)?;
         }
 
         if lfs_gstate_hasorphans(&lfs.gstate) {

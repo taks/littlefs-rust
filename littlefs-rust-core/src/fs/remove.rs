@@ -161,9 +161,8 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
         }];
         let err = lfs_dir_commit(lfs, &mut cwd, &attrs);
         lfs.mlist = dir.next;
-        if err.is_err() {
-            return crate::lfs_pass_err!(err);
-        }
+        crate::lfs_pass_err!(err)?;
+
 
         if lfs_gstate_hasorphans(&lfs.gstate) {
             crate::lfs_assert!(u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DIR);

@@ -483,14 +483,12 @@ pub fn lfs_fs_forceconsistency(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     crate::lfs_trace!("forceconsistency: start");
     let err = lfs_fs_desuperblock(lfs);
     crate::lfs_trace!("forceconsistency: after desuperblock err={:?}", err);
-    if err.is_err() {
-        return crate::lfs_pass_err!(err);
-    }
+    crate::lfs_pass_err!(err)?;
+
     let err = lfs_fs_demove(lfs);
     crate::lfs_trace!("forceconsistency: after demove err={:?}", err);
-    if err.is_err() {
-        return crate::lfs_pass_err!(err);
-    }
+    crate::lfs_pass_err!(err)?;
+
     crate::lfs_trace!("forceconsistency: before deorphan");
     let result = lfs_fs_deorphan(lfs, true);
     crate::lfs_trace!("forceconsistency: after deorphan err={:?}", result);

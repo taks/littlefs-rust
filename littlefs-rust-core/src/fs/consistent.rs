@@ -131,9 +131,8 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     crate::lfs_trace!("lfs_fs_gc: start");
     let err = super::superblock::lfs_fs_forceconsistency(lfs);
     crate::lfs_trace!("lfs_fs_gc: after forceconsistency err={:?}", err);
-    if err.is_err() {
-        return crate::lfs_pass_err!(err);
-    }
+        crate::lfs_pass_err!(err)?;
+
 
     unsafe {
         let cfg = lfs.cfg.as_ref().expect("cfg");
@@ -194,9 +193,7 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
             crate::lfs_trace!("lfs_fs_gc: alloc_scan start");
             let err = lfs_alloc_scan(lfs);
             crate::lfs_trace!("lfs_fs_gc: alloc_scan done err={:?}", err);
-            if err.is_err() {
-                return crate::lfs_pass_err!(err);
-            }
+        crate::lfs_pass_err!(err)?;
         }
     }
 
