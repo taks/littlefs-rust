@@ -575,21 +575,23 @@ pub fn lfs_dir_fetchmatch(
                             block: dir.pair[0],
                             off: off + 4,
                         };
-                        let res = cb(data, tag, &diskoff);
-                        if let Err(err) = res {
-                            if err == Error::Corrupt {
-                                break;
+                        let res = match cb(data, tag, &diskoff) {
+                            Ok(res) => res,
+                            Err(err) => {
+                                if err == Error::Corrupt {
+                                    break;
+                                }
+                                return Err(err);
                             }
-                            return Err(err);
-                        }
+                        };
 
-                        if res.unwrap() == LFS_CMP_EQ {
+                        if res == LFS_CMP_EQ {
                             tempbesttag = tag as lfs_stag_t;
                         } else if (lfs_mktag(0x7ff, 0x3ff, 0) & tag)
                             == (lfs_mktag(0x7ff, 0x3ff, 0) & tempbesttag as lfs_tag_t)
                         {
                             tempbesttag = -1;
-                        } else if res.unwrap() == LFS_CMP_GT
+                        } else if res == LFS_CMP_GT
                             && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
                         {
                             tempbesttag = (tag | 0x8000_0000) as lfs_stag_t;
