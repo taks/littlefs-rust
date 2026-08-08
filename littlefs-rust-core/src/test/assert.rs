@@ -7,7 +7,7 @@ use crate::test::ram::{MAGIC, MAGIC_OFFSET};
 fn read_magic_region(config: &LfsConfig, block: u32) -> Option<[u8; 8]> {
     let mut buf = [0u8; 24];
     let err = unsafe {
-        let read = (*config).read.expect("read callback");
+        let read = config.read.expect("read callback");
         read(config, block, 0, &mut buf)
     };
     if err.is_err() {
@@ -23,7 +23,7 @@ pub fn assert_block_has_magic(config: &LfsConfig, block: u32) {
     assert_eq!(
         &got, MAGIC,
         "block {}: expected MAGIC at offset {}, got {:?}",
-        block, MAGIC_OFFSET, &got
+        block, MAGIC_OFFSET, got
     );
 }
 

@@ -109,7 +109,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
         wbuffer[..header.len()].copy_from_slice(header.as_bytes());
 
         let n = lfs_file_write(lfs, file, &wbuffer[..size as usize]);
-        assert_eq!(n, Ok(size as u32));
+        assert_eq!(n, Ok(size));
         assert_ok(lfs_file_close(lfs, file));
     }
 
@@ -123,7 +123,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
 
             let mut rbuffer = vec![0u8; size as usize];
             let n = lfs_file_read(lfs, file, &mut rbuffer);
-            assert_eq!(n, Ok(size as u32));
+            assert_eq!(n, Ok(size));
             assert_ok(lfs_file_close(lfs, file));
 
             // Build reference buffer
@@ -155,7 +155,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
 
             let mut rbuffer = vec![0u8; size as usize];
             let n = lfs_file_read(lfs2, file, &mut rbuffer);
-            assert_eq!(n, Ok(size as u32));
+            assert_eq!(n, Ok(size));
             assert_ok(lfs_file_close(lfs2, file));
 
             let mut wbuffer_ref = vec![b'b'; size as usize];

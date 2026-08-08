@@ -56,7 +56,7 @@ impl RamStorage {
 pub const BLOCK_SIZE: u32 = 512;
 
 fn ram_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {
-    let ctx = (*cfg).context as *mut RamStorage;
+    let ctx = cfg.context as *mut RamStorage;
     assert!(!ctx.is_null(), "ram_read: config.context is null");
     let ram = unsafe { &mut *ctx };
     assert!(
@@ -68,14 +68,14 @@ fn ram_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<
 }
 
 fn ram_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
-    let ctx = unsafe { (*cfg).context as *mut RamStorage };
+    let ctx = unsafe { cfg.context as *mut RamStorage };
     let ram = unsafe { &mut *ctx };
     ram.prog(block, off, buffer);
     Ok(())
 }
 
 fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
-    let ctx = (*cfg).context as *mut RamStorage;
+    let ctx = cfg.context as *mut RamStorage;
     let ram = unsafe { &mut *ctx };
     ram.erase(block);
     Ok(())

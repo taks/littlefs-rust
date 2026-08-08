@@ -6,7 +6,7 @@ use super::*;
 #[test]
 fn test_context_smoke() {
     let ctx = TestContext::default_blocks();
-    let cfg = unsafe { &*ctx.config() };
+    let cfg = unsafe { ctx.config() };
     assert!(!cfg.context.is_null(), "config.context should be set");
     assert!(cfg.read.is_some());
     assert_eq!(ctx.ram.data.len(), 512 * 128);
@@ -67,7 +67,7 @@ fn test_context_format_to_alloc() {
 #[test]
 fn test_context_buffers_writable() {
     let ctx = TestContext::default_blocks();
-    let cfg = unsafe { &*ctx.config() };
+    let cfg = unsafe { ctx.config() };
     // Manually write to each buffer - simulate what lfs_cache_zero and format do
     let block_size = ctx.ram.block_size as usize;
     if !cfg.read_buffer.is_null() {

@@ -63,7 +63,7 @@ fn test_truncate_simple(#[case] medium: u32, #[case] large: u32) {
     while j < large {
         let chunk = lfs_min(size, large - j);
         let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         j += chunk;
     }
     assert_eq!(lfs_file_size(lfs, file), large as i32);
@@ -90,7 +90,7 @@ fn test_truncate_simple(#[case] medium: u32, #[case] large: u32) {
     while j < medium {
         let chunk = lfs_min(size, medium - j);
         let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &HAIR[..chunk as usize]);
         j += chunk;
     }
@@ -132,7 +132,7 @@ fn test_truncate_read(#[case] medium: u32, #[case] large: u32) {
     while j < large {
         let chunk = lfs_min(size, large - j);
         let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         j += chunk;
     }
     assert_eq!(lfs_file_size(lfs, file), large as i32);
@@ -152,7 +152,7 @@ fn test_truncate_read(#[case] medium: u32, #[case] large: u32) {
     while j < medium {
         let chunk = lfs_min(size, medium - j);
         let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &HAIR[..chunk as usize]);
         j += chunk;
     }
@@ -170,7 +170,7 @@ fn test_truncate_read(#[case] medium: u32, #[case] large: u32) {
     while j < medium {
         let chunk = lfs_min(size, medium - j);
         let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &HAIR[..chunk as usize]);
         j += chunk;
     }
@@ -278,7 +278,7 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
     while j < large {
         let chunk = lfs_min(size, large - j);
         let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         j += chunk;
     }
     assert_eq!(lfs_file_size(lfs, file), large as i32);
@@ -297,7 +297,7 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
     while j < medium {
         let chunk = lfs_min(BALD.len() as u32, medium - j);
         let n = lfs_file_write(lfs, file, &BALD[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         j += chunk;
     }
     assert_eq!(lfs_file_size(lfs, file), medium as i32);
@@ -314,7 +314,7 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
     while j < medium {
         let chunk = lfs_min(BALD.len() as u32, medium - j);
         let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &BALD[..chunk as usize]);
         j += chunk;
     }
@@ -516,7 +516,7 @@ fn test_truncate_aggressive() {
             while j < startsizes[i] {
                 let chunk = lfs_min(size, startsizes[i] - j);
                 let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]);
-                assert_eq!(n, Ok(chunk as u32));
+                assert_eq!(n, Ok(chunk));
                 j += chunk;
             }
             assert_eq!(lfs_file_size(lfs, file), startsizes[i] as i32);
@@ -550,14 +550,14 @@ fn test_truncate_aggressive() {
                 let chunk = lfs_min(size, startsizes[i] - j);
                 let chunk2 = lfs_min(chunk, hotsizes[i] - j);
                 let n = lfs_file_read(lfs, file, &mut buf[..chunk2 as usize]);
-                assert_eq!(n, Ok(chunk2 as u32));
+                assert_eq!(n, Ok(chunk2));
                 assert_eq!(&buf[..chunk2 as usize], &HAIR[..chunk2 as usize]);
                 j += chunk2;
             }
             while j < hotsizes[i] {
                 let chunk = lfs_min(size, hotsizes[i] - j);
                 let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
-                assert_eq!(n, Ok(chunk as u32));
+                assert_eq!(n, Ok(chunk));
                 assert!(
                     buf[..chunk as usize].iter().all(|&b| b == 0),
                     "zeros region: expected 0, got {:?}",
@@ -587,14 +587,14 @@ fn test_truncate_aggressive() {
             while j < startsizes[i] && j < hotsizes[i] && j < coldsizes[i] {
                 let chunk = lfs_min(size, coldsizes[i] - j);
                 let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
-                assert_eq!(n, Ok(chunk as u32));
+                assert_eq!(n, Ok(chunk));
                 assert_eq!(&buf[..chunk as usize], &HAIR[..chunk as usize]);
                 j += chunk;
             }
             while j < coldsizes[i] {
                 let chunk = lfs_min(size, coldsizes[i] - j);
                 let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
-                assert_eq!(n, Ok(chunk as u32));
+                assert_eq!(n, Ok(chunk));
                 assert!(
                     buf[..chunk as usize].iter().all(|&b| b == 0),
                     "zeros region: expected 0, got {:?}",
@@ -643,7 +643,7 @@ fn test_truncate_nop(#[case] medium: u32) {
     while j < medium {
         let chunk = lfs_min(size, medium - j);
         let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         assert_ok(lfs_file_truncate(lfs, file, j + chunk));
         j += chunk;
     }
@@ -658,7 +658,7 @@ fn test_truncate_nop(#[case] medium: u32) {
     while j < medium {
         let chunk = lfs_min(size, medium - j);
         let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &HAIR[..chunk as usize]);
         j += chunk;
     }
@@ -676,7 +676,7 @@ fn test_truncate_nop(#[case] medium: u32) {
     while j < medium {
         let chunk = lfs_min(size, medium - j);
         let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
-        assert_eq!(n, Ok(chunk as u32));
+        assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &HAIR[..chunk as usize]);
         j += chunk;
     }

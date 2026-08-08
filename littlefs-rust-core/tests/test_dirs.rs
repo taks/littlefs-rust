@@ -447,7 +447,7 @@ fn test_dirs_file_creation() {
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
-        assert_eq!({ (*info).type_ }, LFS_TYPE_DIR as u8);
+        assert_eq!({ info.type_ }, LFS_TYPE_DIR as u8);
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));

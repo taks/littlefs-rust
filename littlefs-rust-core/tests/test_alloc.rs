@@ -77,7 +77,7 @@ fn test_alloc_parallel(
         let name = NAMES[n as usize];
         for i in (0..size).step_by(name.len()) {
             let chunk = (size - i).min(name.len());
-            let nw = lfs_file_write(lfs, &mut files[n as usize], &name[..chunk as usize]);
+            let nw = lfs_file_write(lfs, &mut files[n as usize], &name[..chunk]);
             assert_eq!(nw, Ok(chunk as u32));
         }
     }
@@ -159,7 +159,7 @@ fn test_alloc_serial(
                 assert_ok(lfs_fs_gc(lfs));
             }
             let chunk = (size - i).min(name.len());
-            let nw = lfs_file_write(lfs, file, &buf[..chunk as usize]);
+            let nw = lfs_file_write(lfs, file, &buf[..chunk]);
             assert_eq!(nw, Ok(chunk as u32));
         }
         assert_ok(lfs_file_close(lfs, file));
@@ -471,8 +471,8 @@ fn test_alloc_exhaustion_wraparound(#[values(false, true)] infer_bc: bool) {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let block_size = env.config.block_size as u32;
-    let block_count = env.config.block_count as u32;
+    let block_size = env.config.block_size;
+    let block_count = env.config.block_count;
     let size: usize = ((block_size - 8) as usize * (block_count - 4) as usize) / 3;
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
@@ -627,7 +627,7 @@ fn test_alloc_two_files_ctz() {
     init_logger();
     let mut env = default_config(48);
     init_context(&mut env);
-    let block_size = env.config.block_size as u32;
+    let block_size = env.config.block_size;
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
@@ -721,7 +721,7 @@ fn test_alloc_bad_blocks_body() {
     let mut env = config_badblock(128);
     init_badblock_context(&mut env);
 
-    let block_size = env.config.block_size as u32;
+    let block_size = env.config.block_size;
 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
@@ -768,7 +768,7 @@ fn test_alloc_bad_blocks_body() {
     }
 
     assert_ok(lfs_file_sync(lfs, file));
-    let fileblock = { (*file).ctz.head };
+    let fileblock = { file.ctz.head };
     let block_count = env.config.block_count;
     assert!(
         fileblock < block_count,
@@ -835,7 +835,7 @@ fn test_alloc_bad_blocks_body() {
 
     assert_ok(lfs_mount(lfs, &env.config));
     assert_ok(lfs_file_open(lfs, file, c"pacman", LFS_O_RDONLY));
-    let open_head = { (*file).ctz.head };
+    let open_head = { file.ctz.head };
     assert!(
         open_head < env.config.block_count,
         "pacman ctz.head={} must be < block_count {} (dir corruption when ghost present)",
@@ -989,7 +989,7 @@ fn test_alloc_outdated_lookahead() {
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     for _ in (0..size1).step_by(chunk) {
-        let n = lfs_file_write(lfs, file, &blah[..chunk as usize]);
+        let n = lfs_file_write(lfs, file, &blah[..chunk]);
         assert_eq!(n, Ok(chunk as u32));
     }
     assert_ok(lfs_file_close(lfs, file));

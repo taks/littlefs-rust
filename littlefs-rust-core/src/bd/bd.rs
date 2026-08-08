@@ -509,7 +509,7 @@ pub fn lfs_bd_sync(
 
         lfs_bd_flush(lfs, pcache, rcache, validate)?;
 
-        let cfg = &*(*lfs).cfg;
+        let cfg = &*lfs.cfg;
         let sync = match cfg.sync {
             Some(f) => f,
             None => return Err(Error::Corrupt),

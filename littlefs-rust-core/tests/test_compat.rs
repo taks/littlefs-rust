@@ -177,7 +177,7 @@ fn test_compat_minor_bump() {
             0,
             core::mem::size_of::<LfsSuperblock>() as u32,
         ),
-        buffer: &superblock.as_bytes(),
+        buffer: superblock.as_bytes(),
     }];
     assert_ok(lfs_dir_commit(lfs, &mut mdir, &attrs));
     assert_ok(lfs_unmount(lfs));
@@ -196,13 +196,13 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_file_close(lfs, file));
 
     assert_ok(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!({ (*fsinfo).disk_version }, LFS_DISK_VERSION - 1);
+    assert_eq!({ fsinfo.disk_version }, LFS_DISK_VERSION - 1);
     assert_ok(lfs_unmount(lfs));
 
     // Write should bump minor version
     assert_ok(lfs_mount(lfs, cfg));
     assert_ok(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!({ (*fsinfo).disk_version }, LFS_DISK_VERSION - 1);
+    assert_eq!({ fsinfo.disk_version }, LFS_DISK_VERSION - 1);
 
     assert_ok(lfs_file_open(
         lfs,
@@ -220,7 +220,7 @@ fn test_compat_minor_bump() {
     // Remount, verify version stayed bumped
     assert_ok(lfs_mount(lfs, cfg));
     assert_ok(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!({ (*fsinfo).disk_version }, LFS_DISK_VERSION);
+    assert_eq!({ fsinfo.disk_version }, LFS_DISK_VERSION);
 
     assert_ok(lfs_file_open(lfs, file, c"test", LFS_O_RDONLY));
     assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(8));

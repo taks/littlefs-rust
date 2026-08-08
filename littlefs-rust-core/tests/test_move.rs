@@ -572,7 +572,7 @@ fn test_move_file_corrupt_source() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, c"c/hello", info));
-    assert_eq!({ (*info).size }, 5 + 8 + 6);
+    assert_eq!({ info.size }, 5 + 8 + 6);
 
     assert_err(Error::NoEntry, lfs_stat(lfs, c"a/hello", info));
     assert_err(
@@ -653,7 +653,7 @@ fn test_move_file_corrupt_source_dest() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, c"a/hello", info));
-    assert_eq!({ (*info).size }, 5 + 8 + 6);
+    assert_eq!({ info.size }, 5 + 8 + 6);
 
     assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hello", info));
     assert_err(Error::NoEntry, lfs_stat(lfs, c"c/hello", info));
@@ -734,7 +734,7 @@ fn test_move_file_after_corrupt() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, c"c/hello", info));
-    assert_eq!({ (*info).size }, 5 + 8 + 6);
+    assert_eq!({ info.size }, 5 + 8 + 6);
 
     assert_err(Error::NoEntry, lfs_stat(lfs, c"a/hello", info));
     assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hello", info));
@@ -911,7 +911,7 @@ fn test_move_dir_corrupt_source_dest() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, c"a/hi", info));
-    assert_eq!({ (*info).type_ }, LFS_TYPE_DIR as u8);
+    assert_eq!({ info.type_ }, LFS_TYPE_DIR as u8);
 
     assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hi", info));
     assert_err(Error::NoEntry, lfs_stat(lfs, c"c/hi", info));

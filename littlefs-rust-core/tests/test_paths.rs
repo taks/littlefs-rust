@@ -283,7 +283,7 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
         let path = path_bytes(path_str);
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(lfs, path.as_c_str(), info));
-        assert_eq!(info_name_str(&info), expect);
+        assert_eq!(info_name_str(info), expect);
         assert_eq!(
             info.type_,
             if dir_mode { LFS_TYPE_DIR } else { LFS_TYPE_REG } as u8
@@ -394,7 +394,7 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
         let err = lfs_stat(lfs, path.as_c_str(), info);
         if dir_mode {
             assert_ok(err);
-            assert_eq!(info_name_str(&info), PATHS[i]);
+            assert_eq!(info_name_str(info), PATHS[i]);
             assert_eq!(info.type_, LFS_TYPE_DIR as u8);
         } else {
             assert_err(Error::NotDir, err);
@@ -488,7 +488,7 @@ fn test_paths_dots(#[case] dir_mode: bool) {
         let path = path_bytes(path_str);
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(lfs, path.as_c_str(), info));
-        assert_eq!(info_name_str(&info), expect);
+        assert_eq!(info_name_str(info), expect);
         assert_eq!(
             info.type_,
             if dir_mode { LFS_TYPE_DIR } else { LFS_TYPE_REG } as u8
@@ -702,7 +702,7 @@ fn test_paths_dotdots(#[case] dir_mode: bool) {
         let path = path_bytes(path_str);
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(lfs, path.as_c_str(), info));
-        assert_eq!(info_name_str(&info), expect);
+        assert_eq!(info_name_str(info), expect);
         assert_eq!(
             info.type_,
             if dir_mode { LFS_TYPE_DIR } else { LFS_TYPE_REG } as u8
@@ -879,12 +879,12 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_ok(lfs_stat(lfs, c"coffee/vietnamese/../..", info));
-    assert_eq!(info_name_str(&info), "/");
+    assert_eq!(info_name_str(info), "/");
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
     let info2 = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_ok(lfs_stat(lfs, c"coffee/thai/..", info2));
-    assert_eq!(info_name_str(&info2), "coffee");
+    assert_eq!(info_name_str(info2), "coffee");
     assert_eq!(info2.type_, LFS_TYPE_DIR as u8);
 
     assert_ok(lfs_unmount(lfs));
@@ -968,7 +968,7 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
         c"/no/no/./.././../no/no/./.././../coffee/drip",
         info,
     ));
-    assert_eq!(info_name_str(&info), "drip");
+    assert_eq!(info_name_str(info), "drip");
     assert_eq!(
         info.type_,
         if dir_mode { LFS_TYPE_DIR } else { LFS_TYPE_REG } as u8
@@ -980,7 +980,7 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
         c"/no/no/./.././../coffee/no/./../coldbrew",
         info2,
     ));
-    assert_eq!(info_name_str(&info2), "coldbrew");
+    assert_eq!(info_name_str(info2), "coldbrew");
     assert_eq!(
         info2.type_,
         if dir_mode { LFS_TYPE_DIR } else { LFS_TYPE_REG } as u8
@@ -994,7 +994,7 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
     ] {
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok(lfs_stat(lfs, path_bytes(path).as_c_str(), info));
-        assert_eq!(info_name_str(&info), expected_name);
+        assert_eq!(info_name_str(info), expected_name);
         assert_eq!(
             info.type_,
             if dir_mode { LFS_TYPE_DIR } else { LFS_TYPE_REG } as u8
@@ -1089,7 +1089,7 @@ fn test_paths_dotdotdots(#[case] dir_mode: bool) {
         let path = path_bytes(&format!("/coffee/.../{name}"));
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(lfs, path.as_c_str(), info));
-        assert_eq!(info_name_str(&info), *name);
+        assert_eq!(info_name_str(info), *name);
         assert_eq!(
             info.type_,
             if dir_mode { LFS_TYPE_DIR } else { LFS_TYPE_REG } as u8
@@ -1589,12 +1589,12 @@ fn test_paths_noent_trailing_dotdots(#[case] dir_mode: bool) {
     // stat coffee/_rip/.. => coffee
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, rip_dotdot.as_c_str(), info));
-    assert_eq!(info_name_str(&info), "coffee");
+    assert_eq!(info_name_str(info), "coffee");
     // stat coffee/thai_/.. => coffee
     let thai_dotdot = path_bytes("coffee/thai_/..");
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, thai_dotdot.as_c_str(), info));
-    assert_eq!(info_name_str(&info), "coffee");
+    assert_eq!(info_name_str(info), "coffee");
     // rename: valid coffee/thai_/.. → espresso/mocha (moves coffee to espresso/mocha)
     assert_ok(lfs_mkdir(lfs, path_bytes("espresso").as_c_str()));
     assert_ok(lfs_rename(
@@ -1675,7 +1675,7 @@ fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
         let path = path_bytes(&format!("{parent}/{name}"));
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(lfs, path.as_c_str(), info));
-        assert_eq!(info_name_str(&info), name);
+        assert_eq!(info_name_str(info), name);
         assert_eq!(
             info.type_,
             if dir_mode { LFS_TYPE_DIR } else { LFS_TYPE_REG } as u8
@@ -1766,7 +1766,7 @@ fn test_paths_oopsallspaces(#[case] dir_mode: bool) {
         let path = path_bytes(&format!("{root}/{name}"));
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(lfs, path.as_c_str(), info));
-        assert_eq!(info_name_str(&info), *name);
+        assert_eq!(info_name_str(info), *name);
         assert_eq!(
             info.type_,
             if dir_mode { LFS_TYPE_DIR } else { LFS_TYPE_REG } as u8
@@ -2205,7 +2205,7 @@ fn test_paths_root_aliases(#[case] _dir_mode: bool) {
         let path = path_bytes(alias);
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         assert_ok(lfs_stat(lfs, path.as_c_str(), info));
-        assert_eq!(info_name_str(&info), "/");
+        assert_eq!(info_name_str(info), "/");
         assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     }
     assert_ok(lfs_unmount(lfs));
