@@ -131,17 +131,16 @@ const LFS_CMP_LT: i32 = 1;
 pub fn lfs_fs_parent_match(
     data: *mut core::ffi::c_void,
     _tag: crate::types::lfs_tag_t,
-    buffer: *const core::ffi::c_void,
+    disk: &crate::tag::lfs_diskoff,
 ) -> Result<i32, Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::tag::lfs_diskoff;
     use crate::util::{lfs_pair_cmp, lfs_pair_fromle32};
 
-    if data.is_null() || buffer.is_null() {
+    if data.is_null() {
         return Ok(LFS_CMP_LT);
     }
     let find = unsafe { &*(data as *const LfsFsParentMatch) };
-    let disk = unsafe { &*(buffer as *const lfs_diskoff) };
 
     let mut child: [crate::types::lfs_block_t; 2] = [0, 0];
     lfs_bd_read(

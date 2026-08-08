@@ -66,9 +66,9 @@ pub struct LfsDirFindMatch<'a> {
 pub fn lfs_dir_find_match(
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
-    buffer: *const core::ffi::c_void,
+    buffer: &lfs_diskoff,
 ) -> Result<i32, Error> {
-    if data.is_null() || buffer.is_null() {
+    if data.is_null() {
         return Ok(LFS_CMP_LT);
     }
     unsafe {
