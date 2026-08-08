@@ -32,16 +32,6 @@ pub struct LfsAttr<'a> {
     pub buffer: &'a mut [u8],
 }
 
-impl<'a> LfsAttr<'a> {
-    pub fn as_bytes(&self) -> &'a [u8] {
-        unsafe { ::core::slice::from_raw_parts(self as *const Self as *const _, 24) } //  core::mem::size_of::<Self>()) }
-    }
-
-    pub fn try_ref_from_bytes(bytes: &[u8]) -> &Self {
-        todo!()
-    }
-}
-
 unsafe impl<'a> zerocopy::IntoBytes for LfsAttr<'a> {
     fn as_bytes(&self) -> &[u8]
     where

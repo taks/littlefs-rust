@@ -503,7 +503,7 @@ pub fn lfs_bd_flush(
 /// ```
 pub fn lfs_bd_sync(
     lfs: &mut Lfs,
-    pcache: *mut LfsCache,
+    pcache: &mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
 ) -> Result<(), Error> {
