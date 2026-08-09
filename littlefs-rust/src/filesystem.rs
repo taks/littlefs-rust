@@ -227,8 +227,7 @@ impl<S: Storage> Filesystem<S> {
     pub fn mkdir(&self, path: &str) -> Result<(), Error> {
         let path_bytes = null_terminate(path);
         let mut inner = self.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_mkdir(inner.lfs.as_mut_ptr(), path_bytes.as_ptr());
-        from_lfs_result(rc)
+        littlefs_rust_core::lfs_mkdir(&mutinner.lfs, path_bytes.as_ptr())
     }
 
     /// Remove a file or empty directory.

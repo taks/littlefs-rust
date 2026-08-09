@@ -261,7 +261,7 @@ pub fn lfs_dir_find(
             }
 
             // C: lfs.c:1527-1541 - skip if matched by '..' in path
-            let mut suffix = &name[(namelen as usize)..];
+            let mut suffix = &name[namelen..];
             let mut depth: i32 = 1;
             #[cfg(feature = "loop_limits")]
             const MAX_PATH_DEPTH_ITER: u32 = 512;
@@ -354,7 +354,7 @@ pub fn lfs_dir_find(
                 let mut match_data = LfsDirFindMatch {
                     lfs,
                     name,
-                    size: namelen,
+                    size: namelen as u32,
                 };
                 let dir_tail = borrow_unchecked(&dir.tail);
                 tag = lfs_dir_fetchmatch(
@@ -362,7 +362,7 @@ pub fn lfs_dir_find(
                     dir,
                     dir_tail,
                     lfs_mktag(0x780, 0, 0),
-                    lfs_mktag(LFS_TYPE_NAME, 0, namelen),
+                    lfs_mktag(LFS_TYPE_NAME, 0, namelen as u32),
                     id,
                     Some(lfs_dir_find_match),
                     &mut match_data as *mut _ as *mut core::ffi::c_void,
