@@ -67,7 +67,7 @@ use crate::util::{lfs_min, lfs_pair_cmp, lfs_pair_fromle32};
 /// ```
 pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &CStr) -> Result<(), Error> {
     unsafe {
-        let mut path_ptr = path;
+        let mut path_ptr = str::from_utf8_unchecked(path.to_bytes());;
 
         let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None)?;
 

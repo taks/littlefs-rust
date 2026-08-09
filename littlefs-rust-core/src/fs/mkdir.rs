@@ -129,10 +129,10 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
         };
         cwd.m.tail = [lfs.root[0], lfs.root[1]];
 
-        let mut path_ptr = path;
+        let mut path_ptr = str::from_utf8_unchecked(path.to_bytes());
         let mut id: u16 = 0;
         let find_err = lfs_dir_find(lfs, &mut cwd.m, &mut path_ptr, &mut Some(&mut id));
-        if !(find_err == Err(Error::NoEntry) && lfs_path_islast(path_ptr.to_bytes())) {
+        if !(find_err == Err(Error::NoEntry) && lfs_path_islast(path_ptr.as_bytes())) {
             return if let Err(err) = find_err {
                 Err(err)
             } else {
@@ -140,7 +140,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
             };
         }
 
-        let path_slice = path_ptr.to_bytes();
+        let path_slice = path_ptr.as_bytes();
         let nlen = lfs_path_namelen(path_slice);
         if nlen > lfs.name_max {
             return crate::lfs_err!(Err(Error::NameTooLong));
@@ -209,7 +209,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
             },
             lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_DIR, id as u32, nlen),
-                buffer: path_ptr.to_bytes_with_nul(),
+                buffer: path_ptr.as_bytes(),
             },
             lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_DIRSTRUCT, id as u32, 8),

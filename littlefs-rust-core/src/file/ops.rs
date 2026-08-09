@@ -232,10 +232,10 @@ pub fn lfs_file_opencfg_(
         file.off = 0;
         file.cache.buffer = core::ptr::null_mut();
 
-        let mut path_ptr = path;
+        let mut path_ptr = str::from_utf8_unchecked(path.to_bytes());
         let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, &mut Some(&mut file.id));
         if let Err(err) = tag
-            && !(err == Error::NoEntry && lfs_path_islast(path_ptr.to_bytes()))
+            && !(err == Error::NoEntry && lfs_path_islast(path_ptr.as_bytes()))
         {
             lfs_file_close_(lfs, file);
             return crate::lfs_pass_err!(Err(err));
@@ -249,11 +249,11 @@ pub fn lfs_file_opencfg_(
                 lfs_file_close_(lfs, file);
                 return crate::lfs_err!(Err(Error::NoEntry));
             }
-            if lfs_path_isdir(path_ptr.to_bytes()) {
+            if lfs_path_isdir(path_ptr.as_bytes()) {
                 lfs_file_close_(lfs, file);
                 return Err(Error::NotDir);
             }
-            let nlen = lfs_path_namelen(path_ptr.to_bytes());
+            let nlen = lfs_path_namelen(path_ptr.as_bytes());
             if nlen > lfs.name_max {
                 lfs_file_close_(lfs, file);
                 return crate::lfs_err!(Err(Error::NameTooLong));
@@ -266,7 +266,7 @@ pub fn lfs_file_opencfg_(
                 },
                 crate::tag::lfs_mattr {
                     tag: lfs_mktag(LFS_TYPE_REG, file.id as u32, nlen),
-                    buffer: path_ptr.to_bytes_with_nul(),
+                    buffer: path_ptr.as_bytes(),
                 },
                 crate::tag::lfs_mattr {
                     tag: lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0),

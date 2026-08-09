@@ -30,7 +30,7 @@ use crate::types::{lfs_block_t, lfs_size_t};
 /// ```
 pub fn lfs_stat_(
     lfs: &mut super::lfs::Lfs,
-    path: &CStr,
+    path: &str,
     info: &mut crate::lfs_info::LfsInfo,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_getinfo;

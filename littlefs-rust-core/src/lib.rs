@@ -124,7 +124,7 @@ pub fn lfs_rename(lfs: &mut Lfs, oldpath: &CStr, newpath: &CStr) -> Result<(), E
 /// Find info about a file or directory. Per lfs.h lfs_stat (lfs.c:6263-6267).
 #[inline(never)]
 pub fn lfs_stat(lfs: &mut Lfs, path: &CStr, info: &mut LfsInfo) -> Result<(), Error> {
-    crate::fs::stat::lfs_stat_(lfs, path, info)
+    crate::fs::stat::lfs_stat_(lfs, unsafe { str::from_utf8_unchecked(path.to_bytes()) }, info)
 }
 
 /// Get a custom attribute. Per lfs.h lfs_getattr (lfs.c:6090-6105).

@@ -72,7 +72,7 @@ pub fn lfs_getattr_(
             tail: [lfs.root[0], lfs.root[1]],
         };
 
-        let mut path_ptr = path;
+        let mut path_ptr = path.to_str().unwrap();
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
         let mut id = lfs_tag_id(tag);
@@ -146,7 +146,7 @@ pub fn lfs_commitattr(
             tail: [lfs.root[0], lfs.root[1]],
         };
 
-        let mut path_ptr = path;
+        let mut path_ptr = path.to_str().unwrap();
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
         let mut id = lfs_tag_id(tag);
