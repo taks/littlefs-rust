@@ -193,7 +193,10 @@ pub fn lfs_strspn(p: &CStr, c: u8) -> usize {
 /// Per C strcspn: count bytes until we hit `c` or null.
 #[inline(always)]
 pub fn lfs_strcspn(p: &CStr, c: u8) -> usize {
-    p.to_bytes().iter().position(|q| *q == c).unwrap_or(p.count_bytes())
+    p.to_bytes()
+        .iter()
+        .position(|q| *q == c)
+        .unwrap_or(p.count_bytes())
 }
 
 /// Per C: slice from NUL-terminated string. Max 256 bytes.
