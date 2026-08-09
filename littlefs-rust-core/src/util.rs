@@ -186,17 +186,17 @@ pub fn lfs_tobe32(a: u32) -> u32 {
 
 /// Per C strspn: count leading bytes equal to `c`, stop at first unequal or null.
 #[inline(always)]
-pub fn lfs_strspn(p: &CStr, c: u8) -> usize {
-    p.to_bytes_with_nul().iter().position(|q| *q != c).unwrap()
+pub fn lfs_strspn(p: &[u8], c: u8) -> usize {
+    p.iter().position(|q| *q != c).unwrap_or(p.len())
 }
 
 /// Per C strcspn: count bytes until we hit `c` or null.
 #[inline(always)]
-pub fn lfs_strcspn(p: &CStr, c: u8) -> usize {
-    p.to_bytes()
+pub fn lfs_strcspn(p: &[u8], c: u8) -> usize {
+    p
         .iter()
         .position(|q| *q == c)
-        .unwrap_or(p.count_bytes())
+        .unwrap_or(p.len())
 }
 
 /// Per C: slice from NUL-terminated string. Max 256 bytes.

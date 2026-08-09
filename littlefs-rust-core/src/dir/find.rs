@@ -229,7 +229,7 @@ pub fn lfs_dir_find(
         if path.is_empty() {
             return crate::lfs_err!(Err(Error::Invalid));
         }
-        let mut name = path.to_bytes_with_nul();
+        let mut name = path.to_bytes();
 
         // C: lfs.c:1488-1491
         let mut tag = lfs_mktag(LFS_TYPE_DIR, 0x3ff, 0);
@@ -244,10 +244,10 @@ pub fn lfs_dir_find(
         'nextname: loop {
             // C: nextname - lfs.c:1510-1512
             if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DIR {
-                let skip = lfs_strspn(CStr::from_ptr(name.as_ptr() as *const _), b'/');
+                let skip = lfs_strspn(name, b'/');
                 name = &name[skip..];
             }
-            let namelen = lfs_strcspn(CStr::from_ptr(name.as_ptr() as *const _), b'/');
+            let namelen = lfs_strcspn(name, b'/');
 
             // C: lfs.c:1516-1519 - skip '.'
             if namelen == 1 && name[0] == b'.' {
@@ -278,9 +278,9 @@ pub fn lfs_dir_find(
                     }
                     path_iter += 1;
                 }
-                let suffix_skip = lfs_strspn(CStr::from_ptr(suffix.as_ptr() as *const _), b'/');
+                let suffix_skip = lfs_strspn(suffix, b'/');
                 suffix = &suffix[suffix_skip..];
-                let sufflen = lfs_strcspn(CStr::from_ptr(suffix.as_ptr() as *const _), b'/');
+                let sufflen = lfs_strcspn(suffix, b'/');
                 if sufflen == 0 {
                     break;
                 }
