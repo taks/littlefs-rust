@@ -161,8 +161,7 @@ pub fn lfs_dir_getslice(
                 }
                 let diff = lfs_min(lfs_tag_size(tag), gsize);
                 let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                let buf =
-                    core::slice::from_raw_parts_mut(gbuffer.as_mut_ptr() as *mut u8, diff as _);
+                let buf = &mut gbuffer[..diff as usize];
                 lfs_bd_read(
                     lfs,
                     None,
@@ -1088,7 +1087,7 @@ pub fn lfs_dir_traverse_test_cb(
     out.first_bytes[i] = if buffer.is_empty() {
         0
     } else {
-        unsafe { *((buffer.as_ptr() as *const u8).add(0)) }
+        unsafe { *((buffer.as_ptr()).add(0)) }
     };
     out.call_count += 1;
     Ok(0)

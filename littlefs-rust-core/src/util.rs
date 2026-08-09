@@ -186,17 +186,8 @@ pub fn lfs_tobe32(a: u32) -> u32 {
 
 /// Per C strspn: count leading bytes equal to `c`, stop at first unequal or null.
 #[inline(always)]
-pub fn lfs_strspn(p: &CStr, c: u8) -> u32 {
-    let mut n: u32 = 0;
-
-    for &q in p.to_bytes_with_nul() {
-        if (q != c) {
-            return n;
-        }
-        n += 1;
-    }
-
-    unreachable!()
+pub fn lfs_strspn(p: &CStr, c: u8) -> usize {
+    p.to_bytes_with_nul().iter().position(|q| *q != c).unwrap()
 }
 
 /// Per C strcspn: count bytes until we hit `c` or null.

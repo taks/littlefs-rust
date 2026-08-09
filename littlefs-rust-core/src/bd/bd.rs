@@ -165,7 +165,7 @@ pub fn lfs_bd_read(
             if let Some(pcache) = pcache {
                 if block == pcache.block && off < pcache.off + pcache.size {
                     if off >= pcache.off {
-                        diff = lfs_min(diff, pcache.size - (off - pcache.off));
+                        diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
                         if !pcache.buffer.is_null() {
                             core::ptr::copy_nonoverlapping(
                                 pcache.buffer.add((off - pcache.off) as usize),
@@ -361,8 +361,8 @@ pub fn lfs_bd_crc(
     let mut i: lfs_off_t = 0;
     while i < size {
         let mut dat = [0u8; 8];
-        let diff = lfs_min(size - i, 8) as usize;
-        let err = lfs_bd_read(
+        let diff = core::cmp::min(size - i, 8) as usize;
+        lfs_bd_read(
             lfs,
             pcache,
             rcache,
