@@ -25,8 +25,10 @@ pub trait Storage {
     /// Value zero is invalid, must be positive or -1.
     const BLOCK_CYCLES: isize = -1;
 
+    #[allow(non_camel_case_types)]
     type CACHE_SIZE: ArraySize;
 
+    #[allow(non_camel_case_types)]
     type LOOKAHEAD_SIZE: ArraySize;
 
     /// Read `buf.len()` bytes starting at `offset` within `block`.

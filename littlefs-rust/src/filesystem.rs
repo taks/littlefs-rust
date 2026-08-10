@@ -1,10 +1,11 @@
 use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::cell::{RefCell, UnsafeCell};
+use core::cell::RefCell;
 use core::ffi::c_void;
 use core::mem::ManuallyDrop;
 use littlefs_rust_core::error::Error;
+use typenum::Unsigned;
 
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
@@ -16,12 +17,20 @@ use crate::storage::Storage;
 
 type Bytes<SIZE> = hybrid_array::Array<u8, SIZE>;
 
-#[derive(Default)]
-
 struct Cache<S: Storage> {
     read: Bytes<S::CACHE_SIZE>,
-    write: Bytes<S::CACHE_SIZE>,    // lookahead: aligned::Aligned<aligned::A4, Bytes<Storage::LOOKAHEAD_SIZE>>,
+    write: Bytes<S::CACHE_SIZE>, // lookahead: aligned::Aligned<aligned::A4, Bytes<Storage::LOOKAHEAD_SIZE>>,
     lookahead: hybrid_array::Array<u64, S::LOOKAHEAD_SIZE>,
+}
+
+impl<S: Storage> Default for Cache<S> {
+    fn default() -> Self {
+        Self {
+            read: Default::default(),
+            write: Default::default(),
+            lookahead: Default::default(),
+        }
+    }
 }
 
 pub(crate) struct FsInner<S: Storage> {
@@ -29,6 +38,7 @@ pub(crate) struct FsInner<S: Storage> {
     pub(crate) config: LfsConfig,
     pub(crate) storage: S,
     cache: Cache<S>,
+    mounted: bool,
 }
 
 /// A mounted LittleFS filesystem.
@@ -99,8 +109,8 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
         block_size: S::BLOCK_SIZE as _,
         block_count: config.block_count,
         block_cycles: S::BLOCK_CYCLES as _,
-        cache_size: config.resolve_cache_size(),
-        lookahead_size: config.resolve_lookahead_size(),
+        cache_size: S::CACHE_SIZE::U32,
+        lookahead_size: S::LOOKAHEAD_SIZE::U32,
         compact_thresh: u32::MAX,
         read_buffer: core::ptr::null_mut(),
         prog_buffer: core::ptr::null_mut(),
@@ -117,6 +127,7 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
         config: lfs_config,
         storage,
         cache,
+        mounted: false,
     }
 }
 
@@ -124,8 +135,8 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
 /// `inner` is at its final address (i.e., inside the `RefCell`).
 fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
     inner.config.context = &mut inner.storage as *mut S as *mut c_void;
-    inner.config.read_buffer = inner.cache.read.as_mut_ptr();
-    inner.config.prog_buffer = inner.cache.write.as_mut_ptr();
+    inner.config.read_buffer = inner.cache.read.as_mut_ptr() as *mut c_void;
+    inner.config.prog_buffer = inner.cache.write.as_mut_ptr() as *mut c_void;
     inner.config.lookahead_buffer = inner.cache.lookahead.as_mut_ptr() as *mut c_void;
 }
 
