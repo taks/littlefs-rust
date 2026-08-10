@@ -117,7 +117,7 @@ use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_path_islast, lfs_path_
 /// }
 /// #endif
 /// ```
-pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
+pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
@@ -129,7 +129,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
         };
         cwd.m.tail = [lfs.root[0], lfs.root[1]];
 
-        let mut path_ptr = str::from_utf8_unchecked(path.to_bytes());
+        let mut path_ptr = path;
         let mut id: u16 = 0;
         let find_err = lfs_dir_find(lfs, &mut cwd.m, &mut path_ptr, &mut Some(&mut id));
         if !(find_err == Err(Error::NoEntry) && lfs_path_islast(path_ptr.as_bytes())) {

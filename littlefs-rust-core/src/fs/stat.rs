@@ -120,7 +120,7 @@ pub fn lfs_stat_(
 /// ```
 pub fn lfs_fs_stat_(
     lfs: &mut super::lfs::Lfs,
-    fsinfo: *mut crate::lfs_info::LfsFsinfo,
+    fsinfo: &mut crate::lfs_info::LfsFsinfo,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::dir::traverse::lfs_dir_get;
@@ -131,8 +131,6 @@ pub fn lfs_fs_stat_(
     use crate::types::LFS_DISK_VERSION;
 
     unsafe {
-        let fsinfo = &mut *fsinfo;
-
         if !lfs_gstate_needssuperblock(&lfs.gstate) {
             fsinfo.disk_version = LFS_DISK_VERSION;
         } else {

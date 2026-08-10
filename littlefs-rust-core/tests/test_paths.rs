@@ -2365,7 +2365,7 @@ fn test_paths_nonutf8() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    let name = c"foo\xff\xfe\xfdbar";
+    let name = unsafe { str::from_utf8_unchecked( b"foo\xff\xfe\xfdbar") };
     assert_ok(lfs_mkdir(lfs, name));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok(lfs_stat(lfs, name, info));

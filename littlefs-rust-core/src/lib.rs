@@ -123,8 +123,8 @@ pub fn lfs_rename(lfs: &mut Lfs, oldpath: &CStr, newpath: &CStr) -> Result<(), E
 
 /// Find info about a file or directory. Per lfs.h lfs_stat (lfs.c:6263-6267).
 #[inline(never)]
-pub fn lfs_stat(lfs: &mut Lfs, path: &CStr, info: &mut LfsInfo) -> Result<(), Error> {
-    crate::fs::stat::lfs_stat_(lfs, unsafe { str::from_utf8_unchecked(path.to_bytes()) }, info)
+pub fn lfs_stat(lfs: &mut Lfs, path: &str, info: &mut LfsInfo) -> Result<(), Error> {
+    crate::fs::stat::lfs_stat_(lfs, path, info)
 }
 
 /// Get a custom attribute. Per lfs.h lfs_getattr (lfs.c:6090-6105).
@@ -248,7 +248,7 @@ pub fn lfs_file_size(lfs: &mut Lfs, file: &mut LfsFile) -> lfs_soff_t {
 
 /// Create a directory. Per lfs.h lfs_mkdir (lfs.c:6503-6507).
 #[inline(never)]
-pub fn lfs_mkdir(lfs: &mut Lfs, path: &CStr) -> Result<(), Error> {
+pub fn lfs_mkdir(lfs: &mut Lfs, path: &str) -> Result<(), Error> {
     crate::fs::mkdir::lfs_mkdir_(lfs, path)
 }
 
@@ -289,7 +289,7 @@ pub fn lfs_dir_rewind(lfs: &mut Lfs, dir: &mut LfsDir) -> Result<(), Error> {
 }
 
 /// Find on-disk info about the filesystem. Per lfs.h lfs_fs_stat (lfs.c:6449-6453).
-#[inline(never)]
+#[inline(always)]
 pub fn lfs_fs_stat(lfs: &mut Lfs, fsinfo: &mut LfsFsinfo) -> Result<(), Error> {
     crate::fs::lfs_fs_stat_(lfs, fsinfo)
 }
