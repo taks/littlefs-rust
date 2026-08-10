@@ -70,7 +70,7 @@ fn test_badblocks_single(
 
             // mkdir
             assert_ok(lfs_mkdir(lfs, unsafe {
-                unsafe { str::from_utf8_unchecked(&buffer[..NAMEMULT]) }
+                str::from_utf8_unchecked(&buffer[..NAMEMULT])
             }));
 
             // Build file path: "dirname/dirname"
@@ -290,7 +290,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         buffer[NAMEMULT] = 0;
 
         assert_ok(lfs_mkdir(lfs, unsafe {
-            unsafe { str::from_utf8_unchecked(&buffer[..NAMEMULT]) }
+            str::from_utf8_unchecked(&buffer[..NAMEMULT])
         }));
 
         buffer[NAMEMULT] = b'/';
