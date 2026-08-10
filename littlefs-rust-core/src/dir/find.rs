@@ -294,7 +294,7 @@ pub fn lfs_dir_find(
             }
 
             // C: lfs.c:1544-1546 - found path
-            if *(name.as_ptr()) == 0 {
+            if name.is_empty() {
                 return Ok(tag);
             }
 
