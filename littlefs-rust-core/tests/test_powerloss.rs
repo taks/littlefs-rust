@@ -288,7 +288,6 @@ fn test_debug_file_root_single_write_sync() {
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
-    let lfs = lfs;
     let path = "paper";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok_at(
@@ -314,7 +313,6 @@ fn test_debug_file_root_repeated_write_sync() {
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
-    let lfs = lfs;
     let path = "paper";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok_at(
@@ -379,7 +377,6 @@ fn test_debug_powerloss_after_corrupt_append() {
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
-    let lfs = lfs;
     let path_nb = "notebook";
     let path_paper = "notebook/paper";
     assert_ok_at("mkdir notebook", lfs_mkdir(lfs, path_nb));
