@@ -111,13 +111,13 @@ pub fn lfs_unmount(lfs: &mut Lfs) -> Result<(), Error> {
 
 /// Remove a file or directory. Per lfs.h lfs_remove (lfs.c:6193-6195).
 #[inline(never)]
-pub fn lfs_remove(lfs: &mut Lfs, path: &CStr) -> Result<(), Error> {
+pub fn lfs_remove(lfs: &mut Lfs, path: &str) -> Result<(), Error> {
     crate::fs::remove::lfs_remove_(lfs, path)
 }
 
 /// Rename or move a file or directory. Per lfs.h lfs_rename (lfs.c:6227-6231).
 #[inline(never)]
-pub fn lfs_rename(lfs: &mut Lfs, oldpath: &CStr, newpath: &CStr) -> Result<(), Error> {
+pub fn lfs_rename(lfs: &mut Lfs, oldpath: &str, newpath: &str) -> Result<(), Error> {
     crate::fs::rename::lfs_rename_(lfs, oldpath, newpath)
 }
 
@@ -161,7 +161,7 @@ pub fn lfs_removeattr(lfs: &mut Lfs, path: &CStr, r#type: u8) -> Result<(), Erro
 pub fn lfs_file_open(
     lfs: &mut Lfs,
     file: &mut LfsFile,
-    path: &CStr,
+    path: &str,
     flags: i32,
 ) -> Result<(), Error> {
     crate::file::ops::lfs_file_open_(lfs, file, path, flags)
@@ -172,7 +172,7 @@ pub fn lfs_file_open(
 pub fn lfs_file_opencfg<'a>(
     lfs: &mut Lfs,
     file: &mut LfsFile,
-    path: &CStr,
+    path: &str,
     flags: i32,
     config: &mut LfsFileConfig<'a>,
 ) -> Result<(), Error> {

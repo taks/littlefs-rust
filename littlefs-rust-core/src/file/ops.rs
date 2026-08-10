@@ -202,7 +202,7 @@ use crate::{Lfs, LfsAttr};
 pub fn lfs_file_opencfg_(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
-    path: &CStr,
+    path: &str,
     flags: i32,
     cfg: &mut LfsFileConfig,
 ) -> Result<(), Error> {
@@ -232,7 +232,7 @@ pub fn lfs_file_opencfg_(
         file.off = 0;
         file.cache.buffer = core::ptr::null_mut();
 
-        let mut path_ptr = str::from_utf8_unchecked(path.to_bytes());
+        let mut path_ptr = path;
         let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, &mut Some(&mut file.id));
         if let Err(err) = tag
             && !(err == Error::NoEntry && lfs_path_islast(path_ptr.as_bytes()))
@@ -424,7 +424,7 @@ static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
 pub fn lfs_file_open_(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
-    path: &CStr,
+    path: &str,
     flags: i32,
 ) -> Result<(), Error> {
     lfs_file_opencfg_(lfs, file, path, flags, unsafe {

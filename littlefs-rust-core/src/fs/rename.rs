@@ -235,7 +235,7 @@ fn slice_until_nul(ptr: *const u8) -> &'static [u8] {
     }
 }
 
-pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) -> Result<(), Error> {
+pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
@@ -249,7 +249,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
             split: false,
             tail: [lfs.root[0], lfs.root[1]],
         };
-        let mut oldpath_ptr = str::from_utf8_unchecked(oldpath.to_bytes());;
+        let mut oldpath_ptr = oldpath;
         let oldtag = lfs_dir_find(lfs, &mut oldcwd, &mut oldpath_ptr, &mut None)?;
         if lfs_tag_id(oldtag) == 0x3ff {
             return Err(Error::Invalid);
@@ -265,7 +265,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
             split: false,
             tail: [lfs.root[0], lfs.root[1]],
         };
-        let mut newpath_ptr = str::from_utf8_unchecked(newpath.to_bytes());;
+        let mut newpath_ptr = newpath;
         let mut newid: u16 = 0;
         let prevtag = lfs_dir_find(lfs, &mut newcwd, &mut newpath_ptr, &mut Some(&mut newid));
         let newpath_slice = newpath_ptr.as_bytes();
