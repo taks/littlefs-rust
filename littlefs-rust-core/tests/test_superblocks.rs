@@ -394,7 +394,7 @@ fn test_superblocks_reentrant_expand() {
                         }
                     } else if err != Err(Error::NoEntry) || i != 0 {
                         let _ = lfs_unmount(lfs_ptr);
-                        #[allow(clippy::unnecessary-unwrap)]
+                        #[allow(clippy::unnecessary_unwrap)]
                         return Err(err.unwrap_err());
                     }
                     let file =
