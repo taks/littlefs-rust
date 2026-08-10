@@ -579,8 +579,8 @@ pub fn dump_block_hex(block: &[u8], label: &str, len: usize) {
 }
 
 /// Null-terminated path for lfs_* calls. Caller keeps vec in scope while using pointer.
-pub fn path_bytes(s: &str) -> CString {
-    CString::from_str(s).unwrap()
+pub fn path_bytes(s: &str) -> &str {
+    s
 }
 
 /// Read directory entry names (excluding "." and "..") from path. For use in dir tests.
