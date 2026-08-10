@@ -302,7 +302,9 @@ fn test_attrs_deferred_file() {
     let mut attrs = [
         LfsAttr {
             type_: b'B',
-            buffer: unsafe { core::mem::transmute::<&mut [u8], &mut [u8]>(attr_buf[0..4].as_mut_bytes()) },
+            buffer: unsafe {
+                core::mem::transmute::<&mut [u8], &mut [u8]>(attr_buf[0..4].as_mut_bytes())
+            },
             // size: 4,
         },
         LfsAttr {
