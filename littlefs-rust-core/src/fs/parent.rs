@@ -125,7 +125,7 @@ pub struct LfsFsParentMatch {
 /// }
 /// ```
 pub fn lfs_fs_parent_match(
-    data: *mut core::ffi::c_void,
+    data: *mut LfsFsParentMatch,
     _tag: crate::types::lfs_tag_t,
     disk: &crate::tag::lfs_diskoff,
 ) -> Result<core::cmp::Ordering, Error> {
@@ -243,7 +243,7 @@ pub fn lfs_fs_parent(
                 lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
                 &mut None,
                 Some(lfs_fs_parent_match),
-                &find_match as *const _ as *mut core::ffi::c_void,
+                &find_match as *const _ as *mut _,
             );
 
             if tag != Ok(0) && tag != Err(Error::NoEntry) {

@@ -301,7 +301,7 @@ pub unsafe fn test_traverse_format_attrs(
             0,
             0,
             0,
-            Some(lfs_dir_traverse_test_cb),
+            (lfs_dir_traverse_test_cb),
             out as *mut core::ffi::c_void,
         );
         if let Err(err) = err {
@@ -407,7 +407,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
             0,
             1,
             0,
-            Some(lfs_dir_traverse_test_cb),
+            (lfs_dir_traverse_test_cb),
             out as *mut core::ffi::c_void,
         );
         if let Err(err) = err {

@@ -1099,7 +1099,7 @@ pub fn lfs_dir_compact(
                 begin,
                 end,
                 -(begin as i16),
-                Some(lfs_dir_commit_commit_raw),
+                (lfs_dir_commit_commit_raw),
                 &mut commit_commit as *mut _ as *mut core::ffi::c_void,
             );
             if let Err(err) = err {
@@ -1442,7 +1442,7 @@ pub fn lfs_dir_splittingcompact(
                     split,
                     end_val,
                     -(split as i16),
-                    Some(lfs_dir_commit_size_raw),
+                    (lfs_dir_commit_size_raw),
                     &mut size_ptr as *mut _ as *mut core::ffi::c_void,
                 )?;
 
@@ -1799,7 +1799,7 @@ pub fn lfs_dir_relocatingcommit(
                 0,
                 0,
                 0,
-                Some(lfs_dir_commit_commit_raw),
+                (lfs_dir_commit_commit_raw),
                 &mut commit_commit as *mut _ as *mut core::ffi::c_void,
             );
             lfs_pair_fromle32(&mut dir.tail);

@@ -62,7 +62,7 @@ pub struct LfsDirFindMatch<'a> {
 ///
 /// ```
 pub fn lfs_dir_find_match(
-    data: *mut core::ffi::c_void,
+    data: *mut LfsDirFindMatch,
     tag: lfs_tag_t,
     buffer: &lfs_diskoff,
 ) -> Result<core::cmp::Ordering, Error> {
@@ -358,7 +358,7 @@ pub fn lfs_dir_find(
                     lfs_mktag(LFS_TYPE_NAME, 0, namelen as u32),
                     id,
                     Some(lfs_dir_find_match),
-                    &mut match_data as *mut _ as *mut core::ffi::c_void,
+                    &mut match_data as *mut _,
                 )?;
 
                 if tag != 0 {
