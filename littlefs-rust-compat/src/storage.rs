@@ -97,7 +97,11 @@ impl SharedStorage {
     ) -> std::os::raw::c_int {
         let storage = &*((*c).context as *const SharedStorage);
         let buf = std::slice::from_raw_parts_mut(buffer as *mut u8, size as usize);
-        storage.read_impl(block, off, buf)
+        let rc = storage.read_impl(block, off, buf);
+        match rc {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
     }
 
     unsafe extern "C" fn c_prog(
@@ -109,7 +113,11 @@ impl SharedStorage {
     ) -> std::os::raw::c_int {
         let storage = &*((*c).context as *const SharedStorage);
         let buf = std::slice::from_raw_parts(buffer as *const u8, size as usize);
-        storage.prog_impl(block, off, buf)
+        let rc = storage.prog_impl(block, off, buf);
+        match rc {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
     }
 
     unsafe extern "C" fn c_erase(
@@ -117,7 +125,11 @@ impl SharedStorage {
         block: littlefs2_sys::lfs_block_t,
     ) -> std::os::raw::c_int {
         let storage = &*((*c).context as *const SharedStorage);
-        storage.erase_impl(block)
+        let rc = storage.erase_impl(block);
+        match rc {
+            Ok(()) => 0,
+            Err(_) => -1,
+        }
     }
 
     unsafe extern "C" fn c_sync(_c: *const littlefs2_sys::lfs_config) -> std::os::raw::c_int {
@@ -132,29 +144,29 @@ impl SharedStorage {
         off: u32,
         buffer: &mut [u8],
     ) -> Result<(), Error> {
-        let storage = &*((*c).context as *const SharedStorage);
+        let storage = unsafe { &*((*c).context as *const SharedStorage) };
         storage.read_impl(block, off, buffer)
     }
 
-    unsafe extern "C" fn rust_prog(
+    fn rust_prog(
         c: &littlefs_rust_core::LfsConfig,
         block: u32,
         off: u32,
         buffer: &[u8],
     ) -> Result<(), Error> {
-        let storage = &*((*c).context as *const SharedStorage);
+        let storage = unsafe { &*((*c).context as *const SharedStorage) };
         storage.prog_impl(block, off, buffer)
     }
 
-    unsafe extern "C" fn rust_erase(
+    fn rust_erase(
         c: &littlefs_rust_core::LfsConfig,
         block: u32,
     ) -> Result<(), Error> {
-        let storage = &*((*c).context as *const SharedStorage);
+        let storage = unsafe { &*((*c).context as *const SharedStorage) };
         storage.erase_impl(block)
     }
 
-    unsafe extern "C" fn rust_sync(_c: &littlefs_rust_core::LfsConfig) -> Result<(), Error> {
+    fn rust_sync(_c: &littlefs_rust_core::LfsConfig) -> Result<(), Error> {
         Ok(())
     }
 
