@@ -10,7 +10,7 @@ const LFS_O_RDONLY: i32 = 1;
 const LFS_O_WRONLY: i32 = 2;
 const LFS_O_CREAT: i32 = 0x0100;
 const LFS_O_EXCL: i32 = 0x0200;
-const LFS_ERR_EXIST: i32 = -17;
+// const LFS_ERR_EXIST: i32 = -17;
 
 // ── Operation-level helpers (phase 2) ───────────────────────────────────
 

@@ -141,7 +141,7 @@ fn test_relocations_nonreentrant(
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_ok(lfs_stat(lfs, path, info));
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-            assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), name);
+            assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), path);
             assert_ok(lfs_remove(lfs, path));
         }
     }
