@@ -229,8 +229,7 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
 
             for _ in 0..cycles {
                 for i in 0..files {
-                    let name = format!("{}", (b'a' + i as u8) as char);
-                    let path = (&name);
+                    let path = &format!("{}", (b'a' + i as u8) as char);
                     let err = lfs_mkdir(lfs_ptr, path);
                     if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
