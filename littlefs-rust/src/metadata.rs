@@ -1,4 +1,3 @@
-use alloc::string::String;
 use bitflags::bitflags;
 
 /// Type of a filesystem entry.

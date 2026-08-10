@@ -1,9 +1,7 @@
-use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::ffi::c_void;
-use core::mem::ManuallyDrop;
 use littlefs_rust_core::error::Error;
 use typenum::Unsigned;
 
@@ -53,7 +51,7 @@ pub struct Allocation<S: Storage> {
 /// appropriate for single-threaded embedded use. If you need cross-thread
 /// access, wrap it in a `Mutex`.
 pub struct Filesystem<'a, S: Storage> {
-    alloc: RefCell<&'a mut Allocation<S>>,
+    pub(crate) alloc: RefCell<&'a mut Allocation<S>>,
     storage: &'a mut S,
 }
 
@@ -91,7 +89,7 @@ fn trampoline_sync<S: Storage>(cfg: &LfsConfig) -> Result<(), Error> {
 
 // ── FsInner construction ────────────────────────────────────────────────────
 
-fn build_inner<S: Storage>(storage: S, config: &Config) -> Allocation<S> {
+fn build_inner<S: Storage>(config: &Config) -> Allocation<S> {
     const {
         assert!(S::BLOCK_CYCLES >= -1);
         assert!(S::BLOCK_CYCLES != 0);
@@ -172,29 +170,8 @@ impl<'a, S: Storage> Filesystem<'a, S> {
         Ok(fs)
     }
 
-    /// Unmount and return the underlying storage.
-    ///
-    /// Prefer this over dropping when you need to check for errors or reuse
-    /// the storage.
-    pub fn unmount(self) -> Result<S, Error> {
-        let this = ManuallyDrop::new(self);
-        let mut inner = this.inner.borrow_mut();
-        let rc = if inner.mounted {
-            inner.mounted = false;
-            littlefs_rust_core::lfs_unmount(&mut inner.lfs)
-        } else {
-            Ok(())
-        };
-        drop(inner);
-        // Safety: we prevented Drop from running via ManuallyDrop, and we've
-        // already unmounted. Take ownership of the RefCell's contents.
-        let fs_inner = unsafe { core::ptr::read(&this.inner) }.into_inner();
-        rc?;
-        Ok(fs_inner.storage)
-    }
-
     pub(crate) fn cache_size(&self) -> u32 {
-        self.inner.borrow().config.cache_size
+        self.alloc.borrow().config.cache_size
     }
 
     // ── File access ─────────────────────────────────────────────────────
@@ -239,28 +216,28 @@ impl<'a, S: Storage> Filesystem<'a, S> {
 
     /// Create a directory. Fails if it already exists.
     pub fn mkdir(&self, path: &str) -> Result<(), Error> {
-        let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_mkdir(&mut inner.lfs, path)
+        let mut alloc = self.alloc.borrow_mut();
+        littlefs_rust_core::lfs_mkdir(&mut alloc.lfs, path)
     }
 
     /// Remove a file or empty directory.
     pub fn remove(&self, path: &str) -> Result<(), Error> {
-        let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_remove(&mut inner.lfs, path)
+        let mut alloc = self.alloc.borrow_mut();
+        littlefs_rust_core::lfs_remove(&mut alloc.lfs, path)
     }
 
     /// Rename or move a file or directory.
     pub fn rename(&self, from: &str, to: &str) -> Result<(), Error> {
-        let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_rename(&mut inner.lfs, from, to)
+        let mut alloc = self.alloc.borrow_mut();
+        littlefs_rust_core::lfs_rename(&mut alloc.lfs, from, to)
     }
 
     /// Get metadata for a file or directory.
     pub fn stat(&self, path: &str) -> Result<Metadata, Error> {
         let mut info = unsafe { core::mem::zeroed::<LfsInfo>() };
         {
-            let mut inner = self.inner.borrow_mut();
-            littlefs_rust_core::lfs_stat(&mut inner.lfs, path, &mut info)?;
+            let mut alloc = self.alloc.borrow_mut();
+            littlefs_rust_core::lfs_stat(&mut alloc.lfs, path, &mut info)?;
         }
         let entry = dir_entry_from_info(&info);
         Ok(Metadata {
@@ -293,24 +270,21 @@ impl<'a, S: Storage> Filesystem<'a, S> {
 
     /// Return the number of allocated blocks.
     pub fn fs_size(&self) -> Result<u32, Error> {
-        let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_fs_size(&mut inner.lfs)
+        let mut alloc = self.alloc.borrow_mut();
+        littlefs_rust_core::lfs_fs_size(&mut alloc.lfs)
     }
 
     /// Run garbage collection to reclaim unused blocks.
     pub fn gc(&mut self) -> Result<(), Error> {
-        let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_fs_gc(&mut inner.lfs)
+        let mut alloc = self.alloc.borrow_mut();
+        littlefs_rust_core::lfs_fs_gc(&mut alloc.lfs)
     }
 }
 
-impl<S: Storage> Drop for Filesystem<S> {
+impl<'a, S: Storage> Drop for Filesystem<'a, S> {
     fn drop(&mut self) {
-        if let Ok(mut inner) = self.inner.try_borrow_mut() {
-            if inner.mounted {
-                let _ = littlefs_rust_core::lfs_unmount(&mut inner.lfs);
-                inner.mounted = false;
-            }
+        if let Ok(mut inner) = self.alloc.try_borrow_mut() {
+            let _ = littlefs_rust_core::lfs_unmount(&mut inner.lfs);
         }
     }
 }

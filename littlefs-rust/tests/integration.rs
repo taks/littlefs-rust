@@ -71,8 +71,6 @@ fn test_write_read_roundtrip() {
     let n = file.read(&mut buf).unwrap();
     assert_eq!(&buf[..n as usize], data);
     file.close().unwrap();
-
-    fs.unmount().unwrap();
 }
 
 #[test]

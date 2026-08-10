@@ -25,16 +25,16 @@ impl DirAllocation {
 /// automatically skipping `.` and `..`. Closed on drop, or explicitly
 /// via [`ReadDir::close`].
 pub struct ReadDir<'a, S: Storage> {
-    fs: &'a Filesystem<S>,
+    fs: &'a Filesystem<'a, S>,
     alloc: Box<DirAllocation>,
     closed: bool,
 }
 
 impl<'a, S: Storage> ReadDir<'a, S> {
-    pub(crate) fn open(fs: &'a Filesystem<S>, path: &str) -> Result<Self, Error> {
+    pub(crate) fn open(fs: &'a Filesystem<'a, S>, path: &str) -> Result<Self, Error> {
         let mut alloc = Box::new(DirAllocation::new());
         {
-            let mut inner = fs.inner.borrow_mut();
+            let mut inner = fs.alloc.borrow_mut();
             littlefs_rust_core::lfs_dir_open(&mut inner.lfs, &mut alloc.dir, path)?;
         }
         Ok(ReadDir {
@@ -49,7 +49,7 @@ impl<'a, S: Storage> ReadDir<'a, S> {
     /// Dropping a [`ReadDir`] also closes it, but errors are silently ignored.
     pub fn close(mut self) -> Result<(), Error> {
         self.closed = true;
-        let mut inner = self.fs.inner.borrow_mut();
+        let mut inner = self.fs.alloc.borrow_mut();
         littlefs_rust_core::lfs_dir_close(&mut inner.lfs, &mut self.alloc.dir)
     }
 }
@@ -61,7 +61,7 @@ impl<S: Storage> Iterator for ReadDir<'_, S> {
         loop {
             let mut info = unsafe { core::mem::zeroed::<LfsInfo>() };
             let rc = {
-                let mut inner = self.fs.inner.borrow_mut();
+                let mut inner = self.fs.alloc.borrow_mut();
                 littlefs_rust_core::lfs_dir_read(&mut inner.lfs, &mut self.alloc.dir, &mut info)
             };
 
@@ -83,7 +83,7 @@ impl<S: Storage> Iterator for ReadDir<'_, S> {
 impl<S: Storage> Drop for ReadDir<'_, S> {
     fn drop(&mut self) {
         if !self.closed {
-            if let Ok(mut inner) = self.fs.inner.try_borrow_mut() {
+            if let Ok(mut inner) = self.fs.alloc.try_borrow_mut() {
                 let _ = littlefs_rust_core::lfs_dir_close(&mut inner.lfs, &mut self.alloc.dir);
             }
         }
