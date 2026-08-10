@@ -30,12 +30,12 @@ fn test_attrs_get_set() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, c"hello"));
+    assert_ok(lfs_mkdir(lfs, "hello"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"hello/hello",
+        "hello/hello",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let n = lfs_file_write(lfs, file, b"hello");
@@ -46,46 +46,46 @@ fn test_attrs_get_set() {
     assert_ok(lfs_mount(lfs, &env.config));
     let mut buffer = [0u8; 1024];
 
-    assert_ok(lfs_setattr(lfs, c"hello", b'A', b"aaaa", 4));
-    assert_ok(lfs_setattr(lfs, c"hello", b'B', b"bbbbbb", 6));
-    assert_ok(lfs_setattr(lfs, c"hello", b'C', b"ccccc", 5));
+    assert_ok(lfs_setattr(lfs, "hello", b'A', b"aaaa", 4));
+    assert_ok(lfs_setattr(lfs, "hello", b'B', b"bbbbbb", 6));
+    assert_ok(lfs_setattr(lfs, "hello", b'C', b"ccccc", 5));
 
-    let n = lfs_getattr(lfs, c"hello", b'A', &mut buffer[..4]);
+    let n = lfs_getattr(lfs, "hello", b'A', &mut buffer[..4]);
     assert_eq!(n, Ok(4));
-    let n = lfs_getattr(lfs, c"hello", b'B', &mut buffer[4..10]);
+    let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]);
     assert_eq!(n, Ok(6));
-    let n = lfs_getattr(lfs, c"hello", b'C', &mut buffer[10..15]);
+    let n = lfs_getattr(lfs, "hello", b'C', &mut buffer[10..15]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[0..4], b"aaaa");
     assert_eq!(&buffer[4..10], b"bbbbbb");
     assert_eq!(&buffer[10..15], b"ccccc");
 
-    assert_ok(lfs_setattr(lfs, c"hello", b'B', b"", 0));
-    let n = lfs_getattr(lfs, c"hello", b'B', &mut buffer[4..10]);
+    assert_ok(lfs_setattr(lfs, "hello", b'B', b"", 0));
+    let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]);
     assert_eq!(n, Ok(0));
     assert_eq!(&buffer[4..10], b"\0\0\0\0\0\0");
 
-    assert_ok(lfs_removeattr(lfs, c"hello", b'B'));
-    let err = lfs_getattr(lfs, c"hello", b'B', &mut buffer[4..10]);
+    assert_ok(lfs_removeattr(lfs, "hello", b'B'));
+    let err = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]);
     assert_err(Error::NoAttribute, err);
 
-    assert_ok(lfs_setattr(lfs, c"hello", b'B', b"dddddd", 6));
-    assert_ok(lfs_setattr(lfs, c"hello", b'B', b"eee", 3));
+    assert_ok(lfs_setattr(lfs, "hello", b'B', b"dddddd", 6));
+    assert_ok(lfs_setattr(lfs, "hello", b'B', b"eee", 3));
 
     let oversized = vec![0u8; ATTR_MAX + 1];
-    let err = lfs_setattr(lfs, c"hello", b'A', &oversized, (ATTR_MAX + 1) as u32);
+    let err = lfs_setattr(lfs, "hello", b'A', &oversized, (ATTR_MAX + 1) as u32);
     assert_err(Error::NoSpace, err);
 
-    assert_ok(lfs_setattr(lfs, c"hello", b'B', b"fffffffff", 9));
+    assert_ok(lfs_setattr(lfs, "hello", b'B', b"fffffffff", 9));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    let n = lfs_getattr(lfs, c"hello", b'B', &mut buffer[4..13]);
+    let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..13]);
     assert_eq!(n, Ok(9));
     assert_eq!(&buffer[4..13], b"fffffffff");
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, c"hello/hello", LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, "hello/hello", LFS_O_RDONLY));
     let n = lfs_file_read(lfs, file, &mut buffer[..32]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
@@ -104,12 +104,12 @@ fn test_attrs_get_set_root() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, c"hello"));
+    assert_ok(lfs_mkdir(lfs, "hello"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"hello/hello",
+        "hello/hello",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let n = lfs_file_write(lfs, file, b"hello");
@@ -122,41 +122,41 @@ fn test_attrs_get_set_root() {
 
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("/").as_c_str(),
+        path_bytes("/"),
         b'A',
         b"aaaa",
         4,
     ));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("/").as_c_str(),
+        path_bytes("/"),
         b'B',
         b"bbbbbb",
         6,
     ));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("/").as_c_str(),
+        path_bytes("/"),
         b'C',
         b"ccccc",
         5,
     ));
 
-    let n = lfs_getattr(lfs, path_bytes("/").as_c_str(), b'A', &mut buffer[..4]);
+    let n = lfs_getattr(lfs, path_bytes("/"), b'A', &mut buffer[..4]);
     assert_eq!(n, Ok(4));
-    let n = lfs_getattr(lfs, path_bytes("/").as_c_str(), b'B', &mut buffer[4..10]);
+    let n = lfs_getattr(lfs, path_bytes("/"), b'B', &mut buffer[4..10]);
     assert_eq!(n, Ok(6));
-    let n = lfs_getattr(lfs, path_bytes("/").as_c_str(), b'C', &mut buffer[10..15]);
+    let n = lfs_getattr(lfs, path_bytes("/"), b'C', &mut buffer[10..15]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[0..4], b"aaaa");
     assert_eq!(&buffer[4..10], b"bbbbbb");
     assert_eq!(&buffer[10..15], b"ccccc");
 
-    assert_ok(lfs_setattr(lfs, path_bytes("/").as_c_str(), b'B', b"", 0));
-    assert_ok(lfs_removeattr(lfs, c"/", b'B'));
+    assert_ok(lfs_setattr(lfs, path_bytes("/"), b'B', b"", 0));
+    assert_ok(lfs_removeattr(lfs, "/", b'B'));
     assert_ok(lfs_setattr(
         lfs,
-        path_bytes("/").as_c_str(),
+        path_bytes("/"),
         b'B',
         b"fffffffff",
         9,
@@ -165,14 +165,14 @@ fn test_attrs_get_set_root() {
 
     assert_ok(lfs_mount(lfs, &env.config));
     let mut buffer = [0u8; 1024];
-    let n = lfs_getattr(lfs, path_bytes("/").as_c_str(), b'A', &mut buffer[..4]);
+    let n = lfs_getattr(lfs, path_bytes("/"), b'A', &mut buffer[..4]);
     assert_eq!(n, Ok(4));
-    let n = lfs_getattr(lfs, path_bytes("/").as_c_str(), b'B', &mut buffer[4..13]);
+    let n = lfs_getattr(lfs, path_bytes("/"), b'B', &mut buffer[4..13]);
     assert_eq!(n, Ok(9));
     assert_eq!(&buffer[4..13], b"fffffffff");
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, c"hello/hello", LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, "hello/hello", LFS_O_RDONLY));
     let n = lfs_file_read(lfs, file, &mut buffer[..32]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
@@ -192,12 +192,12 @@ fn test_attrs_get_set_file() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, c"hello"));
+    assert_ok(lfs_mkdir(lfs, "hello"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"hello/hello",
+        "hello/hello",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let n = lfs_file_write(lfs, file, b"hello");
@@ -233,7 +233,7 @@ fn test_attrs_get_set_file() {
     assert_ok(lfs_file_opencfg(
         lfs,
         file,
-        c"hello/hello",
+        "hello/hello",
         LFS_O_WRONLY,
         &mut cfg,
     ));
@@ -265,7 +265,7 @@ fn test_attrs_get_set_file() {
     assert_ok(lfs_file_opencfg(
         lfs,
         file,
-        c"hello/hello",
+        "hello/hello",
         LFS_O_RDONLY,
         &mut cfg_read,
     ));
@@ -278,7 +278,7 @@ fn test_attrs_get_set_file() {
 
     assert_ok(lfs_mount(lfs, &env.config));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, c"hello/hello", LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, "hello/hello", LFS_O_RDONLY));
     let n = lfs_file_read(lfs, file, &mut buffer[..32]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
@@ -298,12 +298,12 @@ fn test_attrs_deferred_file() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, c"hello"));
+    assert_ok(lfs_mkdir(lfs, "hello"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"hello/hello",
+        "hello/hello",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let n = lfs_file_write(lfs, file, b"hello");
@@ -312,11 +312,11 @@ fn test_attrs_deferred_file() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_setattr(lfs, c"hello/hello", b'B', b"fffffffff", 9));
-    assert_ok(lfs_setattr(lfs, c"hello/hello", b'C', b"ccccc", 5));
+    assert_ok(lfs_setattr(lfs, "hello/hello", b'B', b"fffffffff", 9));
+    assert_ok(lfs_setattr(lfs, "hello/hello", b'C', b"ccccc", 5));
 
     let mut buffer = [0u8; 1024];
-    let n = lfs_getattr(lfs, c"hello/hello", b'B', &mut buffer[..9]);
+    let n = lfs_getattr(lfs, "hello/hello", b'B', &mut buffer[..9]);
     assert_eq!(n, Ok(9));
     assert_eq!(&buffer[..9], b"fffffffff");
 
@@ -348,14 +348,14 @@ fn test_attrs_deferred_file() {
     assert_ok(lfs_file_opencfg(
         lfs,
         file,
-        c"hello/hello",
+        "hello/hello",
         LFS_O_WRONLY,
         &mut cfg,
     ));
 
     assert_ok(lfs_file_sync(lfs, file));
 
-    let n = lfs_getattr(lfs, c"hello/hello", b'B', &mut buffer[..9]);
+    let n = lfs_getattr(lfs, "hello/hello", b'B', &mut buffer[..9]);
     assert_eq!(n, Ok(4));
     assert_eq!(&buffer[..9], b"gggg\0\0\0\0\0");
 
