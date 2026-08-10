@@ -373,11 +373,11 @@ fn test_orphans_reentrant() {
                     let full_path = "/".to_string() + &components.join("/");
 
                     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-                    let res = lfs_stat(lfs_ptr, path_bytes(&full_path).as_c_str(), info);
+                    let res = lfs_stat(lfs_ptr, path_bytes(&full_path), info);
                     if res == Err(Error::NoEntry) {
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
-                            let err = lfs_mkdir(lfs_ptr, path_bytes(&sub).as_c_str());
+                            let err = lfs_mkdir(lfs_ptr, path_bytes(&sub));
                             if err.is_err() && err != Err(Error::Exists) {
                                 return err;
                             }
@@ -385,7 +385,7 @@ fn test_orphans_reentrant() {
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
 
-                            lfs_stat(lfs_ptr, path_bytes(&sub).as_c_str(), info)?;
+                            lfs_stat(lfs_ptr, path_bytes(&sub), info)?;
 
                             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
                             let name = core::str::from_utf8(&info.name[..nul]).unwrap();
@@ -406,12 +406,12 @@ fn test_orphans_reentrant() {
                         }
                         for d in (0..depth).rev() {
                             let sub = "/".to_string() + &components[..=d].join("/");
-                            let err = lfs_remove(lfs_ptr, path_bytes(&sub).as_c_str());
+                            let err = lfs_remove(lfs_ptr, path_bytes(&sub));
                             if err.is_err() && err != Err(Error::NotEmpty) {
                                 return err;
                             }
                         }
-                        let r = lfs_stat(lfs_ptr, path_bytes(&full_path).as_c_str(), info);
+                        let r = lfs_stat(lfs_ptr, path_bytes(&full_path), info);
                         if r != Err(Error::NoEntry) {
                             return Err(if let Err(r) = r { r } else { Error::Invalid });
                         }

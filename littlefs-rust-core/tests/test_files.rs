@@ -502,7 +502,7 @@ fn test_files_many() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         let content = format!("Hi {:03}\0", i);
@@ -513,7 +513,7 @@ fn test_files_many() {
         assert_ok(lfs_file_close(lfs, file));
 
         let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
         let mut buf = [0u8; 32];
         let n = lfs_file_read(lfs, rfile, &mut buf[..7]);
         assert_eq!(n, Ok(7));
@@ -543,7 +543,7 @@ fn test_files_many_power_cycle() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         let content = format!("Hi {:03}\0", i);
@@ -556,7 +556,7 @@ fn test_files_many_power_cycle() {
 
         assert_ok(lfs_mount(lfs, &env.config));
         let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
         let mut buf = [0u8; 32];
         let n = lfs_file_read(lfs, rfile, &mut buf[..7]);
         assert_eq!(n, Ok(7));
@@ -600,7 +600,7 @@ fn test_files_many_power_loss() {
             littlefs_rust_core::lfs_file_open(
                 lfs,
                 file,
-                path.as_c_str(),
+                path,
                 LFS_O_WRONLY | LFS_O_CREAT,
             )?;
             let content = format!("Hi {:03}\0", i);
@@ -614,7 +614,7 @@ fn test_files_many_power_loss() {
             littlefs_rust_core::lfs_file_close(lfs, file)?;
 
             let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            littlefs_rust_core::lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY)?;
+            littlefs_rust_core::lfs_file_open(lfs, rfile, path, LFS_O_RDONLY)?;
             let mut buf = [0u8; 32];
             let n = littlefs_rust_core::lfs_file_read(lfs, rfile, &mut buf[..7])?;
             assert_eq!(n, 7);
@@ -739,7 +739,7 @@ fn test_files_truncate_api() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_c_str(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     let data = b"hello world";
@@ -752,7 +752,7 @@ fn test_files_truncate_api() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), 5);
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf[..32]);

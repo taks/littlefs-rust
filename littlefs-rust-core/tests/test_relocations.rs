@@ -49,7 +49,7 @@ fn test_relocations_dangling_split_dir(#[values(8, 1)] block_cycles: i32) {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
         let n = lfs_file_write(lfs, file, b"x");
@@ -60,7 +60,7 @@ fn test_relocations_dangling_split_dir(#[values(8, 1)] block_cycles: i32) {
     for i in 0..COUNT {
         let path = path_bytes(&format!("d0/f{i}"));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok(lfs_stat(lfs, path.as_c_str(), info));
+        assert_ok(lfs_stat(lfs, path, info));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(
             core::str::from_utf8(&info.name[..nul]).unwrap(),
@@ -88,7 +88,7 @@ fn test_relocations_outdated_head(#[values(8, 1)] block_cycles: i32) {
     assert_ok(lfs_mount(lfs, &env.config));
 
     for i in 0..3 {
-        assert_ok(lfs_mkdir(lfs, path_bytes(&format!("d{i}")).as_c_str()));
+        assert_ok(lfs_mkdir(lfs, path_bytes(&format!("d{i}"))));
     }
     assert_ok(lfs_mkdir(lfs, c"d0/sub"));
     for i in 0..COUNT {
@@ -97,7 +97,7 @@ fn test_relocations_outdated_head(#[values(8, 1)] block_cycles: i32) {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
         let n = lfs_file_write(lfs, file, b"x");
@@ -151,16 +151,16 @@ fn test_relocations_nonreentrant(
         for i in 0..files {
             let name = format!("{}", (b'a' + i as u8) as char);
             let path = path_bytes(&name);
-            let _ = lfs_mkdir(lfs, path.as_c_str());
+            let _ = lfs_mkdir(lfs, path);
         }
         for i in 0..files {
             let name = format!("{}", (b'a' + i as u8) as char);
             let path = path_bytes(&name);
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-            assert_ok(lfs_stat(lfs, path.as_c_str(), info));
+            assert_ok(lfs_stat(lfs, path, info));
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), name);
-            assert_ok(lfs_remove(lfs, path.as_c_str()));
+            assert_ok(lfs_remove(lfs, path));
         }
     }
 
@@ -197,7 +197,7 @@ fn test_relocations_nonreentrant_renames(
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
         assert_ok(lfs_file_close(lfs, file));
@@ -255,7 +255,7 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
                 for i in 0..files {
                     let name = format!("{}", (b'a' + i as u8) as char);
                     let path = path_bytes(&name);
-                    let err = lfs_mkdir(lfs_ptr, path.as_c_str());
+                    let err = lfs_mkdir(lfs_ptr, path);
                     if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
                         return err;
@@ -265,12 +265,12 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
                     let name = format!("{}", (b'a' + i as u8) as char);
                     let path = path_bytes(&name);
                     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-                    let err = lfs_stat(lfs_ptr, path.as_c_str(), info);
+                    let err = lfs_stat(lfs_ptr, path, info);
                     if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
                         return err;
                     }
-                    let err = lfs_remove(lfs_ptr, path.as_c_str());
+                    let err = lfs_remove(lfs_ptr, path);
                     if err.is_err() {
                         let _ = lfs_unmount(lfs_ptr);
                         return err;
@@ -319,7 +319,7 @@ fn test_relocations_reentrant_renames(
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
         assert_ok(lfs_file_close(lfs, file));

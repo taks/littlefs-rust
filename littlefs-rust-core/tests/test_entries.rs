@@ -44,7 +44,7 @@ fn test_entries_grow() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
         let n = lfs_file_write(lfs, file, &buf[..size]);
@@ -74,7 +74,7 @@ fn test_entries_grow() {
         let path = path_bytes(&format!("hi{i}"));
         let size = if i == 1 { 200 } else { 20 };
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
         let n = lfs_file_read(lfs, file, &mut rb[..size]);
         assert_eq!(n, Ok(size as u32));
         assert_eq!(&rb[..size], &buf[..size]);
@@ -103,7 +103,7 @@ fn test_entries_shrink() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
         let n = lfs_file_write(lfs, file, &buf[..size]);
@@ -133,7 +133,7 @@ fn test_entries_shrink() {
         let path = path_bytes(&format!("hi{i}"));
         let size = 20;
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
         let n = lfs_file_read(lfs, file, &mut rb[..size]);
         assert_eq!(n, Ok(size as u32));
         assert_eq!(&rb[..size], &buf[..size]);
@@ -161,7 +161,7 @@ fn test_entries_spill() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
         let n = lfs_file_write(lfs, file, &buf[..200]);
@@ -173,7 +173,7 @@ fn test_entries_spill() {
     for i in 0..4 {
         let path = path_bytes(&format!("hi{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
         let n = lfs_file_read(lfs, file, &mut rb[..200]);
         assert_eq!(n, Ok(200));
         assert_eq!(&rb[..200], &buf[..200]);
@@ -213,7 +213,7 @@ fn test_entries_push_spill() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
         let n = lfs_file_write(lfs, file, &buf[..size]);
@@ -242,7 +242,7 @@ fn test_entries_push_spill() {
     for i in 0..4 {
         let path = path_bytes(&format!("hi{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
         let n = lfs_file_read(lfs, file, &mut rb[..200]);
         assert_eq!(n, Ok(200));
         assert_ok(lfs_file_close(lfs, file));
@@ -270,7 +270,7 @@ fn test_entries_drop() {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
         ));
         let n = lfs_file_write(lfs, file, &buf[..size]);
@@ -294,7 +294,7 @@ fn test_entries_drop() {
     for i in 0..4 {
         let path = path_bytes(&format!("hi{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
         let n = lfs_file_read(lfs, file, &mut rb[..20]);
         assert_eq!(n, Ok(20));
         assert_ok(lfs_file_close(lfs, file));
@@ -322,7 +322,7 @@ fn test_entries_create_too_big() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_c_str(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(lfs, file, &wbuf[..size]);
@@ -330,7 +330,7 @@ fn test_entries_create_too_big() {
     assert_ok(lfs_file_close(lfs, file));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     let mut rbuf = [0u8; 1024];
     let n = lfs_file_read(lfs, file, &mut rbuf[..size]);
     assert_eq!(n, Ok(size as u32));
@@ -362,7 +362,7 @@ fn test_entries_resize_too_big() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_c_str(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(lfs, file, &wbuf[..40]);
@@ -371,7 +371,7 @@ fn test_entries_resize_too_big() {
 
     // Read 40 bytes
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     let n = lfs_file_read(lfs, file, &mut rbuf[..40]);
     assert_eq!(n, Ok(40));
     assert_eq!(&rbuf[..40], &wbuf[..40]);
@@ -382,7 +382,7 @@ fn test_entries_resize_too_big() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_c_str(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n = lfs_file_write(lfs, file, &wbuf[..400]);
@@ -391,7 +391,7 @@ fn test_entries_resize_too_big() {
 
     // Read 400 bytes
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     let n = lfs_file_read(lfs, file, &mut rbuf[..400]);
     assert_eq!(n, Ok(400));
     assert_eq!(&rbuf[..400], &wbuf[..400]);
