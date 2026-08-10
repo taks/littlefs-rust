@@ -1,5 +1,3 @@
-use alloc::vec;
-use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::ffi::c_void;
 use littlefs_rust_core::error::Error;
@@ -13,7 +11,7 @@ use crate::file::File;
 use crate::metadata::{DirEntry, Metadata, OpenFlags};
 use crate::storage::Storage;
 
-type Bytes<SIZE> = hybrid_array::Array<u8, SIZE>;
+pub(crate) type Bytes<SIZE> = hybrid_array::Array<u8, SIZE>;
 
 struct Cache<S: Storage> {
     read: Bytes<S::CACHE_SIZE>,

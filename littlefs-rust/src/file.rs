@@ -1,22 +1,31 @@
-use alloc::boxed::Box;
-use alloc::vec;
-use alloc::vec::Vec;
+use core::cell::UnsafeCell;
+
 use littlefs_rust_core::error::Error;
 
 use littlefs_rust_core::{LfsFile, LfsFileConfig};
 
-use crate::filesystem::Filesystem;
+use crate::filesystem::{Bytes, Filesystem};
 use crate::metadata::{OpenFlags, SeekFrom};
 use crate::storage::Storage;
 
-pub(crate) struct FileAllocation<'a> {
+pub struct FileAllocation<'a, S: Storage> {
     pub(crate) file: LfsFile<'a>,
-    _cache: Vec<u8>,
+    cache: UnsafeCell<Bytes<S::CACHE_SIZE>>,
     pub(crate) file_config: LfsFileConfig<'a>,
 }
 
-impl FileAllocation<'_> {
-    pub(crate) fn new(cache_size: u32) -> Self {
+impl<S: Storage> Default for FileAllocation<'_, S> {
+    fn default() -> Self {
+        Self {
+            file: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
+            cache: Default::default(),
+            file_config: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
+        }
+    }
+}
+
+impl<S: Storage> FileAllocation<'_, S>{
+    pub(crate) fn new() -> Self {
         let mut cache = vec![0u8; cache_size as usize];
         let file_config = LfsFileConfig {
             buffer: unsafe { core::mem::transmute::<&mut [u8], &mut [u8]>(cache.as_mut_slice()) },
@@ -41,7 +50,11 @@ pub struct File<'a, S: Storage> {
 }
 
 impl<'a, S: Storage> File<'a, S> {
-    pub(crate) fn open(fs: &'a Filesystem<'a, S>, path: &str, flags: OpenFlags) -> Result<Self, Error> {
+    pub(crate) fn open(
+        fs: &'a Filesystem<'a, S>,
+        path: &str,
+        flags: OpenFlags,
+    ) -> Result<Self, Error> {
         let mut alloc = Box::new(FileAllocation::new(fs.cache_size()));
         {
             let mut inner = fs.alloc.borrow_mut();
