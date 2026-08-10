@@ -310,7 +310,7 @@ fn test_dirs_many_reentrant() {
                     }
                 }
                 for i in 0..n {
-                    let path = (&format!("hello{i:03}"));
+                    let path = &format!("hello{i:03}");
                     let err = lfs_remove(lfs_ptr, path);
                     if err.is_err() && err != Err(Error::NoEntry) {
                         return err;
@@ -590,7 +590,7 @@ fn test_dirs_file_reentrant() {
                 let file =
                     &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
                 for i in 0..n {
-                    let path = (&format!("hi{i:03}"));
+                    let path = &format!("hi{i:03}");
                     if lfs_file_open(lfs_ptr, file, path, LFS_O_CREAT | LFS_O_WRONLY).is_err() {
                         return Err(Error::Invalid);
                     }
@@ -599,7 +599,7 @@ fn test_dirs_file_reentrant() {
                     }
                 }
                 for i in 0..n {
-                    let path = (&format!("hello{i:03}"));
+                    let path = &format!("hello{i:03}");
                     let err = lfs_remove(lfs_ptr, path);
                     if err.is_err() && err != Err(Error::NoEntry) {
                         return err;
