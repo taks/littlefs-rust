@@ -303,7 +303,7 @@ fn test_dirs_many_reentrant() {
                 }
 
                 for i in 0..n {
-                    let path = (&format!("hi{i:03}"));
+                    let path = &format!("hi{i:03}");
                     let err = lfs_mkdir(lfs_ptr, path);
                     if err.is_err() && err != Err(Error::Exists) {
                         return err;
@@ -347,8 +347,8 @@ fn test_dirs_many_reentrant() {
                 }
 
                 for i in 0..n {
-                    let old = (&format!("hi{i:03}"));
-                    let new = (&format!("hello{i:03}"));
+                    let old = &format!("hi{i:03}");
+                    let new = &format!("hello{i:03}");
                     if lfs_rename(lfs_ptr, old, new).is_err() {
                         return Err(Error::Invalid);
                     }
@@ -382,7 +382,7 @@ fn test_dirs_many_reentrant() {
                 }
 
                 for i in 0..n {
-                    let path = (&format!("hello{i:03}"));
+                    let path = &format!("hello{i:03}");
                     if lfs_remove(lfs_ptr, path).is_err() {
                         return Err(Error::Invalid);
                     }
@@ -640,8 +640,8 @@ fn test_dirs_file_reentrant() {
                 }
 
                 for i in 0..n {
-                    let old = (&format!("hi{i:03}"));
-                    let new = (&format!("hello{i:03}"));
+                    let old = &format!("hi{i:03}");
+                    let new = &format!("hello{i:03}");
                     if lfs_rename(lfs_ptr, old, new).is_err() {
                         return Err(Error::Invalid);
                     }
@@ -679,7 +679,7 @@ fn test_dirs_file_reentrant() {
                 }
 
                 for i in 0..n {
-                    let path = (&format!("hello{i:03}"));
+                    let path = &format!("hello{i:03}");
                     if lfs_remove(lfs_ptr, path).is_err() {
                         return Err(Error::Invalid);
                     }

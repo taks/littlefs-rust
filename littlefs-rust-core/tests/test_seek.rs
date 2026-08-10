@@ -541,7 +541,7 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
 
     assert_eq!(
         lfs_file_seek(lfs, file, (count as i32) * (size as i32), LFS_SEEK_SET,),
-        Ok((count as u32) * (size as u32))
+        Ok(count * (size as u32))
     );
     let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
     assert_eq!(n, Ok(KITTY.len() as u32));
@@ -635,14 +635,14 @@ fn test_seek_inline_write(#[case] size: u32) {
 
         if i < size - 2 {
             let mut buf3 = [0u8; 3];
-            assert_eq!(lfs_file_seek(lfs, file, -1, LFS_SEEK_CUR), Ok(i as u32));
+            assert_eq!(lfs_file_seek(lfs, file, -1, LFS_SEEK_CUR), Ok(i));
             let n = lfs_file_read(lfs, file, &mut buf3);
             assert_eq!(n, Ok(3));
             assert_eq!(lfs_file_tell(lfs, file), (i + 3) as i32);
             assert_eq!(lfs_file_size(lfs, file), size as i32);
             assert_eq!(
                 lfs_file_seek(lfs, file, (i + 1) as i32, LFS_SEEK_SET),
-                Ok((i + 1) as u32)
+                Ok(i + 1)
             );
             assert_eq!(lfs_file_tell(lfs, file), (i + 1) as i32);
             assert_eq!(lfs_file_size(lfs, file), size as i32);
@@ -745,7 +745,7 @@ fn test_seek_reentrant_write(#[case] count: u32) {
         let mut off: u32 = 0;
         for _ in 0..count {
             off = (5 * off + 1) % count;
-            let pos = (off * 11) as u32;
+            let pos = off * 11;
             let seek_res = littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET)?;
             if seek_res != pos {
                 return Err(Error::Invalid);
