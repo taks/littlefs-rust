@@ -385,7 +385,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
                 let chunk = lfs_min(HAIR.len() as u32, LARGE - j);
                 let n = littlefs_rust_core::lfs_file_write(lfs_ptr, file, &HAIR[..chunk as usize])?;
 
-                assert_eq!(n, chunk as u32);
+                assert_eq!(n, chunk);
                 j += chunk;
             }
             littlefs_rust_core::lfs_file_close(lfs_ptr, file)?;

@@ -179,7 +179,7 @@ pub fn lfs_bd_read(
                         size -= diff;
                         continue;
                     }
-                    diff = lfs_min(diff, pcache.off - off);
+                    diff = diff.min(pcache.off - off);
                 }
             }
 
