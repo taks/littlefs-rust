@@ -254,7 +254,7 @@ pub fn lfs_mkdir(lfs: &mut Lfs, path: &str) -> Result<(), Error> {
 
 /// Open a directory. Per lfs.h lfs_dir_open (lfs.c:6511-6515).
 #[inline(never)]
-pub fn lfs_dir_open(lfs: &mut Lfs, dir: &mut LfsDir, path: &CStr) -> Result<(), Error> {
+pub fn lfs_dir_open(lfs: &mut Lfs, dir: &mut LfsDir, path: &str) -> Result<(), Error> {
     crate::dir::open::lfs_dir_open_(lfs, dir, path)
 }
 
