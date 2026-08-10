@@ -15,11 +15,9 @@ use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3
 use crate::types::{lfs_size_t, lfs_tag_t};
 use crate::util::{lfs_min, lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 
-// Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2 (positive = not error)
-const LFS_CMP_EQ: i32 = 0;
-const LFS_CMP_LT: i32 = 1;
-const LFS_CMP_GT: i32 = 2;
-
+const LFS_CMP_EQ: core::cmp::Ordering = core::cmp::Ordering::Equal;
+const LFS_CMP_LT: core::cmp::Ordering = core::cmp::Ordering::Less;
+const LFS_CMP_GT: core::cmp::Ordering = core::cmp::Ordering::Greater;
 /// Per lfs.c struct lfs_dir_find_match (lines 1447-1475)
 #[repr(C)]
 pub struct LfsDirFindMatch<'a> {
@@ -67,9 +65,9 @@ pub fn lfs_dir_find_match(
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: &lfs_diskoff,
-) -> Result<i32, Error> {
+) -> Result<core::cmp::Ordering, Error> {
     if data.is_null() {
-        return Ok(LFS_CMP_LT);
+        return Ok(core::cmp::Ordering::Less);
     }
     unsafe {
         let name = &*(data as *const LfsDirFindMatch);
@@ -87,14 +85,14 @@ pub fn lfs_dir_find_match(
             name.name.as_ptr(),
             diff,
         );
-        if res != Ok(LFS_CMP_EQ) {
+        if res != Ok(core::cmp::Ordering::Equal) {
             return res;
         }
         if name.size != lfs_tag_size(tag) {
             return if name.size < lfs_tag_size(tag) {
-                Ok(LFS_CMP_LT)
+                Ok(core::cmp::Ordering::Less)
             } else {
-                Ok(LFS_CMP_GT)
+                Ok(core::cmp::Ordering::Greater)
             };
         }
         Ok(LFS_CMP_EQ)

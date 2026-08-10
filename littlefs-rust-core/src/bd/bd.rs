@@ -213,7 +213,7 @@ pub fn lfs_bd_read(
                 )?;
 
                 data = data_.1;
-                off += (diff as u32);
+                off += diff;
                 size -= diff;
                 continue;
             }
@@ -287,17 +287,13 @@ pub fn lfs_bd_cmp(
     off: lfs_off_t,
     buffer: *const u8,
     size: lfs_size_t,
-) -> Result<i32, Error> {
-    // Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2 (positive = not error)
-    const LFS_CMP_EQ: i32 = 0;
-    const LFS_CMP_LT: i32 = 1;
-    const LFS_CMP_GT: i32 = 2;
+) -> Result<core::cmp::Ordering, Error> {
 
     let mut i: lfs_off_t = 0;
     while i < size {
         let mut dat = [0u8; 8];
         let diff = lfs_min(size - i, 8) as usize;
-        let err = lfs_bd_read(
+        lfs_bd_read(
             lfs,
             pcache,
             rcache,
@@ -314,12 +310,12 @@ pub fn lfs_bd_cmp(
         };
         match res {
             core::cmp::Ordering::Equal => {}
-            core::cmp::Ordering::Less => return Ok(LFS_CMP_LT),
-            core::cmp::Ordering::Greater => return Ok(LFS_CMP_GT),
+            core::cmp::Ordering::Less => return Ok(core::cmp::Ordering::Less),
+            core::cmp::Ordering::Greater => return Ok(core::cmp::Ordering::Greater),
         }
         i += diff as lfs_off_t;
     }
-    Ok(LFS_CMP_EQ)
+    Ok(core::cmp::Ordering::Equal)
 }
 
 /// Per lfs.c lfs_bd_crc (lines 155-175)
@@ -467,7 +463,7 @@ pub fn lfs_bd_flush(
                 );
                 res?;
                 if let Ok(res) = res
-                    && res != 0
+                    && res != core::cmp::Ordering::Equal
                 {
                     return crate::lfs_err!(Err(Error::Corrupt));
                 }

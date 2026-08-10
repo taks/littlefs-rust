@@ -320,14 +320,10 @@ pub fn lfs_dir_fetchmatch(
     _ftag: lfs_tag_t,
     _id: &mut Option<&mut u16>,
     #[allow(clippy::type_complexity)] cb: Option<
-        fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<i32, Error>,
+        fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>,
     >,
     data: *mut core::ffi::c_void,
 ) -> Result<lfs_tag_t, Error> {
-    // Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2
-    const LFS_CMP_EQ: i32 = 0;
-    const LFS_CMP_LT: i32 = 1;
-    const LFS_CMP_GT: i32 = 2;
 
     unsafe {
         let cfg = &*lfs.cfg;
@@ -587,13 +583,13 @@ pub fn lfs_dir_fetchmatch(
                             }
                         };
 
-                        if res == LFS_CMP_EQ {
+                        if res == core::cmp::Ordering::Equal {
                             tempbesttag = tag as lfs_stag_t;
                         } else if (lfs_mktag(0x7ff, 0x3ff, 0) & tag)
                             == (lfs_mktag(0x7ff, 0x3ff, 0) & tempbesttag as lfs_tag_t)
                         {
                             tempbesttag = -1;
-                        } else if res == LFS_CMP_GT
+                        } else if res == core::cmp::Ordering::Greater
                             && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
                         {
                             tempbesttag = (tag | 0x8000_0000) as lfs_stag_t;

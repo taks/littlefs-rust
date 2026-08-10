@@ -4,12 +4,12 @@ use core::ffi::CStr;
 use zerocopy::IntoBytes;
 
 use crate::borrow_unchecked::borrow_unchecked;
-use crate::dir::LfsDir;
 use crate::dir::fetch::{lfs_dir_fetch, lfs_dir_getinfo};
 use crate::dir::find::lfs_dir_find;
 use crate::dir::lfs_mlist::lfs_mlist_append;
 use crate::dir::lfs_mlist::lfs_mlist_remove;
 use crate::dir::traverse::lfs_dir_get;
+use crate::dir::{LfsDir, LfsMlist};
 use crate::error::Error;
 use crate::lfs_info::LfsInfo;
 use crate::lfs_type::lfs_type::LFS_TYPE_DIR;
@@ -102,7 +102,7 @@ pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &str) -> 
         dir.id = 0;
         dir.pos = 0;
         dir.type_ = LFS_TYPE_DIR as u8;
-        lfs_mlist_append(lfs, ::core::mem::transmute(dir));
+        lfs_mlist_append(lfs, dir as *mut LfsDir as *mut LfsMlist);
 
         Ok(())
     }
