@@ -190,11 +190,11 @@ fn test_attrs_get_set_file() {
     let mut attrs = [
         LfsAttr {
             type_: b'A',
-            buffer: unsafe { core::mem::transmute(&mut buffer[0..4]) },
+            buffer: unsafe { core::mem::transmute::<&mut [u8], &mut [u8]>(&mut buffer[0..4]) },
         },
         LfsAttr {
             type_: b'B',
-            buffer: unsafe { core::mem::transmute(&mut buffer[4..10]) },
+            buffer: unsafe { core::mem::transmute::<&mut [u8], &mut [u8]>(&mut buffer[4..10]) },
         },
         LfsAttr {
             type_: b'C',
@@ -219,12 +219,12 @@ fn test_attrs_get_set_file() {
     let mut attrs_read = [
         LfsAttr {
             type_: b'A',
-            buffer: unsafe { core::mem::transmute(&mut buffer[0..4]) },
+            buffer: unsafe { core::mem::transmute::<&mut [u8], &mut [u8]>(&mut buffer[0..4]) },
             // size: 4,
         },
         LfsAttr {
             type_: b'B',
-            buffer: unsafe { core::mem::transmute(&mut buffer[4..10]) },
+            buffer: unsafe { core::mem::transmute::<&mut [u8], &mut [u8]>(&mut buffer[4..10]) },
             // size: 6,
         },
         LfsAttr {
@@ -302,7 +302,7 @@ fn test_attrs_deferred_file() {
     let mut attrs = [
         LfsAttr {
             type_: b'B',
-            buffer: unsafe { core::mem::transmute(attr_buf[0..4].as_mut_bytes()) },
+            buffer: unsafe { core::mem::transmute::<&mut [u8], &mut [u8]>(attr_buf[0..4].as_mut_bytes()) },
             // size: 4,
         },
         LfsAttr {

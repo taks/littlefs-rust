@@ -183,10 +183,10 @@ pub fn lfs_dir_read_(
     dir: &mut LfsDir,
     info: &mut LfsInfo,
 ) -> Result<i32, Error> {
-    unsafe {
+    {
         info.type_ = 0;
         info.size = 0;
-        core::ptr::write_bytes(info.name.as_mut_ptr(), 0, info.name.len());
+        info.name.fill(0);
 
         if dir.pos == 0 {
             info.type_ = LFS_TYPE_DIR as u8;
@@ -223,7 +223,7 @@ pub fn lfs_dir_read_(
                 if !dir.m.split {
                     return Ok(0);
                 }
-                let dir_m_tail = borrow_unchecked(&dir.m.tail);
+                let dir_m_tail = unsafe { borrow_unchecked(&dir.m.tail) };
                 lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
 
                 dir.id = 0;
