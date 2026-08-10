@@ -35,11 +35,7 @@ impl<'a, S: Storage> ReadDir<'a, S> {
         let mut alloc = Box::new(DirAllocation::new());
         {
             let mut inner = fs.inner.borrow_mut();
-            littlefs_rust_core::lfs_dir_open(
-                &mut inner.lfs,
-                &mut alloc.dir,
-                path,
-            )?;
+            littlefs_rust_core::lfs_dir_open(&mut inner.lfs, &mut alloc.dir, path)?;
         }
         Ok(ReadDir {
             fs,
@@ -66,11 +62,7 @@ impl<S: Storage> Iterator for ReadDir<'_, S> {
             let mut info = unsafe { core::mem::zeroed::<LfsInfo>() };
             let rc = {
                 let mut inner = self.fs.inner.borrow_mut();
-                littlefs_rust_core::lfs_dir_read(
-                    &mut inner.lfs,
-                    &mut self.alloc.dir,
-                    &mut info,
-                )
+                littlefs_rust_core::lfs_dir_read(&mut inner.lfs, &mut self.alloc.dir, &mut info)
             };
 
             return match rc {
@@ -92,10 +84,7 @@ impl<S: Storage> Drop for ReadDir<'_, S> {
     fn drop(&mut self) {
         if !self.closed {
             if let Ok(mut inner) = self.fs.inner.try_borrow_mut() {
-                let _ = littlefs_rust_core::lfs_dir_close(
-                    &mut inner.lfs,
-                    &mut self.alloc.dir,
-                );
+                let _ = littlefs_rust_core::lfs_dir_close(&mut inner.lfs, &mut self.alloc.dir);
             }
         }
     }

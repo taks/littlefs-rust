@@ -1588,10 +1588,7 @@ pub fn lfs_file_truncate_(
 ///     return file->pos;
 /// }
 /// ```
-pub fn lfs_file_tell_(
-    _lfs: *const core::ffi::c_void,
-    file: &LfsFile,
-) -> crate::types::lfs_soff_t {
+pub fn lfs_file_tell_(_lfs: *const core::ffi::c_void, file: &LfsFile) -> crate::types::lfs_soff_t {
     file.pos as crate::types::lfs_soff_t
 }
 

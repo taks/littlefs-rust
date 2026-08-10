@@ -1,10 +1,10 @@
 use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
-use littlefs_rust_core::error::Error;
 use core::cell::RefCell;
 use core::ffi::c_void;
-use core::mem::{ManuallyDrop};
+use core::mem::ManuallyDrop;
+use littlefs_rust_core::error::Error;
 
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
@@ -53,7 +53,12 @@ fn trampoline_read<S: Storage>(
     storage.read(block, off, buffer)
 }
 
-fn trampoline_prog<S: Storage>(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
+fn trampoline_prog<S: Storage>(
+    cfg: &LfsConfig,
+    block: u32,
+    off: u32,
+    buffer: &[u8],
+) -> Result<(), Error> {
     let storage = unsafe { &mut *((*cfg).context as *mut S) };
     storage.write(block, off, buffer)
 }
@@ -132,10 +137,7 @@ impl<S: Storage> Filesystem<S> {
     pub fn format(storage: &mut S, config: &Config) -> Result<(), Error> {
         let mut inner = build_inner_borrowed(storage, config);
         wire_context_borrowed(&mut inner);
-        littlefs_rust_core::lfs_format(
-            &mut inner.lfs,
-            &inner.config,
-        )
+        littlefs_rust_core::lfs_format(&mut inner.lfs, &inner.config)
     }
 
     /// Mount an existing filesystem. Takes ownership of the storage.
@@ -145,10 +147,7 @@ impl<S: Storage> Filesystem<S> {
     pub fn mount(storage: S, config: Config) -> Result<Self, (Error, S)> {
         let mut inner = Box::new(build_inner(storage, &config));
         wire_context(&mut inner);
-        let rc = littlefs_rust_core::lfs_mount(
-            &mut inner.lfs,
-            &inner.config,
-        );
+        let rc = littlefs_rust_core::lfs_mount(&mut inner.lfs, &inner.config);
         if let Err(err) = rc {
             return Err((Error::from(err), inner.storage));
         }
@@ -238,11 +237,7 @@ impl<S: Storage> Filesystem<S> {
     /// Rename or move a file or directory.
     pub fn rename(&self, from: &str, to: &str) -> Result<(), Error> {
         let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_rename(
-            &mut inner.lfs,
-            from,
-            to,
-        )
+        littlefs_rust_core::lfs_rename(&mut inner.lfs, from, to)
     }
 
     /// Get metadata for a file or directory.
@@ -250,11 +245,7 @@ impl<S: Storage> Filesystem<S> {
         let mut info = unsafe { core::mem::zeroed::<LfsInfo>() };
         {
             let mut inner = self.inner.borrow_mut();
-            littlefs_rust_core::lfs_stat(
-                &mut inner.lfs,
-                path,
-                &mut info,
-            )?;
+            littlefs_rust_core::lfs_stat(&mut inner.lfs, path, &mut info)?;
         }
         let entry = dir_entry_from_info(&info);
         Ok(Metadata {

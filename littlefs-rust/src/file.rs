@@ -64,11 +64,7 @@ impl<'a, S: Storage> File<'a, S> {
     /// Returns the number of bytes actually read.
     pub fn read(&mut self, buf: &mut [u8]) -> Result<u32, Error> {
         let mut inner = self.fs.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_read(
-            &mut inner.lfs,
-            &mut self.alloc.file,
-            buf
-        );
+        let rc = littlefs_rust_core::lfs_file_read(&mut inner.lfs, &mut self.alloc.file, buf);
         drop(inner);
         rc
     }
@@ -76,11 +72,7 @@ impl<'a, S: Storage> File<'a, S> {
     /// Write `data` at the current position. Returns the number of bytes written.
     pub fn write(&mut self, data: &[u8]) -> Result<u32, Error> {
         let mut inner = self.fs.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_write(
-            &mut inner.lfs,
-            &mut self.alloc.file,
-            data
-        );
+        let rc = littlefs_rust_core::lfs_file_write(&mut inner.lfs, &mut self.alloc.file, data);
         drop(inner);
         rc
     }
@@ -102,21 +94,13 @@ impl<'a, S: Storage> File<'a, S> {
             ),
         };
         let mut inner = self.fs.inner.borrow_mut();
-        littlefs_rust_core::lfs_file_seek(
-            &mut inner.lfs,
-            &mut self.alloc.file,
-            off,
-            whence,
-        )
+        littlefs_rust_core::lfs_file_seek(&mut inner.lfs, &mut self.alloc.file, off, whence)
     }
 
     /// Return the current read/write position.
     pub fn tell(&mut self) -> u32 {
         let mut inner = self.fs.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_tell(
-            &mut inner.lfs,
-            &mut self.alloc.file,
-        );
+        let rc = littlefs_rust_core::lfs_file_tell(&mut inner.lfs, &mut self.alloc.file);
         drop(inner);
         rc as u32
     }
@@ -124,10 +108,7 @@ impl<'a, S: Storage> File<'a, S> {
     /// Return the file size in bytes.
     pub fn size(&self) -> u32 {
         let mut inner = self.fs.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_size(
-            &mut inner.lfs,
-            &self.alloc.file,
-        );
+        let rc = littlefs_rust_core::lfs_file_size(&mut inner.lfs, &self.alloc.file);
         drop(inner);
         rc as u32
     }
@@ -135,10 +116,7 @@ impl<'a, S: Storage> File<'a, S> {
     /// Flush cached writes to storage.
     pub fn sync(&mut self) -> Result<(), Error> {
         let mut inner = self.fs.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_sync(
-            &mut inner.lfs,
-            &mut self.alloc.file,
-        );
+        let rc = littlefs_rust_core::lfs_file_sync(&mut inner.lfs, &mut self.alloc.file);
         drop(inner);
         rc
     }
@@ -146,11 +124,7 @@ impl<'a, S: Storage> File<'a, S> {
     /// Truncate or extend the file to `size` bytes.
     pub fn truncate(&mut self, size: u32) -> Result<(), Error> {
         let mut inner = self.fs.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_truncate(
-            &mut inner.lfs,
-            &mut self.alloc.file,
-            size,
-        );
+        let rc = littlefs_rust_core::lfs_file_truncate(&mut inner.lfs, &mut self.alloc.file, size);
         drop(inner);
         rc
     }
@@ -161,10 +135,7 @@ impl<'a, S: Storage> File<'a, S> {
     pub fn close(mut self) -> Result<(), Error> {
         self.closed = true;
         let mut inner = self.fs.inner.borrow_mut();
-        littlefs_rust_core::lfs_file_close(
-            &mut inner.lfs,
-            &mut self.alloc.file,
-        )
+        littlefs_rust_core::lfs_file_close(&mut inner.lfs, &mut self.alloc.file)
     }
 }
 
@@ -172,10 +143,7 @@ impl<S: Storage> Drop for File<'_, S> {
     fn drop(&mut self) {
         if !self.closed {
             if let Ok(mut inner) = self.fs.inner.try_borrow_mut() {
-                let _ = littlefs_rust_core::lfs_file_close(
-                    &mut inner.lfs,
-                    &mut self.alloc.file,
-                );
+                let _ = littlefs_rust_core::lfs_file_close(&mut inner.lfs, &mut self.alloc.file);
             }
         }
     }

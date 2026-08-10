@@ -836,7 +836,10 @@ fn test_seek_filemax() {
         Ok(LFS_FILE_MAX as u32)
     );
 
-    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR), Ok(LFS_FILE_MAX as u32));
+    assert_eq!(
+        lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR),
+        Ok(LFS_FILE_MAX as u32)
+    );
 
     assert_eq!(
         lfs_file_seek(lfs, file, 10, LFS_SEEK_END),
