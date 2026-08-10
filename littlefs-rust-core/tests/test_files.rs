@@ -595,7 +595,7 @@ fn test_files_many_power_loss() {
             littlefs_rust_core::lfs_mount(lfs, cfg)?;
         }
         for i in 0..N {
-            let path = (&format!("file_{:03}", i));
+            let path = &format!("file_{:03}", i);
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT)?;
             let content = format!("Hi {:03}\0", i);

@@ -9,8 +9,6 @@
 
 mod common;
 
-use std::ffi::CStr;
-
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
     LFS_O_CREAT, LFS_O_WRONLY, assert_ok, config_with_cache, default_config, init_context,
@@ -135,13 +133,11 @@ fn test_relocations_nonreentrant(
 
     for _ in 0..cycles {
         for i in 0..files {
-            let name = format!("{}", (b'a' + i as u8) as char);
-            let path = (&name);
+            let path = &format!("{}", (b'a' + i as u8) as char);
             let _ = lfs_mkdir(lfs, path);
         }
         for i in 0..files {
-            let name = format!("{}", (b'a' + i as u8) as char);
-            let path = (&name);
+            let path = &format!("{}", (b'a' + i as u8) as char);
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_ok(lfs_stat(lfs, path, info));
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
@@ -177,8 +173,7 @@ fn test_relocations_nonreentrant_renames(
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    for name in ["x", "y"] {
-        let path = (name);
+    for path in ["x", "y"] {
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
         assert_ok(lfs_file_close(lfs, file));
@@ -243,8 +238,7 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
                     }
                 }
                 for i in 0..files {
-                    let name = format!("{}", (b'a' + i as u8) as char);
-                    let path = (&name);
+                    let path = &format!("{}", (b'a' + i as u8) as char);
                     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
                     let err = lfs_stat(lfs_ptr, path, info);
                     if err.is_err() {
@@ -295,7 +289,7 @@ fn test_relocations_reentrant_renames(
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
     for name in ["x", "y"] {
-        let path = (name);
+        let path = name;
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
         assert_ok(lfs_file_close(lfs, file));
@@ -335,10 +329,8 @@ fn test_relocations_reentrant_renames(
                 let _ = lfs_unmount(lfs_ptr);
                 return err;
             }
-            let err = lfs_unmount(lfs_ptr);
-            if err.is_err() {
-                return err;
-            }
+            lfs_unmount(lfs_ptr)?;
+
             Ok(())
         },
         |lfs_ptr, config| {
