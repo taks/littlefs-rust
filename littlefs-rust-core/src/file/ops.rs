@@ -16,7 +16,7 @@ use crate::lfs_type::lfs_open_flags::{
     LFS_F_DIRTY, LFS_F_ERRED, LFS_F_INLINE, LFS_F_READING, LFS_F_WRITING, LFS_O_APPEND,
     LFS_O_RDONLY,
 };
-use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
+use crate::lfs_type::lfs_type::{LFS_TYPE_INLINESTRUCT, LFS_TYPE3_REG};
 use crate::tag::lfs_mktag;
 use crate::types::LFS_BLOCK_INLINE;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
@@ -202,7 +202,7 @@ use crate::{Lfs, LfsAttr};
 pub fn lfs_file_opencfg_(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
-    path: &CStr,
+    path: &str,
     flags: i32,
     cfg: &mut LfsFileConfig,
 ) -> Result<(), Error> {
@@ -235,25 +235,25 @@ pub fn lfs_file_opencfg_(
         let mut path_ptr = path;
         let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, &mut Some(&mut file.id));
         if let Err(err) = tag
-            && !(err == Error::NoEntry && lfs_path_islast(path_ptr.to_bytes()))
+            && !(err == Error::NoEntry && lfs_path_islast(path_ptr.as_bytes()))
         {
             lfs_file_close_(lfs, file);
             return crate::lfs_pass_err!(Err(err));
         }
 
-        file.type_ = LFS_TYPE_REG as u8;
-        lfs_mlist_append(lfs, ::core::mem::transmute(::core::ptr::from_mut(file)));
+        file.type_ = LFS_TYPE_REG;
+        lfs_mlist_append(lfs, file.as_mut_lsf_mist());
 
         if tag == Err(Error::NoEntry) {
             if (flags & LFS_O_CREAT) == 0 {
                 lfs_file_close_(lfs, file);
                 return crate::lfs_err!(Err(Error::NoEntry));
             }
-            if lfs_path_isdir(path_ptr.to_bytes()) {
+            if lfs_path_isdir(path_ptr.as_bytes()) {
                 lfs_file_close_(lfs, file);
                 return Err(Error::NotDir);
             }
-            let nlen = lfs_path_namelen(path_ptr.to_bytes());
+            let nlen = lfs_path_namelen(path_ptr.as_bytes());
             if nlen > lfs.name_max {
                 lfs_file_close_(lfs, file);
                 return crate::lfs_err!(Err(Error::NameTooLong));
@@ -265,8 +265,8 @@ pub fn lfs_file_opencfg_(
                     buffer: &[],
                 },
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(LFS_TYPE_REG, file.id as u32, nlen),
-                    buffer: path_ptr.to_bytes_with_nul(),
+                    tag: lfs_mktag(LFS_TYPE3_REG, file.id as u32, nlen),
+                    buffer: path_ptr.as_bytes(),
                 },
                 crate::tag::lfs_mattr {
                     tag: lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0),
@@ -286,7 +286,7 @@ pub fn lfs_file_opencfg_(
         } else if (flags & LFS_O_EXCL) != 0 {
             lfs_file_close_(lfs, file);
             return crate::lfs_err!(Err(Error::Exists));
-        } else if u32::from(lfs_tag_type3(tag.unwrap())) != LFS_TYPE_REG {
+        } else if (lfs_tag_type3(tag.unwrap())) != LFS_TYPE3_REG {
             lfs_file_close_(lfs, file);
             return crate::lfs_err!(Err(Error::IsDir));
         } else if (flags & LFS_O_TRUNC) != 0 {
@@ -325,7 +325,7 @@ pub fn lfs_file_opencfg_(
                     &file.m,
                     lfs_mktag(0x7ff, 0x3ff, 0),
                     lfs_mktag(
-                        LFS_TYPE_USERATTR + attr.type_ as u32,
+                        LFS_TYPE_USERATTR + attr.type_ as u16,
                         file.id as u32,
                         attr.buffer.len() as u32,
                     ),
@@ -373,7 +373,7 @@ pub fn lfs_file_opencfg_(
         } else {
             tag.unwrap()
         };
-        if u32::from(lfs_tag_type3(tag_val as u32)) == LFS_TYPE_INLINESTRUCT {
+        if (lfs_tag_type3(tag_val as u32)) == LFS_TYPE_INLINESTRUCT {
             file.ctz.head = LFS_BLOCK_INLINE;
             file.ctz.size = if tag == Err(Error::NoEntry) {
                 0
@@ -424,7 +424,7 @@ static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
 pub fn lfs_file_open_(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
-    path: &CStr,
+    path: &str,
     flags: i32,
 ) -> Result<(), Error> {
     lfs_file_opencfg_(lfs, file, path, flags, unsafe {
@@ -443,9 +443,10 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
     let err = lfs_file_sync_(lfs, file);
 
     unsafe {
-        lfs_mlist_remove(lfs, ::core::mem::transmute(::core::ptr::from_mut(file)));
+        lfs_mlist_remove(lfs, file.as_mut_lsf_mist());
 
         let cfg = file.cfg;
+        #[allow(clippy::needless_borrow)]
         if !cfg.is_null() && (&(*cfg).buffer).is_empty() {
             #[cfg(feature = "alloc")]
             {
@@ -1365,7 +1366,7 @@ pub fn lfs_file_seek_(
     file: &mut LfsFile,
     off: crate::types::lfs_soff_t,
     whence: i32,
-) -> Result<crate::types::lfs_soff_t, Error> {
+) -> Result<crate::types::lfs_off_t, Error> {
     use crate::file::ctz::lfs_ctz_index;
     use crate::lfs_type::lfs_whence_flags::{LFS_SEEK_CUR, LFS_SEEK_END, LFS_SEEK_SET};
 
@@ -1408,7 +1409,7 @@ pub fn lfs_file_seek_(
         lfs_file_flush(lfs, file)?;
 
         file.pos = npos;
-        Ok(npos as crate::types::lfs_soff_t)
+        Ok(npos as crate::types::lfs_off_t)
     }
 }
 
@@ -1587,11 +1588,8 @@ pub fn lfs_file_truncate_(
 ///     return file->pos;
 /// }
 /// ```
-pub fn lfs_file_tell_(
-    _lfs: *const core::ffi::c_void,
-    file: *const LfsFile,
-) -> crate::types::lfs_soff_t {
-    unsafe { (*file).pos as crate::types::lfs_soff_t }
+pub fn lfs_file_tell_(_lfs: *const core::ffi::c_void, file: &LfsFile) -> crate::types::lfs_soff_t {
+    file.pos as crate::types::lfs_soff_t
 }
 
 /// Per lfs.c lfs_file_rewind_ (lines 3840-3850)

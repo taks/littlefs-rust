@@ -56,7 +56,7 @@ use crate::util::lfs_min;
 /// ```
 pub fn lfs_getattr_(
     lfs: &mut Lfs,
-    path: &CStr,
+    path: &str,
     r#type: u8,
     buffer: &mut [u8],
 ) -> Result<lfs_size_t, Error> {
@@ -82,7 +82,7 @@ pub fn lfs_getattr_(
             lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
         let size = lfs_min(buffer.len() as u32, lfs.attr_max);
-        let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size);
+        let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size);
         let tag =
             lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer).map_err(|err| {
                 if err == Error::NoEntry {
@@ -127,7 +127,7 @@ pub fn lfs_getattr_(
 /// ```
 pub fn lfs_commitattr(
     lfs: &mut Lfs,
-    path: &CStr,
+    path: &str,
     r#type: u8,
     buffer: &[u8],
     size: lfs_size_t,
@@ -157,7 +157,7 @@ pub fn lfs_commitattr(
         }
 
         let attrs = [lfs_mattr {
-            tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size),
+            tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size),
             buffer,
         }];
         lfs_dir_commit(lfs, &mut cwd, &attrs)
@@ -182,7 +182,7 @@ pub fn lfs_commitattr(
 /// ```
 pub fn lfs_setattr_(
     lfs: &mut Lfs,
-    path: &CStr,
+    path: &str,
     r#type: u8,
     buffer: &[u8],
     size: lfs_size_t,
@@ -204,6 +204,6 @@ pub fn lfs_setattr_(
 /// }
 /// #endif
 /// ```
-pub fn lfs_removeattr_(lfs: &mut Lfs, path: &CStr, r#type: u8) -> Result<(), Error> {
+pub fn lfs_removeattr_(lfs: &mut Lfs, path: &str, r#type: u8) -> Result<(), Error> {
     lfs_commitattr(lfs, path, r#type, &[], 0x3ff)
 }

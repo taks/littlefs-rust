@@ -30,12 +30,12 @@ use crate::types::{lfs_block_t, lfs_size_t};
 /// ```
 pub fn lfs_stat_(
     lfs: &mut super::lfs::Lfs,
-    path: &CStr,
+    path: &str,
     info: &mut crate::lfs_info::LfsInfo,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_getinfo;
     use crate::dir::find::lfs_dir_find;
-    use crate::lfs_type::lfs_type::LFS_TYPE_DIR;
+    use crate::lfs_type::lfs_type::LFS_TYPE3_DIR;
     use crate::tag::{lfs_tag_id, lfs_tag_type3};
 
     unsafe {
@@ -44,30 +44,8 @@ pub fn lfs_stat_(
 
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
-        // C: lfs.c:3872-3875 - only allow trailing slashes on dirs (strchr(path, '/') != NULL)
-        let mut p = path_ptr.as_ptr() as *const u8;
-        #[cfg(feature = "loop_limits")]
-        const MAX_STAT_PATH_ITER: u32 = 1024;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
-        while *p != 0 {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_STAT_PATH_ITER {
-                    panic!(
-                        "loop_limits: MAX_STAT_PATH_ITER ({}) exceeded",
-                        MAX_STAT_PATH_ITER
-                    );
-                }
-                iter += 1;
-            }
-            if *p == b'/' {
-                if u32::from(lfs_tag_type3(tag)) != LFS_TYPE_DIR {
-                    return Err(Error::NotDir);
-                }
-                break;
-            }
-            p = p.add(1);
+        if path_ptr.contains('/') && lfs_tag_type3(tag) != LFS_TYPE3_DIR {
+            return Err(Error::NotDir);
         }
 
         lfs_dir_getinfo(lfs, &cwd, lfs_tag_id(tag as u32), info)
@@ -120,7 +98,7 @@ pub fn lfs_stat_(
 /// ```
 pub fn lfs_fs_stat_(
     lfs: &mut super::lfs::Lfs,
-    fsinfo: *mut crate::lfs_info::LfsFsinfo,
+    fsinfo: &mut crate::lfs_info::LfsFsinfo,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::dir::traverse::lfs_dir_get;
@@ -131,8 +109,6 @@ pub fn lfs_fs_stat_(
     use crate::types::LFS_DISK_VERSION;
 
     unsafe {
-        let fsinfo = &mut *fsinfo;
-
         if !lfs_gstate_needssuperblock(&lfs.gstate) {
             fsinfo.disk_version = LFS_DISK_VERSION;
         } else {

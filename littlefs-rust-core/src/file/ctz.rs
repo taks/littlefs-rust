@@ -251,6 +251,7 @@ pub fn lfs_ctz_find(
 ///     }
 /// }
 /// ```
+#[allow(clippy::type_complexity)]
 pub fn lfs_ctz_traverse(
     lfs: &mut crate::fs::Lfs,
     pcache: Option<&crate::bd::LfsCache>,

@@ -7,8 +7,6 @@
 
 mod common;
 
-use std::ffi::CStr;
-
 use common::{
     BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok,
     config_with_wear_leveling_full, init_wear_leveling_context,
@@ -72,7 +70,7 @@ fn test_badblocks_single(
 
             // mkdir
             assert_ok(lfs_mkdir(lfs, unsafe {
-                CStr::from_ptr(buffer.as_ptr() as *const _)
+                str::from_utf8_unchecked(&buffer[..NAMEMULT])
             }));
 
             // Build file path: "dirname/dirname"
@@ -86,7 +84,7 @@ fn test_badblocks_single(
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
+                unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
                 LFS_O_WRONLY | LFS_O_CREAT,
             ));
 
@@ -108,12 +106,11 @@ fn test_badblocks_single(
             for j in 0..NAMEMULT {
                 buffer[j] = b'0' + i as u8;
             }
-            buffer[NAMEMULT] = 0;
 
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_ok(lfs_stat(
                 lfs,
-                unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
+                unsafe { str::from_utf8_unchecked(&buffer[..NAMEMULT]) },
                 info,
             ));
             assert_eq!(info.type_, LFS_TYPE_DIR);
@@ -128,7 +125,7 @@ fn test_badblocks_single(
             assert_ok(lfs_file_open(
                 lfs,
                 file,
-                unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
+                unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
                 LFS_O_RDONLY,
             ));
 
@@ -293,7 +290,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         buffer[NAMEMULT] = 0;
 
         assert_ok(lfs_mkdir(lfs, unsafe {
-            CStr::from_ptr(buffer.as_ptr() as *const _)
+            str::from_utf8_unchecked(&buffer[..NAMEMULT])
         }));
 
         buffer[NAMEMULT] = b'/';
@@ -306,7 +303,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
+            unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
 
@@ -331,7 +328,7 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok(lfs_stat(
             lfs,
-            unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
+            unsafe { str::from_utf8_unchecked(&buffer[..(NAMEMULT)]) },
             info,
         ));
         assert_eq!(info.type_, LFS_TYPE_DIR);
@@ -346,7 +343,7 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         assert_ok(lfs_file_open(
             lfs,
             file,
-            unsafe { CStr::from_ptr(buffer.as_ptr() as *const _) },
+            unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
             LFS_O_RDONLY,
         ));
 

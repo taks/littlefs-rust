@@ -53,3 +53,5 @@ pub use filesystem::Filesystem;
 pub use metadata::{DirEntry, FileType, Metadata, OpenFlags, SeekFrom};
 pub use ram::RamStorage;
 pub use storage::Storage;
+
+pub type Error = littlefs_rust_core::error::Error;

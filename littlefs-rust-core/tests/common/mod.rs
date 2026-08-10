@@ -10,7 +10,6 @@ pub mod powerloss;
 
 use core::cell::RefCell;
 use littlefs_rust_core::{LfsConfig, error::Error};
-use std::{ffi::CString, str::FromStr};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
@@ -578,11 +577,6 @@ pub fn dump_block_hex(block: &[u8], label: &str, len: usize) {
     }
 }
 
-/// Null-terminated path for lfs_* calls. Caller keeps vec in scope while using pointer.
-pub fn path_bytes(s: &str) -> CString {
-    CString::from_str(s).unwrap()
-}
-
 /// Read directory entry names (excluding "." and "..") from path. For use in dir tests.
 pub fn dir_entry_names(
     lfs: &mut littlefs_rust_core::Lfs,
@@ -591,9 +585,8 @@ pub fn dir_entry_names(
 ) -> Result<Vec<String>, Error> {
     use littlefs_rust_core::{LfsDir, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read};
 
-    let path = path_bytes(path_str);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    lfs_dir_open(lfs, dir, path.as_c_str())?;
+    lfs_dir_open(lfs, dir, path_str)?;
 
     let mut names = Vec::new();
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -649,7 +642,7 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
 
     lfs_mount(lfs, &env.config as &LfsConfig)?;
 
-    let path = c"hello";
+    let path = "hello";
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     let err = lfs_file_open(lfs, file, path, 0x0100 | 2);
@@ -684,9 +677,8 @@ pub fn dir_block(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> u32 {
 pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
     use littlefs_rust_core::{LfsDir, lfs_dir_close, lfs_dir_open};
 
-    let path = path_bytes(dir_path);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, path.as_c_str()));
+    assert_ok(lfs_dir_open(lfs, dir, dir_path));
     let pair = (dir).m.pair;
     assert_ok(lfs_dir_close(lfs, dir));
     [pair[0], pair[1]]

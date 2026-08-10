@@ -3,6 +3,7 @@
 use crate::bd::LfsCache;
 use crate::error::Error;
 use crate::fs::Lfs;
+use crate::lfs_pass_err;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
 
@@ -205,13 +206,14 @@ pub fn lfs_bd_read(
                 diff = lfs_aligndown(diff, cfg.read_size);
                 crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
                 let data_ = data.split_at_mut(diff as _);
-                let err = read(cfg, block, off, data_.0);
-                if err.is_err() {
-                    crate::lfs_trace!("bd_read block={} -> CORRUPT", block);
-                    return crate::lfs_pass_err!(err);
-                }
+                lfs_pass_err!(
+                    read(cfg, block, off, data_.0),
+                    "bd_read block={} -> CORRUPT",
+                    block
+                )?;
+
                 data = data_.1;
-                off += (diff as u32);
+                off += diff;
                 size -= diff;
                 continue;
             }
@@ -285,17 +287,12 @@ pub fn lfs_bd_cmp(
     off: lfs_off_t,
     buffer: *const u8,
     size: lfs_size_t,
-) -> Result<i32, Error> {
-    // Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2 (positive = not error)
-    const LFS_CMP_EQ: i32 = 0;
-    const LFS_CMP_LT: i32 = 1;
-    const LFS_CMP_GT: i32 = 2;
-
+) -> Result<core::cmp::Ordering, Error> {
     let mut i: lfs_off_t = 0;
     while i < size {
         let mut dat = [0u8; 8];
         let diff = lfs_min(size - i, 8) as usize;
-        let err = lfs_bd_read(
+        lfs_bd_read(
             lfs,
             pcache,
             rcache,
@@ -312,12 +309,12 @@ pub fn lfs_bd_cmp(
         };
         match res {
             core::cmp::Ordering::Equal => {}
-            core::cmp::Ordering::Less => return Ok(LFS_CMP_LT),
-            core::cmp::Ordering::Greater => return Ok(LFS_CMP_GT),
+            core::cmp::Ordering::Less => return Ok(core::cmp::Ordering::Less),
+            core::cmp::Ordering::Greater => return Ok(core::cmp::Ordering::Greater),
         }
         i += diff as lfs_off_t;
     }
-    Ok(LFS_CMP_EQ)
+    Ok(core::cmp::Ordering::Equal)
 }
 
 /// Per lfs.c lfs_bd_crc (lines 155-175)
@@ -446,10 +443,7 @@ pub fn lfs_bd_flush(
             };
             let data_ = core::slice::from_raw_parts(pcache.buffer, diff as _);
             let err = prog(cfg, pcache.block, pcache.off, data_);
-            if err.is_err() {
-                crate::lfs_trace!("bd_prog block={} -> CORRUPT", pcache.block);
-                return crate::lfs_pass_err!(err);
-            }
+            crate::lfs_pass_err!(err, "bd_prog block={} -> CORRUPT", pcache.block)?;
 
             if validate {
                 lfs_cache_drop(lfs, rcache);
@@ -465,7 +459,7 @@ pub fn lfs_bd_flush(
                 );
                 res?;
                 if let Ok(res) = res
-                    && res != 0
+                    && res != core::cmp::Ordering::Equal
                 {
                     return crate::lfs_err!(Err(Error::Corrupt));
                 }

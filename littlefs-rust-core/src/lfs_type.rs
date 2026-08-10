@@ -3,31 +3,44 @@
 #![allow(clippy::module_inception, non_camel_case_types)]
 
 /// File types. Per lfs.h enum lfs_type.
+
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LsfType {
+    NONE = 0x00,
+    REG = 0x01,
+    DIR = 0x02,
+}
 pub mod lfs_type {
-    pub const LFS_TYPE_REG: u32 = 0x001;
-    pub const LFS_TYPE_DIR: u32 = 0x002;
-    pub const LFS_TYPE_SPLICE: u32 = 0x400;
-    pub const LFS_TYPE_NAME: u32 = 0x000;
-    pub const LFS_TYPE_STRUCT: u32 = 0x200;
-    pub const LFS_TYPE_USERATTR: u32 = 0x300;
-    pub const LFS_TYPE_FROM: u32 = 0x100;
-    pub const LFS_TYPE_TAIL: u32 = 0x600;
+    use crate::lfs_type::LsfType;
+
+    pub const LFS_TYPE_REG: LsfType = LsfType::REG;
+    pub const LFS_TYPE_DIR: LsfType = LsfType::DIR;
+
+    pub const LFS_TYPE3_REG: u16 = 0x01;
+    pub const LFS_TYPE3_DIR: u16 = 0x02;
+    pub const LFS_TYPE_SPLICE: u16 = 0x400;
+    pub const LFS_TYPE_NAME: u16 = 0x000;
+    pub const LFS_TYPE_STRUCT: u16 = 0x200;
+    pub const LFS_TYPE_USERATTR: u16 = 0x300;
+    pub const LFS_TYPE_FROM: u16 = 0x100;
+    pub const LFS_TYPE_TAIL: u16 = 0x600;
     pub const LFS_TYPE_GLOBALS: u32 = 0x700;
     pub const LFS_TYPE_CRC: u32 = 0x500;
-    pub const LFS_TYPE_CREATE: u32 = 0x401;
-    pub const LFS_TYPE_DELETE: u32 = 0x4ff;
-    pub const LFS_TYPE_SUPERBLOCK: u32 = 0x0ff;
-    pub const LFS_TYPE_DIRSTRUCT: u32 = 0x200;
-    pub const LFS_TYPE_CTZSTRUCT: u32 = 0x202;
-    pub const LFS_TYPE_INLINESTRUCT: u32 = 0x201;
-    pub const LFS_TYPE_SOFTTAIL: u32 = 0x600;
-    pub const LFS_TYPE_HARDTAIL: u32 = 0x601;
-    pub const LFS_TYPE_MOVESTATE: u32 = 0x7ff;
-    pub const LFS_TYPE_CCRC: u32 = 0x500;
+    pub const LFS_TYPE_CREATE: u16 = 0x401;
+    pub const LFS_TYPE_DELETE: u16 = 0x4ff;
+    pub const LFS_TYPE_SUPERBLOCK: u16 = 0x0ff;
+    pub const LFS_TYPE_DIRSTRUCT: u16 = 0x200;
+    pub const LFS_TYPE_CTZSTRUCT: u16 = 0x202;
+    pub const LFS_TYPE_INLINESTRUCT: u16 = 0x201;
+    pub const LFS_TYPE_SOFTTAIL: u16 = 0x600;
+    pub const LFS_TYPE_HARDTAIL: u16 = 0x601;
+    pub const LFS_TYPE_MOVESTATE: u16 = 0x7ff;
+    pub const LFS_TYPE_CCRC: u16 = 0x500;
     pub const LFS_TYPE_FCRC: u32 = 0x5ff;
-    pub const LFS_FROM_NOOP: u32 = 0x000;
-    pub const LFS_FROM_MOVE: u32 = 0x101;
-    pub const LFS_FROM_USERATTRS: u32 = 0x102;
+    pub const LFS_FROM_NOOP: u16 = 0x000;
+    pub const LFS_FROM_MOVE: u16 = 0x101;
+    pub const LFS_FROM_USERATTRS: u16 = 0x102;
 }
 
 /// Open flags. Per lfs.h enum lfs_open_flags.

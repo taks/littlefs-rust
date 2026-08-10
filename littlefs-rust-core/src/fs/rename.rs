@@ -13,7 +13,7 @@ use crate::fs::parent::lfs_fs_pred;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_prepmove, lfs_fs_preporphans};
 use crate::lfs_gstate::{lfs_gstate_hasmove, lfs_gstate_hasorphans};
 use crate::lfs_type::lfs_type::{
-    LFS_FROM_MOVE, LFS_TYPE_CREATE, LFS_TYPE_DELETE, LFS_TYPE_DIR, LFS_TYPE_STRUCT,
+    LFS_FROM_MOVE, LFS_TYPE_CREATE, LFS_TYPE_DELETE, LFS_TYPE_DIR, LFS_TYPE_STRUCT, LFS_TYPE3_DIR,
 };
 use crate::tag::{lfs_mattr, lfs_mktag, lfs_mktag_if, lfs_tag_id, lfs_tag_type3};
 use crate::types::lfs_block_t;
@@ -235,7 +235,7 @@ fn slice_until_nul(ptr: *const u8) -> &'static [u8] {
     }
 }
 
-pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) -> Result<(), Error> {
+pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
@@ -268,7 +268,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
         let mut newpath_ptr = newpath;
         let mut newid: u16 = 0;
         let prevtag = lfs_dir_find(lfs, &mut newcwd, &mut newpath_ptr, &mut Some(&mut newid));
-        let newpath_slice = newpath_ptr.to_bytes();
+        let newpath_slice = newpath_ptr.as_bytes();
         if (prevtag.is_err() || lfs_tag_id(prevtag.unwrap()) == 0x3ff)
             && !(prevtag == Err(Error::NoEntry) && lfs_path_islast(newpath_slice))
         {
@@ -290,7 +290,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
         };
 
         if prevtag == Err(Error::NoEntry) {
-            if lfs_path_isdir(newpath_slice) && u32::from(lfs_tag_type3(oldtag)) != LFS_TYPE_DIR {
+            if lfs_path_isdir(newpath_slice) && (lfs_tag_type3(oldtag)) != LFS_TYPE3_DIR {
                 return crate::lfs_err!(Err(Error::NotDir));
             }
             let nlen = lfs_path_namelen(newpath_slice);
@@ -301,14 +301,14 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
                 newoldid += 1;
             }
         } else if u32::from(lfs_tag_type3(prevtag.unwrap())) != u32::from(lfs_tag_type3(oldtag)) {
-            return if u32::from(lfs_tag_type3(prevtag.unwrap())) == LFS_TYPE_DIR {
+            return if (lfs_tag_type3(prevtag.unwrap())) == LFS_TYPE3_DIR {
                 Err(Error::IsDir)
             } else {
                 Err(Error::NotDir)
             };
         } else if samepair && newid == newoldid {
             return Ok(());
-        } else if u32::from(lfs_tag_type3(prevtag.unwrap())) == LFS_TYPE_DIR {
+        } else if (lfs_tag_type3(prevtag.unwrap())) == LFS_TYPE3_DIR {
             let mut prevpair: [lfs_block_t; 2] = [0, 0];
             let res = lfs_dir_get(
                 lfs,
@@ -352,8 +352,8 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
                 buffer: &[],
             },
             lfs_mattr {
-                tag: lfs_mktag(u32::from(lfs_tag_type3(oldtag)), newid as u32, nlen),
-                buffer: newpath_ptr.to_bytes_with_nul(),
+                tag: lfs_mktag((lfs_tag_type3(oldtag)), newid as u32, nlen),
+                buffer: newpath_ptr.as_bytes(),
             },
             lfs_mattr {
                 tag: lfs_mktag(LFS_FROM_MOVE, newid as u32, lfs_tag_id(oldtag) as u32),
@@ -381,7 +381,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &CStr, newpath: &CStr) ->
 
         if lfs_gstate_hasorphans(&lfs.gstate) {
             crate::lfs_assert!(prevtag != Err(Error::NoEntry));
-            crate::lfs_assert!(u32::from(lfs_tag_type3(prevtag.unwrap())) == LFS_TYPE_DIR);
+            crate::lfs_assert!(lfs_tag_type3(prevtag.unwrap()) == LFS_TYPE3_DIR);
 
             lfs_fs_preporphans(lfs, -1)?;
             lfs_fs_pred(lfs, &prevdir.m.pair, &mut newcwd)?;

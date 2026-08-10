@@ -10,16 +10,14 @@ use crate::dir::fetch::lfs_dir_fetchmatch;
 use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::fs::Lfs;
-use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_NAME, LFS_TYPE_STRUCT};
+use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
 use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
 use crate::types::{lfs_size_t, lfs_tag_t};
 use crate::util::{lfs_min, lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 
-// Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2 (positive = not error)
-const LFS_CMP_EQ: i32 = 0;
-const LFS_CMP_LT: i32 = 1;
-const LFS_CMP_GT: i32 = 2;
-
+const LFS_CMP_EQ: core::cmp::Ordering = core::cmp::Ordering::Equal;
+const LFS_CMP_LT: core::cmp::Ordering = core::cmp::Ordering::Less;
+const LFS_CMP_GT: core::cmp::Ordering = core::cmp::Ordering::Greater;
 /// Per lfs.c struct lfs_dir_find_match (lines 1447-1475)
 #[repr(C)]
 pub struct LfsDirFindMatch<'a> {
@@ -67,9 +65,9 @@ pub fn lfs_dir_find_match(
     data: *mut core::ffi::c_void,
     tag: lfs_tag_t,
     buffer: &lfs_diskoff,
-) -> Result<i32, Error> {
+) -> Result<core::cmp::Ordering, Error> {
     if data.is_null() {
-        return Ok(LFS_CMP_LT);
+        return Ok(core::cmp::Ordering::Less);
     }
     unsafe {
         let name = &*(data as *const LfsDirFindMatch);
@@ -87,14 +85,14 @@ pub fn lfs_dir_find_match(
             name.name.as_ptr(),
             diff,
         );
-        if res != Ok(LFS_CMP_EQ) {
+        if res != Ok(core::cmp::Ordering::Equal) {
             return res;
         }
         if name.size != lfs_tag_size(tag) {
             return if name.size < lfs_tag_size(tag) {
-                Ok(LFS_CMP_LT)
+                Ok(core::cmp::Ordering::Less)
             } else {
-                Ok(LFS_CMP_GT)
+                Ok(core::cmp::Ordering::Greater)
             };
         }
         Ok(LFS_CMP_EQ)
@@ -215,24 +213,19 @@ pub fn lfs_dir_find_match(
 /// }
 /// ```
 pub fn lfs_dir_find(
-    lfs: *mut Lfs,
-    dir: *mut LfsMdir,
-    path: &mut &CStr,
+    lfs: &mut Lfs,
+    dir: &mut LfsMdir,
+    path: &mut &str,
     id: &mut Option<&mut u16>,
 ) -> Result<crate::types::lfs_tag_t, Error> {
-    if lfs.is_null() || dir.is_null() {
-        return crate::lfs_err!(Err(Error::Invalid));
-    }
     unsafe {
-        let lfs = &mut *lfs;
-        let dir = &mut *dir;
         if path.is_empty() {
             return crate::lfs_err!(Err(Error::Invalid));
         }
-        let mut name = path.to_bytes_with_nul();
+        let mut name = path.as_bytes();
 
         // C: lfs.c:1488-1491
-        let mut tag = lfs_mktag(LFS_TYPE_DIR, 0x3ff, 0);
+        let mut tag = lfs_mktag(LFS_TYPE3_DIR, 0x3ff, 0);
         dir.tail[0] = lfs.root[0];
         dir.tail[1] = lfs.root[1];
 
@@ -243,11 +236,11 @@ pub fn lfs_dir_find(
 
         'nextname: loop {
             // C: nextname - lfs.c:1510-1512
-            if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DIR {
-                let skip = lfs_strspn(CStr::from_ptr(name.as_ptr() as *const _), b'/');
+            if (lfs_tag_type3(tag)) == LFS_TYPE3_DIR {
+                let skip = lfs_strspn(name, b'/');
                 name = &name[skip..];
             }
-            let namelen = lfs_strcspn(CStr::from_ptr(name.as_ptr() as *const _), b'/');
+            let namelen = lfs_strcspn(name, b'/');
 
             // C: lfs.c:1516-1519 - skip '.'
             if namelen == 1 && name[0] == b'.' {
@@ -278,9 +271,9 @@ pub fn lfs_dir_find(
                     }
                     path_iter += 1;
                 }
-                let suffix_skip = lfs_strspn(CStr::from_ptr(suffix.as_ptr() as *const _), b'/');
+                let suffix_skip = lfs_strspn(suffix, b'/');
                 suffix = &suffix[suffix_skip..];
-                let sufflen = lfs_strcspn(CStr::from_ptr(suffix.as_ptr() as *const _), b'/');
+                let sufflen = lfs_strcspn(suffix, b'/');
                 if sufflen == 0 {
                     break;
                 }
@@ -289,25 +282,25 @@ pub fn lfs_dir_find(
                 } else if sufflen == 2 && suffix[0] == b'.' && suffix[1] == b'.' {
                     depth -= 1;
                     if depth == 0 {
-                        name = &suffix[(sufflen as usize)..];
+                        name = &suffix[sufflen..];
                         continue 'nextname;
                     }
                 } else {
                     depth += 1;
                 }
-                suffix = &suffix[(sufflen as usize)..];
+                suffix = &suffix[sufflen..];
             }
 
             // C: lfs.c:1544-1546 - found path
-            if *(name.as_ptr()) == 0 {
+            if name.is_empty() {
                 return Ok(tag);
             }
 
             // C: lfs.c:1549
-            *path = CStr::from_ptr(name.as_ptr() as *const _);
+            *path = str::from_utf8_unchecked(name);
 
             // C: lfs.c:1652-1654
-            if u32::from(lfs_tag_type3(tag)) != LFS_TYPE_DIR {
+            if (lfs_tag_type3(tag)) != LFS_TYPE3_DIR {
                 return crate::lfs_err!(Err(Error::NotDir));
             }
 
@@ -376,7 +369,7 @@ pub fn lfs_dir_find(
                 }
             }
 
-            name = &name[(namelen as usize)..];
+            name = &name[namelen..];
         }
     }
 }

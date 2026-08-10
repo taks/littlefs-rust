@@ -11,7 +11,7 @@ mod common;
 use common::{
     LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, assert_err, assert_ok,
     config_with_wear_leveling, corrupt_block, default_config, dir_block, dir_entry_names, dir_pair,
-    init_context, init_logger, init_wear_leveling_context, path_bytes,
+    init_context, init_logger, init_wear_leveling_context,
     powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
 };
 use littlefs_rust_core::{
@@ -36,15 +36,15 @@ fn test_move_nop() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let hi = path_bytes("hi");
-    assert_ok(lfs_mkdir(lfs, hi.as_c_str()));
-    assert_ok(lfs_rename(lfs, hi.as_c_str(), hi.as_c_str()));
+    let hi = "hi";
+    assert_ok(lfs_mkdir(lfs, hi));
+    assert_ok(lfs_rename(lfs, hi, hi));
 
-    let hi_hi = path_bytes("hi/hi");
-    assert_ok(lfs_mkdir(lfs, hi_hi.as_c_str()));
-    assert_ok(lfs_rename(lfs, hi_hi.as_c_str(), hi_hi.as_c_str()));
+    let hi_hi = "hi/hi";
+    assert_ok(lfs_mkdir(lfs, hi_hi));
+    assert_ok(lfs_rename(lfs, hi_hi, hi_hi));
 
-    let hi_hi_hi = c"hi/hi/hi";
+    let hi_hi_hi = "hi/hi/hi";
     assert_ok(lfs_mkdir(lfs, hi_hi_hi));
     assert_ok(lfs_rename(lfs, hi_hi_hi, hi_hi_hi));
 
@@ -69,17 +69,17 @@ fn test_move_file() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("b").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("c").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "a"));
+    assert_ok(lfs_mkdir(lfs, "b"));
+    assert_ok(lfs_mkdir(lfs, "c"));
+    assert_ok(lfs_mkdir(lfs, "d"));
 
-    let a_hello = path_bytes("a/hello");
+    let a_hello = "a/hello";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        a_hello.as_c_str(),
+        a_hello,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n1 = lfs_file_write(lfs, file, b"hola\n");
@@ -92,11 +92,7 @@ fn test_move_file() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        c"a/hello",
-        path_bytes("c/hello").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hello", "c/hello"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
@@ -107,22 +103,17 @@ fn test_move_file() {
     assert_eq!(c_names[0], "hello");
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(lfs, path_bytes("c/hello").as_c_str(), info));
+    assert_ok(lfs_stat(lfs, "c/hello", info));
     assert_eq!(info.size, 5 + 8 + 6);
 
     let info_dummy = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    let err_a = lfs_stat(lfs, c"a/hello", info_dummy);
+    let err_a = lfs_stat(lfs, "a/hello", info_dummy);
     assert_err(Error::NoEntry, err_a);
-    let err_b = lfs_stat(lfs, path_bytes("b/hello").as_c_str(), info_dummy);
+    let err_b = lfs_stat(lfs, "b/hello", info_dummy);
     assert_err(Error::NoEntry, err_b);
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("c/hello").as_c_str(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(5 + 8 + 6));
@@ -132,12 +123,7 @@ fn test_move_file() {
     assert_ok(lfs_file_close(lfs, file));
 
     let file_dummy = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    let err_d = lfs_file_open(
-        lfs,
-        file_dummy,
-        path_bytes("d/hello").as_c_str(),
-        LFS_O_RDONLY,
-    );
+    let err_d = lfs_file_open(lfs, file_dummy, "d/hello", LFS_O_RDONLY);
     assert_err(Error::NoEntry, err_d);
     assert_ok(lfs_unmount(lfs));
 }
@@ -154,22 +140,18 @@ fn test_move_dir() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("b").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("c").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi/hola").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi/bonjour").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi/ohayo").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "a"));
+    assert_ok(lfs_mkdir(lfs, "b"));
+    assert_ok(lfs_mkdir(lfs, "c"));
+    assert_ok(lfs_mkdir(lfs, "d"));
+    assert_ok(lfs_mkdir(lfs, "a/hi"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/hola"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/bonjour"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/ohayo"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("a/hi").as_c_str(),
-        path_bytes("c/hi").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hi", "c/hi"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
@@ -192,16 +174,16 @@ fn test_move_state_stealing() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("b").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("c").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "a"));
+    assert_ok(lfs_mkdir(lfs, "b"));
+    assert_ok(lfs_mkdir(lfs, "c"));
+    assert_ok(lfs_mkdir(lfs, "d"));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"a/hello",
+        "a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     let n1 = lfs_file_write(lfs, file, b"hola\n");
@@ -214,42 +196,25 @@ fn test_move_state_stealing() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        c"a/hello",
-        path_bytes("b/hello").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hello", "b/hello"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("b/hello").as_c_str(),
-        path_bytes("c/hello").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "b/hello", "c/hello"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("c/hello").as_c_str(),
-        path_bytes("d/hello").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "c/hello", "d/hello"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_remove(lfs, path_bytes("b").as_c_str()));
-    assert_ok(lfs_remove(lfs, path_bytes("c").as_c_str()));
+    assert_ok(lfs_remove(lfs, "b"));
+    assert_ok(lfs_remove(lfs, "c"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("d/hello").as_c_str(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(5 + 8 + 6));
@@ -270,48 +235,28 @@ fn test_move_create_delete_same() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let f1 = path_bytes("1.move_me");
+    let f1 = "1.move_me";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        f1.as_c_str(),
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok(lfs_file_open(lfs, file, f1, LFS_O_WRONLY | LFS_O_CREAT));
     assert_ok(lfs_file_close(lfs, file));
 
-    let f0 = path_bytes("0.before");
+    let f0 = "0.before";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        f0.as_c_str(),
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok(lfs_file_open(lfs, file, f0, LFS_O_WRONLY | LFS_O_CREAT));
     let n = lfs_file_write(lfs, file, b"test.1");
     assert_eq!(n, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
 
-    let f2 = path_bytes("2.in_between");
+    let f2 = "2.in_between";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        f2.as_c_str(),
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok(lfs_file_open(lfs, file, f2, LFS_O_WRONLY | LFS_O_CREAT));
     let n = lfs_file_write(lfs, file, b"test.2");
     assert_eq!(n, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
 
-    let f4 = path_bytes("4.after");
+    let f4 = "4.after";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        f4.as_c_str(),
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok(lfs_file_open(lfs, file, f4, LFS_O_WRONLY | LFS_O_CREAT));
     let n = lfs_file_write(lfs, file, b"test.3");
     assert_eq!(n, Ok(6));
     assert_ok(lfs_file_close(lfs, file));
@@ -319,33 +264,14 @@ fn test_move_create_delete_same() {
     let fa = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     let fb = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     let fc = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        fa,
-        f0.as_c_str(),
-        LFS_O_WRONLY | LFS_O_TRUNC,
-    ));
-    assert_ok(lfs_file_open(
-        lfs,
-        fb,
-        f2.as_c_str(),
-        LFS_O_WRONLY | LFS_O_TRUNC,
-    ));
-    assert_ok(lfs_file_open(
-        lfs,
-        fc,
-        f4.as_c_str(),
-        LFS_O_WRONLY | LFS_O_TRUNC,
-    ));
+    assert_ok(lfs_file_open(lfs, fa, f0, LFS_O_WRONLY | LFS_O_TRUNC));
+    assert_ok(lfs_file_open(lfs, fb, f2, LFS_O_WRONLY | LFS_O_TRUNC));
+    assert_ok(lfs_file_open(lfs, fc, f4, LFS_O_WRONLY | LFS_O_TRUNC));
     let _ = lfs_file_write(lfs, fa, b"test.4");
     let _ = lfs_file_write(lfs, fb, b"test.5");
     let _ = lfs_file_write(lfs, fc, b"test.6");
 
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("1.move_me").as_c_str(),
-        path_bytes("3.move_me").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "1.move_me", "3.move_me"));
 
     assert_ok(lfs_file_close(lfs, fa));
     assert_ok(lfs_file_close(lfs, fb));
@@ -358,12 +284,7 @@ fn test_move_create_delete_same() {
     assert!(names.contains(&"4.after".to_string()));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("0.before").as_c_str(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, "0.before", LFS_O_RDONLY));
     let mut buf = [0u8; 16];
     let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(6));
@@ -388,7 +309,7 @@ fn test_move_create_delete_delete_same() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("1.move_me").as_c_str(),
+        "1.move_me",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     assert_ok(lfs_file_close(lfs, file));
@@ -397,7 +318,7 @@ fn test_move_create_delete_delete_same() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("3.move_me").as_c_str(),
+        "3.move_me",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let n = lfs_file_write(lfs, file, b"remove me");
@@ -408,7 +329,7 @@ fn test_move_create_delete_delete_same() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("0.before").as_c_str(),
+        "0.before",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let n = lfs_file_write(lfs, file, b"test.1");
@@ -419,7 +340,7 @@ fn test_move_create_delete_delete_same() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("2.in_between").as_c_str(),
+        "2.in_between",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let n = lfs_file_write(lfs, file, b"test.2");
@@ -430,7 +351,7 @@ fn test_move_create_delete_delete_same() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("4.after").as_c_str(),
+        "4.after",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let n = lfs_file_write(lfs, file, b"test.3");
@@ -443,37 +364,33 @@ fn test_move_create_delete_delete_same() {
     assert_ok(lfs_file_open(
         lfs,
         fa,
-        path_bytes("0.before").as_c_str(),
+        "0.before",
         LFS_O_WRONLY | LFS_O_TRUNC,
     ));
     assert_ok(lfs_file_open(
         lfs,
         fb,
-        path_bytes("2.in_between").as_c_str(),
+        "2.in_between",
         LFS_O_WRONLY | LFS_O_TRUNC,
     ));
     assert_ok(lfs_file_open(
         lfs,
         fc,
-        path_bytes("4.after").as_c_str(),
+        "4.after",
         LFS_O_WRONLY | LFS_O_TRUNC,
     ));
     let _ = lfs_file_write(lfs, fa, b"test.4");
     let _ = lfs_file_write(lfs, fb, b"test.5");
     let _ = lfs_file_write(lfs, fc, b"test.6");
 
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("1.move_me").as_c_str(),
-        path_bytes("3.move_me").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "1.move_me", "3.move_me"));
 
     assert_ok(lfs_file_close(lfs, fa));
     assert_ok(lfs_file_close(lfs, fb));
     assert_ok(lfs_file_close(lfs, fc));
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(lfs, c"3.move_me", info));
+    assert_ok(lfs_stat(lfs, "3.move_me", info));
     assert_eq!(info.size, 0);
 
     assert_ok(lfs_unmount(lfs));
@@ -491,14 +408,14 @@ fn test_move_create_delete_different() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, path_bytes("dir.1").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("dir.2").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "dir.1"));
+    assert_ok(lfs_mkdir(lfs, "dir.2"));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"dir.1/1.move_me",
+        "dir.1/1.move_me",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     assert_ok(lfs_file_close(lfs, file));
@@ -507,14 +424,14 @@ fn test_move_create_delete_different() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"dir.2/1.move_me",
+        "dir.2/1.move_me",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let n = lfs_file_write(lfs, file, b"remove me");
     assert_eq!(n, Ok(9));
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_ok(lfs_rename(lfs, c"dir.1/1.move_me", c"dir.2/1.move_me"));
+    assert_ok(lfs_rename(lfs, "dir.1/1.move_me", "dir.2/1.move_me"));
 
     let names = dir_entry_names(lfs, &env.config, "dir.2").unwrap();
     assert!(names.contains(&"1.move_me".to_string()));
@@ -534,16 +451,16 @@ fn test_move_file_corrupt_source() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("b").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("c").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "a"));
+    assert_ok(lfs_mkdir(lfs, "b"));
+    assert_ok(lfs_mkdir(lfs, "c"));
+    assert_ok(lfs_mkdir(lfs, "d"));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"a/hello",
+        "a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     assert_eq!(lfs_file_write(lfs, file, b"hola\n"), Ok(5));
@@ -553,11 +470,7 @@ fn test_move_file_corrupt_source() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        c"a/hello",
-        path_bytes("c/hello").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hello", "c/hello"));
 
     let ablock = dir_block(lfs, "a");
     assert_ok(lfs_unmount(lfs));
@@ -571,22 +484,14 @@ fn test_move_file_corrupt_source() {
     assert_eq!(c_names[0], "hello");
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(lfs, c"c/hello", info));
+    assert_ok(lfs_stat(lfs, "c/hello", info));
     assert_eq!({ info.size }, 5 + 8 + 6);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"a/hello", info));
-    assert_err(
-        Error::NoEntry,
-        lfs_stat(lfs, path_bytes("b/hello").as_c_str(), info),
-    );
+    assert_err(Error::NoEntry, lfs_stat(lfs, "a/hello", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("c/hello").as_c_str(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(5 + 8 + 6));
@@ -597,7 +502,7 @@ fn test_move_file_corrupt_source() {
 
     assert_err(
         Error::NoEntry,
-        lfs_file_open(lfs, file, path_bytes("d/hello").as_c_str(), LFS_O_RDONLY),
+        lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY),
     );
     assert_ok(lfs_unmount(lfs));
 }
@@ -613,16 +518,16 @@ fn test_move_file_corrupt_source_dest() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("b").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("c").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "a"));
+    assert_ok(lfs_mkdir(lfs, "b"));
+    assert_ok(lfs_mkdir(lfs, "c"));
+    assert_ok(lfs_mkdir(lfs, "d"));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"a/hello",
+        "a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     assert_eq!(lfs_file_write(lfs, file, b"hola\n"), Ok(5));
@@ -632,11 +537,7 @@ fn test_move_file_corrupt_source_dest() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        c"a/hello",
-        path_bytes("c/hello").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hello", "c/hello"));
 
     let ablock = dir_block(lfs, "a");
     let cblock = dir_block(lfs, "c");
@@ -652,14 +553,14 @@ fn test_move_file_corrupt_source_dest() {
     assert_eq!(c_names.len(), 0);
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(lfs, c"a/hello", info));
+    assert_ok(lfs_stat(lfs, "a/hello", info));
     assert_eq!({ info.size }, 5 + 8 + 6);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hello", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"c/hello", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "c/hello", info));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, c"a/hello", LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, "a/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(5 + 8 + 6));
@@ -670,7 +571,7 @@ fn test_move_file_corrupt_source_dest() {
 
     assert_err(
         Error::NoEntry,
-        lfs_file_open(lfs, file, path_bytes("d/hello").as_c_str(), LFS_O_RDONLY),
+        lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY),
     );
     assert_ok(lfs_unmount(lfs));
 }
@@ -686,16 +587,16 @@ fn test_move_file_after_corrupt() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("b").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("c").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "a"));
+    assert_ok(lfs_mkdir(lfs, "b"));
+    assert_ok(lfs_mkdir(lfs, "c"));
+    assert_ok(lfs_mkdir(lfs, "d"));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"a/hello",
+        "a/hello",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     assert_eq!(lfs_file_write(lfs, file, b"hola\n"), Ok(5));
@@ -705,11 +606,7 @@ fn test_move_file_after_corrupt() {
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        c"a/hello",
-        path_bytes("c/hello").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hello", "c/hello"));
 
     let ablock = dir_block(lfs, "a");
     let cblock = dir_block(lfs, "c");
@@ -718,11 +615,7 @@ fn test_move_file_after_corrupt() {
     corrupt_block(&mut env, cblock);
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        c"a/hello",
-        path_bytes("c/hello").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hello", "c/hello"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
@@ -733,19 +626,14 @@ fn test_move_file_after_corrupt() {
     assert_eq!(c_names[0], "hello");
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(lfs, c"c/hello", info));
+    assert_ok(lfs_stat(lfs, "c/hello", info));
     assert_eq!({ info.size }, 5 + 8 + 6);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"a/hello", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hello", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "a/hello", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        path_bytes("c/hello").as_c_str(),
-        LFS_O_RDONLY,
-    ));
+    assert_ok(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(5 + 8 + 6));
@@ -756,7 +644,7 @@ fn test_move_file_after_corrupt() {
 
     assert_err(
         Error::NoEntry,
-        lfs_file_open(lfs, file, path_bytes("d/hello").as_c_str(), LFS_O_RDONLY),
+        lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY),
     );
     assert_ok(lfs_unmount(lfs));
 }
@@ -772,21 +660,21 @@ fn test_move_reentrant_file() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("dir.1").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("dir.2").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "dir.1"));
+    assert_ok(lfs_mkdir(lfs, "dir.2"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("dir.1/1.move_me").as_c_str(),
+        "dir.1/1.move_me",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
 
     let snapshot = env.snapshot();
-    let path_src = path_bytes("dir.1/1.move_me");
-    let path_dst = path_bytes("dir.2/1.move_me");
+    let path_src = "dir.1/1.move_me";
+    let path_dst = "dir.2/1.move_me";
 
     let result = run_powerloss_linear(
         &mut env,
@@ -795,7 +683,7 @@ fn test_move_reentrant_file() {
         |lfs_ptr, config| {
             lfs_mount(lfs_ptr, config)?;
 
-            let err = lfs_rename(lfs_ptr, path_src.as_c_str(), path_dst.as_c_str());
+            let err = lfs_rename(lfs_ptr, path_src, path_dst);
             if let Err(err) = err {
                 let _ = lfs_unmount(lfs_ptr);
                 return Err(err);
@@ -824,22 +712,18 @@ fn test_move_dir_corrupt_source() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, c"a"));
-    assert_ok(lfs_mkdir(lfs, c"b"));
-    assert_ok(lfs_mkdir(lfs, c"c"));
-    assert_ok(lfs_mkdir(lfs, c"d"));
-    assert_ok(lfs_mkdir(lfs, c"a/hi"));
-    assert_ok(lfs_mkdir(lfs, c"a/hi/hola"));
-    assert_ok(lfs_mkdir(lfs, c"a/hi/bonjour"));
-    assert_ok(lfs_mkdir(lfs, c"a/hi/ohayo"));
+    assert_ok(lfs_mkdir(lfs, "a"));
+    assert_ok(lfs_mkdir(lfs, "b"));
+    assert_ok(lfs_mkdir(lfs, "c"));
+    assert_ok(lfs_mkdir(lfs, "d"));
+    assert_ok(lfs_mkdir(lfs, "a/hi"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/hola"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/bonjour"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/ohayo"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("a/hi").as_c_str(),
-        path_bytes("c/hi").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hi", "c/hi"));
 
     let ablock = dir_block(lfs, "a");
     assert_ok(lfs_unmount(lfs));
@@ -853,18 +737,18 @@ fn test_move_dir_corrupt_source() {
     assert_eq!(c_names[0], "hi");
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(lfs, c"c/hi", info));
+    assert_ok(lfs_stat(lfs, "c/hi", info));
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"a/hi", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hi", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "a/hi", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
 
     let hi_names = dir_entry_names(lfs, &env.config, "c/hi").unwrap();
     assert!(hi_names.contains(&"hola".to_string()));
     assert!(hi_names.contains(&"bonjour".to_string()));
     assert!(hi_names.contains(&"ohayo".to_string()));
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"d/hi", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "d/hi", info));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -879,22 +763,18 @@ fn test_move_dir_corrupt_source_dest() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("b").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("c").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi/hola").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi/bonjour").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi/ohayo").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "a"));
+    assert_ok(lfs_mkdir(lfs, "b"));
+    assert_ok(lfs_mkdir(lfs, "c"));
+    assert_ok(lfs_mkdir(lfs, "d"));
+    assert_ok(lfs_mkdir(lfs, "a/hi"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/hola"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/bonjour"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/ohayo"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("a/hi").as_c_str(),
-        path_bytes("c/hi").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hi", "c/hi"));
 
     let ablock = dir_block(lfs, "a");
     let cblock = dir_block(lfs, "c");
@@ -910,18 +790,18 @@ fn test_move_dir_corrupt_source_dest() {
     assert_eq!(c_names.len(), 0);
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(lfs, c"a/hi", info));
+    assert_ok(lfs_stat(lfs, "a/hi", info));
     assert_eq!({ info.type_ }, LFS_TYPE_DIR as u8);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hi", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"c/hi", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "c/hi", info));
 
     let hi_names = dir_entry_names(lfs, &env.config, "a/hi").unwrap();
     assert!(hi_names.contains(&"hola".to_string()));
     assert!(hi_names.contains(&"bonjour".to_string()));
     assert!(hi_names.contains(&"ohayo".to_string()));
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"d/hi", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "d/hi", info));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -936,22 +816,18 @@ fn test_move_dir_after_corrupt() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("b").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("c").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi/hola").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi/bonjour").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi/ohayo").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "a"));
+    assert_ok(lfs_mkdir(lfs, "b"));
+    assert_ok(lfs_mkdir(lfs, "c"));
+    assert_ok(lfs_mkdir(lfs, "d"));
+    assert_ok(lfs_mkdir(lfs, "a/hi"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/hola"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/bonjour"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/ohayo"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("a/hi").as_c_str(),
-        path_bytes("c/hi").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hi", "c/hi"));
 
     let ablock = dir_block(lfs, "a");
     let cblock = dir_block(lfs, "c");
@@ -960,11 +836,7 @@ fn test_move_dir_after_corrupt() {
     corrupt_block(&mut env, cblock);
 
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("a/hi").as_c_str(),
-        path_bytes("c/hi").as_c_str(),
-    ));
+    assert_ok(lfs_rename(lfs, "a/hi", "c/hi"));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
@@ -975,18 +847,18 @@ fn test_move_dir_after_corrupt() {
     assert_eq!(c_names[0], "hi");
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok(lfs_stat(lfs, c"c/hi", info));
+    assert_ok(lfs_stat(lfs, "c/hi", info));
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"a/hi", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"b/hi", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "a/hi", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
 
     let hi_names = dir_entry_names(lfs, &env.config, "c/hi").unwrap();
     assert!(hi_names.contains(&"hola".to_string()));
     assert!(hi_names.contains(&"bonjour".to_string()));
     assert!(hi_names.contains(&"ohayo".to_string()));
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, c"d/hi", info));
+    assert_err(Error::NoEntry, lfs_stat(lfs, "d/hi", info));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -1001,17 +873,17 @@ fn test_reentrant_dir() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("b").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("c").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("d").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi").as_c_str()));
-    assert_ok(lfs_mkdir(lfs, path_bytes("a/hi/hola").as_c_str()));
+    assert_ok(lfs_mkdir(lfs, "a"));
+    assert_ok(lfs_mkdir(lfs, "b"));
+    assert_ok(lfs_mkdir(lfs, "c"));
+    assert_ok(lfs_mkdir(lfs, "d"));
+    assert_ok(lfs_mkdir(lfs, "a/hi"));
+    assert_ok(lfs_mkdir(lfs, "a/hi/hola"));
     assert_ok(lfs_unmount(lfs));
 
     let snapshot = env.snapshot();
-    let path_src = path_bytes("a/hi");
-    let path_dst = path_bytes("c/hi");
+    let path_src = "a/hi";
+    let path_dst = "c/hi";
 
     let result = run_powerloss_linear(
         &mut env,
@@ -1020,7 +892,7 @@ fn test_reentrant_dir() {
         |lfs_ptr, config| {
             lfs_mount(lfs_ptr, config)?;
 
-            let err = lfs_rename(lfs_ptr, path_src.as_c_str(), path_dst.as_c_str());
+            let err = lfs_rename(lfs_ptr, path_src, path_dst);
             if let Err(err) = err {
                 let _ = lfs_unmount(lfs_ptr);
                 return Err(err);
@@ -1053,14 +925,14 @@ fn test_move_fix_relocation() {
         assert_ok(lfs_format(lfs, &env.config));
         assert_ok(lfs_mount(lfs, &env.config));
 
-        assert_ok(lfs_mkdir(lfs, path_bytes("parent").as_c_str()));
-        assert_ok(lfs_mkdir(lfs, path_bytes("parent/child").as_c_str()));
+        assert_ok(lfs_mkdir(lfs, "parent"));
+        assert_ok(lfs_mkdir(lfs, "parent/child"));
 
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path_bytes("parent/1.move_me").as_c_str(),
+            "parent/1.move_me",
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
         assert_eq!(lfs_file_write(lfs, file, b"move me\0"), Ok(8));
@@ -1072,12 +944,7 @@ fn test_move_fix_relocation() {
             ("parent/child/0.before", b"test.3\0"),
             ("parent/child/2.after", b"test.4\0"),
         ] {
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path_bytes(path).as_c_str(),
-                LFS_O_WRONLY | LFS_O_CREAT,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
             assert_eq!(lfs_file_write(lfs, file, content), Ok(7));
             assert_ok(lfs_file_close(lfs, file));
         }
@@ -1097,12 +964,7 @@ fn test_move_fix_relocation() {
             "parent/child/2.after",
         ];
         for (f, p) in files.iter_mut().zip(paths) {
-            assert_ok(lfs_file_open(
-                lfs,
-                f,
-                path_bytes(p).as_c_str(),
-                LFS_O_WRONLY | LFS_O_TRUNC,
-            ));
+            assert_ok(lfs_file_open(lfs, f, p, LFS_O_WRONLY | LFS_O_TRUNC));
         }
         for (f, content) in
             files
@@ -1125,8 +987,8 @@ fn test_move_fix_relocation() {
 
         assert_ok(lfs_rename(
             lfs,
-            path_bytes("parent/1.move_me").as_c_str(),
-            path_bytes("parent/child/1.move_me").as_c_str(),
+            "parent/1.move_me",
+            "parent/child/1.move_me",
         ));
 
         for f in &mut files {
@@ -1135,7 +997,7 @@ fn test_move_fix_relocation() {
 
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_ok(lfs_dir_open(lfs, dir, path_bytes("parent").as_c_str()));
+        assert_ok(lfs_dir_open(lfs, dir, "parent"));
         let expect_parent = ["0.before", "2.after", "child"];
         let mut idx = 0;
         loop {
@@ -1163,11 +1025,7 @@ fn test_move_fix_relocation() {
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
         assert_ok(lfs_dir_close(lfs, dir));
 
-        assert_ok(lfs_dir_open(
-            lfs,
-            dir,
-            path_bytes("parent/child").as_c_str(),
-        ));
+        assert_ok(lfs_dir_open(lfs, dir, "parent/child"));
         let expect_child = ["0.before", "1.move_me", "2.after"];
         let mut idx = 0;
         loop {
@@ -1192,10 +1050,10 @@ fn test_move_fix_relocation() {
 
         let mut buf = [0u8; 32];
         for (path, expected) in [
-            (c"parent/0.before", b"test.5\0"),
-            (c"parent/2.after", b"test.6\0"),
-            (c"parent/child/0.before", b"test.7\0"),
-            (c"parent/child/2.after", b"test.8\0"),
+            ("parent/0.before", b"test.5\0"),
+            ("parent/2.after", b"test.6\0"),
+            ("parent/child/0.before", b"test.7\0"),
+            ("parent/child/2.after", b"test.8\0"),
         ] {
             assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
             assert_eq!(lfs_file_read(lfs, file, &mut buf[..7]), Ok(7));
@@ -1221,15 +1079,15 @@ fn test_move_fix_relocation_predecessor() {
         assert_ok(lfs_format(lfs, &env.config));
         assert_ok(lfs_mount(lfs, &env.config));
 
-        assert_ok(lfs_mkdir(lfs, path_bytes("parent").as_c_str()));
-        assert_ok(lfs_mkdir(lfs, path_bytes("parent/child").as_c_str()));
-        assert_ok(lfs_mkdir(lfs, path_bytes("parent/sibling").as_c_str()));
+        assert_ok(lfs_mkdir(lfs, "parent"));
+        assert_ok(lfs_mkdir(lfs, "parent/child"));
+        assert_ok(lfs_mkdir(lfs, "parent/sibling"));
 
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path_bytes("parent/sibling/1.move_me").as_c_str(),
+            "parent/sibling/1.move_me",
             LFS_O_WRONLY | LFS_O_CREAT,
         ));
         assert_eq!(lfs_file_write(lfs, file, b"move me\0",), Ok(8));
@@ -1241,12 +1099,7 @@ fn test_move_fix_relocation_predecessor() {
             ("parent/child/0.before", b"test.3\0"),
             ("parent/child/2.after", b"test.4\0"),
         ] {
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path_bytes(path).as_c_str(),
-                LFS_O_WRONLY | LFS_O_CREAT,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
             assert_eq!(lfs_file_write(lfs, file, content), Ok(7));
             assert_ok(lfs_file_close(lfs, file));
         }
@@ -1266,12 +1119,7 @@ fn test_move_fix_relocation_predecessor() {
             "parent/child/2.after",
         ];
         for (f, p) in files.iter_mut().zip(paths) {
-            assert_ok(lfs_file_open(
-                lfs,
-                f,
-                path_bytes(p).as_c_str(),
-                LFS_O_WRONLY | LFS_O_TRUNC,
-            ));
+            assert_ok(lfs_file_open(lfs, f, p, LFS_O_WRONLY | LFS_O_TRUNC));
         }
         for (f, content) in
             files
@@ -1299,8 +1147,8 @@ fn test_move_fix_relocation_predecessor() {
 
         assert_ok(lfs_rename(
             lfs,
-            path_bytes("parent/sibling/1.move_me").as_c_str(),
-            path_bytes("parent/child/1.move_me").as_c_str(),
+            "parent/sibling/1.move_me",
+            "parent/child/1.move_me",
         ));
 
         for f in &mut files {
@@ -1309,11 +1157,7 @@ fn test_move_fix_relocation_predecessor() {
 
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_ok(lfs_dir_open(
-            lfs,
-            dir,
-            path_bytes("parent/sibling").as_c_str(),
-        ));
+        assert_ok(lfs_dir_open(lfs, dir, "parent/sibling"));
         // Skip . and ..
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
@@ -1328,11 +1172,7 @@ fn test_move_fix_relocation_predecessor() {
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
         assert_ok(lfs_dir_close(lfs, dir));
 
-        assert_ok(lfs_dir_open(
-            lfs,
-            dir,
-            path_bytes("parent/child").as_c_str(),
-        ));
+        assert_ok(lfs_dir_open(lfs, dir, "parent/child"));
         // Skip . and ..
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
@@ -1358,12 +1198,7 @@ fn test_move_fix_relocation_predecessor() {
             ("parent/child/0.before", b"test.7\0"),
             ("parent/child/2.after", b"test.8\0"),
         ] {
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path_bytes(path).as_c_str(),
-                LFS_O_RDONLY,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
             assert_eq!(lfs_file_read(lfs, file, &mut buf[..7]), Ok(7));
             assert_eq!(&buf[..6], &expected[..6]);
             assert_ok(lfs_file_close(lfs, file));

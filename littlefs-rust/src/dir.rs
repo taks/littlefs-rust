@@ -1,8 +1,5 @@
 use alloc::boxed::Box;
-use alloc::vec::Vec;
 use littlefs_rust_core::error::Error;
-use core::ffi::CStr;
-use core::mem::MaybeUninit;
 
 use littlefs_rust_core::{LfsDir, LfsInfo};
 
@@ -11,13 +8,13 @@ use crate::metadata::{DirEntry, FileType};
 use crate::storage::Storage;
 
 pub(crate) struct DirAllocation {
-    pub(crate) dir: MaybeUninit<LfsDir>,
+    pub(crate) dir: LfsDir,
 }
 
 impl DirAllocation {
     pub(crate) fn new() -> Self {
         Self {
-            dir: MaybeUninit::zeroed(),
+            dir: unsafe { core::mem::zeroed() },
         }
     }
 }
@@ -34,16 +31,11 @@ pub struct ReadDir<'a, S: Storage> {
 }
 
 impl<'a, S: Storage> ReadDir<'a, S> {
-    pub(crate) fn open(fs: &'a Filesystem<S>, path: &CStr) -> Result<Self, Error> {
+    pub(crate) fn open(fs: &'a Filesystem<S>, path: &str) -> Result<Self, Error> {
         let mut alloc = Box::new(DirAllocation::new());
         {
             let mut inner = fs.inner.borrow_mut();
-            let rc = littlefs_rust_core::lfs_dir_open(
-                inner.lfs.as_mut_ptr(),
-                alloc.dir.as_mut_ptr(),
-                path_bytes,
-            );
-            from_lfs_result(rc)?;
+            littlefs_rust_core::lfs_dir_open(&mut inner.lfs, &mut alloc.dir, path)?;
         }
         Ok(ReadDir {
             fs,
@@ -58,9 +50,7 @@ impl<'a, S: Storage> ReadDir<'a, S> {
     pub fn close(mut self) -> Result<(), Error> {
         self.closed = true;
         let mut inner = self.fs.inner.borrow_mut();
-        let rc =
-            littlefs_rust_core::lfs_dir_close(inner.lfs.as_mut_ptr(), self.alloc.dir.as_mut_ptr());
-        from_lfs_result(rc)
+        littlefs_rust_core::lfs_dir_close(&mut inner.lfs, &mut self.alloc.dir)
     }
 }
 
@@ -69,21 +59,17 @@ impl<S: Storage> Iterator for ReadDir<'_, S> {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let mut info = MaybeUninit::<LfsInfo>::zeroed();
+            let mut info = unsafe { core::mem::zeroed::<LfsInfo>() };
             let rc = {
                 let mut inner = self.fs.inner.borrow_mut();
-                littlefs_rust_core::lfs_dir_read(
-                    &mut inner.lfs,
-                    self.alloc.dir.as_mut_ptr(),
-                    info.as_mut_ptr(),
-                )
+                littlefs_rust_core::lfs_dir_read(&mut inner.lfs, &mut self.alloc.dir, &mut info)
             };
 
             return match rc {
-                0 => None,
-                n if n < 0 => Some(Err(Error::from(n))),
+                Ok(0) => None,
+                Err(e) => Some(Err(Error::from(e))),
                 _ => {
-                    let entry = dir_entry_from_info(unsafe { &*info.as_ptr() });
+                    let entry = dir_entry_from_info(&info);
                     if entry.name == "." || entry.name == ".." {
                         continue;
                     }
@@ -98,10 +84,7 @@ impl<S: Storage> Drop for ReadDir<'_, S> {
     fn drop(&mut self) {
         if !self.closed {
             if let Ok(mut inner) = self.fs.inner.try_borrow_mut() {
-                let _ = littlefs_rust_core::lfs_dir_close(
-                    inner.lfs.as_mut_ptr(),
-                    self.alloc.dir.as_mut_ptr(),
-                );
+                let _ = littlefs_rust_core::lfs_dir_close(&mut inner.lfs, &mut self.alloc.dir);
             }
         }
     }
@@ -124,10 +107,4 @@ pub(crate) fn dir_entry_from_info(info: &LfsInfo) -> DirEntry {
         file_type,
         size: info.size,
     }
-}
-
-fn null_terminate(s: &str) -> Vec<u8> {
-    let mut v: Vec<u8> = s.bytes().collect();
-    v.push(0);
-    v
 }

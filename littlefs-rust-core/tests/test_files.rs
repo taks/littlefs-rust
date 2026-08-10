@@ -7,7 +7,7 @@ mod common;
 
 use common::{
     LFS_O_APPEND, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, advance_prng,
-    assert_ok, config_with_inline_max, default_config, fs_with_hello, init_context, path_bytes,
+    assert_ok, config_with_inline_max, default_config, fs_with_hello, init_context,
     powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
     verify_prng_file, verify_prng_file_with_state, write_prng_file, write_prng_file_result,
 };
@@ -39,7 +39,7 @@ fn test_files_simple(#[values(0, -1, 8)] inline_max: i32) {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = c"hello";
+    let path = "hello";
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
@@ -85,7 +85,7 @@ fn test_files_large(
 
     // write
     assert_ok(lfs_mount(lfs, &env.config));
-    let path = c"avacado";
+    let path = "avacado";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
@@ -131,7 +131,7 @@ fn test_files_rewrite(
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
 
-    let path = c"avacado";
+    let path = "avacado";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
 
     // write SIZE1
@@ -199,7 +199,7 @@ fn test_files_append(
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
 
-    let path = c"avacado";
+    let path = "avacado";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
 
     // write SIZE1
@@ -251,7 +251,7 @@ fn test_files_truncate(
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
 
-    let path = c"avacado";
+    let path = "avacado";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
 
     // write SIZE1
@@ -325,7 +325,7 @@ fn test_files_reentrant_write(
             littlefs_rust_core::lfs_mount(lfs, cfg)?;
         }
 
-        let path = c"avacado";
+        let path = "avacado";
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         let open_err = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY);
         if open_err.is_ok() {
@@ -349,7 +349,7 @@ fn test_files_reentrant_write(
         if remount.is_err() {
             return Ok(());
         }
-        let path = c"avacado";
+        let path = "avacado";
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         let err = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY);
         if err.is_err() {
@@ -404,7 +404,7 @@ fn test_files_reentrant_write_sync(
             littlefs_rust_core::lfs_mount(lfs, cfg)?;
         }
 
-        let path = c"avacado";
+        let path = "avacado";
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         let open_err = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY);
         if open_err.is_ok() {
@@ -462,7 +462,7 @@ fn test_files_reentrant_write_sync(
         if littlefs_rust_core::lfs_mount(lfs, cfg).is_err() {
             return Ok(());
         }
-        let path = c"avacado";
+        let path = "avacado";
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         if littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY).is_err() {
             let _ = littlefs_rust_core::lfs_unmount(lfs);
@@ -497,12 +497,12 @@ fn test_files_many() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     for i in 0..N {
-        let path = path_bytes(&format!("file_{:03}", i));
+        let path = &format!("file_{:03}", i);
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         let content = format!("Hi {:03}\0", i);
@@ -513,7 +513,7 @@ fn test_files_many() {
         assert_ok(lfs_file_close(lfs, file));
 
         let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
         let mut buf = [0u8; 32];
         let n = lfs_file_read(lfs, rfile, &mut buf[..7]);
         assert_eq!(n, Ok(7));
@@ -538,12 +538,12 @@ fn test_files_many_power_cycle() {
 
     for i in 0..N {
         assert_ok(lfs_mount(lfs, &env.config));
-        let path = path_bytes(&format!("file_{:03}", i));
+        let path = &format!("file_{:03}", i);
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
             file,
-            path.as_c_str(),
+            path,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         let content = format!("Hi {:03}\0", i);
@@ -556,7 +556,7 @@ fn test_files_many_power_cycle() {
 
         assert_ok(lfs_mount(lfs, &env.config));
         let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY));
+        assert_ok(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
         let mut buf = [0u8; 32];
         let n = lfs_file_read(lfs, rfile, &mut buf[..7]);
         assert_eq!(n, Ok(7));
@@ -595,14 +595,9 @@ fn test_files_many_power_loss() {
             littlefs_rust_core::lfs_mount(lfs, cfg)?;
         }
         for i in 0..N {
-            let path = path_bytes(&format!("file_{:03}", i));
+            let path = (&format!("file_{:03}", i));
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            littlefs_rust_core::lfs_file_open(
-                lfs,
-                file,
-                path.as_c_str(),
-                LFS_O_WRONLY | LFS_O_CREAT,
-            )?;
+            littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT)?;
             let content = format!("Hi {:03}\0", i);
             let bytes = content.as_bytes();
             assert_eq!(bytes.len(), 7);
@@ -614,7 +609,7 @@ fn test_files_many_power_loss() {
             littlefs_rust_core::lfs_file_close(lfs, file)?;
 
             let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            littlefs_rust_core::lfs_file_open(lfs, rfile, path.as_c_str(), LFS_O_RDONLY)?;
+            littlefs_rust_core::lfs_file_open(lfs, rfile, path, LFS_O_RDONLY)?;
             let mut buf = [0u8; 32];
             let n = littlefs_rust_core::lfs_file_read(lfs, rfile, &mut buf[..7])?;
             assert_eq!(n, 7);
@@ -643,7 +638,7 @@ fn test_files_same_session() {
     assert_ok(littlefs_rust_core::lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = c"hello";
+    let path = "hello";
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, path, 0x0100 | 2));
@@ -670,7 +665,7 @@ fn test_files_simple_read() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = c"hello";
+    let path = "hello";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, path, 1));
 
@@ -698,7 +693,7 @@ fn test_files_seek_tell() {
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = c"hello";
+    let path = "hello";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, path, 1));
 
@@ -734,12 +729,12 @@ fn test_files_truncate_api() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = path_bytes("x");
+    let path = "x";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path.as_c_str(),
+        path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     let data = b"hello world";
@@ -752,7 +747,7 @@ fn test_files_truncate_api() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path.as_c_str(), LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), 5);
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf[..32]);

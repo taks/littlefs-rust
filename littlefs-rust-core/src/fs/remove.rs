@@ -12,7 +12,7 @@ use crate::error::Error;
 use crate::fs::parent::lfs_fs_pred;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_preporphans};
 use crate::lfs_gstate::lfs_gstate_hasorphans;
-use crate::lfs_type::lfs_type::{LFS_TYPE_DELETE, LFS_TYPE_DIR, LFS_TYPE_STRUCT};
+use crate::lfs_type::lfs_type::{LFS_TYPE_DELETE, LFS_TYPE_DIR, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
 use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_type3};
 use crate::types::lfs_block_t;
 use crate::util::lfs_pair_fromle32;
@@ -103,7 +103,7 @@ use crate::util::lfs_pair_fromle32;
 ///
 /// #ifndef LFS_READONLY
 /// ```
-pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> {
+pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
@@ -131,7 +131,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
             m: core::mem::zeroed(),
         };
 
-        if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DIR {
+        if (lfs_tag_type3(tag)) == LFS_TYPE3_DIR {
             let mut pair: [lfs_block_t; 2] = [0, 0];
             let res = lfs_dir_get(
                 lfs,
@@ -164,7 +164,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &CStr) -> Result<(), Error> 
         crate::lfs_pass_err!(err)?;
 
         if lfs_gstate_hasorphans(&lfs.gstate) {
-            crate::lfs_assert!(u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DIR);
+            crate::lfs_assert!((lfs_tag_type3(tag)) == LFS_TYPE3_DIR);
 
             lfs_fs_preporphans(lfs, -1)?;
 

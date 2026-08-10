@@ -111,19 +111,19 @@ pub fn lfs_unmount(lfs: &mut Lfs) -> Result<(), Error> {
 
 /// Remove a file or directory. Per lfs.h lfs_remove (lfs.c:6193-6195).
 #[inline(never)]
-pub fn lfs_remove(lfs: &mut Lfs, path: &CStr) -> Result<(), Error> {
+pub fn lfs_remove(lfs: &mut Lfs, path: &str) -> Result<(), Error> {
     crate::fs::remove::lfs_remove_(lfs, path)
 }
 
 /// Rename or move a file or directory. Per lfs.h lfs_rename (lfs.c:6227-6231).
 #[inline(never)]
-pub fn lfs_rename(lfs: &mut Lfs, oldpath: &CStr, newpath: &CStr) -> Result<(), Error> {
+pub fn lfs_rename(lfs: &mut Lfs, oldpath: &str, newpath: &str) -> Result<(), Error> {
     crate::fs::rename::lfs_rename_(lfs, oldpath, newpath)
 }
 
 /// Find info about a file or directory. Per lfs.h lfs_stat (lfs.c:6263-6267).
 #[inline(never)]
-pub fn lfs_stat(lfs: &mut Lfs, path: &CStr, info: &mut LfsInfo) -> Result<(), Error> {
+pub fn lfs_stat(lfs: &mut Lfs, path: &str, info: &mut LfsInfo) -> Result<(), Error> {
     crate::fs::stat::lfs_stat_(lfs, path, info)
 }
 
@@ -131,7 +131,7 @@ pub fn lfs_stat(lfs: &mut Lfs, path: &CStr, info: &mut LfsInfo) -> Result<(), Er
 #[inline(never)]
 pub fn lfs_getattr(
     lfs: &mut Lfs,
-    path: &CStr,
+    path: &str,
     r#type: u8,
     buffer: &mut [u8],
 ) -> Result<lfs_size_t, Error> {
@@ -142,7 +142,7 @@ pub fn lfs_getattr(
 #[inline(never)]
 pub fn lfs_setattr(
     lfs: &mut Lfs,
-    path: &CStr,
+    path: &str,
     r#type: u8,
     buffer: &[u8],
     size: lfs_size_t,
@@ -152,7 +152,7 @@ pub fn lfs_setattr(
 
 /// Remove a custom attribute. Per lfs.h lfs_removeattr (lfs.c:6487-6491).
 #[inline(never)]
-pub fn lfs_removeattr(lfs: &mut Lfs, path: &CStr, r#type: u8) -> Result<(), Error> {
+pub fn lfs_removeattr(lfs: &mut Lfs, path: &str, r#type: u8) -> Result<(), Error> {
     crate::fs::attr::lfs_removeattr_(lfs, path, r#type)
 }
 
@@ -161,7 +161,7 @@ pub fn lfs_removeattr(lfs: &mut Lfs, path: &CStr, r#type: u8) -> Result<(), Erro
 pub fn lfs_file_open(
     lfs: &mut Lfs,
     file: &mut LfsFile,
-    path: &CStr,
+    path: &str,
     flags: i32,
 ) -> Result<(), Error> {
     crate::file::ops::lfs_file_open_(lfs, file, path, flags)
@@ -172,7 +172,7 @@ pub fn lfs_file_open(
 pub fn lfs_file_opencfg<'a>(
     lfs: &mut Lfs,
     file: &mut LfsFile,
-    path: &CStr,
+    path: &str,
     flags: i32,
     config: &mut LfsFileConfig<'a>,
 ) -> Result<(), Error> {
@@ -218,7 +218,7 @@ pub fn lfs_file_seek(
     file: &mut LfsFile,
     off: lfs_soff_t,
     whence: i32,
-) -> Result<crate::types::lfs_soff_t, Error> {
+) -> Result<crate::types::lfs_off_t, Error> {
     crate::file::ops::lfs_file_seek_(lfs, file, off, whence)
 }
 
@@ -230,7 +230,7 @@ pub fn lfs_file_truncate(lfs: &mut Lfs, file: &mut LfsFile, size: lfs_off_t) -> 
 
 /// Return the position of the file. Per lfs.h lfs_file_tell.
 #[inline(never)]
-pub fn lfs_file_tell(_lfs: &mut Lfs, file: &mut LfsFile) -> lfs_soff_t {
+pub fn lfs_file_tell(_lfs: &mut Lfs, file: &LfsFile) -> lfs_soff_t {
     crate::file::ops::lfs_file_tell_(core::ptr::null(), file)
 }
 
@@ -242,19 +242,19 @@ pub fn lfs_file_rewind(lfs: &mut Lfs, file: &mut LfsFile) -> Result<(), Error> {
 
 /// Return the size of the file. Per lfs.h lfs_file_size (lfs.c:6495-6499).
 #[inline(never)]
-pub fn lfs_file_size(lfs: &mut Lfs, file: &mut LfsFile) -> lfs_soff_t {
+pub fn lfs_file_size(lfs: &mut Lfs, file: &LfsFile) -> lfs_soff_t {
     crate::file::ops::lfs_file_size_(lfs, file)
 }
 
 /// Create a directory. Per lfs.h lfs_mkdir (lfs.c:6503-6507).
 #[inline(never)]
-pub fn lfs_mkdir(lfs: &mut Lfs, path: &CStr) -> Result<(), Error> {
+pub fn lfs_mkdir(lfs: &mut Lfs, path: &str) -> Result<(), Error> {
     crate::fs::mkdir::lfs_mkdir_(lfs, path)
 }
 
 /// Open a directory. Per lfs.h lfs_dir_open (lfs.c:6511-6515).
 #[inline(never)]
-pub fn lfs_dir_open(lfs: &mut Lfs, dir: &mut LfsDir, path: &CStr) -> Result<(), Error> {
+pub fn lfs_dir_open(lfs: &mut Lfs, dir: &mut LfsDir, path: &str) -> Result<(), Error> {
     crate::dir::open::lfs_dir_open_(lfs, dir, path)
 }
 
@@ -289,7 +289,7 @@ pub fn lfs_dir_rewind(lfs: &mut Lfs, dir: &mut LfsDir) -> Result<(), Error> {
 }
 
 /// Find on-disk info about the filesystem. Per lfs.h lfs_fs_stat (lfs.c:6449-6453).
-#[inline(never)]
+#[inline(always)]
 pub fn lfs_fs_stat(lfs: &mut Lfs, fsinfo: &mut LfsFsinfo) -> Result<(), Error> {
     crate::fs::lfs_fs_stat_(lfs, fsinfo)
 }

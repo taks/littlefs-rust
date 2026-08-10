@@ -312,6 +312,7 @@ use core::mem;
 /// }
 ///
 /// ```
+#[allow(clippy::type_complexity)]
 pub fn lfs_dir_fetchmatch(
     lfs: &mut crate::fs::Lfs,
     dir: &mut LfsMdir,
@@ -319,14 +320,11 @@ pub fn lfs_dir_fetchmatch(
     _fmask: lfs_tag_t,
     _ftag: lfs_tag_t,
     _id: &mut Option<&mut u16>,
-    cb: Option<fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<i32, Error>>,
+    cb: Option<
+        fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>,
+    >,
     data: *mut core::ffi::c_void,
 ) -> Result<lfs_tag_t, Error> {
-    // Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2
-    const LFS_CMP_EQ: i32 = 0;
-    const LFS_CMP_LT: i32 = 1;
-    const LFS_CMP_GT: i32 = 2;
-
     unsafe {
         let cfg = &*lfs.cfg;
 
@@ -430,7 +428,7 @@ pub fn lfs_dir_fetchmatch(
                 let mut tag = tag_raw ^ ptag;
 
                 if !lfs_tag_isvalid(tag) {
-                    maybeerased = u32::from(lfs_tag_type2(ptag)) == LFS_TYPE_CCRC;
+                    maybeerased = (lfs_tag_type2(ptag)) == LFS_TYPE_CCRC;
                     break;
                 } else if off + lfs_tag_dsize(tag) > cfg.block_size {
                     break;
@@ -438,7 +436,7 @@ pub fn lfs_dir_fetchmatch(
 
                 ptag = tag;
 
-                if u32::from(lfs_tag_type2(tag)) == LFS_TYPE_CCRC {
+                if (lfs_tag_type2(tag)) == LFS_TYPE_CCRC {
                     let mut dcrc_buf = [0u8; 4];
                     let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     let err = lfs_bd_read(
@@ -499,11 +497,11 @@ pub fn lfs_dir_fetchmatch(
                 }
                 crc = crc_val;
 
-                if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_NAME {
+                if (lfs_tag_type1(tag)) == LFS_TYPE_NAME {
                     if lfs_tag_id(tag) >= tempcount {
                         tempcount = lfs_tag_id(tag) + 1;
                     }
-                } else if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_SPLICE {
+                } else if (lfs_tag_type1(tag)) == LFS_TYPE_SPLICE {
                     // Divergence: C uses tempcount += lfs_tag_splice(tag) (unsigned wrap). We clamp
                     // to 0 to avoid underflow when splice is negative (Rule 7).
                     let delta = lfs_tag_splice(tag) as i32;
@@ -520,7 +518,7 @@ pub fn lfs_dir_fetchmatch(
                             + lfs_mktag(0, lfs_tag_splice(tag) as u32, 0))
                             as lfs_stag_t;
                     }
-                } else if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
+                } else if (lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
                     tempsplit = (lfs_tag_chunk(tag) & 1) != 0;
 
                     let mut tail_buf = [0u8; 8];
@@ -585,13 +583,13 @@ pub fn lfs_dir_fetchmatch(
                             }
                         };
 
-                        if res == LFS_CMP_EQ {
+                        if res == core::cmp::Ordering::Equal {
                             tempbesttag = tag as lfs_stag_t;
                         } else if (lfs_mktag(0x7ff, 0x3ff, 0) & tag)
                             == (lfs_mktag(0x7ff, 0x3ff, 0) & tempbesttag as lfs_tag_t)
                         {
                             tempbesttag = -1;
-                        } else if res == LFS_CMP_GT
+                        } else if res == core::cmp::Ordering::Greater
                             && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
                         {
                             tempbesttag = (tag | 0x8000_0000) as lfs_stag_t;
@@ -848,9 +846,9 @@ pub fn lfs_dir_getinfo(
 
         lfs_ctz_fromle32(&mut ctz);
 
-        if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
+        if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
             info.size = ctz.size;
-        } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_INLINESTRUCT {
+        } else if (lfs_tag_type3(tag)) == LFS_TYPE_INLINESTRUCT {
             info.size = lfs_tag_size(tag as u32);
         }
 

@@ -99,7 +99,9 @@ macro_rules! lfs_pass_err {
     }};
     ($e:expr, $fmt:expr, $($arg:tt)*) => {{
         let e = $e;
-        $crate::lfs_trace!(concat!("lfs_pass_err {} at ", file!(), ":", line!(), " ", $fmt), e, $($arg)*);
+        if let Err(err) = e {
+            $crate::lfs_trace!(concat!("lfs_pass_err {:?} at ", file!(), ":", line!(), " ", $fmt), e, $($arg)*);
+        }
         e
     }};
 }
