@@ -11,7 +11,7 @@ use std::ffi::CStr;
 
 use common::{
     BadBlockBehavior, WearLevelingEnv, assert_ok, config_with_wear_leveling_behavior,
-    init_wear_leveling_context, path_bytes, test_prng,
+    init_wear_leveling_context, test_prng,
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
@@ -40,7 +40,7 @@ fn run_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) -
         assert_ok(lfs_mount(lfs, config));
 
         for i in 0..files {
-            let path = path_bytes(&format!("{prefix}/test{i}"));
+            let path = (&format!("{prefix}/test{i}"));
             let mut prng = cycle.wrapping_mul(i);
             let size = 1u32 << ((test_prng(&mut prng) % 10) + 2);
 
@@ -79,17 +79,12 @@ fn run_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) -
         }
 
         for i in 0..files {
-            let path = path_bytes(&format!("{prefix}/test{i}"));
+            let path = (&format!("{prefix}/test{i}"));
             let mut prng = cycle.wrapping_mul(i);
             let size = 1u32 << ((test_prng(&mut prng) % 10) + 2);
 
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path,
-                common::LFS_O_RDONLY,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path, common::LFS_O_RDONLY));
 
             for _ in 0..size {
                 let expected = b'a' + (test_prng(&mut prng) % 26) as u8;
@@ -114,7 +109,7 @@ fn run_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) -
 fn verify_after_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) {
     assert_ok(lfs_mount(lfs, config));
     for i in 0..files {
-        let path = path_bytes(&format!("{prefix}/test{i}"));
+        let path = (&format!("{prefix}/test{i}"));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok(lfs_stat(lfs, path, info));
     }
@@ -145,7 +140,7 @@ fn test_exhaustion_normal(
 
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, path_bytes("roadrunner")));
+    assert_ok(lfs_mkdir(lfs, ("roadrunner")));
     assert_ok(lfs_unmount(lfs));
 
     let cycle = run_exhaustion(lfs, &env.config, "roadrunner", files);
@@ -193,7 +188,7 @@ fn run_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) -> u32 {
         assert_ok(lfs_mount(lfs, config));
 
         for i in 0..files {
-            let path = path_bytes(&format!("test{i}"));
+            let path = (&format!("test{i}"));
             let mut prng = cycle.wrapping_mul(i);
             let size = 1u32 << ((test_prng(&mut prng) % 10) + 2);
 
@@ -226,17 +221,12 @@ fn run_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) -> u32 {
         }
 
         for i in 0..files {
-            let path = path_bytes(&format!("test{i}"));
+            let path = (&format!("test{i}"));
             let mut prng = cycle.wrapping_mul(i);
             let size = 1u32 << ((test_prng(&mut prng) % 10) + 2);
 
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path,
-                common::LFS_O_RDONLY,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path, common::LFS_O_RDONLY));
 
             for _ in 0..size {
                 let expected = b'a' + (test_prng(&mut prng) % 26) as u8;
@@ -258,7 +248,7 @@ fn run_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) -> u32 {
 fn verify_after_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) {
     assert_ok(lfs_mount(lfs, config));
     for i in 0..files {
-        let path = path_bytes(&format!("test{i}"));
+        let path = (&format!("test{i}"));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok(lfs_stat(lfs, path, info));
     }
@@ -299,7 +289,7 @@ fn test_exhaustion_wear_leveling() {
         let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
         assert_ok(lfs_format(lfs, &env.config));
         assert_ok(lfs_mount(lfs, &env.config));
-        assert_ok(lfs_mkdir(lfs, path_bytes("roadrunner")));
+        assert_ok(lfs_mkdir(lfs, ("roadrunner")));
         assert_ok(lfs_unmount(lfs));
 
         let cycle = run_exhaustion(lfs, &env.config, "roadrunner", files);
@@ -398,7 +388,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
     let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_mkdir(lfs, c"roadrunner"));
+    assert_ok(lfs_mkdir(lfs, "roadrunner"));
     assert_ok(lfs_unmount(lfs));
 
     let mut cycle: u32 = 0;
@@ -406,7 +396,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
         assert_ok(lfs_mount(lfs, &env.config));
 
         for i in 0..files {
-            let path = path_bytes(&format!("roadrunner/test{i}"));
+            let path = (&format!("roadrunner/test{i}"));
             let mut prng = cycle.wrapping_mul(i);
             // C: lfs_size_t size = 1 << 4;
             let size: u32 = 1 << 4;
@@ -440,17 +430,12 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
         }
 
         for i in 0..files {
-            let path = path_bytes(&format!("roadrunner/test{i}"));
+            let path = (&format!("roadrunner/test{i}"));
             let mut prng = cycle.wrapping_mul(i);
             let size: u32 = 1 << 4;
 
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path,
-                common::LFS_O_RDONLY,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path, common::LFS_O_RDONLY));
 
             for _ in 0..size {
                 let expected = b'a' + (test_prng(&mut prng) % 26) as u8;
@@ -470,13 +455,9 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
     // Verify after exhaustion
     assert_ok(lfs_mount(lfs, &env.config));
     for i in 0..files {
-        let path = path_bytes(&format!("roadrunner/test{i}"));
+        let path = (&format!("roadrunner/test{i}"));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok(lfs_stat(
-            lfs,
-            unsafe { CStr::from_ptr(path.as_ptr()) },
-            info,
-        ));
+        assert_ok(lfs_stat(lfs, path, info));
     }
     assert_ok(lfs_unmount(lfs));
 

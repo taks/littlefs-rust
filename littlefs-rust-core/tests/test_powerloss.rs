@@ -33,8 +33,8 @@ fn test_powerloss_only_rev() {
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
-    let path_nb = c"notebook";
-    let path_paper = c"notebook/paper";
+    let path_nb = "notebook";
+    let path_paper = "notebook/paper";
     assert_ok_at("mkdir notebook", lfs_mkdir(lfs, path_nb));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
@@ -174,7 +174,7 @@ fn test_powerloss_runner_smoke() {
     assert_ok_at("format", lfs_format(lfs, &env.config));
     let snapshot = env.snapshot();
 
-    let path_d = c"d";
+    let path_d = "d";
     let result = run_powerloss_linear(
         &mut env,
         &snapshot,
@@ -219,7 +219,7 @@ fn test_powerloss_partial_prog() {
             let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
             assert_ok_at("format", lfs_format(lfs, cfg));
             assert_ok_at("mount", lfs_mount(lfs, cfg));
-            let path_a = c"a";
+            let path_a = "a";
             assert_ok_at("mkdir a", lfs_mkdir(lfs, path_a));
             assert_ok_at("unmount", lfs_unmount(lfs));
 
@@ -289,7 +289,7 @@ fn test_debug_file_root_single_write_sync() {
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
     let lfs = lfs;
-    let path = c"paper";
+    let path = "paper";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok_at(
         "file_open create",
@@ -315,7 +315,7 @@ fn test_debug_file_root_repeated_write_sync() {
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
     let lfs = lfs;
-    let path = c"paper";
+    let path = "paper";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok_at(
         "file_open create",
@@ -343,8 +343,8 @@ fn test_debug_file_subdir_which_sync_fails() {
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
     let lfs = lfs;
-    let path_nb = c"notebook";
-    let path_paper = c"notebook/paper";
+    let path_nb = "notebook";
+    let path_paper = "notebook/paper";
     assert_ok_at("mkdir notebook", lfs_mkdir(lfs, path_nb));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
@@ -380,8 +380,8 @@ fn test_debug_powerloss_after_corrupt_append() {
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
     let lfs = lfs;
-    let path_nb = c"notebook";
-    let path_paper = c"notebook/paper";
+    let path_nb = "notebook";
+    let path_paper = "notebook/paper";
     assert_ok_at("mkdir notebook", lfs_mkdir(lfs, path_nb));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
@@ -455,7 +455,7 @@ fn test_powerloss_runner_smoke_log() {
     assert_ok_at("format", lfs_format(lfs, &env.config));
     let snapshot = env.snapshot();
 
-    let path_d = c"d";
+    let path_d = "d";
     let result = run_powerloss_log(
         &mut env,
         &snapshot,
@@ -491,7 +491,7 @@ fn test_powerloss_runner_smoke_exhaustive() {
     assert_ok_at("format", lfs_format(lfs, &env.config));
     let snapshot = env.snapshot();
 
-    let path_d = c"d";
+    let path_d = "d";
     let result = run_powerloss_exhaustive(
         &mut env,
         &snapshot,
@@ -528,7 +528,7 @@ fn test_powerloss_ooo_smoke() {
     assert_ok_at("format", lfs_format(lfs, &env.config));
     let snapshot = env.snapshot();
 
-    let path_d = c"d";
+    let path_d = "d";
     let result = run_powerloss_linear(
         &mut env,
         &snapshot,
@@ -564,7 +564,7 @@ fn test_debug_file_subdir_single_write_sync() {
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
     let lfs = lfs;
-    assert_ok_at("mkdir notebook", lfs_mkdir(lfs, c"notebook"));
+    assert_ok_at("mkdir notebook", lfs_mkdir(lfs, "notebook"));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok_at(
@@ -572,7 +572,7 @@ fn test_debug_file_subdir_single_write_sync() {
         lfs_file_open(
             lfs,
             file,
-            c"notebook/paper",
+            "notebook/paper",
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
         ),
     );

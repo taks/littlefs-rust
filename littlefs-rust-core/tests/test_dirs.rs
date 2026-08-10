@@ -11,7 +11,7 @@ use std::ffi::CStr;
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok, default_config,
-    dir_entry_names, init_context, init_logger, path_bytes,
+    dir_entry_names, init_context, init_logger,
 };
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG};
@@ -23,7 +23,7 @@ use littlefs_rust_core::{
 use rstest::rstest;
 
 /// Root path: "/" null-terminated.
-static ROOT_PATH: &CStr = c"/"; // [b'/', 0];
+static ROOT_PATH: &str = "/"; // [b'/', 0];
 
 // --- test_dirs_root ---
 // Upstream: dir_open("/"), dir_read returns ".", "..", then 0
@@ -75,7 +75,7 @@ fn test_dirs_one_mkdir() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = c"d0";
+    let path = "d0";
     assert_ok(lfs_mkdir(lfs, path));
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
@@ -117,7 +117,7 @@ fn test_dirs_many_creation(
     assert_ok(lfs_mount(lfs, &env.config));
 
     for i in 0..n {
-        let path = path_bytes(&format!("dir{i:03}"));
+        let path = (&format!("dir{i:03}"));
         let err = lfs_mkdir(lfs, path);
         assert_ok(err);
     }
@@ -154,11 +154,11 @@ fn test_dirs_many_removal(#[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize)
     assert_ok(lfs_mount(lfs, &env.config));
 
     for i in 0..n {
-        let path = path_bytes(&format!("removeme{i:03}"));
+        let path = (&format!("removeme{i:03}"));
         assert_ok(lfs_mkdir(lfs, path));
     }
     for i in 0..n {
-        let path = path_bytes(&format!("removeme{i:03}"));
+        let path = (&format!("removeme{i:03}"));
         assert_ok(lfs_remove(lfs, path));
     }
 
@@ -188,12 +188,12 @@ fn test_dirs_many_rename(#[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize) 
     assert_ok(lfs_mount(lfs, &env.config));
 
     for i in 0..n {
-        let path = path_bytes(&format!("test{i:03}"));
+        let path = (&format!("test{i:03}"));
         assert_ok(lfs_mkdir(lfs, path));
     }
     for i in 0..n {
-        let old_path = path_bytes(&format!("test{i:03}"));
-        let new_path = path_bytes(&format!("tedd{i:03}"));
+        let old_path = (&format!("test{i:03}"));
+        let new_path = (&format!("tedd{i:03}"));
         let err = lfs_rename(lfs, old_path, new_path);
         assert_ok(err);
     }
@@ -228,15 +228,15 @@ fn test_dirs_many_rename_append() {
         assert_ok(lfs_mount(lfs, &env.config));
 
         for i in 0..n {
-            let path = path_bytes(&format!("a{i:02}"));
+            let path = (&format!("a{i:02}"));
             assert_ok(lfs_mkdir(lfs, path));
         }
         assert_ok(lfs_unmount(lfs));
 
         assert_ok(lfs_mount(lfs, &env.config));
         for i in 0..n {
-            let old = path_bytes(&format!("a{i:02}"));
-            let new = path_bytes(&format!("z{i:02}"));
+            let old = (&format!("a{i:02}"));
+            let new = (&format!("z{i:02}"));
             assert_ok(lfs_rename(lfs, old, new));
         }
         assert_ok(lfs_unmount(lfs));
@@ -305,14 +305,14 @@ fn test_dirs_many_reentrant() {
                 }
 
                 for i in 0..n {
-                    let path = path_bytes(&format!("hi{i:03}"));
+                    let path = (&format!("hi{i:03}"));
                     let err = lfs_mkdir(lfs_ptr, path);
                     if err.is_err() && err != Err(Error::Exists) {
                         return err;
                     }
                 }
                 for i in 0..n {
-                    let path = path_bytes(&format!("hello{i:03}"));
+                    let path = (&format!("hello{i:03}"));
                     let err = lfs_remove(lfs_ptr, path);
                     if err.is_err() && err != Err(Error::NoEntry) {
                         return err;
@@ -349,8 +349,8 @@ fn test_dirs_many_reentrant() {
                 }
 
                 for i in 0..n {
-                    let old = path_bytes(&format!("hi{i:03}"));
-                    let new = path_bytes(&format!("hello{i:03}"));
+                    let old = (&format!("hi{i:03}"));
+                    let new = (&format!("hello{i:03}"));
                     if lfs_rename(lfs_ptr, old, new).is_err() {
                         return Err(Error::Invalid);
                     }
@@ -384,7 +384,7 @@ fn test_dirs_many_reentrant() {
                 }
 
                 for i in 0..n {
-                    let path = path_bytes(&format!("hello{i:03}"));
+                    let path = (&format!("hello{i:03}"));
                     if lfs_remove(lfs_ptr, path).is_err() {
                         return Err(Error::Invalid);
                     }
@@ -429,14 +429,9 @@ fn test_dirs_file_creation() {
         assert_ok(lfs_mount(lfs, &env.config));
 
         for i in 0..n {
-            let path = path_bytes(&format!("file{i:03}"));
+            let path = (&format!("file{i:03}"));
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
             assert_ok(lfs_file_close(lfs, file));
         }
         assert_ok(lfs_unmount(lfs));
@@ -490,14 +485,9 @@ fn test_dirs_file_removal() {
         assert_ok(lfs_mount(lfs, &env.config));
 
         for i in 0..n {
-            let path = path_bytes(&format!("removeme{i:03}"));
+            let path = (&format!("removeme{i:03}"));
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
             assert_ok(lfs_file_close(lfs, file));
         }
         assert_ok(lfs_unmount(lfs));
@@ -513,7 +503,7 @@ fn test_dirs_file_removal() {
 
         assert_ok(lfs_mount(lfs, &env.config));
         for i in 0..n {
-            let path = path_bytes(&format!("removeme{i:03}"));
+            let path = (&format!("removeme{i:03}"));
             assert_ok(lfs_remove(lfs, path));
         }
         assert_ok(lfs_unmount(lfs));
@@ -540,14 +530,9 @@ fn test_dirs_file_rename() {
         assert_ok(lfs_mount(lfs, &env.config));
 
         for i in 0..n {
-            let path = path_bytes(&format!("test{i:03}"));
+            let path = (&format!("test{i:03}"));
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT,
-            ));
+            assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
             assert_ok(lfs_file_close(lfs, file));
         }
         assert_ok(lfs_unmount(lfs));
@@ -563,8 +548,8 @@ fn test_dirs_file_rename() {
 
         assert_ok(lfs_mount(lfs, &env.config));
         for i in 0..n {
-            let old = path_bytes(&format!("test{i:03}"));
-            let new = path_bytes(&format!("tedd{i:03}"));
+            let old = (&format!("test{i:03}"));
+            let new = (&format!("tedd{i:03}"));
             assert_ok(lfs_rename(lfs, old, new));
         }
         assert_ok(lfs_unmount(lfs));
@@ -607,10 +592,8 @@ fn test_dirs_file_reentrant() {
                 let file =
                     &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
                 for i in 0..n {
-                    let path = path_bytes(&format!("hi{i:03}"));
-                    if lfs_file_open(lfs_ptr, file, path, LFS_O_CREAT | LFS_O_WRONLY)
-                        .is_err()
-                    {
+                    let path = (&format!("hi{i:03}"));
+                    if lfs_file_open(lfs_ptr, file, path, LFS_O_CREAT | LFS_O_WRONLY).is_err() {
                         return Err(Error::Invalid);
                     }
                     if lfs_file_close(lfs_ptr, file).is_err() {
@@ -618,7 +601,7 @@ fn test_dirs_file_reentrant() {
                     }
                 }
                 for i in 0..n {
-                    let path = path_bytes(&format!("hello{i:03}"));
+                    let path = (&format!("hello{i:03}"));
                     let err = lfs_remove(lfs_ptr, path);
                     if err.is_err() && err != Err(Error::NoEntry) {
                         return err;
@@ -659,8 +642,8 @@ fn test_dirs_file_reentrant() {
                 }
 
                 for i in 0..n {
-                    let old = path_bytes(&format!("hi{i:03}"));
-                    let new = path_bytes(&format!("hello{i:03}"));
+                    let old = (&format!("hi{i:03}"));
+                    let new = (&format!("hello{i:03}"));
                     if lfs_rename(lfs_ptr, old, new).is_err() {
                         return Err(Error::Invalid);
                     }
@@ -698,7 +681,7 @@ fn test_dirs_file_reentrant() {
                 }
 
                 for i in 0..n {
-                    let path = path_bytes(&format!("hello{i:03}"));
+                    let path = (&format!("hello{i:03}"));
                     if lfs_remove(lfs_ptr, path).is_err() {
                         return Err(Error::Invalid);
                     }
@@ -727,85 +710,48 @@ fn test_dirs_nested() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, c"potato"));
+    assert_ok(lfs_mkdir(lfs, "potato"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("burito"),
+        ("burito"),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_ok(lfs_mkdir(lfs, c"potato/baked"));
-    assert_ok(lfs_mkdir(lfs, c"potato/sweet"));
-    assert_ok(lfs_mkdir(lfs, c"potato/fried"));
+    assert_ok(lfs_mkdir(lfs, "potato/baked"));
+    assert_ok(lfs_mkdir(lfs, "potato/sweet"));
+    assert_ok(lfs_mkdir(lfs, "potato/fried"));
 
     let names = dir_entry_names(lfs, &env.config, "potato").expect("potato dir_entry_names");
     let mut names_sorted = names.clone();
     names_sorted.sort();
     assert_eq!(names_sorted, vec!["baked", "fried", "sweet"]);
 
-    assert_err(Error::NotEmpty, lfs_remove(lfs, c"potato"));
+    assert_err(Error::NotEmpty, lfs_remove(lfs, "potato"));
 
-    assert_ok(lfs_rename(
-        lfs,
-        c"potato",
-        path_bytes("coldpotato"),
-    ));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("coldpotato"),
-        path_bytes("warmpotato"),
-    ));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("warmpotato"),
-        path_bytes("hotpotato"),
-    ));
+    assert_ok(lfs_rename(lfs, "potato", ("coldpotato")));
+    assert_ok(lfs_rename(lfs, ("coldpotato"), ("warmpotato")));
+    assert_ok(lfs_rename(lfs, ("warmpotato"), ("hotpotato")));
 
-    assert_err(Error::NoEntry, lfs_remove(lfs, c"potato"));
-    assert_err(
-        Error::NoEntry,
-        lfs_remove(lfs, path_bytes("coldpotato")),
-    );
-    assert_err(
-        Error::NoEntry,
-        lfs_remove(lfs, path_bytes("warmpotato")),
-    );
-    assert_err(
-        Error::NotEmpty,
-        lfs_remove(lfs, path_bytes("hotpotato")),
-    );
+    assert_err(Error::NoEntry, lfs_remove(lfs, "potato"));
+    assert_err(Error::NoEntry, lfs_remove(lfs, ("coldpotato")));
+    assert_err(Error::NoEntry, lfs_remove(lfs, ("warmpotato")));
+    assert_err(Error::NotEmpty, lfs_remove(lfs, ("hotpotato")));
 
-    assert_ok(lfs_mkdir(lfs, c"coldpotato"));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("hotpotato/baked"),
-        path_bytes("coldpotato/baked"),
-    ));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("hotpotato/fried"),
-        path_bytes("coldpotato/fried"),
-    ));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("hotpotato/sweet"),
-        path_bytes("coldpotato/sweet"),
-    ));
+    assert_ok(lfs_mkdir(lfs, "coldpotato"));
+    assert_ok(lfs_rename(lfs, ("hotpotato/baked"), ("coldpotato/baked")));
+    assert_ok(lfs_rename(lfs, ("hotpotato/fried"), ("coldpotato/fried")));
+    assert_ok(lfs_rename(lfs, ("hotpotato/sweet"), ("coldpotato/sweet")));
 
-    assert_ok(lfs_remove(lfs, path_bytes("hotpotato")));
-    assert_ok(lfs_rename(
-        lfs,
-        path_bytes("coldpotato"),
-        path_bytes("hotpotato"),
-    ));
+    assert_ok(lfs_remove(lfs, ("hotpotato")));
+    assert_ok(lfs_rename(lfs, ("coldpotato"), ("hotpotato")));
 
-    assert_ok(lfs_remove(lfs, path_bytes("hotpotato/baked")));
-    assert_ok(lfs_remove(lfs, path_bytes("hotpotato/fried")));
-    assert_ok(lfs_remove(lfs, path_bytes("hotpotato/sweet")));
-    assert_ok(lfs_remove(lfs, path_bytes("hotpotato")));
+    assert_ok(lfs_remove(lfs, ("hotpotato/baked")));
+    assert_ok(lfs_remove(lfs, ("hotpotato/fried")));
+    assert_ok(lfs_remove(lfs, ("hotpotato/sweet")));
+    assert_ok(lfs_remove(lfs, ("hotpotato")));
 
     let names = dir_entry_names(lfs, &env.config, "/").expect("root dir_entry_names");
     assert_eq!(names, vec!["burito"]);
@@ -827,9 +773,9 @@ fn test_dirs_recursive_remove() {
         assert_ok(lfs_format(lfs, &env.config));
         assert_ok(lfs_mount(lfs, &env.config));
 
-        assert_ok(lfs_mkdir(lfs, c"prickly-pear"));
+        assert_ok(lfs_mkdir(lfs, "prickly-pear"));
         for i in 0..n {
-            let path = path_bytes(&format!("prickly-pear/cactus{i:03}"));
+            let path = (&format!("prickly-pear/cactus{i:03}"));
             assert_ok(lfs_mkdir(lfs, path));
         }
 
@@ -837,17 +783,10 @@ fn test_dirs_recursive_remove() {
             .expect("prickly-pear dir_entry_names");
         assert_eq!(names.len(), n, "N={n} subdir count");
 
-        assert_err(
-            Error::NotEmpty,
-            lfs_remove(lfs, path_bytes("prickly-pear")),
-        );
+        assert_err(Error::NotEmpty, lfs_remove(lfs, ("prickly-pear")));
 
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_ok(lfs_dir_open(
-            lfs,
-            dir,
-            path_bytes("prickly-pear"),
-        ));
+        assert_ok(lfs_dir_open(lfs, dir, ("prickly-pear")));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         loop {
             let rc = lfs_dir_read(lfs, dir, info);
@@ -860,17 +799,17 @@ fn test_dirs_recursive_remove() {
             }
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-            let child_path = path_bytes(&format!("prickly-pear/{name}"));
+            let child_path = (&format!("prickly-pear/{name}"));
             assert_ok(lfs_remove(lfs, child_path));
         }
         assert_ok(lfs_dir_close(lfs, dir));
 
-        assert_ok(lfs_remove(lfs, path_bytes("prickly-pear")));
+        assert_ok(lfs_remove(lfs, ("prickly-pear")));
         assert_ok(lfs_unmount(lfs));
 
         assert_ok(lfs_mount(lfs, &env.config));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_err(Error::NoEntry, lfs_stat(lfs, c"prickly-pear", info));
+        assert_err(Error::NoEntry, lfs_stat(lfs, "prickly-pear", info));
         assert_ok(lfs_unmount(lfs));
     }
 }
@@ -890,35 +829,25 @@ fn test_dirs_remove_read() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, c"prickly-pear"));
+    assert_ok(lfs_mkdir(lfs, "prickly-pear"));
     for i in 0..N {
-        let path = path_bytes(&format!("prickly-pear/cactus{i:03}"));
+        let path = (&format!("prickly-pear/cactus{i:03}"));
         assert_ok(lfs_mkdir(lfs, path));
     }
 
     for k in 0..N {
         for j in 0..=N {
             let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-            assert_ok(lfs_dir_open(
-                lfs,
-                dir,
-                path_bytes("prickly-pear"),
-            ));
+            assert_ok(lfs_dir_open(lfs, dir, ("prickly-pear")));
             assert_ok(lfs_dir_rewind(lfs, dir));
             assert_ok(lfs_dir_seek(lfs, dir, j as _));
-            assert_ok(lfs_remove(
-                lfs,
-                path_bytes(&format!("prickly-pear/cactus{k:03}")),
-            ));
+            assert_ok(lfs_remove(lfs, (&format!("prickly-pear/cactus{k:03}"))));
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             while let Ok(x) = lfs_dir_read(lfs, dir, info)
                 && x > 0
             {}
             assert_ok(lfs_dir_close(lfs, dir));
-            assert_ok(lfs_mkdir(
-                lfs,
-                path_bytes(&format!("prickly-pear/cactus{k:03}")),
-            ));
+            assert_ok(lfs_mkdir(lfs, (&format!("prickly-pear/cactus{k:03}"))));
         }
         assert_ok(lfs_unmount(lfs));
         assert_ok(lfs_mount(lfs, &env.config));
@@ -939,21 +868,18 @@ fn test_dirs_other_errors() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    assert_ok(lfs_mkdir(lfs, c"potato"));
+    assert_ok(lfs_mkdir(lfs, "potato"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("burito"),
+        ("burito"),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_err(Error::Exists, lfs_mkdir(lfs, c"potato"));
-    assert_err(
-        Error::Exists,
-        lfs_mkdir(lfs, path_bytes("burito")),
-    );
+    assert_err(Error::Exists, lfs_mkdir(lfs, "potato"));
+    assert_err(Error::Exists, lfs_mkdir(lfs, ("burito")));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
@@ -961,108 +887,75 @@ fn test_dirs_other_errors() {
         lfs_file_open(
             lfs,
             file,
-            path_bytes("burito"),
+            ("burito"),
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ),
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::Exists,
-        lfs_file_open(
-            lfs,
-            file,
-            c"potato",
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ),
+        lfs_file_open(lfs, file, "potato", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
     );
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_err(
-        Error::NoEntry,
-        lfs_dir_open(lfs, dir, path_bytes("tomato")),
-    );
+    assert_err(Error::NoEntry, lfs_dir_open(lfs, dir, ("tomato")));
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
+    assert_err(Error::NotDir, lfs_dir_open(lfs, dir, ("burito")));
+
+    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
-        Error::NotDir,
-        lfs_dir_open(lfs, dir, path_bytes("burito")),
+        Error::NoEntry,
+        lfs_file_open(lfs, file, ("tomato"), LFS_O_RDONLY),
+    );
+    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    assert_err(
+        Error::IsDir,
+        lfs_file_open(lfs, file, "potato", LFS_O_RDONLY),
     );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::NoEntry,
-        lfs_file_open(lfs, file, path_bytes("tomato"), LFS_O_RDONLY),
+        lfs_file_open(lfs, file, ("tomato"), LFS_O_WRONLY),
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::IsDir,
-        lfs_file_open(lfs, file, c"potato", LFS_O_RDONLY),
-    );
-
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
-        Error::NoEntry,
-        lfs_file_open(lfs, file, path_bytes("tomato"), LFS_O_WRONLY),
-    );
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
-        Error::IsDir,
-        lfs_file_open(lfs, file, c"potato", LFS_O_WRONLY),
+        lfs_file_open(lfs, file, "potato", LFS_O_WRONLY),
     );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::IsDir,
-        lfs_file_open(lfs, file, c"potato", LFS_O_WRONLY | LFS_O_CREAT),
+        lfs_file_open(lfs, file, "potato", LFS_O_WRONLY | LFS_O_CREAT),
     );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
         file,
-        path_bytes("tacoto"),
+        ("tacoto"),
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_err(
-        Error::IsDir,
-        lfs_rename(lfs, path_bytes("tacoto"), c"potato"),
-    );
-    assert_err(
-        Error::NotDir,
-        lfs_rename(lfs, c"potato", path_bytes("tacoto")),
-    );
+    assert_err(Error::IsDir, lfs_rename(lfs, ("tacoto"), "potato"));
+    assert_err(Error::NotDir, lfs_rename(lfs, "potato", ("tacoto")));
 
-    assert_err(Error::Exists, lfs_mkdir(lfs, c"/"));
+    assert_err(Error::Exists, lfs_mkdir(lfs, "/"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::Exists,
-        lfs_file_open(
-            lfs,
-            file,
-            path_bytes("/"),
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ),
+        lfs_file_open(lfs, file, ("/"), LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
     );
+    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    assert_err(Error::IsDir, lfs_file_open(lfs, file, ("/"), LFS_O_RDONLY));
+    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    assert_err(Error::IsDir, lfs_file_open(lfs, file, ("/"), LFS_O_WRONLY));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::IsDir,
-        lfs_file_open(lfs, file, path_bytes("/"), LFS_O_RDONLY),
-    );
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
-        Error::IsDir,
-        lfs_file_open(lfs, file, path_bytes("/"), LFS_O_WRONLY),
-    );
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
-        Error::IsDir,
-        lfs_file_open(
-            lfs,
-            file,
-            path_bytes("/"),
-            LFS_O_WRONLY | LFS_O_CREAT,
-        ),
+        lfs_file_open(lfs, file, ("/"), LFS_O_WRONLY | LFS_O_CREAT),
     );
 
     let names = dir_entry_names(lfs, &env.config, "/").expect("root listing");
@@ -1094,9 +987,9 @@ fn test_dirs_seek() {
         assert_ok(lfs_format(lfs, &env.config));
         assert_ok(lfs_mount(lfs, &env.config));
 
-        assert_ok(lfs_mkdir(lfs, c"child"));
+        assert_ok(lfs_mkdir(lfs, "child"));
         for i in 0..count {
-            let path = path_bytes(&format!("child/entry{i:03}"));
+            let path = (&format!("child/entry{i:03}"));
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,
@@ -1108,7 +1001,7 @@ fn test_dirs_seek() {
         }
 
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_ok(lfs_dir_open(lfs, dir, path_bytes("child")));
+        assert_ok(lfs_dir_open(lfs, dir, ("child")));
         assert_ok(lfs_dir_rewind(lfs, dir));
         let pos0 = lfs_dir_tell(lfs, dir);
         assert!(pos0 >= 0, "tell after rewind");
@@ -1152,7 +1045,7 @@ fn test_dirs_toot_seek() {
         assert_ok(lfs_mount(lfs, &env.config));
 
         for i in 0..count {
-            let path = path_bytes(&format!("entry{i:03}"));
+            let path = (&format!("entry{i:03}"));
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
             assert_ok(lfs_file_open(
                 lfs,

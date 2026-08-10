@@ -139,7 +139,7 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_file_open(
         lfs,
         file,
-        c"test",
+        "test",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     assert_eq!(lfs_file_write(lfs, file, b"testtest",), Ok(8));
@@ -189,7 +189,7 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.disk_version, LFS_DISK_VERSION - 1);
 
-    assert_ok(lfs_file_open(lfs, file, c"test", LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, "test", LFS_O_RDONLY));
     let mut buf = [0u8; 8];
     assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(8));
     assert_eq!(&buf, b"testtest");
@@ -204,12 +204,7 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!({ fsinfo.disk_version }, LFS_DISK_VERSION - 1);
 
-    assert_ok(lfs_file_open(
-        lfs,
-        file,
-        c"test",
-        LFS_O_WRONLY | LFS_O_TRUNC,
-    ));
+    assert_ok(lfs_file_open(lfs, file, "test", LFS_O_WRONLY | LFS_O_TRUNC));
     assert_eq!(lfs_file_write(lfs, file, b"teeeeest"), Ok(8));
     assert_ok(lfs_file_close(lfs, file));
 
@@ -222,7 +217,7 @@ fn test_compat_minor_bump() {
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!({ fsinfo.disk_version }, LFS_DISK_VERSION);
 
-    assert_ok(lfs_file_open(lfs, file, c"test", LFS_O_RDONLY));
+    assert_ok(lfs_file_open(lfs, file, "test", LFS_O_RDONLY));
     assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(8));
     assert_eq!(&buf, b"teeeeest");
     assert_ok(lfs_file_close(lfs, file));

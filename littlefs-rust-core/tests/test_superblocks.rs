@@ -10,7 +10,6 @@ use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_
 use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok,
     assert_superblock_magic, clone_config_with_block_count, default_config, init_context,
-    path_bytes,
 };
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;
@@ -227,7 +226,7 @@ fn test_superblocks_expand() {
             assert_ok(lfs_format(lfs, &env.config));
             assert_ok(lfs_mount(lfs, &env.config));
 
-            let dummy = c"dummy";
+            let dummy = "dummy";
             for _ in 0..n {
                 let file =
                     &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
@@ -277,7 +276,7 @@ fn test_superblocks_magic_expand() {
             assert_ok(lfs_format(lfs, &env.config));
             assert_ok(lfs_mount(lfs, &env.config));
 
-            let dummy = c"dummy";
+            let dummy = "dummy";
             for _ in 0..n {
                 let file =
                     &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
@@ -315,7 +314,7 @@ fn test_superblocks_expand_power_cycle() {
             let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
             assert_ok(lfs_format(lfs, &env.config));
 
-            let dummy = c"dummy";
+            let dummy = "dummy";
             for i in 0..n {
                 assert_ok(lfs_mount(lfs, &env.config));
                 let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
@@ -370,7 +369,7 @@ fn test_superblocks_reentrant_expand() {
         assert_ok(lfs_unmount(lfs));
         let snapshot = env.snapshot();
 
-        let dummy = path_bytes("dummy");
+        let dummy = ("dummy");
         let result = run_powerloss_linear(
             &mut env,
             &snapshot,
@@ -460,7 +459,7 @@ fn test_superblocks_unknown_blocks() {
     let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_count, BLOCK_COUNT);
-    let test_path = path_bytes("test");
+    let test_path = ("test");
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
@@ -511,7 +510,7 @@ fn test_superblocks_fewer_blocks() {
         assert_eq!(fsinfo.block_count, block_count);
         assert_ok(lfs_unmount(lfs));
 
-        let test_path = path_bytes("test");
+        let test_path = ("test");
         assert_ok(lfs_mount(lfs, &cfg0.config));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
@@ -576,7 +575,7 @@ fn test_superblocks_grow(
     assert_ok(lfs_mount(lfs, &env.config));
 
     // Create a file to verify after grow
-    let path = path_bytes("x");
+    let path = ("x");
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
@@ -699,7 +698,7 @@ fn test_superblocks_shrink(
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_size, BLOCK_SIZE);
     assert_eq!(fsinfo.block_count, block_count_2);
-    let test_path = path_bytes("test");
+    let test_path = ("test");
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
@@ -746,7 +745,7 @@ fn test_superblocks_metadata_max(
 
     for i in 0..n {
         let name_str = format!("hello{:03x}", i);
-        let name = path_bytes(&name_str);
+        let name = (&name_str);
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,

@@ -87,7 +87,7 @@ fn test_badblocks_single(
                 lfs,
                 file,
                 unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
-                LFS_O_WRONLY | LFS_O_CREAT
+                LFS_O_WRONLY | LFS_O_CREAT,
             ));
 
             let size = NAMEMULT as u32;
@@ -292,7 +292,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         buffer[NAMEMULT] = 0;
 
         assert_ok(lfs_mkdir(lfs, unsafe {
-                unsafe { str::from_utf8_unchecked(&buffer[..NAMEMULT]) }
+            unsafe { str::from_utf8_unchecked(&buffer[..NAMEMULT]) }
         }));
 
         buffer[NAMEMULT] = b'/';

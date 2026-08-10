@@ -25,9 +25,6 @@ use littlefs_rust_core::{
 };
 use zerocopy::IntoBytes;
 
-#[cfg(feature = "slow_tests")]
-use crate::common::path_bytes;
-
 // --- test_orphans_mkconsistent_fresh ---
 // Minimal: format, mount, mkconsistent. No mkdir/remove. Sanity check.
 #[test]
@@ -62,7 +59,7 @@ fn test_orphans_mkconsistent_no_orphans() {
     assert_ok(lfs_fs_preporphans(lfs_ptr, 1));
     assert!(lfs_fs_hasorphans(lfs_ptr));
 
-    let path = c"_p";
+    let path = "_p";
     assert_ok(lfs_mkdir(lfs_ptr, path));
     assert_ok(lfs_remove(lfs_ptr, path));
     assert!(
@@ -107,7 +104,7 @@ fn test_orphans_no_orphans() {
     assert_ok(lfs_fs_preporphans(lfs_ptr, 1));
     assert!(lfs_fs_hasorphans(lfs_ptr));
 
-    let path = c"_x";
+    let path = "_x";
     assert_ok(lfs_mkdir(lfs_ptr, path));
     assert_ok(lfs_remove(lfs_ptr, path));
     assert!(!lfs_fs_hasorphans(lfs_ptr));
@@ -128,7 +125,7 @@ fn test_orphans_nonreentrant() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     let lfs_ptr = lfs;
-    let path = c"a";
+    let path = "a";
     assert_ok(lfs_mkdir(lfs_ptr, path));
     assert_ok(lfs_remove(lfs_ptr, path));
     assert!(!lfs_fs_hasorphans(lfs_ptr));
@@ -151,10 +148,10 @@ fn test_orphans_normal() {
     assert_ok(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
-    assert_ok(lfs_mkdir(lfs_ptr, c"parent"));
-    assert_ok(lfs_mkdir(lfs_ptr, c"parent/orphan"));
-    assert_ok(lfs_mkdir(lfs_ptr, c"parent/child"));
-    assert_ok(lfs_remove(lfs_ptr, c"parent/orphan"));
+    assert_ok(lfs_mkdir(lfs_ptr, "parent"));
+    assert_ok(lfs_mkdir(lfs_ptr, "parent/orphan"));
+    assert_ok(lfs_mkdir(lfs_ptr, "parent/child"));
+    assert_ok(lfs_remove(lfs_ptr, "parent/orphan"));
     assert_ok(lfs_unmount(lfs_ptr));
 
     // Mount to get child dir block, then corrupt it
@@ -181,22 +178,22 @@ fn test_orphans_normal() {
     assert_ok(lfs_mount(lfs_ptr, cfg));
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_eq!(
-        lfs_stat(lfs_ptr, c"parent/orphan", info),
+        lfs_stat(lfs_ptr, "parent/orphan", info),
         Err(Error::NoEntry)
     );
-    assert_ok(lfs_stat(lfs_ptr, c"parent/child", info));
+    assert_ok(lfs_stat(lfs_ptr, "parent/child", info));
     assert_eq!(lfs_fs_size(lfs_ptr), Ok(8));
     assert_ok(lfs_unmount(lfs_ptr));
 
     // mkdir parent/otherchild triggers deorphan, size still 8
     assert_ok(lfs_mount(lfs_ptr, cfg));
-    assert_ok(lfs_mkdir(lfs_ptr, c"parent/otherchild"));
+    assert_ok(lfs_mkdir(lfs_ptr, "parent/otherchild"));
     assert_eq!(
-        lfs_stat(lfs_ptr, c"parent/orphan", info),
+        lfs_stat(lfs_ptr, "parent/orphan", info),
         Err(Error::NoEntry)
     );
-    assert_ok(lfs_stat(lfs_ptr, c"parent/child", info));
-    assert_ok(lfs_stat(lfs_ptr, c"parent/otherchild", info));
+    assert_ok(lfs_stat(lfs_ptr, "parent/child", info));
+    assert_ok(lfs_stat(lfs_ptr, "parent/otherchild", info));
     assert_eq!(lfs_fs_size(lfs_ptr), Ok(8));
     assert_ok(lfs_unmount(lfs_ptr));
 }
@@ -373,11 +370,11 @@ fn test_orphans_reentrant() {
                     let full_path = "/".to_string() + &components.join("/");
 
                     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-                    let res = lfs_stat(lfs_ptr, path_bytes(&full_path), info);
+                    let res = lfs_stat(lfs_ptr, (&full_path), info);
                     if res == Err(Error::NoEntry) {
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
-                            let err = lfs_mkdir(lfs_ptr, path_bytes(&sub));
+                            let err = lfs_mkdir(lfs_ptr, (&sub));
                             if err.is_err() && err != Err(Error::Exists) {
                                 return err;
                             }
@@ -385,7 +382,7 @@ fn test_orphans_reentrant() {
                         for d in 0..depth {
                             let sub = "/".to_string() + &components[..=d].join("/");
 
-                            lfs_stat(lfs_ptr, path_bytes(&sub), info)?;
+                            lfs_stat(lfs_ptr, (&sub), info)?;
 
                             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
                             let name = core::str::from_utf8(&info.name[..nul]).unwrap();
@@ -406,12 +403,12 @@ fn test_orphans_reentrant() {
                         }
                         for d in (0..depth).rev() {
                             let sub = "/".to_string() + &components[..=d].join("/");
-                            let err = lfs_remove(lfs_ptr, path_bytes(&sub));
+                            let err = lfs_remove(lfs_ptr, (&sub));
                             if err.is_err() && err != Err(Error::NotEmpty) {
                                 return err;
                             }
                         }
-                        let r = lfs_stat(lfs_ptr, path_bytes(&full_path), info);
+                        let r = lfs_stat(lfs_ptr, (&full_path), info);
                         if r != Err(Error::NoEntry) {
                             return Err(if let Err(r) = r { r } else { Error::Invalid });
                         }

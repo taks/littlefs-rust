@@ -436,12 +436,7 @@ fn test_alloc_split_dir() {
     for i in 0..8 {
         let path = (&format!("d/f{i}"));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(
-            lfs,
-            file,
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT,
-        ));
+        assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
         let n = lfs_file_write(lfs, file, b"x");
         assert_eq!(n, Ok(1));
         assert_ok(lfs_file_close(lfs, file));
