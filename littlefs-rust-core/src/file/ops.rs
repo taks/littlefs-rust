@@ -446,6 +446,7 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
         lfs_mlist_remove(lfs, ::core::mem::transmute(::core::ptr::from_mut(file)));
 
         let cfg = file.cfg;
+        #[allow(clippy::needless_borrow)]
         if !cfg.is_null() && (&(*cfg).buffer).is_empty() {
             #[cfg(feature = "alloc")]
             {

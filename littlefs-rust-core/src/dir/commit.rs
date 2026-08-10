@@ -1805,57 +1805,62 @@ pub fn lfs_dir_relocatingcommit(
                 &mut commit_commit as *mut _ as *mut core::ffi::c_void,
             );
             lfs_pair_fromle32(&mut dir.tail);
-            if err.is_ok() {
-                do_compact = false;
-                let mut delta = crate::lfs_gstate::LfsGstate {
-                    tag: 0,
-                    pair: [0, 0],
-                };
-                lfs_gstate_xor(&mut delta, &lfs.gstate);
-                lfs_gstate_xor(&mut delta, &lfs.gdisk);
-                lfs_gstate_xor(&mut delta, &lfs.gdelta);
-                delta.tag &= !lfs_mktag(0, 0, 0x3ff);
-                if !lfs_gstate_iszero(&delta) {
-                    lfs_dir_getgstate(lfs, dir, &mut delta)?;
+            match err {
+                Ok(_) => {
+                    do_compact = false;
+                    let mut delta = crate::lfs_gstate::LfsGstate {
+                        tag: 0,
+                        pair: [0, 0],
+                    };
+                    lfs_gstate_xor(&mut delta, &lfs.gstate);
+                    lfs_gstate_xor(&mut delta, &lfs.gdisk);
+                    lfs_gstate_xor(&mut delta, &lfs.gdelta);
+                    delta.tag &= !lfs_mktag(0, 0, 0x3ff);
+                    if !lfs_gstate_iszero(&delta) {
+                        lfs_dir_getgstate(lfs, dir, &mut delta)?;
 
-                    lfs_gstate_tole32(&mut delta);
-                    let movestate_tag = lfs_mktag(
-                        crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
-                        0x3ff,
-                        core::mem::size_of::<crate::lfs_gstate::LfsGstate>() as u32,
-                    );
-                    let err2 =
-                        lfs_dir_commitattr(lfs, &mut commit, movestate_tag, delta.as_bytes());
-                    if let Err(err2) = err2 {
-                        if err2 == Error::NoSpace || err2 == Error::Corrupt {
-                            do_compact = true;
+                        lfs_gstate_tole32(&mut delta);
+                        let movestate_tag = lfs_mktag(
+                            crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
+                            0x3ff,
+                            core::mem::size_of::<crate::lfs_gstate::LfsGstate>() as u32,
+                        );
+                        let err2 =
+                            lfs_dir_commitattr(lfs, &mut commit, movestate_tag, delta.as_bytes());
+                        if let Err(err2) = err2 {
+                            if err2 == Error::NoSpace || err2 == Error::Corrupt {
+                                do_compact = true;
+                            } else {
+                                return Err(err2);
+                            }
+                        }
+                    }
+                    if !do_compact {
+                        let err2 = lfs_dir_commitcrc(lfs, &mut commit);
+                        if let Err(err2) = err2 {
+                            if err2 == Error::NoSpace || err2 == Error::Corrupt {
+                                do_compact = true;
+                            } else {
+                                return Err(err2);
+                            }
                         } else {
-                            return Err(err2);
+                            dir.off = commit.off;
+                            dir.etag = commit.ptag;
+                            lfs.gdisk = lfs.gstate;
+                            lfs.gdelta = crate::lfs_gstate::LfsGstate {
+                                tag: 0,
+                                pair: [0, 0],
+                            };
                         }
                     }
                 }
-                if !do_compact {
-                    let err2 = lfs_dir_commitcrc(lfs, &mut commit);
-                    if let Err(err2) = err2 {
-                        if err2 == Error::NoSpace || err2 == Error::Corrupt {
-                            do_compact = true;
-                        } else {
-                            return Err(err2);
-                        }
+                Err(err) => {
+                    if err == Error::NoSpace || err == Error::Corrupt {
+                        do_compact = true;
                     } else {
-                        dir.off = commit.off;
-                        dir.etag = commit.ptag;
-                        lfs.gdisk = lfs.gstate;
-                        lfs.gdelta = crate::lfs_gstate::LfsGstate {
-                            tag: 0,
-                            pair: [0, 0],
-                        };
+                        return crate::lfs_pass_err!(Err(err));
                     }
                 }
-            } else if err == Err(Error::NoSpace) || err == Err(Error::Corrupt) {
-                do_compact = true;
-            } else {
-                return crate::lfs_pass_err!(Err(err.unwrap_err()));
             }
         }
 

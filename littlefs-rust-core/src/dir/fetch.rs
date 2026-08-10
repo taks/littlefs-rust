@@ -319,7 +319,9 @@ pub fn lfs_dir_fetchmatch(
     _fmask: lfs_tag_t,
     _ftag: lfs_tag_t,
     _id: &mut Option<&mut u16>,
-    cb: Option<fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<i32, Error>>,
+    #[allow(clippy::type_complexity)] cb: Option<
+        fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<i32, Error>,
+    >,
     data: *mut core::ffi::c_void,
 ) -> Result<lfs_tag_t, Error> {
     // Per lfs.c enum: LFS_CMP_EQ=0, LFS_CMP_LT=1, LFS_CMP_GT=2

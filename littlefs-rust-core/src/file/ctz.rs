@@ -257,7 +257,9 @@ pub fn lfs_ctz_traverse(
     rcache: *mut crate::bd::LfsCache,
     head: lfs_block_t,
     size: lfs_size_t,
-    cb: Option<fn(*mut core::ffi::c_void, lfs_block_t) -> Result<(), Error>>,
+    #[allow(clippy::type_complexity)] cb: Option<
+        fn(*mut core::ffi::c_void, lfs_block_t) -> Result<(), Error>,
+    >,
     data: *mut core::ffi::c_void,
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;

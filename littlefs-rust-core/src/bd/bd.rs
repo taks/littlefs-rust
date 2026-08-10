@@ -3,6 +3,7 @@
 use crate::bd::LfsCache;
 use crate::error::Error;
 use crate::fs::Lfs;
+use crate::lfs_pass_err;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
 
@@ -205,11 +206,12 @@ pub fn lfs_bd_read(
                 diff = lfs_aligndown(diff, cfg.read_size);
                 crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
                 let data_ = data.split_at_mut(diff as _);
-                let err = read(cfg, block, off, data_.0);
-                if err.is_err() {
-                    crate::lfs_trace!("bd_read block={} -> CORRUPT", block);
-                    return crate::lfs_pass_err!(err);
-                }
+                lfs_pass_err!(
+                    read(cfg, block, off, data_.0),
+                    "bd_read block={} -> CORRUPT",
+                    block
+                )?;
+
                 data = data_.1;
                 off += (diff as u32);
                 size -= diff;

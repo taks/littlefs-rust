@@ -284,13 +284,13 @@ pub fn lfs_dir_find(
                 } else if sufflen == 2 && suffix[0] == b'.' && suffix[1] == b'.' {
                     depth -= 1;
                     if depth == 0 {
-                        name = &suffix[(sufflen as usize)..];
+                        name = &suffix[sufflen..];
                         continue 'nextname;
                     }
                 } else {
                     depth += 1;
                 }
-                suffix = &suffix[(sufflen as usize)..];
+                suffix = &suffix[sufflen..];
             }
 
             // C: lfs.c:1544-1546 - found path
@@ -371,7 +371,7 @@ pub fn lfs_dir_find(
                 }
             }
 
-            name = &name[(namelen as usize)..];
+            name = &name[namelen..];
         }
     }
 }
