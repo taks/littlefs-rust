@@ -13,7 +13,6 @@ use littlefs_rust_core::{
 use rstest::rstest;
 use std::cmp::min;
 
-
 const HAIR: &[u8] = b"hair";
 const BALD: &[u8] = b"bald";
 #[allow(dead_code)]
