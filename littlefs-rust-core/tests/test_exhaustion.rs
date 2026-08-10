@@ -7,7 +7,6 @@
 
 mod common;
 
-
 use common::{
     BadBlockBehavior, WearLevelingEnv, assert_ok, config_with_wear_leveling_behavior,
     init_wear_leveling_context, test_prng,

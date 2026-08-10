@@ -4,7 +4,6 @@
 
 mod common;
 
-
 use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok,
     clone_config_with_block_count, default_config, init_context,

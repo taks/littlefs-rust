@@ -5,7 +5,6 @@
 
 mod common;
 
-
 #[cfg(feature = "slow_tests")]
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
@@ -883,12 +882,7 @@ fn test_dirs_other_errors() {
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(
         Error::Exists,
-        lfs_file_open(
-            lfs,
-            file,
-            "burito",
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ),
+        lfs_file_open(lfs, file, "burito", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_err(

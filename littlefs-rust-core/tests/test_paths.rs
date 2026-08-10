@@ -5,7 +5,6 @@
 
 mod common;
 
-
 use common::{assert_err, assert_ok, default_config, init_context, init_logger};
 #[allow(unused_imports)]
 use littlefs_rust_core::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG};
@@ -720,10 +719,7 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
         assert_err(Error::Exists, lfs_mkdir(lfs, "coffee/drip/.."));
         assert_err(Error::Exists, lfs_mkdir(lfs, "coffee/coldbrew/../.."));
         assert_err(Error::Invalid, lfs_mkdir(lfs, "coffee/turkish/../../.."));
-        assert_err(
-            Error::Invalid,
-            lfs_mkdir(lfs, "coffee/tubruk/../../../.."),
-        );
+        assert_err(Error::Invalid, lfs_mkdir(lfs, "coffee/tubruk/../../../.."));
         assert_err(
             Error::Invalid,
             lfs_mkdir(lfs, "coffee/vietnamese/../../../../.."),
@@ -855,10 +851,7 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
         assert_ok(lfs_mkdir(lfs, "/no/./../coffee/coldbrew"));
         assert_ok(lfs_mkdir(lfs, "/coffee/no/./../turkish"));
         assert_ok(lfs_mkdir(lfs, "/no/no/./.././../coffee/tubruk"));
-        assert_ok(lfs_mkdir(
-            lfs,
-            "/no/no/./.././../coffee/no/./../vietnamese",
-        ));
+        assert_ok(lfs_mkdir(lfs, "/no/no/./.././../coffee/no/./../vietnamese"));
         assert_ok(lfs_mkdir(
             lfs,
             "/no/no/./.././../no/no/./.././../coffee/thai",
@@ -1309,11 +1302,7 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
     );
     assert_err(
         Error::NoEntry,
-        lfs_rename(
-            lfs,
-            "coffee/_rip/./././././.",
-            "coffee/_rip/./././././.",
-        ),
+        lfs_rename(lfs, "coffee/_rip/./././././.", "coffee/_rip/./././././."),
     );
     for bad in bad_paths {
         assert_err(Error::NoEntry, lfs_remove(lfs, bad));
