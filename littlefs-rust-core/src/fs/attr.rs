@@ -82,7 +82,7 @@ pub fn lfs_getattr_(
             lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
         let size = lfs_min(buffer.len() as u32, lfs.attr_max);
-        let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size);
+        let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size);
         let tag =
             lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer).map_err(|err| {
                 if err == Error::NoEntry {
@@ -157,7 +157,7 @@ pub fn lfs_commitattr(
         }
 
         let attrs = [lfs_mattr {
-            tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u32, id as u32, size),
+            tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size),
             buffer,
         }];
         lfs_dir_commit(lfs, &mut cwd, &attrs)

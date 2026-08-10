@@ -428,7 +428,7 @@ pub fn lfs_dir_fetchmatch(
                 let mut tag = tag_raw ^ ptag;
 
                 if !lfs_tag_isvalid(tag) {
-                    maybeerased = u32::from(lfs_tag_type2(ptag)) == LFS_TYPE_CCRC;
+                    maybeerased = (lfs_tag_type2(ptag)) == LFS_TYPE_CCRC;
                     break;
                 } else if off + lfs_tag_dsize(tag) > cfg.block_size {
                     break;
@@ -436,7 +436,7 @@ pub fn lfs_dir_fetchmatch(
 
                 ptag = tag;
 
-                if u32::from(lfs_tag_type2(tag)) == LFS_TYPE_CCRC {
+                if (lfs_tag_type2(tag)) == LFS_TYPE_CCRC {
                     let mut dcrc_buf = [0u8; 4];
                     let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     let err = lfs_bd_read(
@@ -497,11 +497,11 @@ pub fn lfs_dir_fetchmatch(
                 }
                 crc = crc_val;
 
-                if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_NAME {
+                if (lfs_tag_type1(tag)) == LFS_TYPE_NAME {
                     if lfs_tag_id(tag) >= tempcount {
                         tempcount = lfs_tag_id(tag) + 1;
                     }
-                } else if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_SPLICE {
+                } else if (lfs_tag_type1(tag)) == LFS_TYPE_SPLICE {
                     // Divergence: C uses tempcount += lfs_tag_splice(tag) (unsigned wrap). We clamp
                     // to 0 to avoid underflow when splice is negative (Rule 7).
                     let delta = lfs_tag_splice(tag) as i32;
@@ -518,7 +518,7 @@ pub fn lfs_dir_fetchmatch(
                             + lfs_mktag(0, lfs_tag_splice(tag) as u32, 0))
                             as lfs_stag_t;
                     }
-                } else if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
+                } else if (lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
                     tempsplit = (lfs_tag_chunk(tag) & 1) != 0;
 
                     let mut tail_buf = [0u8; 8];
@@ -846,9 +846,9 @@ pub fn lfs_dir_getinfo(
 
         lfs_ctz_fromle32(&mut ctz);
 
-        if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
+        if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
             info.size = ctz.size;
-        } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_INLINESTRUCT {
+        } else if (lfs_tag_type3(tag)) == LFS_TYPE_INLINESTRUCT {
             info.size = lfs_tag_size(tag as u32);
         }
 

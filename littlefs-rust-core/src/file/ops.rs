@@ -16,7 +16,7 @@ use crate::lfs_type::lfs_open_flags::{
     LFS_F_DIRTY, LFS_F_ERRED, LFS_F_INLINE, LFS_F_READING, LFS_F_WRITING, LFS_O_APPEND,
     LFS_O_RDONLY,
 };
-use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
+use crate::lfs_type::lfs_type::{LFS_TYPE_INLINESTRUCT, LFS_TYPE3_REG};
 use crate::tag::lfs_mktag;
 use crate::types::LFS_BLOCK_INLINE;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
@@ -241,7 +241,7 @@ pub fn lfs_file_opencfg_(
             return crate::lfs_pass_err!(Err(err));
         }
 
-        file.type_ = LFS_TYPE_REG as u8;
+        file.type_ = LFS_TYPE_REG;
         lfs_mlist_append(lfs, file.as_mut_lsf_mist());
 
         if tag == Err(Error::NoEntry) {
@@ -265,7 +265,7 @@ pub fn lfs_file_opencfg_(
                     buffer: &[],
                 },
                 crate::tag::lfs_mattr {
-                    tag: lfs_mktag(LFS_TYPE_REG, file.id as u32, nlen),
+                    tag: lfs_mktag(LFS_TYPE3_REG, file.id as u32, nlen),
                     buffer: path_ptr.as_bytes(),
                 },
                 crate::tag::lfs_mattr {
@@ -286,7 +286,7 @@ pub fn lfs_file_opencfg_(
         } else if (flags & LFS_O_EXCL) != 0 {
             lfs_file_close_(lfs, file);
             return crate::lfs_err!(Err(Error::Exists));
-        } else if u32::from(lfs_tag_type3(tag.unwrap())) != LFS_TYPE_REG {
+        } else if (lfs_tag_type3(tag.unwrap())) != LFS_TYPE3_REG {
             lfs_file_close_(lfs, file);
             return crate::lfs_err!(Err(Error::IsDir));
         } else if (flags & LFS_O_TRUNC) != 0 {
@@ -325,7 +325,7 @@ pub fn lfs_file_opencfg_(
                     &file.m,
                     lfs_mktag(0x7ff, 0x3ff, 0),
                     lfs_mktag(
-                        LFS_TYPE_USERATTR + attr.type_ as u32,
+                        LFS_TYPE_USERATTR + attr.type_ as u16,
                         file.id as u32,
                         attr.buffer.len() as u32,
                     ),
@@ -373,7 +373,7 @@ pub fn lfs_file_opencfg_(
         } else {
             tag.unwrap()
         };
-        if u32::from(lfs_tag_type3(tag_val as u32)) == LFS_TYPE_INLINESTRUCT {
+        if (lfs_tag_type3(tag_val as u32)) == LFS_TYPE_INLINESTRUCT {
             file.ctz.head = LFS_BLOCK_INLINE;
             file.ctz.size = if tag == Err(Error::NoEntry) {
                 0

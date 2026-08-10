@@ -128,7 +128,7 @@ pub fn lfs_dir_commitattr(
         let ntag = lfs_tobe32((tag & 0x7fff_ffff) ^ commit.ptag);
         lfs_dir_commitprog(lfs, commit, ntag.as_bytes())?;
 
-        if u32::from(crate::tag::lfs_tag_type1(tag))
+        if (crate::tag::lfs_tag_type1(tag))
             == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK
         {
             crate::lfs_trace!(
@@ -373,7 +373,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             }
 
             let ntag = lfs_mktag(
-                crate::lfs_type::lfs_type::LFS_TYPE_CCRC + (u32::from(!eperturb) >> 7),
+                crate::lfs_type::lfs_type::LFS_TYPE_CCRC + (u16::from(!eperturb) >> 7),
                 0x3ff,
                 noff - (commit.off + 4),
             );
@@ -1732,13 +1732,13 @@ pub fn lfs_dir_relocatingcommit(
         let mut hasdelete = false;
         for attr in attrs.iter() {
             let tag = attr.tag;
-            if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_CREATE {
+            if (lfs_tag_type3(tag)) == LFS_TYPE_CREATE {
                 dir.count = dir.count.wrapping_add(1);
-            } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DELETE {
+            } else if (lfs_tag_type3(tag)) == LFS_TYPE_DELETE {
                 crate::lfs_assert!(dir.count > 0);
                 dir.count -= 1;
                 hasdelete = true;
-            } else if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
+            } else if (lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
                 let buf = attr.buffer.as_ptr() as *const [lfs_block_t; 2];
                 if !buf.is_null() {
                     dir.tail[0] = (*buf)[0];
@@ -1912,16 +1912,16 @@ fn relocatingcommit_fixmlist(
                 if !core::ptr::eq(&d_ref.m.pair as *const _, pair as *const _) {
                     for attr in attrs_slice.iter() {
                         let tag = attr.tag;
-                        if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DELETE
+                        if (lfs_tag_type3(tag)) == LFS_TYPE_DELETE
                             && d_ref.id == lfs_tag_id(tag)
                             && d_ref.type_ != crate::lfs_type::lfs_type::LFS_TYPE_DIR as u8
                         {
                             d_ref.m.pair = [LFS_BLOCK_NULL, LFS_BLOCK_NULL];
-                        } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DELETE
+                        } else if (lfs_tag_type3(tag)) == LFS_TYPE_DELETE
                             && d_ref.id > lfs_tag_id(tag)
                         {
                             d_ref.id -= 1;
-                        } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_CREATE
+                        } else if (lfs_tag_type3(tag)) == LFS_TYPE_CREATE
                             && d_ref.id >= lfs_tag_id(tag)
                         {
                             d_ref.id = d_ref.id.wrapping_add(1);
@@ -1967,7 +1967,7 @@ fn lfs_dir_commit_commit_raw(
         crate::tag::lfs_tag_type1(tag),
         buffer
     );
-    if u32::from(crate::tag::lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK {
+    if (crate::tag::lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK {
         let preview: [u8; 8] = if buffer.is_empty() {
             [0u8; 8]
         } else {

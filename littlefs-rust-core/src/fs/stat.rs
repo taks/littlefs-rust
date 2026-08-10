@@ -35,7 +35,7 @@ pub fn lfs_stat_(
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_getinfo;
     use crate::dir::find::lfs_dir_find;
-    use crate::lfs_type::lfs_type::LFS_TYPE_DIR;
+    use crate::lfs_type::lfs_type::LFS_TYPE3_DIR;
     use crate::tag::{lfs_tag_id, lfs_tag_type3};
 
     unsafe {
@@ -44,7 +44,7 @@ pub fn lfs_stat_(
 
         let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
-        if path_ptr.contains('/') && u32::from(lfs_tag_type3(tag)) != LFS_TYPE_DIR {
+        if path_ptr.contains('/') && lfs_tag_type3(tag) != LFS_TYPE3_DIR {
             return Err(Error::NotDir);
         }
 

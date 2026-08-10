@@ -142,7 +142,7 @@ pub fn lfs_dir_getslice(
             ntag = (lfs_frombe32(ntag_buf) ^ tag) & 0x7fff_ffff;
 
             if lfs_tag_id(gmask) != 0
-                && u32::from(lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SPLICE
+                && (lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SPLICE
                 && lfs_tag_id(tag) <= lfs_tag_id((gtag as i32 - gdiff) as u32)
             {
                 if tag
@@ -424,7 +424,7 @@ pub fn lfs_dir_traverse_filter(
         return Ok(1);
     }
 
-    if u32::from(lfs_tag_type1(tag)) == LFS_TYPE_SPLICE && lfs_tag_id(tag) <= lfs_tag_id(ft) {
+    if (lfs_tag_type1(tag)) == LFS_TYPE_SPLICE && lfs_tag_id(tag) <= lfs_tag_id(ft) {
         unsafe {
             *filtertag = ft.wrapping_add(lfs_mktag(0, lfs_tag_splice(tag) as u32, 0));
         }
@@ -960,7 +960,7 @@ pub fn lfs_dir_traverse(
                         for a in attrs {
                             let userattr_tag = lfs_mktag(
                                 crate::lfs_type::lfs_type::LFS_TYPE_USERATTR
-                                    .wrapping_add(u32::from(a.type_)),
+                                    .wrapping_add(u16::from(a.type_)),
                                 crate::tag::lfs_tag_id(tag) as u32 + diff as u32,
                                 a.buffer.len() as u32,
                             );

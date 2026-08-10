@@ -12,7 +12,7 @@ use crate::dir::find::lfs_dir_find;
 use crate::error::Error;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_preporphans};
 use crate::lfs_type::lfs_type::{
-    LFS_TYPE_CREATE, LFS_TYPE_DIR, LFS_TYPE_DIRSTRUCT, LFS_TYPE_SOFTTAIL,
+    LFS_TYPE_CREATE, LFS_TYPE_DIR, LFS_TYPE_DIRSTRUCT, LFS_TYPE_SOFTTAIL, LFS_TYPE3_DIR,
 };
 use crate::tag::{lfs_mattr, lfs_mktag, lfs_mktag_if};
 use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_path_islast, lfs_path_namelen};
@@ -208,7 +208,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
                 buffer: &[],
             },
             lfs_mattr {
-                tag: lfs_mktag(LFS_TYPE_DIR, id as u32, nlen),
+                tag: lfs_mktag(LFS_TYPE3_DIR, id as u32, nlen),
                 buffer: path_ptr.as_bytes(),
             },
             lfs_mattr {

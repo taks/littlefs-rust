@@ -200,10 +200,10 @@ pub fn lfs_fs_traverse_(
                 lfs_pair_fromle32(&mut raw);
 
                 let tag = tag.unwrap();
-                if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
+                if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
                     let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     lfs_ctz_traverse(lfs, None, lfs_rcache, raw[0], raw[1], Some(cb), data)?;
-                } else if includeorphans && u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
+                } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
                     #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
                     for i in 0..2 {
                         cb(data, raw[i])?;
@@ -234,7 +234,7 @@ pub fn lfs_fs_traverse_(
             }
             let f = m as *mut LfsFile;
             let f_ref = &*f;
-            if f_ref.type_ as u32 == LFS_TYPE_REG {
+            if f_ref.type_ == LFS_TYPE_REG {
                 if (f_ref.flags as i32 & LFS_F_DIRTY) != 0
                     && (f_ref.flags as i32 & LFS_F_INLINE) == 0
                 {

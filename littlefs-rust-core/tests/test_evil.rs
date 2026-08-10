@@ -40,7 +40,7 @@ fn test_evil_invalid_tail_pointer() {
     }
 }
 
-unsafe fn evil_invalid_tail_pointer(tail_type: u32, invalset: u32) {
+unsafe fn evil_invalid_tail_pointer(tail_type: u16, invalset: u32) {
     let mut env = default_config(BLOCK_COUNT);
     init_context(&mut env);
     let cfg = &env.config;
@@ -108,7 +108,7 @@ fn evil_invalid_dir_pointer(invalset: u32) {
         lfs_mktag(LFS_TYPE_NAME, 1, 8), // strlen("dir_here") == 8
         buffer.as_mut_bytes(),
     );
-    assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE_DIR, 1, 8) as u32));
+    assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE3_DIR, 1, 8) as u32));
     assert_eq!(&buffer[..8], b"dir_here");
 
     let invalid_pair: [u32; 2] = [
@@ -202,7 +202,7 @@ fn evil_invalid_file_pointer(size: u32) {
         lfs_mktag(LFS_TYPE_NAME, 1, 9), // strlen("file_here") == 9
         buffer.as_mut_bytes(),
     );
-    assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE_REG, 1, 9) as u32));
+    assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE3_REG, 1, 9) as u32));
     assert_eq!(&buffer[..9], b"file_here");
 
     // Forge a CTZSTRUCT with invalid head and faked size
@@ -296,7 +296,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
         lfs_mktag(LFS_TYPE_NAME, 1, 9),
         buffer.as_mut_bytes(),
     );
-    assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE_REG, 1, 9) as u32));
+    assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE3_REG, 1, 9) as u32));
     assert_eq!(&buffer[..9], b"file_here");
 
     // Get CTZ struct

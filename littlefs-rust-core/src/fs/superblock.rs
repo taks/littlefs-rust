@@ -170,7 +170,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         }
         crate::lfs_trace!("demove: has move, fixing");
 
-        crate::lfs_assert!(u32::from(lfs_tag_type3(lfs.gdisk.tag)) == LFS_TYPE_DELETE);
+        crate::lfs_assert!((lfs_tag_type3(lfs.gdisk.tag)) == LFS_TYPE_DELETE);
 
         let mut movedir = core::mem::zeroed();
         let lfs_gdisk = borrow_unchecked(&lfs.gdisk);

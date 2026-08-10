@@ -10,7 +10,7 @@ use crate::dir::fetch::lfs_dir_fetchmatch;
 use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::fs::Lfs;
-use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_NAME, LFS_TYPE_STRUCT};
+use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
 use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
 use crate::types::{lfs_size_t, lfs_tag_t};
 use crate::util::{lfs_min, lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
@@ -225,7 +225,7 @@ pub fn lfs_dir_find(
         let mut name = path.as_bytes();
 
         // C: lfs.c:1488-1491
-        let mut tag = lfs_mktag(LFS_TYPE_DIR, 0x3ff, 0);
+        let mut tag = lfs_mktag(LFS_TYPE3_DIR, 0x3ff, 0);
         dir.tail[0] = lfs.root[0];
         dir.tail[1] = lfs.root[1];
 
@@ -236,7 +236,7 @@ pub fn lfs_dir_find(
 
         'nextname: loop {
             // C: nextname - lfs.c:1510-1512
-            if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_DIR {
+            if (lfs_tag_type3(tag)) == LFS_TYPE3_DIR {
                 let skip = lfs_strspn(name, b'/');
                 name = &name[skip..];
             }
@@ -300,7 +300,7 @@ pub fn lfs_dir_find(
             *path = str::from_utf8_unchecked(name);
 
             // C: lfs.c:1652-1654
-            if u32::from(lfs_tag_type3(tag)) != LFS_TYPE_DIR {
+            if (lfs_tag_type3(tag)) != LFS_TYPE3_DIR {
                 return crate::lfs_err!(Err(Error::NotDir));
             }
 
