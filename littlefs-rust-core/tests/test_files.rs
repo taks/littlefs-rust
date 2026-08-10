@@ -497,7 +497,7 @@ fn test_files_many() {
     assert_ok(lfs_mount(lfs, &env.config));
 
     for i in 0..N {
-        let path = (&format!("file_{:03}", i));
+        let path = &format!("file_{:03}", i);
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
@@ -538,7 +538,7 @@ fn test_files_many_power_cycle() {
 
     for i in 0..N {
         assert_ok(lfs_mount(lfs, &env.config));
-        let path = (&format!("file_{:03}", i));
+        let path = &format!("file_{:03}", i);
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,
@@ -729,7 +729,7 @@ fn test_files_truncate_api() {
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
-    let path = ("x");
+    let path = "x";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,

@@ -120,30 +120,30 @@ fn test_attrs_get_set_root() {
     assert_ok(lfs_mount(lfs, &env.config));
     let mut buffer = [0u8; 1024];
 
-    assert_ok(lfs_setattr(lfs, ("/"), b'A', b"aaaa", 4));
-    assert_ok(lfs_setattr(lfs, ("/"), b'B', b"bbbbbb", 6));
-    assert_ok(lfs_setattr(lfs, ("/"), b'C', b"ccccc", 5));
+    assert_ok(lfs_setattr(lfs, "/", b'A', b"aaaa", 4));
+    assert_ok(lfs_setattr(lfs, "/", b'B', b"bbbbbb", 6));
+    assert_ok(lfs_setattr(lfs, "/", b'C', b"ccccc", 5));
 
-    let n = lfs_getattr(lfs, ("/"), b'A', &mut buffer[..4]);
+    let n = lfs_getattr(lfs, "/", b'A', &mut buffer[..4]);
     assert_eq!(n, Ok(4));
-    let n = lfs_getattr(lfs, ("/"), b'B', &mut buffer[4..10]);
+    let n = lfs_getattr(lfs, "/", b'B', &mut buffer[4..10]);
     assert_eq!(n, Ok(6));
-    let n = lfs_getattr(lfs, ("/"), b'C', &mut buffer[10..15]);
+    let n = lfs_getattr(lfs, "/", b'C', &mut buffer[10..15]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[0..4], b"aaaa");
     assert_eq!(&buffer[4..10], b"bbbbbb");
     assert_eq!(&buffer[10..15], b"ccccc");
 
-    assert_ok(lfs_setattr(lfs, ("/"), b'B', b"", 0));
+    assert_ok(lfs_setattr(lfs, "/", b'B', b"", 0));
     assert_ok(lfs_removeattr(lfs, "/", b'B'));
-    assert_ok(lfs_setattr(lfs, ("/"), b'B', b"fffffffff", 9));
+    assert_ok(lfs_setattr(lfs, "/", b'B', b"fffffffff", 9));
     assert_ok(lfs_unmount(lfs));
 
     assert_ok(lfs_mount(lfs, &env.config));
     let mut buffer = [0u8; 1024];
-    let n = lfs_getattr(lfs, ("/"), b'A', &mut buffer[..4]);
+    let n = lfs_getattr(lfs, "/", b'A', &mut buffer[..4]);
     assert_eq!(n, Ok(4));
-    let n = lfs_getattr(lfs, ("/"), b'B', &mut buffer[4..13]);
+    let n = lfs_getattr(lfs, "/", b'B', &mut buffer[4..13]);
     assert_eq!(n, Ok(9));
     assert_eq!(&buffer[4..13], b"fffffffff");
 

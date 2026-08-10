@@ -459,7 +459,7 @@ fn test_superblocks_unknown_blocks() {
     let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_count, BLOCK_COUNT);
-    let test_path = ("test");
+    let test_path = "test";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
@@ -510,7 +510,7 @@ fn test_superblocks_fewer_blocks() {
         assert_eq!(fsinfo.block_count, block_count);
         assert_ok(lfs_unmount(lfs));
 
-        let test_path = ("test");
+        let test_path = "test";
         assert_ok(lfs_mount(lfs, &cfg0.config));
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
@@ -575,7 +575,7 @@ fn test_superblocks_grow(
     assert_ok(lfs_mount(lfs, &env.config));
 
     // Create a file to verify after grow
-    let path = ("x");
+    let path = "x";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
@@ -745,7 +745,7 @@ fn test_superblocks_metadata_max(
 
     for i in 0..n {
         let name_str = format!("hello{:03x}", i);
-        let name = (&name_str);
+        let name = &name_str;
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
         assert_ok(lfs_file_open(
             lfs,

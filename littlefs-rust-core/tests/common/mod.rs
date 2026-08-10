@@ -10,7 +10,6 @@ pub mod powerloss;
 
 use core::cell::RefCell;
 use littlefs_rust_core::{LfsConfig, error::Error};
-use std::{ffi::CString, str::FromStr};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {

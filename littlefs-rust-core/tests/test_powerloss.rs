@@ -563,7 +563,6 @@ fn test_debug_file_subdir_single_write_sync() {
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
-    let lfs = lfs;
     assert_ok_at("mkdir notebook", lfs_mkdir(lfs, "notebook"));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };

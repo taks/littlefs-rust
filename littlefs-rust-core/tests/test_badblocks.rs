@@ -7,7 +7,6 @@
 
 mod common;
 
-use std::ffi::CStr;
 
 use common::{
     BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok,
