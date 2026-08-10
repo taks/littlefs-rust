@@ -704,7 +704,7 @@ pub fn lfs_dir_traverse(
     begin: u16,
     end: u16,
     diff: i16,
-    cb: Option<fn(*mut core::ffi::c_void, lfs_tag_t, &[u8]) -> Result<i32, Error>>,
+    cb: fn(*mut core::ffi::c_void, lfs_tag_t, &[u8]) -> Result<i32, Error>,
     data: *mut core::ffi::c_void,
 ) -> Result<i32, Error> {
     use crate::bd::bd::lfs_bd_read;
@@ -712,11 +712,6 @@ pub fn lfs_dir_traverse(
     use crate::tag::{lfs_mktag, lfs_tag_dsize, lfs_tag_id, lfs_tag_type3};
     use crate::types::lfs_tag_t;
     use crate::util::lfs_frombe32;
-
-    let cb = match cb {
-        Some(c) => c,
-        None => return Ok(0),
-    };
 
     let mut stack: [core::mem::MaybeUninit<LfsDirTraverseStack>; LFS_DIR_TRAVERSE_DEPTH - 1] =
         core::array::from_fn(|_| core::mem::MaybeUninit::uninit());

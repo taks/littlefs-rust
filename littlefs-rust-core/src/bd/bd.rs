@@ -350,7 +350,7 @@ pub fn lfs_bd_crc(
     block: lfs_block_t,
     off: lfs_off_t,
     size: lfs_size_t,
-    crc: *mut u32,
+    crc: &mut u32,
 ) -> Result<(), Error> {
     use crate::crc::lfs_crc;
     use crate::util::lfs_min;
@@ -369,9 +369,8 @@ pub fn lfs_bd_crc(
             &mut dat[0..diff],
         )?;
 
-        unsafe {
-            *crc = lfs_crc(*crc, &dat[..(diff as usize)]);
-        }
+        *crc = lfs_crc(*crc, &dat[..(diff as usize)]);
+
         i += diff as lfs_off_t;
     }
     Ok(())
