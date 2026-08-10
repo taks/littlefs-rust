@@ -1,9 +1,11 @@
 use std::string::String;
 
-use littlefs_rust::{Config, Error, FileType, Filesystem, OpenFlags, RamStorage, SeekFrom};
+use littlefs_rust::{Config, Error, FileType, Filesystem, OpenFlags, SeekFrom};
+
+type RamStorage = littlefs_rust::RamStorage<512, 128>;
 
 fn format_and_mount() -> Filesystem<RamStorage> {
-    let mut storage = RamStorage::new(512, 128);
+    let mut storage = RamStorage::new();
     let config = Config::new(512, 128);
     Filesystem::format(&mut storage, &config).expect("format");
     Filesystem::mount(storage, config)
@@ -13,7 +15,7 @@ fn format_and_mount() -> Filesystem<RamStorage> {
 
 #[test]
 fn test_format_mount_unmount() {
-    let mut storage = RamStorage::new(512, 128);
+    let mut storage = RamStorage::new();
     let config = Config::new(512, 128);
     Filesystem::format(&mut storage, &config).unwrap();
     let fs = Filesystem::mount(storage, config)
@@ -24,7 +26,7 @@ fn test_format_mount_unmount() {
 
 #[test]
 fn test_mount_unformatted_fails() {
-    let storage = RamStorage::new(512, 128);
+    let storage = RamStorage::new();
     let config = Config::new(512, 128);
     let result = Filesystem::mount(storage, config);
     let (err, recovered) = result.err().expect("mount should fail");
@@ -34,7 +36,7 @@ fn test_mount_unformatted_fails() {
 
 #[test]
 fn test_drop_unmounts() {
-    let mut storage = RamStorage::new(512, 128);
+    let mut storage = RamStorage::new();
     let config = Config::new(512, 128);
     Filesystem::format(&mut storage, &config).unwrap();
     {
@@ -47,7 +49,7 @@ fn test_drop_unmounts() {
 
 #[test]
 fn test_format_does_not_consume_storage() {
-    let mut storage = RamStorage::new(512, 128);
+    let mut storage = RamStorage::new();
     let config = Config::new(512, 128);
     Filesystem::format(&mut storage, &config).unwrap();
     assert_eq!(storage.block_size(), 512);

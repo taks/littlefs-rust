@@ -5,10 +5,10 @@ use littlefs_rust::{Config, Filesystem, RamStorage};
 fn main() {
     // RamStorage is an in-memory block device — useful for tests and examples.
     // 128 blocks of 512 bytes each = 64 KB.
-    let block_size = 512;
-    let block_count = 128;
-    let mut storage = RamStorage::new(block_size, block_count);
-    let config = Config::new(block_size, block_count);
+    const BLOCK_SIZE: u32 = 512;
+    const BLOCK_COUNT: u32 = 128;
+    let mut storage = RamStorage::<BLOCK_SIZE, BLOCK_COUNT>::new();
+    let config = Config::new(BLOCK_SIZE, BLOCK_COUNT);
 
     // Format lays down the superblock; mount opens the filesystem for use.
     Filesystem::format(&mut storage, &config).expect("format failed");

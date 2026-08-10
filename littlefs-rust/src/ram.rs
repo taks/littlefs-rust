@@ -9,22 +9,18 @@ use crate::storage::Storage;
 /// Simulates flash: erased blocks are `0xFF`, writes overwrite bytes, and
 /// erase resets a block to `0xFF`. Use with [`Config`](crate::Config) and
 /// [`Filesystem`](crate::Filesystem).
-pub struct RamStorage {
+pub struct RamStorage<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> {
     data: Vec<u8>,
-    block_size: u32,
-    block_count: u32,
 }
 
-impl RamStorage {
+impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> RamStorage<BLOCK_SIZE, BLOCK_COUNT> {
     /// Create a new RAM-backed storage with the given block geometry.
-    pub fn new(block_size: u32, block_count: u32) -> Self {
-        let size = (block_size as usize)
-            .checked_mul(block_count as usize)
+    pub fn new() -> Self {
+        let size = (BLOCK_SIZE as usize)
+            .checked_mul(BLOCK_COUNT as usize)
             .expect("block_size * block_count overflow");
         Self {
             data: vec![0xFFu8; size],
-            block_size,
-            block_count,
         }
     }
 
@@ -34,19 +30,26 @@ impl RamStorage {
     }
 
     pub fn block_size(&self) -> u32 {
-        self.block_size
+        BLOCK_SIZE
     }
 
     pub fn block_count(&self) -> u32 {
-        self.block_count
+        BLOCK_COUNT
     }
 
     fn offset(&self, block: u32, off: u32) -> usize {
-        (block as usize) * (self.block_size as usize) + (off as usize)
+        (block as usize) * (BLOCK_SIZE as usize) + (off as usize)
     }
 }
 
-impl Storage for RamStorage {
+impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> Storage
+    for RamStorage<BLOCK_SIZE, BLOCK_COUNT>
+{
+    const READ_SIZE: usize = 1;
+    const WRITE_SIZE: usize = 1;
+    const BLOCK_SIZE: usize = BLOCK_SIZE as usize;
+    const BLOCK_COUNT: usize = BLOCK_COUNT as usize;
+
     fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
         let start = self.offset(block, offset);
         let end = start + buf.len();
@@ -69,7 +72,7 @@ impl Storage for RamStorage {
 
     fn erase(&mut self, block: u32) -> Result<(), Error> {
         let start = self.offset(block, 0);
-        let end = start + self.block_size as usize;
+        let end = start + BLOCK_SIZE as usize;
         if end > self.data.len() {
             return Err(Error::Io);
         }
