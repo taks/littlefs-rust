@@ -692,6 +692,7 @@ fn dispatch_tag(
     unsafe { cb(data, out_tag, buffer) }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn lfs_dir_traverse(
     lfs: &mut crate::fs::Lfs,
     dir: *const LfsMdir,

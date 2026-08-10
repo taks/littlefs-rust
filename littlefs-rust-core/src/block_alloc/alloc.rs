@@ -281,16 +281,12 @@ pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
 
             // No blocks in our lookahead buffer, we need to scan the filesystem for
             // unused blocks in the next lookahead window.
-            let err = lfs_alloc_scan(lfs);
-            if err.is_err() {
-                crate::lfs_trace!(
-                    "lfs_alloc NOSPC: alloc_scan returned {:?} start={} next={}",
-                    err,
-                    lfs.lookahead.start,
-                    lfs.lookahead.next
-                );
-                return crate::lfs_pass_err!(err);
-            }
+            crate::lfs_pass_err!(
+                lfs_alloc_scan(lfs),
+                "lfs_alloc NOSPC: alloc_scan start={} next={}",
+                lfs.lookahead.start,
+                lfs.lookahead.next
+            )?;
         }
     }
 }

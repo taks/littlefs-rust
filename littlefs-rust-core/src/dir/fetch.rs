@@ -312,6 +312,7 @@ use core::mem;
 /// }
 ///
 /// ```
+#[allow(clippy::type_complexity)]
 pub fn lfs_dir_fetchmatch(
     lfs: &mut crate::fs::Lfs,
     dir: &mut LfsMdir,
@@ -319,12 +320,11 @@ pub fn lfs_dir_fetchmatch(
     _fmask: lfs_tag_t,
     _ftag: lfs_tag_t,
     _id: &mut Option<&mut u16>,
-    #[allow(clippy::type_complexity)] cb: Option<
+    cb: Option<
         fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>,
     >,
     data: *mut core::ffi::c_void,
 ) -> Result<lfs_tag_t, Error> {
-
     unsafe {
         let cfg = &*lfs.cfg;
 

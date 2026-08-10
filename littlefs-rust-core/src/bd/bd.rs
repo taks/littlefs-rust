@@ -288,7 +288,6 @@ pub fn lfs_bd_cmp(
     buffer: *const u8,
     size: lfs_size_t,
 ) -> Result<core::cmp::Ordering, Error> {
-
     let mut i: lfs_off_t = 0;
     while i < size {
         let mut dat = [0u8; 8];
@@ -444,10 +443,7 @@ pub fn lfs_bd_flush(
             };
             let data_ = core::slice::from_raw_parts(pcache.buffer, diff as _);
             let err = prog(cfg, pcache.block, pcache.off, data_);
-            if err.is_err() {
-                crate::lfs_trace!("bd_prog block={} -> CORRUPT", pcache.block);
-                return crate::lfs_pass_err!(err);
-            }
+            crate::lfs_pass_err!(err, "bd_prog block={} -> CORRUPT", pcache.block)?;
 
             if validate {
                 lfs_cache_drop(lfs, rcache);

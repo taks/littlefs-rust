@@ -1,7 +1,9 @@
 //! File handle. Per lfs.h lfs_file_t.
 
+use core::array::from_mut;
+
 use crate::bd::LfsCache;
-use crate::dir::LfsMdir;
+use crate::dir::{LfsMdir, LfsMlist};
 use crate::lfs_info::LfsFileConfig;
 use crate::types::{lfs_block_t, lfs_off_t};
 
@@ -21,4 +23,10 @@ pub struct LfsFile<'a> {
     pub off: lfs_off_t,
     pub cache: LfsCache,
     pub cfg: *const LfsFileConfig<'a>,
+}
+
+impl<'a> LfsFile<'a> {
+    pub(crate) unsafe fn as_mut_lsf_mist(&mut self) -> *mut LfsMlist {
+        unsafe { ::core::mem::transmute::<*mut LfsFile<'_>, *mut LfsMlist>(::core::ptr::from_mut(self)) }
+    }
 }

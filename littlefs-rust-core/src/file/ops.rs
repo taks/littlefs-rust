@@ -242,7 +242,7 @@ pub fn lfs_file_opencfg_(
         }
 
         file.type_ = LFS_TYPE_REG as u8;
-        lfs_mlist_append(lfs, ::core::mem::transmute(::core::ptr::from_mut(file)));
+        lfs_mlist_append(lfs, file.as_mut_lsf_mist());
 
         if tag == Err(Error::NoEntry) {
             if (flags & LFS_O_CREAT) == 0 {
@@ -443,7 +443,7 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
     let err = lfs_file_sync_(lfs, file);
 
     unsafe {
-        lfs_mlist_remove(lfs, ::core::mem::transmute(::core::ptr::from_mut(file)));
+        lfs_mlist_remove(lfs, file.as_mut_lsf_mist());
 
         let cfg = file.cfg;
         #[allow(clippy::needless_borrow)]
