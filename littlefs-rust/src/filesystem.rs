@@ -1,7 +1,7 @@
 use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::cell::RefCell;
+use core::cell::{RefCell, UnsafeCell};
 use core::ffi::c_void;
 use core::mem::ManuallyDrop;
 use littlefs_rust_core::error::Error;
@@ -14,14 +14,21 @@ use crate::file::File;
 use crate::metadata::{DirEntry, Metadata, OpenFlags};
 use crate::storage::Storage;
 
+type Bytes<SIZE> = hybrid_array::Array<u8, SIZE>;
+
+#[derive(Default)]
+
+struct Cache<S: Storage> {
+    read: Bytes<S::CACHE_SIZE>,
+    write: Bytes<S::CACHE_SIZE>,    // lookahead: aligned::Aligned<aligned::A4, Bytes<Storage::LOOKAHEAD_SIZE>>,
+    lookahead: hybrid_array::Array<u64, S::LOOKAHEAD_SIZE>,
+}
+
 pub(crate) struct FsInner<S: Storage> {
     pub(crate) lfs: Lfs,
     pub(crate) config: LfsConfig,
     pub(crate) storage: S,
-    _read_buf: Vec<u8>,
-    _prog_buf: Vec<u8>,
-    _lookahead_buf: Vec<u8>,
-    pub(crate) mounted: bool,
+    cache: Cache<S>,
 }
 
 /// A mounted LittleFS filesystem.
@@ -79,9 +86,7 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
     let cache_size = config.resolve_cache_size() as usize;
     let lookahead_size = config.resolve_lookahead_size() as usize;
 
-    let mut read_buf = vec![0u8; cache_size];
-    let mut prog_buf = vec![0u8; cache_size];
-    let mut lookahead_buf = vec![0u8; lookahead_size];
+    let cache = Cache::<S>::default();
 
     let lfs_config = LfsConfig {
         context: core::ptr::null_mut(),
@@ -97,9 +102,9 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
         cache_size: config.resolve_cache_size(),
         lookahead_size: config.resolve_lookahead_size(),
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_mut_ptr() as *mut c_void,
-        prog_buffer: prog_buf.as_mut_ptr() as *mut c_void,
-        lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut c_void,
+        read_buffer: core::ptr::null_mut(),
+        prog_buffer: core::ptr::null_mut(),
+        lookahead_buffer: core::ptr::null_mut(),
         name_max: config.name_max,
         file_max: config.file_max,
         attr_max: config.attr_max,
@@ -111,10 +116,7 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
         lfs: unsafe { core::mem::zeroed() },
         config: lfs_config,
         storage,
-        _read_buf: read_buf,
-        _prog_buf: prog_buf,
-        _lookahead_buf: lookahead_buf,
-        mounted: false,
+        cache,
     }
 }
 
@@ -122,9 +124,9 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
 /// `inner` is at its final address (i.e., inside the `RefCell`).
 fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
     inner.config.context = &mut inner.storage as *mut S as *mut c_void;
-    inner.config.read_buffer = inner._read_buf.as_mut_ptr() as *mut c_void;
-    inner.config.prog_buffer = inner._prog_buf.as_mut_ptr() as *mut c_void;
-    inner.config.lookahead_buffer = inner._lookahead_buf.as_mut_ptr() as *mut c_void;
+    inner.config.read_buffer = inner.cache.read.as_mut_ptr();
+    inner.config.prog_buffer = inner.cache.write.as_mut_ptr();
+    inner.config.lookahead_buffer = inner.cache.lookahead.as_mut_ptr() as *mut c_void;
 }
 
 // ── Filesystem ──────────────────────────────────────────────────────────────

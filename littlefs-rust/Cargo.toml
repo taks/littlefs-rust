@@ -17,6 +17,7 @@ path = "src/lib.rs"
 [dependencies]
 littlefs-rust-core = { version = "0.1", path = "../littlefs-rust-core" }
 bitflags = "2"
+hybrid-array = "0.4"
 
 [dev-dependencies]
 env_logger = "0.10"

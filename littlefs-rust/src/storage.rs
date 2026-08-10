@@ -1,3 +1,4 @@
+use hybrid_array::ArraySize;
 use littlefs_rust_core::error::Error;
 
 /// Block device storage backend.
@@ -23,6 +24,10 @@ pub trait Storage {
     /// less wear-leveled.  Default of -1 disables wear-leveling.
     /// Value zero is invalid, must be positive or -1.
     const BLOCK_CYCLES: isize = -1;
+
+    type CACHE_SIZE: ArraySize;
+
+    type LOOKAHEAD_SIZE: ArraySize;
 
     /// Read `buf.len()` bytes starting at `offset` within `block`.
     fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error>;

@@ -1,5 +1,6 @@
 use alloc::vec;
 use alloc::vec::Vec;
+use hybrid_array::ArraySize;
 use littlefs_rust_core::error::Error;
 
 use crate::storage::Storage;
@@ -45,10 +46,12 @@ impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> RamStorage<BLOCK_SIZE, BLOCK
 impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> Storage
     for RamStorage<BLOCK_SIZE, BLOCK_COUNT>
 {
-    const READ_SIZE: usize = 1;
-    const WRITE_SIZE: usize = 1;
+    const READ_SIZE: usize = 32;
+    const WRITE_SIZE: usize = 32;
     const BLOCK_SIZE: usize = BLOCK_SIZE as usize;
     const BLOCK_COUNT: usize = BLOCK_COUNT as usize;
+    type CACHE_SIZE = hybrid_array::sizes::U32;
+    type LOOKAHEAD_SIZE = hybrid_array::sizes::U1;
 
     fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
         let start = self.offset(block, offset);
