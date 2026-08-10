@@ -368,7 +368,7 @@ fn test_interspersed_reentrant_files(
         .collect();
 
     for j in 0..files {
-        let path = (&String::from(ALPHAS[j] as char));
+        let path = &String::from(ALPHAS[j] as char);
         assert_ok(lfs_file_open(
             lfs,
             &mut file_handles[j],
@@ -379,7 +379,7 @@ fn test_interspersed_reentrant_files(
 
     for i in 0..size {
         for j in 0..files {
-            let file_sz = lfs_file_size(lfs, &mut file_handles[j]);
+            let file_sz = lfs_file_size(lfs, &file_handles[j]);
             assert!(file_sz >= 0);
             if (file_sz as usize) <= i {
                 let byte = [ALPHAS[j]];
@@ -395,7 +395,7 @@ fn test_interspersed_reentrant_files(
     }
 
     // Verify directory
-    let root = ("/");
+    let root = "/";
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok(lfs_dir_open(lfs, dir, root));
 
@@ -427,7 +427,7 @@ fn test_interspersed_reentrant_files(
         .collect();
 
     for j in 0..files {
-        let path = (&String::from(ALPHAS[j] as char));
+        let path = &String::from(ALPHAS[j] as char);
         assert_ok(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY));
     }
 
