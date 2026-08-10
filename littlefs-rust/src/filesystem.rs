@@ -49,7 +49,7 @@ fn trampoline_read<S: Storage>(
     off: u32,
     buffer: &mut [u8],
 ) -> Result<(), Error> {
-    let storage = unsafe { &mut *((*cfg).context as *mut S) };
+    let storage = unsafe { &mut *(cfg.context as *mut S) };
     storage.read(block, off, buffer)
 }
 
@@ -59,17 +59,17 @@ fn trampoline_prog<S: Storage>(
     off: u32,
     buffer: &[u8],
 ) -> Result<(), Error> {
-    let storage = unsafe { &mut *((*cfg).context as *mut S) };
+    let storage = unsafe { &mut *(cfg.context as *mut S) };
     storage.write(block, off, buffer)
 }
 
 fn trampoline_erase<S: Storage>(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
-    let storage = unsafe { &mut *((*cfg).context as *mut S) };
+    let storage = unsafe { &mut *(cfg.context as *mut S) };
     storage.erase(block)
 }
 
 fn trampoline_sync<S: Storage>(cfg: &LfsConfig) -> Result<(), Error> {
-    let storage = unsafe { &mut *((*cfg).context as *mut S) };
+    let storage = unsafe { &mut *(cfg.context as *mut S) };
     storage.sync()
 }
 
@@ -149,7 +149,7 @@ impl<S: Storage> Filesystem<S> {
         wire_context(&mut inner);
         let rc = littlefs_rust_core::lfs_mount(&mut inner.lfs, &inner.config);
         if let Err(err) = rc {
-            return Err((Error::from(err), inner.storage));
+            return Err((err, inner.storage));
         }
         inner.mounted = true;
         Ok(Filesystem {

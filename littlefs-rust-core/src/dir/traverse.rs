@@ -894,9 +894,9 @@ pub fn lfs_dir_traverse(
                     phase = TraversePhase::GetNextTag;
                 } else {
                     let type3 = lfs_tag_type3(tag);
-                    if type3 == LFS_FROM_NOOP as u16 {
+                    if type3 == LFS_FROM_NOOP {
                         phase = TraversePhase::GetNextTag;
-                    } else if type3 == crate::lfs_type::lfs_type::LFS_FROM_MOVE as u16 {
+                    } else if type3 == crate::lfs_type::lfs_type::LFS_FROM_MOVE {
                         if core::ptr::eq(cb as *const (), lfs_dir_traverse_filter as *const ()) {
                             phase = TraversePhase::GetNextTag;
                         } else {
@@ -943,7 +943,7 @@ pub fn lfs_dir_traverse(
                             diff = new_diff;
                             phase = TraversePhase::GetNextTag;
                         }
-                    } else if type3 == crate::lfs_type::lfs_type::LFS_FROM_USERATTRS as u16 {
+                    } else if type3 == crate::lfs_type::lfs_type::LFS_FROM_USERATTRS {
                         // C: lfs.c:620-632 — iterate over user attrs, dispatch each to cb
                         let attr_count = crate::tag::lfs_tag_size(tag) as usize;
                         assert_eq!(attr_count * ::core::mem::size_of::<LfsAttr>(), buffer.len());

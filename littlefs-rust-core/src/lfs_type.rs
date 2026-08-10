@@ -2,7 +2,7 @@
 
 #![allow(clippy::module_inception, non_camel_case_types)]
 
-/// File types. Per lfs.h enum lfs_type.
+//! File types. Per lfs.h enum lfs_type.
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq)]

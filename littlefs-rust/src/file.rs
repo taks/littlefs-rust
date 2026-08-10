@@ -19,7 +19,7 @@ impl FileAllocation<'_> {
     pub(crate) fn new(cache_size: u32) -> Self {
         let mut cache = vec![0u8; cache_size as usize];
         let file_config = LfsFileConfig {
-            buffer: unsafe { core::mem::transmute(cache.as_mut_slice()) },
+            buffer: unsafe { core::mem::transmute::<&mut [u8], &mut [u8]>(cache.as_mut_slice()) },
             attrs: &mut [],
         };
         Self {
@@ -98,9 +98,9 @@ impl<'a, S: Storage> File<'a, S> {
     }
 
     /// Return the current read/write position.
-    pub fn tell(&mut self) -> u32 {
+    pub fn tell(&self) -> u32 {
         let mut inner = self.fs.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_tell(&mut inner.lfs, &mut self.alloc.file);
+        let rc = littlefs_rust_core::lfs_file_tell(&mut inner.lfs, &self.alloc.file);
         drop(inner);
         rc as u32
     }
