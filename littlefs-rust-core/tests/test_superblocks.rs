@@ -369,7 +369,7 @@ fn test_superblocks_reentrant_expand() {
         assert_ok(lfs_unmount(lfs));
         let snapshot = env.snapshot();
 
-        let dummy = ("dummy");
+        let dummy = "dummy";
         let result = run_powerloss_linear(
             &mut env,
             &snapshot,
@@ -698,7 +698,7 @@ fn test_superblocks_shrink(
     assert_ok(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_size, BLOCK_SIZE);
     assert_eq!(fsinfo.block_count, block_count_2);
-    let test_path = ("test");
+    let test_path = "test";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(
         lfs,
