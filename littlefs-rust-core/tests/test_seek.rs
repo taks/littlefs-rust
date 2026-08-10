@@ -756,14 +756,16 @@ fn test_seek_reentrant_write(#[case] count: u32) {
             }
             assert!(&buf[..11] == KITTY || &buf[..11] == DOGGO);
             if &buf[..11] != DOGGO {
-                let seek_res = littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET)?;
+                let seek_res =
+                    littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET)?;
                 if seek_res != pos {
                     return Err(Error::Invalid);
                 }
                 let n = littlefs_rust_core::lfs_file_write(lfs, file, DOGGO)?;
 
                 assert_eq!(n, DOGGO.len() as u32);
-                let seek_res = littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET)?;
+                let seek_res =
+                    littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET)?;
                 if seek_res != pos {
                     return Err(Error::Invalid);
                 }
@@ -773,7 +775,8 @@ fn test_seek_reentrant_write(#[case] count: u32) {
                 }
                 assert_eq!(&buf[..11], DOGGO);
                 littlefs_rust_core::lfs_file_sync(lfs, file)?;
-                let seek_res = littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET)?;
+                let seek_res =
+                    littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET)?;
                 if seek_res != pos {
                     return Err(Error::Invalid);
                 }

@@ -158,10 +158,7 @@ impl SharedStorage {
         storage.prog_impl(block, off, buffer)
     }
 
-    fn rust_erase(
-        c: &littlefs_rust_core::LfsConfig,
-        block: u32,
-    ) -> Result<(), Error> {
+    fn rust_erase(c: &littlefs_rust_core::LfsConfig, block: u32) -> Result<(), Error> {
         let storage = unsafe { &*((*c).context as *const SharedStorage) };
         storage.erase_impl(block)
     }

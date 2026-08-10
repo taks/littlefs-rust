@@ -449,11 +449,7 @@ fn write_file_mounted(
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let file = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed().assume_init() };
     (littlefs_rust_core::lfs_file_open(lfs, file, path, flags))?;
-    let n = littlefs_rust_core::lfs_file_write(
-        lfs,
-        file,
-        content
-    );
+    let n = littlefs_rust_core::lfs_file_write(lfs, file, content);
     (littlefs_rust_core::lfs_file_close(lfs, file))?;
     if let Err(err) = n {
         return Err(err);
@@ -481,11 +477,7 @@ fn write_prng_file_mounted(
         for slot in buf[..c as usize].iter_mut() {
             *slot = (test_prng(&mut prng) & 0xff) as u8;
         }
-        let n = littlefs_rust_core::lfs_file_write(
-            lfs,
-            file,
-            &buf[..c as usize],
-        );
+        let n = littlefs_rust_core::lfs_file_write(lfs, file, &buf[..c as usize]);
         assert_eq!(n.unwrap(), c as u32, "short write at offset {i}");
         i += c;
     }
@@ -499,11 +491,7 @@ fn read_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<Ve
     let mut buf = Vec::new();
     let mut chunk = [0u8; 256];
     loop {
-        let n = littlefs_rust_core::lfs_file_read(
-            lfs,
-            file,
-            &mut chunk
-        );
+        let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut chunk);
         if let Err(err) = n {
             let _ = littlefs_rust_core::lfs_file_close(lfs, file);
             return Err(err);
