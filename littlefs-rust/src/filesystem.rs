@@ -33,12 +33,10 @@ impl<S: Storage> Default for Cache<S> {
     }
 }
 
-pub(crate) struct FsInner<S: Storage> {
+pub struct Allocation<S: Storage> {
     pub(crate) lfs: Lfs,
     pub(crate) config: LfsConfig,
-    pub(crate) storage: S,
     cache: Cache<S>,
-    mounted: bool,
 }
 
 /// A mounted LittleFS filesystem.
@@ -54,8 +52,9 @@ pub(crate) struct FsInner<S: Storage> {
 /// `Filesystem` is `!Send` and `!Sync` (due to interior `RefCell`). This is
 /// appropriate for single-threaded embedded use. If you need cross-thread
 /// access, wrap it in a `Mutex`.
-pub struct Filesystem<S: Storage> {
-    pub(crate) inner: RefCell<Box<FsInner<S>>>,
+pub struct Filesystem<'a, S: Storage> {
+    alloc: RefCell<&'a mut Allocation<S>>,
+    storage: &'a mut S,
 }
 
 // ── Trampolines ─────────────────────────────────────────────────────────────
@@ -92,9 +91,16 @@ fn trampoline_sync<S: Storage>(cfg: &LfsConfig) -> Result<(), Error> {
 
 // ── FsInner construction ────────────────────────────────────────────────────
 
-fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
-    let cache_size = config.resolve_cache_size() as usize;
-    let lookahead_size = config.resolve_lookahead_size() as usize;
+fn build_inner<S: Storage>(storage: S, config: &Config) -> Allocation<S> {
+    const {
+        assert!(S::BLOCK_CYCLES >= -1);
+        assert!(S::BLOCK_CYCLES != 0);
+        assert!(S::BLOCK_SIZE >= 128);
+
+        assert!(S::CACHE_SIZE::USIZE.is_multiple_of(S::READ_SIZE));
+        assert!(S::CACHE_SIZE::USIZE.is_multiple_of(S::WRITE_SIZE));
+        assert!(S::BLOCK_SIZE.is_multiple_of(S::CACHE_SIZE::USIZE));
+    }
 
     let cache = Cache::<S>::default();
 
@@ -110,7 +116,7 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
         block_count: config.block_count,
         block_cycles: S::BLOCK_CYCLES as _,
         cache_size: S::CACHE_SIZE::U32,
-        lookahead_size: S::LOOKAHEAD_SIZE::U32,
+        lookahead_size: 8 * S::LOOKAHEAD_SIZE::U32,
         compact_thresh: u32::MAX,
         read_buffer: core::ptr::null_mut(),
         prog_buffer: core::ptr::null_mut(),
@@ -122,27 +128,16 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
         inline_max: 0,
     };
 
-    FsInner {
+    Allocation {
         lfs: unsafe { core::mem::zeroed() },
         config: lfs_config,
-        storage,
         cache,
-        mounted: false,
     }
-}
-
-/// Wire `config.context` to point at `inner.storage`. Must be called after
-/// `inner` is at its final address (i.e., inside the `RefCell`).
-fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
-    inner.config.context = &mut inner.storage as *mut S as *mut c_void;
-    inner.config.read_buffer = inner.cache.read.as_mut_ptr() as *mut c_void;
-    inner.config.prog_buffer = inner.cache.write.as_mut_ptr() as *mut c_void;
-    inner.config.lookahead_buffer = inner.cache.lookahead.as_mut_ptr() as *mut c_void;
 }
 
 // ── Filesystem ──────────────────────────────────────────────────────────────
 
-impl<S: Storage> Filesystem<S> {
+impl<'a, S: Storage> Filesystem<'a, S> {
     /// Format `storage` with a fresh LittleFS filesystem.
     ///
     /// This erases any existing data. The storage can be mounted afterwards
@@ -157,17 +152,24 @@ impl<S: Storage> Filesystem<S> {
     ///
     /// On failure the storage is returned alongside the error so the caller
     /// can retry (e.g. format + mount).
-    pub fn mount(storage: S, config: Config) -> Result<Self, (Error, S)> {
-        let mut inner = Box::new(build_inner(storage, &config));
-        wire_context(&mut inner);
-        let rc = littlefs_rust_core::lfs_mount(&mut inner.lfs, &inner.config);
-        if let Err(err) = rc {
-            return Err((err, inner.storage));
+    pub fn mount(storage: &'a mut S, alloc: &'a mut Allocation<S>) -> Result<Self, Error> {
+        alloc.config.context = storage as *mut _ as *mut c_void;
+        alloc.config.read_buffer = alloc.cache.read.as_mut_ptr() as *mut c_void;
+        alloc.config.prog_buffer = alloc.cache.write.as_mut_ptr() as *mut c_void;
+        alloc.config.lookahead_buffer = alloc.cache.lookahead.as_mut_ptr() as *mut c_void;
+
+        let fs = Self {
+            alloc: RefCell::new(alloc),
+            storage,
+        };
+
+        {
+            let mut alloc = fs.alloc.borrow_mut();
+            let config = unsafe { core::mem::transmute(&alloc.config) };
+            littlefs_rust_core::lfs_mount(&mut alloc.lfs, config)?;
         }
-        inner.mounted = true;
-        Ok(Filesystem {
-            inner: RefCell::new(inner),
-        })
+
+        Ok(fs)
     }
 
     /// Unmount and return the underlying storage.
