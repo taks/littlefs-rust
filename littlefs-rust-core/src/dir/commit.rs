@@ -128,9 +128,7 @@ pub fn lfs_dir_commitattr(
         let ntag = lfs_tobe32((tag & 0x7fff_ffff) ^ commit.ptag);
         lfs_dir_commitprog(lfs, commit, ntag.as_bytes())?;
 
-        if (crate::tag::lfs_tag_type1(tag))
-            == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK
-        {
+        if (crate::tag::lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK {
             crate::lfs_trace!(
                 "commitattr SUPERBLOCK: dsize={} buffer={:p} commit.block={} commit.off={}",
                 dsize,

@@ -218,7 +218,7 @@ pub fn lfs_file_seek(
     file: &mut LfsFile,
     off: lfs_soff_t,
     whence: i32,
-) -> Result<crate::types::lfs_soff_t, Error> {
+) -> Result<crate::types::lfs_off_t, Error> {
     crate::file::ops::lfs_file_seek_(lfs, file, off, whence)
 }
 
@@ -230,7 +230,7 @@ pub fn lfs_file_truncate(lfs: &mut Lfs, file: &mut LfsFile, size: lfs_off_t) -> 
 
 /// Return the position of the file. Per lfs.h lfs_file_tell.
 #[inline(never)]
-pub fn lfs_file_tell(_lfs: &mut Lfs, file: &mut LfsFile) -> lfs_soff_t {
+pub fn lfs_file_tell(_lfs: &mut Lfs, file: &LfsFile) -> lfs_soff_t {
     crate::file::ops::lfs_file_tell_(core::ptr::null(), file)
 }
 
@@ -242,7 +242,7 @@ pub fn lfs_file_rewind(lfs: &mut Lfs, file: &mut LfsFile) -> Result<(), Error> {
 
 /// Return the size of the file. Per lfs.h lfs_file_size (lfs.c:6495-6499).
 #[inline(never)]
-pub fn lfs_file_size(lfs: &mut Lfs, file: &mut LfsFile) -> lfs_soff_t {
+pub fn lfs_file_size(lfs: &mut Lfs, file: &LfsFile) -> lfs_soff_t {
     crate::file::ops::lfs_file_size_(lfs, file)
 }
 

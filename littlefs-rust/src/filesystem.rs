@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use littlefs_rust_core::error::Error;
 use core::cell::RefCell;
 use core::ffi::c_void;
-use core::mem::{ManuallyDrop, MaybeUninit};
+use core::mem::{ManuallyDrop};
 
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
@@ -103,7 +103,7 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
     };
 
     FsInner {
-        lfs: MaybeUninit::zeroed(),
+        lfs: unsafe { core::mem::zeroed() },
         config: lfs_config,
         storage,
         _read_buf: read_buf,
@@ -133,7 +133,7 @@ impl<S: Storage> Filesystem<S> {
         let mut inner = build_inner_borrowed(storage, config);
         wire_context_borrowed(&mut inner);
         littlefs_rust_core::lfs_format(
-            inner.lfs.as_mut_ptr(),
+            &mut inner.lfs,
             &inner.config,
         )
     }
@@ -146,11 +146,11 @@ impl<S: Storage> Filesystem<S> {
         let mut inner = Box::new(build_inner(storage, &config));
         wire_context(&mut inner);
         let rc = littlefs_rust_core::lfs_mount(
-            inner.lfs.as_mut_ptr(),
-            &inner.config as *const LfsConfig,
+            &mut inner.lfs,
+            &inner.config,
         );
-        if rc != 0 {
-            return Err((Error::from(rc), inner.storage));
+        if let Err(err) = rc {
+            return Err((Error::from(err), inner.storage));
         }
         inner.mounted = true;
         Ok(Filesystem {
@@ -175,7 +175,7 @@ impl<S: Storage> Filesystem<S> {
         // Safety: we prevented Drop from running via ManuallyDrop, and we've
         // already unmounted. Take ownership of the RefCell's contents.
         let fs_inner = unsafe { core::ptr::read(&this.inner) }.into_inner();
-        from_lfs_result(rc)?;
+        rc?;
         Ok(fs_inner.storage)
     }
 
@@ -197,7 +197,7 @@ impl<S: Storage> Filesystem<S> {
 
     /// Read an entire file into a `Vec<u8>`.
     pub fn read_to_vec(&self, path: &str) -> Result<Vec<u8>, Error> {
-        let file = self.open(path, OpenFlags::READ)?;
+        let mut file = self.open(path, OpenFlags::READ)?;
         let size = file.size() as usize;
         let mut buf = vec![0u8; size];
         if size > 0 {
@@ -209,7 +209,7 @@ impl<S: Storage> Filesystem<S> {
 
     /// Write `data` to a file, creating or truncating it.
     pub fn write_file(&self, path: &str, data: &[u8]) -> Result<(), Error> {
-        let file = self.open(
+        let mut file = self.open(
             path,
             OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::TRUNC,
         )?;
@@ -225,46 +225,38 @@ impl<S: Storage> Filesystem<S> {
 
     /// Create a directory. Fails if it already exists.
     pub fn mkdir(&self, path: &str) -> Result<(), Error> {
-        let path_bytes = null_terminate(path);
         let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_mkdir(&mutinner.lfs, path_bytes.as_ptr())
+        littlefs_rust_core::lfs_mkdir(&mut inner.lfs, path)
     }
 
     /// Remove a file or empty directory.
     pub fn remove(&self, path: &str) -> Result<(), Error> {
-        let path_bytes = null_terminate(path);
         let mut inner = self.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_remove(inner.lfs.as_mut_ptr(), path_bytes.as_ptr());
-        from_lfs_result(rc)
+        littlefs_rust_core::lfs_remove(&mut inner.lfs, path)
     }
 
     /// Rename or move a file or directory.
     pub fn rename(&self, from: &str, to: &str) -> Result<(), Error> {
-        let from_bytes = null_terminate(from);
-        let to_bytes = null_terminate(to);
         let mut inner = self.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_rename(
-            inner.lfs.as_mut_ptr(),
-            from_bytes.as_ptr(),
-            to_bytes.as_ptr(),
-        );
-        from_lfs_result(rc)
+        littlefs_rust_core::lfs_rename(
+            &mut inner.lfs,
+            from,
+            to,
+        )
     }
 
     /// Get metadata for a file or directory.
     pub fn stat(&self, path: &str) -> Result<Metadata, Error> {
-        let path_bytes = null_terminate(path);
-        let mut info = MaybeUninit::<LfsInfo>::zeroed();
+        let mut info = unsafe { core::mem::zeroed::<LfsInfo>() };
         {
             let mut inner = self.inner.borrow_mut();
-            let rc = littlefs_rust_core::lfs_stat(
-                inner.lfs.as_mut_ptr(),
-                path_bytes.as_ptr(),
-                info.as_mut_ptr(),
-            );
-            from_lfs_result(rc)?;
+            littlefs_rust_core::lfs_stat(
+                &mut inner.lfs,
+                path,
+                &mut info,
+            )?;
         }
-        let entry = dir_entry_from_info(unsafe { &*info.as_ptr() });
+        let entry = dir_entry_from_info(&info);
         Ok(Metadata {
             name: entry.name,
             file_type: entry.file_type,
@@ -296,8 +288,7 @@ impl<S: Storage> Filesystem<S> {
     /// Return the number of allocated blocks.
     pub fn fs_size(&self) -> Result<u32, Error> {
         let mut inner = self.inner.borrow_mut();
-        let rc = littlefs_rust_core::lfs_fs_size(inner.lfs.as_mut_ptr());
-        from_lfs_size(rc)
+        littlefs_rust_core::lfs_fs_size(&mut inner.lfs)
     }
 
     /// Run garbage collection to reclaim unused blocks.
@@ -311,7 +302,7 @@ impl<S: Storage> Drop for Filesystem<S> {
     fn drop(&mut self) {
         if let Ok(mut inner) = self.inner.try_borrow_mut() {
             if inner.mounted {
-                let _ = littlefs_rust_core::lfs_unmount(inner.lfs.as_mut_ptr());
+                let _ = littlefs_rust_core::lfs_unmount(&mut inner.lfs);
                 inner.mounted = false;
             }
         }
@@ -321,7 +312,7 @@ impl<S: Storage> Drop for Filesystem<S> {
 // ── format helper (borrows storage instead of taking ownership) ─────────────
 
 struct BorrowedFsInner<'a, S: Storage> {
-    lfs: MaybeUninit<Lfs>,
+    lfs: Lfs,
     config: LfsConfig,
     storage: &'a mut S,
     _read_buf: Vec<u8>,
@@ -365,7 +356,7 @@ fn build_inner_borrowed<'a, S: Storage>(
     };
 
     BorrowedFsInner {
-        lfs: MaybeUninit::zeroed(),
+        lfs: unsafe { core::mem::zeroed() },
         config: lfs_config,
         storage,
         _read_buf: read_buf,
@@ -379,10 +370,4 @@ fn wire_context_borrowed<S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
     inner.config.read_buffer = inner._read_buf.as_mut_ptr() as *mut c_void;
     inner.config.prog_buffer = inner._prog_buf.as_mut_ptr() as *mut c_void;
     inner.config.lookahead_buffer = inner._lookahead_buf.as_mut_ptr() as *mut c_void;
-}
-
-fn null_terminate(s: &str) -> Vec<u8> {
-    let mut v: Vec<u8> = s.bytes().collect();
-    v.push(0);
-    v
 }

@@ -1366,7 +1366,7 @@ pub fn lfs_file_seek_(
     file: &mut LfsFile,
     off: crate::types::lfs_soff_t,
     whence: i32,
-) -> Result<crate::types::lfs_soff_t, Error> {
+) -> Result<crate::types::lfs_off_t, Error> {
     use crate::file::ctz::lfs_ctz_index;
     use crate::lfs_type::lfs_whence_flags::{LFS_SEEK_CUR, LFS_SEEK_END, LFS_SEEK_SET};
 
@@ -1409,7 +1409,7 @@ pub fn lfs_file_seek_(
         lfs_file_flush(lfs, file)?;
 
         file.pos = npos;
-        Ok(npos as crate::types::lfs_soff_t)
+        Ok(npos as crate::types::lfs_off_t)
     }
 }
 
@@ -1590,9 +1590,9 @@ pub fn lfs_file_truncate_(
 /// ```
 pub fn lfs_file_tell_(
     _lfs: *const core::ffi::c_void,
-    file: *const LfsFile,
+    file: &LfsFile,
 ) -> crate::types::lfs_soff_t {
-    unsafe { (*file).pos as crate::types::lfs_soff_t }
+    file.pos as crate::types::lfs_soff_t
 }
 
 /// Per lfs.c lfs_file_rewind_ (lines 3840-3850)

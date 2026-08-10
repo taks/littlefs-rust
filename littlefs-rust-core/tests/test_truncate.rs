@@ -221,7 +221,7 @@ fn test_truncate_write_read() {
     assert_eq!(lfs_file_size(lfs, file), trunc as i32);
     assert_eq!(
         lfs_file_seek(lfs, file, qsize as i32, LFS_SEEK_SET),
-        Ok(qsize as i32)
+        Ok(qsize as u32)
     );
     assert_eq!(lfs_file_tell(lfs, file), qsize as i32);
 
@@ -508,7 +508,7 @@ fn test_truncate_aggressive() {
             if startseeks[i] != startsizes[i] {
                 assert_eq!(
                     lfs_file_seek(lfs, file, startseeks[i] as i32, LFS_SEEK_SET,),
-                    Ok(startseeks[i] as i32)
+                    Ok(startseeks[i])
                 );
             }
 

@@ -28,6 +28,8 @@ pub struct LfsFile<'a> {
 
 impl<'a> LfsFile<'a> {
     pub(crate) unsafe fn as_mut_lsf_mist(&mut self) -> *mut LfsMlist {
-        unsafe { ::core::mem::transmute::<*mut LfsFile<'_>, *mut LfsMlist>(::core::ptr::from_mut(self)) }
+        unsafe {
+            ::core::mem::transmute::<*mut LfsFile<'_>, *mut LfsMlist>(::core::ptr::from_mut(self))
+        }
     }
 }

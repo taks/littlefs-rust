@@ -58,13 +58,13 @@ fn test_write_read_roundtrip() {
     let fs = format_and_mount();
     let data = b"Hello, littlefs!";
 
-    let file = fs
+    let mut file = fs
         .open("/hello.txt", OpenFlags::WRITE | OpenFlags::CREATE)
         .unwrap();
     file.write(data).unwrap();
     file.close().unwrap();
 
-    let file = fs.open("/hello.txt", OpenFlags::READ).unwrap();
+    let mut file = fs.open("/hello.txt", OpenFlags::READ).unwrap();
     let mut buf = vec![0u8; 64];
     let n = file.read(&mut buf).unwrap();
     assert_eq!(&buf[..n as usize], data);
@@ -77,10 +77,10 @@ fn test_write_read_roundtrip() {
 fn test_multiple_open_files() {
     let fs = format_and_mount();
 
-    let f1 = fs
+    let mut f1 = fs
         .open("/a.txt", OpenFlags::WRITE | OpenFlags::CREATE)
         .unwrap();
-    let f2 = fs
+    let mut f2 = fs
         .open("/b.txt", OpenFlags::WRITE | OpenFlags::CREATE)
         .unwrap();
 
@@ -102,13 +102,13 @@ fn test_multiple_open_files() {
 fn test_seek_tell_size() {
     let fs = format_and_mount();
 
-    let file = fs
+    let mut file = fs
         .open("/data.bin", OpenFlags::WRITE | OpenFlags::CREATE)
         .unwrap();
     file.write(b"0123456789").unwrap();
     file.close().unwrap();
 
-    let file = fs.open("/data.bin", OpenFlags::READ).unwrap();
+    let mut file = fs.open("/data.bin", OpenFlags::READ).unwrap();
     assert_eq!(file.size(), 10);
     assert_eq!(file.tell(), 0);
 
@@ -131,13 +131,13 @@ fn test_seek_tell_size() {
 fn test_truncate() {
     let fs = format_and_mount();
 
-    let file = fs
+    let mut file = fs
         .open("/trunc.txt", OpenFlags::WRITE | OpenFlags::CREATE)
         .unwrap();
     file.write(b"hello world").unwrap();
     file.close().unwrap();
 
-    let file = fs.open("/trunc.txt", OpenFlags::WRITE).unwrap();
+    let mut file = fs.open("/trunc.txt", OpenFlags::WRITE).unwrap();
     file.truncate(5).unwrap();
     assert_eq!(file.size(), 5);
     file.close().unwrap();
@@ -153,7 +153,7 @@ fn test_file_drop_closes() {
     let fs = format_and_mount();
 
     {
-        let file = fs
+        let mut file = fs
             .open("/drop.txt", OpenFlags::WRITE | OpenFlags::CREATE)
             .unwrap();
         file.write(b"dropped").unwrap();
