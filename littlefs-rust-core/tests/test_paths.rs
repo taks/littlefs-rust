@@ -1696,7 +1696,6 @@ fn test_paths_oopsalldels(#[case] dir_mode: bool) {
 #[rstest]
 #[case::dirs(true)]
 #[case::files(false)]
-#[ignore = "TODO FIX"]
 fn test_paths_oopsallffs(#[case] dir_mode: bool) {
     init_logger();
     let mut env = default_config(128);
@@ -1715,7 +1714,7 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
     }
     for cp in child_paths.iter() {
         let mut full: Vec<u8> = vec![0xff, b'/'];
-        full.extend_from_slice(&cp[..cp.len().saturating_sub(1)]);
+        full.extend_from_slice(cp);
         if dir_mode {
             assert_ok(lfs_mkdir(lfs, unsafe { str::from_utf8_unchecked(&full) }));
         } else {
