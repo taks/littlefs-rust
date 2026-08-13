@@ -565,7 +565,7 @@ pub fn lfs_bd_sync(
 /// ```
 pub fn lfs_bd_prog(
     lfs: &Lfs,
-    pcache: *mut LfsCache,
+    pcache: &mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
     block: lfs_block_t,
@@ -577,7 +577,6 @@ pub fn lfs_bd_prog(
 
     unsafe {
         let cfg = &*lfs.cfg;
-        let pcache = &mut *pcache;
 
         crate::lfs_assert!(block == LFS_BLOCK_INLINE || block < lfs.block_count);
         crate::lfs_assert!(off + buffer.len() as u32 <= cfg.block_size);
