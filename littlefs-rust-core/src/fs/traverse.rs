@@ -201,8 +201,15 @@ pub fn lfs_fs_traverse_(
 
                 let tag = tag.unwrap();
                 if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
-                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                    lfs_ctz_traverse(lfs, None, lfs_rcache, raw[0], raw[1], cb, data)?;
+                    lfs_ctz_traverse(
+                        lfs,
+                        None,
+                        &mut *lfs.rcache.get(),
+                        raw[0],
+                        raw[1],
+                        cb,
+                        data,
+                    )?;
                 } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
                     #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
                     for i in 0..2 {
@@ -238,11 +245,10 @@ pub fn lfs_fs_traverse_(
                 if (f_ref.flags as i32 & LFS_F_DIRTY) != 0
                     && (f_ref.flags as i32 & LFS_F_INLINE) == 0
                 {
-                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     lfs_ctz_traverse(
                         lfs,
                         Some(&(*f).cache),
-                        lfs_rcache,
+                        &mut *lfs.rcache.get(),
                         f_ref.ctz.head,
                         f_ref.ctz.size,
                         cb,
@@ -252,11 +258,10 @@ pub fn lfs_fs_traverse_(
                 if (f_ref.flags as i32 & LFS_F_WRITING) != 0
                     && (f_ref.flags as i32 & LFS_F_INLINE) == 0
                 {
-                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     lfs_ctz_traverse(
                         lfs,
                         Some(&(*f).cache),
-                        lfs_rcache,
+                        &mut *lfs.rcache.get(),
                         f_ref.block,
                         f_ref.pos,
                         cb,

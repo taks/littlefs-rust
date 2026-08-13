@@ -254,7 +254,7 @@ pub fn lfs_ctz_find(
 pub fn lfs_ctz_traverse(
     lfs: &crate::fs::Lfs,
     pcache: Option<&crate::bd::LfsCache>,
-    rcache: *mut crate::bd::LfsCache,
+    rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
     size: lfs_size_t,
     cb: fn(*mut core::ffi::c_void, lfs_block_t) -> Result<(), Error>,
@@ -300,7 +300,7 @@ pub fn lfs_ctz_traverse(
             lfs_bd_read(
                 lfs,
                 pcache,
-                &mut *rcache,
+                rcache,
                 read_size,
                 current_head,
                 0,

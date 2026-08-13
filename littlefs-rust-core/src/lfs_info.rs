@@ -33,9 +33,7 @@ pub struct LfsAttr<'a> {
 }
 
 unsafe impl<'a> zerocopy::IntoBytes for LfsAttr<'a> {
-    fn only_derive_is_allowed_to_implement_this_trait()
-    {
-    }
+    fn only_derive_is_allowed_to_implement_this_trait() {}
 }
 
 /// Per lfs.h struct lfs_file_config

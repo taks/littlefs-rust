@@ -183,7 +183,6 @@ pub fn lfs_bd_read(
                 }
             }
 
-            let rcache = &mut *rcache;
             if block == rcache.block && off < rcache.off + rcache.size {
                 if off >= rcache.off {
                     diff = lfs_min(diff, rcache.size - (off - rcache.off));

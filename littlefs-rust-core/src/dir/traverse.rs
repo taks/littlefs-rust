@@ -132,7 +132,7 @@ pub fn lfs_dir_getslice(
             lfs_bd_read(
                 lfs,
                 None,
-                lfs_rcache,
+                &mut *lfs.rcache.get(),
                 4,
                 dir.pair[0],
                 off,
@@ -160,12 +160,11 @@ pub fn lfs_dir_getslice(
                     return Err(Error::NoEntry);
                 }
                 let diff = lfs_min(lfs_tag_size(tag), gsize);
-                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 let buf = &mut gbuffer[..diff as usize];
                 lfs_bd_read(
                     lfs,
                     None,
-                    lfs_rcache,
+                    &mut *lfs.rcache.get(),
                     diff,
                     dir.pair[0],
                     off + 4 + goff,
@@ -773,7 +772,7 @@ pub fn lfs_dir_traverse(
                         lfs_bd_read(
                             lfs,
                             None,
-                            lfs_rcache,
+                            unsafe { &mut *lfs.rcache.get() },
                             core::mem::size_of::<lfs_tag_t>() as u32,
                             dir_ref.pair[0],
                             off,

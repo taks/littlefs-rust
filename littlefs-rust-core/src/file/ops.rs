@@ -5,7 +5,7 @@ use core::ffi::CStr;
 use zerocopy::IntoBytes;
 
 use crate::bd::bd::{lfs_bd_read, lfs_cache_drop, lfs_cache_zero};
-use crate::borrow_unchecked::borrow_unchecked;
+use crate::borrow_unchecked::{BorrowUnchecked, borrow_unchecked};
 use crate::dir::LfsMdir;
 use crate::dir::traverse::lfs_dir_getread;
 use crate::error::Error;
@@ -304,7 +304,7 @@ pub fn lfs_file_opencfg_(
                     file.id as u32,
                     8,
                 ),
-                file.ctz.as_mut_bytes()
+                file.ctz.as_mut_bytes(),
             );
             if let Err(err) = struct_tag {
                 lfs_file_close_(lfs, file);
@@ -548,8 +548,7 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
             if let Err(e) = err {
                 if e == Error::Corrupt {
                     lfs_alloc_lookahead(lfs, nblock);
-                    let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
-                    lfs_cache_drop(lfs, lfs_pcache);
+                    lfs_cache_drop(lfs, &mut *lfs.pcache.get());
                     continue 'relocate;
                 }
                 return crate::lfs_pass_err!(err);
@@ -572,11 +571,10 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                         1,
                     )
                 } else {
-                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     lfs_bd_read(
                         lfs,
                         Some(&file.cache),
-                        lfs_rcache,
+                        &mut *lfs.rcache.get(),
                         file.off - i,
                         file.block,
                         i,
@@ -585,12 +583,10 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                 };
                 crate::lfs_pass_err!(err)?;
 
-                let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
-                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 let err = lfs_bd_prog(
                     lfs,
-                    lfs_pcache,
-                    lfs_rcache,
+                    &mut *lfs.pcache.get(),
+                    &mut *lfs.rcache.get(),
                     true,
                     nblock,
                     i,
@@ -599,8 +595,7 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                 if let Err(err) = err {
                     if err == Error::Corrupt {
                         lfs_alloc_lookahead(lfs, nblock);
-                        let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
-                        lfs_cache_drop(lfs, lfs_pcache);
+                        lfs_cache_drop(lfs, &mut *lfs.pcache.get());
                         continue 'relocate;
                     }
                     return crate::lfs_pass_err!(Err(err));
@@ -608,11 +603,10 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
             }
 
             {
-                let lfs_ref = &mut *lfs;
-                let pcache = &lfs_ref.pcache;
+                let pcache = lfs.pcache.get_mut();
                 let file = &mut *file;
                 if !file.cache.buffer.is_null() && !pcache.buffer.is_null() {
-                    let cache_size = lfs_ref.cfg.as_ref().expect("cfg").cache_size as usize;
+                    let cache_size = lfs.cfg.as_ref().expect("cfg").cache_size as usize;
                     core::ptr::copy_nonoverlapping(pcache.buffer, file.cache.buffer, cache_size);
                 }
                 file.cache.block = pcache.block;
@@ -621,8 +615,7 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                 file.block = nblock;
                 file.flags |= LFS_F_WRITING as u32;
             }
-            let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
-            lfs_cache_zero(lfs, lfs_pcache);
+            lfs_cache_zero(lfs, &mut *lfs.pcache.get());
             return Ok(());
         }
     }
@@ -764,7 +757,6 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
             if (file.flags as i32 & LFS_F_INLINE) != 0 {
                 file.pos = lfs_max(pos, file.ctz.size);
             } else {
-                let lfs_ref = &mut *lfs;
                 let mut orig = LfsFile {
                     next: core::ptr::null_mut(),
                     id: file.id,
@@ -778,11 +770,10 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                     pos: file.pos,
                     block: 0,
                     off: 0,
-                    cache: core::ptr::read(&lfs_ref.rcache),
+                    cache: core::ptr::read(lfs.rcache.get()),
                     cfg: core::ptr::null(),
                 };
-                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                lfs_cache_drop(lfs, lfs_rcache);
+                lfs_cache_drop(lfs, &mut *lfs.rcache.get());
 
                 #[allow(clippy::while_immutable_condition)] // file.pos updated by flushedwrite
                 while file.pos < file.ctz.size {
@@ -791,16 +782,14 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
 
                     let res = lfs_file_flushedwrite(lfs, file, data.as_bytes())?;
 
-                    if lfs.rcache.block != crate::types::LFS_BLOCK_NULL {
+                    if lfs.rcache.get_mut().block != crate::types::LFS_BLOCK_NULL {
                         lfs_cache_drop(lfs, &mut orig.cache);
-                        let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                        lfs_cache_drop(lfs, lfs_rcache);
+                        lfs_cache_drop(lfs, &mut *lfs.rcache.get());
                     }
                 }
 
                 'flush: loop {
-                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                    let err = lfs_bd_flush(lfs, &mut file.cache, lfs_rcache, true);
+                    let err = lfs_bd_flush(lfs, &mut file.cache, &mut *lfs.rcache.get(), true);
                     if let Err(err) = err {
                         if err == Error::Corrupt {
                             lfs_file_relocate(lfs, file)?;
@@ -908,9 +897,12 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
             let cfg = lfs_ref.cfg.as_ref().expect("cfg");
 
             if (file.flags as i32 & LFS_F_INLINE) == 0 {
-                let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
-                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                crate::bd::bd::lfs_bd_sync(lfs, lfs_pcache, lfs_rcache, false)?;
+                crate::bd::bd::lfs_bd_sync(
+                    lfs,
+                    &mut *lfs.pcache.get(),
+                    &mut *lfs.rcache.get(),
+                    false,
+                )?;
             }
 
             // C: copy ctz so alloc will work during a relocate
@@ -1193,11 +1185,10 @@ pub fn lfs_file_flushedwrite(
                 } else {
                     if (file.flags as i32 & LFS_F_WRITING) == 0 && file.pos > 0 {
                         let mut block_off: lfs_off_t = 0;
-                        let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                         let err = lfs_ctz_find(
                             lfs,
                             None,
-                            lfs_rcache,
+                            &mut *lfs.rcache.get(),
                             file.ctz.head,
                             file.ctz.size,
                             file.pos - 1,
@@ -1210,12 +1201,12 @@ pub fn lfs_file_flushedwrite(
                         }
                         lfs_cache_zero(lfs, &mut file.cache);
                     }
-                    unsafe { lfs_alloc_ckpoint(lfs) };
-                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
+                    lfs_alloc_ckpoint(lfs);
+                    let lfs_rcache = lfs.rcache.borrow_unchecked();
                     let err = lfs_ctz_extend(
                         lfs,
                         &mut file.cache,
-                        lfs_rcache,
+                        &mut *lfs.rcache.get(),
                         file.block,
                         file.pos,
                         &mut file.block,
@@ -1231,11 +1222,10 @@ pub fn lfs_file_flushedwrite(
 
             let diff = lfs_min(nsize, block_size - file.off);
             'prog: loop {
-                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 let err = lfs_bd_prog(
                     lfs,
                     &mut file.cache,
-                    lfs_rcache,
+                    &mut *lfs.rcache.get(),
                     true,
                     file.block,
                     file.off,
@@ -1522,9 +1512,9 @@ pub fn lfs_file_truncate_(
                 let res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_SET)?;
 
                 // Read existing data from CTZ blocks into rcache temporarily
-                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                crate::bd::bd::lfs_cache_drop(lfs, lfs_rcache);
-                let buffer = core::slice::from_raw_parts_mut(lfs.rcache.buffer, size as usize);
+                crate::bd::bd::lfs_cache_drop(lfs, &mut *lfs.rcache.get());
+                let buffer =
+                    core::slice::from_raw_parts_mut(lfs.rcache.get_mut().buffer, size as usize);
                 let res = lfs_file_flushedread(lfs, file, buffer)?;
 
                 file.ctz.head = LFS_BLOCK_INLINE;
@@ -1535,7 +1525,11 @@ pub fn lfs_file_truncate_(
                 file.cache.size = lfs.cfg.as_ref().expect("cfg").cache_size;
 
                 // Copy data from rcache into file cache
-                core::ptr::copy_nonoverlapping(lfs.rcache.buffer, file.cache.buffer, size as usize);
+                core::ptr::copy_nonoverlapping(
+                    lfs.rcache.get_mut().buffer,
+                    file.cache.buffer,
+                    size as usize,
+                );
             } else {
                 // C: lfs.c:3787-3806 — shrink CTZ
                 lfs_file_flush(lfs, file)?;

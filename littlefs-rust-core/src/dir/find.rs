@@ -76,9 +76,9 @@ pub fn lfs_dir_find_match(
 
         let diff = lfs_min(name.size, lfs_tag_size(tag));
         let res = lfs_bd_cmp(
-            name.lfs.as_mut().unwrap(),
+            lfs,
             None,
-            &mut lfs.rcache,
+            &mut *lfs.rcache.get(),
             diff,
             disk.block,
             disk.off,

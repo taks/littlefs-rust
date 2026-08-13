@@ -139,11 +139,12 @@ pub fn lfs_fs_parent_match(
     let find = unsafe { &*(data as *const LfsFsParentMatch) };
 
     let mut child: [crate::types::lfs_block_t; 2] = [0, 0];
+    let lfs = unsafe { find.lfs.as_ref().unwrap() };
     lfs_bd_read(
-        unsafe { find.lfs.as_ref().unwrap() },
+        lfs,
         None,
-        unsafe { &mut (*find.lfs).rcache },
-        unsafe { (*find.lfs).cfg.as_ref().expect("cfg").block_size },
+        unsafe { &mut *lfs.rcache.get() },
+        unsafe { lfs.cfg.as_ref().expect("cfg").block_size },
         disk.block,
         disk.off,
         child.as_mut_bytes(),
