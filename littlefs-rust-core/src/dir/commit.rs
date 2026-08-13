@@ -1643,10 +1643,6 @@ fn lfs_dir_commit_size_raw(
 ///         lfs->gdisk = lfs->gstate;
 ///         lfs->gdelta = (lfs_gstate_t){0};
 ///
-///         if(dir->count == 0x3ff)
-///         {
-///             goto compact;
-///         }
 ///         goto fixmlist;
 ///     }
 ///
@@ -1853,9 +1849,6 @@ pub fn lfs_dir_relocatingcommit(
                                 tag: 0,
                                 pair: [0, 0],
                             };
-                            if (dir.count == 0x3ff) {
-                                do_compact = true;
-                            }
                         }
                     }
                 }
