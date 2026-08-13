@@ -1,11 +1,11 @@
-use core::cell::RefCell;
+use core::cell::{RefCell, UnsafeCell};
 use core::ffi::c_void;
 use littlefs_rust_core::error::Error;
 use typenum::Unsigned;
 
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
-use crate::config::Config;
+use crate::config::{self, Config};
 use crate::dir::{dir_entry_from_info, ReadDir};
 use crate::file::File;
 use crate::metadata::{DirEntry, Metadata, OpenFlags};
@@ -31,7 +31,7 @@ impl<S: Storage> Default for Cache<S> {
 
 pub struct Allocation<S: Storage> {
     pub(crate) lfs: Lfs,
-    pub(crate) config: LfsConfig,
+    pub(crate) config: UnsafeCell<LfsConfig>,
     cache: Cache<S>,
 }
 
@@ -86,62 +86,83 @@ fn trampoline_sync<S: Storage>(cfg: &LfsConfig) -> Result<(), Error> {
 }
 
 // ── FsInner construction ────────────────────────────────────────────────────
+impl<S: Storage> Allocation<S> {
+    pub fn new() -> Self {
+        const {
+            assert!(S::BLOCK_CYCLES >= -1);
+            assert!(S::BLOCK_CYCLES != 0);
+            assert!(S::BLOCK_SIZE >= 128);
 
-fn build_inner<S: Storage>(config: &Config) -> Allocation<S> {
-    const {
-        assert!(S::BLOCK_CYCLES >= -1);
-        assert!(S::BLOCK_CYCLES != 0);
-        assert!(S::BLOCK_SIZE >= 128);
+            assert!(S::CACHE_SIZE::USIZE.is_multiple_of(S::READ_SIZE));
+            assert!(S::CACHE_SIZE::USIZE.is_multiple_of(S::WRITE_SIZE));
+            assert!(S::BLOCK_SIZE.is_multiple_of(S::CACHE_SIZE::USIZE));
+        }
 
-        assert!(S::CACHE_SIZE::USIZE.is_multiple_of(S::READ_SIZE));
-        assert!(S::CACHE_SIZE::USIZE.is_multiple_of(S::WRITE_SIZE));
-        assert!(S::BLOCK_SIZE.is_multiple_of(S::CACHE_SIZE::USIZE));
-    }
+        let config = Config::new(S::BLOCK_SIZE as _, S::BLOCK_COUNT as _);
 
-    let cache = Cache::<S>::default();
+        let cache = Cache::<S>::default();
 
-    let lfs_config = LfsConfig {
-        context: core::ptr::null_mut(),
-        read: Some(trampoline_read::<S>),
-        prog: Some(trampoline_prog::<S>),
-        erase: Some(trampoline_erase::<S>),
-        sync: Some(trampoline_sync::<S>),
-        read_size: S::READ_SIZE as _,
-        prog_size: S::WRITE_SIZE as _,
-        block_size: S::BLOCK_SIZE as _,
-        block_count: config.block_count,
-        block_cycles: S::BLOCK_CYCLES as _,
-        cache_size: S::CACHE_SIZE::U32,
-        lookahead_size: 8 * S::LOOKAHEAD_SIZE::U32,
-        compact_thresh: u32::MAX,
-        read_buffer: core::ptr::null_mut(),
-        prog_buffer: core::ptr::null_mut(),
-        lookahead_buffer: core::ptr::null_mut(),
-        name_max: config.name_max,
-        file_max: config.file_max,
-        attr_max: config.attr_max,
-        metadata_max: 0,
-        inline_max: 0,
-    };
+        let lfs_config = LfsConfig {
+            context: core::ptr::null_mut(),
+            read: Some(trampoline_read::<S>),
+            prog: Some(trampoline_prog::<S>),
+            erase: Some(trampoline_erase::<S>),
+            sync: Some(trampoline_sync::<S>),
+            read_size: S::READ_SIZE as _,
+            prog_size: S::WRITE_SIZE as _,
+            block_size: config.block_size,
+            block_count: config.block_count,
+            block_cycles: S::BLOCK_CYCLES as _,
+            cache_size: S::CACHE_SIZE::U32,
+            lookahead_size: 8 * S::LOOKAHEAD_SIZE::U32,
+            compact_thresh: u32::MAX,
+            read_buffer: core::ptr::null_mut(),
+            prog_buffer: core::ptr::null_mut(),
+            lookahead_buffer: core::ptr::null_mut(),
+            name_max: config.name_max,
+            file_max: config.file_max,
+            attr_max: config.attr_max,
+            metadata_max: 0,
+            inline_max: 0,
+        };
 
-    Allocation {
-        lfs: unsafe { core::mem::zeroed() },
-        config: lfs_config,
-        cache,
+        Allocation {
+            lfs: unsafe { core::mem::zeroed() },
+            config: RefCell::new(lfs_config),
+            cache,
+        }
     }
 }
 
 // ── Filesystem ──────────────────────────────────────────────────────────────
 
 impl<'a, S: Storage> Filesystem<'a, S> {
+    fn new(storage: &'a mut S, alloc: &'a mut Allocation<S>) -> Self {
+        {
+            let config = alloc.config.get_mut();
+            config.context = storage as *mut _ as *mut c_void;
+            config.read_buffer = alloc.cache.read.as_mut_ptr() as *mut c_void;
+            config.prog_buffer = alloc.cache.write.as_mut_ptr() as *mut c_void;
+            config.lookahead_buffer = alloc.cache.lookahead.as_mut_ptr() as *mut c_void;
+        }
+
+        Self {
+            alloc: RefCell::new(alloc),
+            storage,
+        }
+    }
+
     /// Format `storage` with a fresh LittleFS filesystem.
     ///
     /// This erases any existing data. The storage can be mounted afterwards
     /// with [`Filesystem::mount`].
-    pub fn format(storage: &mut S, config: &Config) -> Result<(), Error> {
-        let mut inner = build_inner_borrowed(storage, config);
-        wire_context_borrowed(&mut inner);
-        littlefs_rust_core::lfs_format(&mut inner.lfs, &inner.config)
+    pub fn format(storage: &mut S) -> Result<(), Error> {
+        let alloc = Allocation::new();
+        let fs = Self::new(storage, &mut alloc);
+
+        let mut alloc = fs.alloc.borrow_mut();
+        let config = alloc.config.get();
+        littlefs_rust_core::lfs_format(&mut alloc.lfs, unsafe { &*config })
     }
 
     /// Mount an existing filesystem. Takes ownership of the storage.
@@ -149,15 +170,7 @@ impl<'a, S: Storage> Filesystem<'a, S> {
     /// On failure the storage is returned alongside the error so the caller
     /// can retry (e.g. format + mount).
     pub fn mount(storage: &'a mut S, alloc: &'a mut Allocation<S>) -> Result<Self, Error> {
-        alloc.config.context = storage as *mut _ as *mut c_void;
-        alloc.config.read_buffer = alloc.cache.read.as_mut_ptr() as *mut c_void;
-        alloc.config.prog_buffer = alloc.cache.write.as_mut_ptr() as *mut c_void;
-        alloc.config.lookahead_buffer = alloc.cache.lookahead.as_mut_ptr() as *mut c_void;
-
-        let fs = Self {
-            alloc: RefCell::new(alloc),
-            storage,
-        };
+        let fs = Self::new(storage, alloc);
 
         {
             let mut alloc = fs.alloc.borrow_mut();

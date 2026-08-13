@@ -24,7 +24,7 @@ impl<S: Storage> Default for FileAllocation<'_, S> {
     }
 }
 
-impl<S: Storage> FileAllocation<'_, S>{
+impl<S: Storage> FileAllocation<'_, S> {
     pub(crate) fn new() -> Self {
         let mut cache = vec![0u8; cache_size as usize];
         let file_config = LfsFileConfig {
