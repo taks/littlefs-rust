@@ -253,21 +253,20 @@ pub fn lfs_ctz_find(
 /// ```
 #[allow(clippy::type_complexity)]
 pub fn lfs_ctz_traverse(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &crate::fs::Lfs,
     pcache: Option<&crate::bd::LfsCache>,
     rcache: *mut crate::bd::LfsCache,
     head: lfs_block_t,
     size: lfs_size_t,
-    cb: Option<fn(*mut core::ffi::c_void, lfs_block_t) -> Result<(), Error>>,
+    cb: fn(*mut core::ffi::c_void, lfs_block_t) -> Result<(), Error>,
     data: *mut core::ffi::c_void,
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::util::lfs_fromle32;
 
-    if size == 0 || cb.is_none() {
+    if size == 0 {
         return Ok(());
     }
-    let cb = cb.unwrap();
 
     unsafe {
         let mut index_off = size - 1;
