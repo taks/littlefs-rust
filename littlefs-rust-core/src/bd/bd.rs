@@ -492,7 +492,7 @@ pub fn lfs_bd_flush(
 /// #endif
 /// ```
 pub fn lfs_bd_sync(
-    lfs: &mut Lfs,
+    lfs: &Lfs,
     pcache: &mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
