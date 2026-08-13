@@ -343,7 +343,7 @@ pub fn lfs_bd_cmp(
 /// }
 /// ```
 pub fn lfs_bd_crc(
-    lfs: &mut Lfs,
+    lfs: &Lfs,
     pcache: Option<&LfsCache>,
     rcache: &mut LfsCache,
     hint: lfs_size_t,
