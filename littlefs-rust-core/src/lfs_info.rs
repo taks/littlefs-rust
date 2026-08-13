@@ -33,46 +33,8 @@ pub struct LfsAttr<'a> {
 }
 
 unsafe impl<'a> zerocopy::IntoBytes for LfsAttr<'a> {
-    fn as_bytes(&self) -> &[u8]
-    where
-        Self: zerocopy::Immutable,
-    {
-        todo!()
-    }
-
-    fn as_mut_bytes(&mut self) -> &mut [u8]
-    where
-        Self: zerocopy::FromBytes,
-    {
-        todo!()
-    }
-
-    fn write_to(&self, dst: &mut [u8]) -> Result<(), zerocopy::SizeError<&Self, &mut [u8]>>
-    where
-        Self: zerocopy::Immutable,
-    {
-        todo!()
-    }
-
-    fn write_to_prefix(&self, dst: &mut [u8]) -> Result<(), zerocopy::SizeError<&Self, &mut [u8]>>
-    where
-        Self: zerocopy::Immutable,
-    {
-        todo!()
-    }
-
-    fn write_to_suffix(&self, dst: &mut [u8]) -> Result<(), zerocopy::SizeError<&Self, &mut [u8]>>
-    where
-        Self: zerocopy::Immutable,
-    {
-        todo!()
-    }
-
     fn only_derive_is_allowed_to_implement_this_trait()
-    where
-        Self: Sized,
     {
-        todo!()
     }
 }
 

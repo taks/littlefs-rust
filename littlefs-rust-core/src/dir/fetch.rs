@@ -828,7 +828,6 @@ pub fn lfs_dir_getinfo(
             dir,
             lfs_mktag(0x780, 0x3ff, 0),
             lfs_mktag(LFS_TYPE_NAME, id as u32, name_max + 1),
-            // TODO: info.name.as_mut_ptr() as *mut core::ffi::c_void,
             &mut info.name,
         )?;
 

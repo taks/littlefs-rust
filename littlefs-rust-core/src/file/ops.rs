@@ -304,9 +304,7 @@ pub fn lfs_file_opencfg_(
                     file.id as u32,
                     8,
                 ),
-                // TODO: check
-                // &mut file.ctz as *mut _ as *mut core::ffi::c_void,
-                core::slice::from_raw_parts_mut(&mut file.ctz as *mut _ as *mut u8, 8),
+                file.ctz.as_mut_bytes()
             );
             if let Err(err) = struct_tag {
                 lfs_file_close_(lfs, file);
