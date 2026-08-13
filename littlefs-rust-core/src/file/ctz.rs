@@ -2,6 +2,7 @@
 
 use zerocopy::IntoBytes;
 
+use crate::Lfs;
 use crate::error::Error;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 
@@ -131,30 +132,28 @@ pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: *mut lfs_off_t) -> i32 {
 /// }
 /// ```
 pub fn lfs_ctz_find(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &Lfs,
     pcache: Option<&crate::bd::LfsCache>,
     rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
     size: lfs_size_t,
     pos: lfs_size_t,
-    block: *mut lfs_block_t,
-    off: *mut lfs_off_t,
+    block: &mut lfs_block_t,
+    off: &mut lfs_off_t,
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::types::LFS_BLOCK_NULL;
     use crate::util::{lfs_ctz, lfs_fromle32, lfs_min, lfs_npw2};
 
     if size == 0 {
-        unsafe {
-            *block = LFS_BLOCK_NULL;
-            *off = 0;
-        }
+        *block = LFS_BLOCK_NULL;
+        *off = 0;
+
         return Ok(());
     }
 
     unsafe {
-        let lfs_ref = &*lfs;
-        let block_size = lfs_ref.cfg.as_ref().expect("cfg").block_size;
+        let block_size = lfs.cfg.as_ref().expect("cfg").block_size;
         let mut current_off = size - 1;
         let mut target_off = pos;
         let mut current = lfs_ctz_index(lfs, &mut current_off);
