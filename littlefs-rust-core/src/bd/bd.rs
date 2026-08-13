@@ -564,7 +564,7 @@ pub fn lfs_bd_sync(
 /// #endif
 /// ```
 pub fn lfs_bd_prog(
-    lfs: &mut Lfs,
+    lfs: &Lfs,
     pcache: *mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
