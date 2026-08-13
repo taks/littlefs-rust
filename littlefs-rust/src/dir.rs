@@ -1,3 +1,5 @@
+use core::mem::MaybeUninit;
+
 use alloc::boxed::Box;
 use littlefs_rust_core::error::Error;
 
@@ -14,7 +16,7 @@ pub(crate) struct DirAllocation {
 impl DirAllocation {
     pub(crate) fn new() -> Self {
         Self {
-            dir: unsafe { core::mem::zeroed() },
+            dir: unsafe { MaybeUninit::zeroed().assume_init() },
         }
     }
 }
@@ -24,13 +26,13 @@ impl DirAllocation {
 /// Obtained from [`Filesystem::read_dir`]. Yields [`DirEntry`] items,
 /// automatically skipping `.` and `..`. Closed on drop, or explicitly
 /// via [`ReadDir::close`].
-pub struct ReadDir<'a, S: Storage> {
-    fs: &'a Filesystem<'a, S>,
-    alloc: Box<DirAllocation>,
+pub struct ReadDir<'a, 'b, S: Storage> {
+    fs: &'b Filesystem<'a, S>,
+    alloc: DirAllocation,
     closed: bool,
 }
 
-impl<'a, S: Storage> ReadDir<'a, S> {
+impl<'a, 'b, S: Storage> ReadDir<'a, 'b, S> {
     pub(crate) fn open(fs: &'a Filesystem<'a, S>, path: &str) -> Result<Self, Error> {
         let mut alloc = Box::new(DirAllocation::new());
         {

@@ -271,12 +271,6 @@ impl<'a, S: Storage> Filesystem<'a, S> {
         ReadDir::open(self, path)
     }
 
-    /// Collect all entries in a directory into a `Vec`.
-    pub fn list_dir(&self, path: &str) -> Result<Vec<DirEntry>, Error> {
-        let dir = self.read_dir(path)?;
-        dir.collect()
-    }
-
     // ── FS-level ────────────────────────────────────────────────────────
 
     /// Return the number of allocated blocks.
