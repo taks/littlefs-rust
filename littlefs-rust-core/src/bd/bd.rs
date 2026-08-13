@@ -279,7 +279,7 @@ pub fn lfs_bd_read(
 /// }
 /// ```
 pub fn lfs_bd_cmp(
-    lfs: &mut Lfs,
+    lfs: &Lfs,
     pcache: Option<&LfsCache>,
     rcache: &mut LfsCache,
     hint: lfs_size_t,
@@ -416,7 +416,7 @@ pub fn lfs_bd_crc(
 /// #endif
 /// ```
 pub fn lfs_bd_flush(
-    lfs: &mut Lfs,
+    lfs: &Lfs,
     pcache: &mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
