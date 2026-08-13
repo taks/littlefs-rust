@@ -9,7 +9,7 @@
 //! ```rust
 //! use littlefs_rust::{Config, Filesystem, RamStorage};
 //!
-//! let mut storage = RamStorage::new(512, 128);
+//! let mut storage = RamStorage::<512, 128>::new();
 //! let config = Config::new(512, 128);
 //!
 //! Filesystem::format(&mut storage, &config).unwrap();
