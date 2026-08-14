@@ -11,7 +11,7 @@ pub const MAGIC_OFFSET: u32 = 12;
 pub struct RamStorage {
     pub data: alloc::vec::Vec<u8>,
     pub block_size: u32,
-    pub block_count: u32,
+    pub _block_count: u32,
 }
 
 impl RamStorage {
@@ -22,7 +22,7 @@ impl RamStorage {
         Self {
             data: alloc::vec![0u8; size],
             block_size,
-            block_count,
+            _block_count: block_count,
         }
     }
 
@@ -68,7 +68,7 @@ fn ram_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<
 }
 
 fn ram_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
-    let ctx = unsafe { cfg.context as *mut RamStorage };
+    let ctx = cfg.context as *mut RamStorage;
     let ram = unsafe { &mut *ctx };
     ram.prog(block, off, buffer);
     Ok(())
@@ -86,7 +86,7 @@ fn ram_sync(_cfg: &LfsConfig) -> Result<(), Error> {
 }
 
 /// Builds LfsConfig for the given RAM storage. Caller must set context after moving.
-pub fn make_config(block_count: u32, ram: &RamStorage) -> LfsConfig {
+pub fn make_config(block_count: u32, _ram: &RamStorage) -> LfsConfig {
     let block_size = BLOCK_SIZE;
     LfsConfig {
         context: core::ptr::null_mut(),

@@ -21,6 +21,7 @@ pub struct LfsCtz {
 ///     ctz->size = lfs_fromle32(ctz->size);
 /// }
 /// ```
+#[allow(unused)]
 pub fn lfs_ctz_fromle32(ctz: *mut LfsCtz) {
     if ctz.is_null() {
         return;
@@ -42,6 +43,7 @@ pub fn lfs_ctz_fromle32(ctz: *mut LfsCtz) {
 /// }
 /// #endif
 /// ```
+#[allow(unused)]
 pub fn lfs_ctz_tole32(ctz: *mut LfsCtz) {
     if ctz.is_null() {
         return;
@@ -152,54 +154,52 @@ pub fn lfs_ctz_find(
         return Ok(());
     }
 
-    unsafe {
-        let block_size = lfs.cfg.as_ref().expect("cfg").block_size;
-        let mut current_off = size - 1;
-        let mut target_off = pos;
-        let mut current = lfs_ctz_index(lfs, &mut current_off);
-        let target = lfs_ctz_index(lfs, &mut target_off);
+    let mut current_off = size - 1;
+    let mut target_off = pos;
+    let mut current = lfs_ctz_index(lfs, &mut current_off);
+    let target = lfs_ctz_index(lfs, &mut target_off);
 
-        let mut head_val = head;
-        #[cfg(feature = "loop_limits")]
-        const MAX_CTZ_FIND_ITER: u32 = 4096;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
+    let mut head_val = head;
+    #[cfg(feature = "loop_limits")]
+    const MAX_CTZ_FIND_ITER: u32 = 4096;
+    #[cfg(feature = "loop_limits")]
+    let mut iter: u32 = 0;
 
-        while current > target {
-            #[cfg(feature = "loop_limits")]
-            {
-                iter += 1;
-                if iter > MAX_CTZ_FIND_ITER {
-                    panic!(
-                        "loop_limits: MAX_CTZ_FIND_ITER ({}) exceeded",
-                        MAX_CTZ_FIND_ITER
-                    );
-                }
+    while current > target {
+        #[cfg(feature = "loop_limits")]
+        {
+            iter += 1;
+            if iter > MAX_CTZ_FIND_ITER {
+                panic!(
+                    "loop_limits: MAX_CTZ_FIND_ITER ({}) exceeded",
+                    MAX_CTZ_FIND_ITER
+                );
             }
-            let skip = lfs_min(
-                lfs_npw2((current - target + 1) as u32) - 1,
-                lfs_ctz(current as u32),
-            );
-
-            let mut head_buf: u32 = 0;
-            lfs_bd_read(
-                lfs,
-                pcache,
-                rcache,
-                4,
-                head_val,
-                4 * skip,
-                head_buf.as_mut_bytes(),
-            )?;
-
-            head_val = lfs_fromle32(head_buf);
-
-            current -= 1 << skip;
         }
+        let skip = lfs_min(
+            lfs_npw2((current - target + 1) as u32) - 1,
+            lfs_ctz(current as u32),
+        );
 
-        *block = head_val;
-        *off = target_off;
+        let mut head_buf: u32 = 0;
+        lfs_bd_read(
+            lfs,
+            pcache,
+            rcache,
+            4,
+            head_val,
+            4 * skip,
+            head_buf.as_mut_bytes(),
+        )?;
+
+        head_val = lfs_fromle32(head_buf);
+
+        current -= 1 << skip;
     }
+
+    *block = head_val;
+    *off = target_off;
+
     Ok(())
 }
 
@@ -449,7 +449,7 @@ pub fn lfs_ctz_extend(
             let err = lfs_bd_erase(lfs, nblock);
             if let Err(err) = err {
                 if err == Error::Corrupt {
-                    lfs_alloc_lookahead(lfs, nblock);
+                    let _ = lfs_alloc_lookahead(lfs, nblock);
                     lfs_cache_drop(lfs, pcache);
                     continue 'relocate;
                 }
@@ -474,7 +474,7 @@ pub fn lfs_ctz_extend(
                     let err = lfs_bd_prog(lfs, pcache, rcache, true, nblock, i, data.as_bytes());
                     if let Err(err) = err {
                         if err == Error::Corrupt {
-                            lfs_alloc_lookahead(lfs, nblock);
+                            let _ = lfs_alloc_lookahead(lfs, nblock);
                             lfs_cache_drop(lfs, pcache);
                             continue 'relocate;
                         }

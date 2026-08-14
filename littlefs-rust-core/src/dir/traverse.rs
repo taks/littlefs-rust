@@ -1,13 +1,13 @@
 //! Directory traverse. Per lfs.c lfs_dir_traverse, lfs_dir_getslice, lfs_dir_get, lfs_dir_getread.
 
-use zerocopy::{FromBytes, IntoBytes, TryFromBytes};
+use zerocopy::{IntoBytes, TryFromBytes};
 
 use crate::LfsAttr;
 use crate::bd::LfsCache;
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
 use crate::error::Error;
-use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
+use crate::types::{lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
 
 /// Per lfs.c lfs_dir_getslice (lines 719-784)
 ///
@@ -687,7 +687,7 @@ fn dispatch_tag(
 ) -> Result<i32, Error> {
     use crate::tag::lfs_mktag;
     let out_tag = tag.wrapping_add(lfs_mktag(0, diff as u32, 0));
-    unsafe { cb(data, out_tag, buffer) }
+    cb(data, out_tag, buffer)
 }
 
 #[allow(clippy::type_complexity)]

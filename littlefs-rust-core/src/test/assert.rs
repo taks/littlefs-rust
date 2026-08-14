@@ -6,7 +6,7 @@ use crate::test::ram::{MAGIC, MAGIC_OFFSET};
 /// Read config's block at offset 0, return magic region (8 bytes at MAGIC_OFFSET).
 fn read_magic_region(config: &LfsConfig, block: u32) -> Option<[u8; 8]> {
     let mut buf = [0u8; 24];
-    let err = unsafe {
+    let err = {
         let read = config.read.expect("read callback");
         read(config, block, 0, &mut buf)
     };
@@ -28,6 +28,7 @@ pub fn assert_block_has_magic(config: &LfsConfig, block: u32) {
 }
 
 /// Panics if blocks 0 or 1 do not contain MAGIC.
+#[allow(unused)]
 pub fn assert_blocks_0_and_1_have_magic(config: &LfsConfig) {
     assert_block_has_magic(config, 0);
     assert_block_has_magic(config, 1);

@@ -9,8 +9,7 @@ use crate::dir::fetch::lfs_dir_getgstate;
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::fs::stat::lfs_fs_size_;
-use crate::lfs_gstate;
-use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
+use crate::types::{lfs_block_t, lfs_off_t, lfs_tag_t};
 
 /// Per lfs.c lfs_dir_commitprog (lines 1604-1618)
 ///
@@ -653,7 +652,7 @@ pub fn lfs_dir_split(
         tail.tail[1] = dir.tail[1];
 
         // note we don't care about LFS_OK_RELOCATED
-        let res = lfs_dir_compact(lfs, &mut tail, attrs, source, split, end)?;
+        let _res = lfs_dir_compact(lfs, &mut tail, attrs, source, split, end)?;
 
         dir.tail[0] = tail.pair[0];
         dir.tail[1] = tail.pair[1];
@@ -1024,7 +1023,7 @@ pub fn lfs_dir_compact(
                         relocate_count,
                         dir.pair
                     );
-                    lfs_alloc_lookahead(lfs, dir.pair[1]);
+                    let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                     lfs_cache_drop(lfs, &mut *lfs.pcache.get());
                     if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT bd_erase");

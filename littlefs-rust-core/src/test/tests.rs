@@ -6,13 +6,13 @@ use super::*;
 #[test]
 fn test_context_smoke() {
     let ctx = TestContext::default_blocks();
-    let cfg = unsafe { ctx.config() };
+    let cfg = ctx.config();
     assert!(!cfg.context.is_null(), "config.context should be set");
     assert!(cfg.read.is_some());
     assert_eq!(ctx.ram.data.len(), 512 * 128);
     // Direct read through callback
     let mut buf = [0u8; 8];
-    let err = unsafe { cfg.read.expect("read")(ctx.config(), 0, 0, &mut buf) };
+    let err = cfg.read.expect("read")(ctx.config(), 0, 0, &mut buf) ;
     assert_eq!(err, Ok(()));
     assert_eq!(buf, [0u8; 8]);
 }
@@ -48,7 +48,8 @@ fn test_context_format_to_alloc() {
     lfs.lookahead.next = 0;
     lfs_alloc_ckpoint(&mut lfs);
 
-    let mut root = crate::dir::LfsMdir {
+    #[allow(unused)]
+    let root = crate::dir::LfsMdir {
         pair: [0, 0],
         rev: 0,
         off: 0,

@@ -23,7 +23,6 @@ use crate::tag::{
 };
 use crate::types::{LFS_BLOCK_NULL, lfs_block_t, lfs_stag_t, lfs_tag_t};
 use crate::util::{lfs_fromle32, lfs_min, lfs_pair_swap, lfs_scmp, lfs_tole32};
-use core::f32::consts::E;
 use core::mem;
 
 /// Per lfs.c lfs_dir_fetchmatch (lines 1107-1386)

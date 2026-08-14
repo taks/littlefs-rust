@@ -77,7 +77,7 @@ pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &str) -> 
         pair[0] = lfs.root[0];
         pair[1] = lfs.root[1];
     } else {
-        let res = lfs_dir_get(
+        let _res = lfs_dir_get(
             lfs,
             &dir.m,
             lfs_mktag(0x700, 0x3ff, 0),
@@ -284,36 +284,34 @@ pub fn lfs_dir_seek_(
     dir: &mut LfsDir,
     off: lfs_off_t,
 ) -> Result<(), Error> {
-    unsafe {
-        lfs_dir_rewind_(lfs, dir)?;
+    lfs_dir_rewind_(lfs, dir)?;
 
-        dir.pos = lfs_min(2, off);
-        let mut off = off - dir.pos;
+    dir.pos = lfs_min(2, off);
+    let mut off = off - dir.pos;
 
-        // skip superblock entry
-        dir.id = if off > 0 && lfs_pair_cmp(&dir.head, &lfs.root) == 0 {
-            1
-        } else {
-            0
-        };
+    // skip superblock entry
+    dir.id = if off > 0 && lfs_pair_cmp(&dir.head, &lfs.root) == 0 {
+        1
+    } else {
+        0
+    };
 
-        while off > 0 {
-            if dir.id == dir.m.count {
-                if !dir.m.split {
-                    return Err(Error::Invalid);
-                }
-                let dir_m_tail = dir.m.tail;
-                lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
-                dir.id = 0;
+    while off > 0 {
+        if dir.id == dir.m.count {
+            if !dir.m.split {
+                return Err(Error::Invalid);
             }
-            let diff = lfs_min((dir.m.count - dir.id) as u32, off);
-            dir.id += diff as u16;
-            dir.pos += diff;
-            off -= diff;
+            let dir_m_tail = dir.m.tail;
+            lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
+            dir.id = 0;
         }
-
-        Ok(())
+        let diff = lfs_min((dir.m.count - dir.id) as u32, off);
+        dir.id += diff as u16;
+        dir.pos += diff;
+        off -= diff;
     }
+
+    Ok(())
 }
 
 /// Per lfs.c lfs_dir_tell_ (lines 2854-2857)

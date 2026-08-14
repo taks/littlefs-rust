@@ -1,12 +1,8 @@
 //! File operations. Per lfs.c lfs_file_opencfg_, lfs_file_close_, lfs_file_sync_, etc.
 
-use core::ffi::CStr;
-
 use zerocopy::IntoBytes;
 
 use crate::bd::bd::{lfs_bd_read, lfs_cache_drop, lfs_cache_zero};
-use crate::borrow_unchecked::{BorrowUnchecked, borrow_unchecked};
-use crate::dir::LfsMdir;
 use crate::dir::traverse::lfs_dir_getread;
 use crate::error::Error;
 use crate::file::LfsFile;
@@ -19,7 +15,7 @@ use crate::lfs_type::lfs_open_flags::{
 use crate::lfs_type::lfs_type::{LFS_TYPE_INLINESTRUCT, LFS_TYPE3_REG};
 use crate::tag::lfs_mktag;
 use crate::types::LFS_BLOCK_INLINE;
-use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
+use crate::types::{lfs_block_t, lfs_off_t};
 use crate::util::lfs_min;
 use crate::{Lfs, LfsAttr};
 
