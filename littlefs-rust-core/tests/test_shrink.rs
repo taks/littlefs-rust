@@ -5,8 +5,8 @@
 mod common;
 
 use common::{
-    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok,
-    clone_config_with_block_count, default_config, init_context,
+    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok, clone_config_with_block_count,
+    default_config, init_context,
 };
 use littlefs_rust_core::{
     Lfs, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
@@ -47,7 +47,7 @@ unsafe fn shrink_simple(block_count: u32, after_block_count: u32) {
     let _ = lfs_unmount(lfs);
 
     if block_count != after_block_count {
-        assert_err(Error::Invalid, lfs_mount(lfs, cfg));
+        assert_err!(Error::Invalid, lfs_mount(lfs, cfg));
     }
 
     // Mount with reduced config
@@ -138,7 +138,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
 
     if err.is_ok() {
         if after_block_count != block_count {
-            assert_err(Error::Invalid, lfs_mount(lfs, cfg));
+            assert_err!(Error::Invalid, lfs_mount(lfs, cfg));
         }
 
         // Remount with reduced config and verify files again

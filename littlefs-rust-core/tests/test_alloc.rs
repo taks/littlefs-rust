@@ -6,7 +6,7 @@
 mod common;
 
 use common::{
-    LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, assert_err, assert_ok,
+    LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, assert_ok,
     clone_config_with_block_count, config_badblock, config_with_geometry, default_config,
     init_badblock_context, init_context, init_logger, run_with_timeout,
 };
@@ -395,7 +395,7 @@ fn test_alloc_exhaustion(#[values(false, true)] infer_bc: bool) {
         if res.is_err() {
             use littlefs_rust_core::error::Error;
 
-            assert_err(Error::NoSpace, res);
+            assert_err!(Error::Io, res);
             break;
         }
         assert_eq!(res, Ok(blah.len() as u32));
@@ -565,7 +565,7 @@ fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
     loop {
         let err = lfs_file_write(lfs, file, blah);
         if err.is_err() {
-            assert_err(Error::NoSpace, err);
+            assert_err!(Error::NoSpace, err);
             break;
         }
         assert_eq!(err, Ok(blah.len() as u32));
@@ -607,7 +607,7 @@ fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
     assert_ok(lfs_file_close(lfs, file));
 
     let err = lfs_mkdir(lfs, "exhaustiondir");
-    assert_err(Error::NoSpace, err);
+    assert_err!(Error::NoSpace, err);
 
     assert_ok(lfs_remove(lfs, "exhaustion"));
     assert_ok(lfs_unmount(lfs));
@@ -895,7 +895,7 @@ fn test_alloc_chained_dir_exhaustion() {
     loop {
         let err = lfs_file_write(lfs, file, blah);
         if err.is_err() {
-            assert_err(Error::NoSpace, err);
+            assert_err!(Error::NoSpace, err);
             break;
         }
         count += 1;
@@ -931,7 +931,7 @@ fn test_alloc_chained_dir_exhaustion() {
     }
 
     let mut err = lfs_mkdir(lfs, "exhaustiondir");
-    assert_err(Error::NoSpace, err);
+    assert_err!(Error::NoSpace, err);
 
     loop {
         err = lfs_mkdir(lfs, "exhaustiondir");
@@ -947,7 +947,7 @@ fn test_alloc_chained_dir_exhaustion() {
     assert_ok(err);
 
     err = lfs_mkdir(lfs, "exhaustiondir2");
-    assert_err(Error::NoSpace, err);
+    assert_err!(Error::NoSpace, err);
 
     assert_ok(lfs_file_close(lfs, file));
     assert_ok(lfs_unmount(lfs));
@@ -1099,7 +1099,7 @@ fn test_alloc_outdated_lookahead_split_dir() {
     assert_ok(lfs_file_close(lfs, file));
 
     let err = lfs_mkdir(lfs, "split");
-    assert_err(Error::NoSpace, err);
+    assert_err!(Error::NoSpace, err);
 
     assert_ok(lfs_file_open(
         lfs,

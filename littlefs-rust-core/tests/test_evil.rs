@@ -7,8 +7,8 @@
 mod common;
 
 use common::{
-    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok, default_config,
-    erase_block_raw, init_context, read_block_raw, write_block_raw,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok, default_config, erase_block_raw,
+    init_context, read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_mattr;
@@ -64,7 +64,7 @@ unsafe fn evil_invalid_tail_pointer(tail_type: u16, invalset: u32) {
     assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
 
-    assert_err(Error::Corrupt, lfs_mount(lfs, cfg));
+    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg));
 }
 
 /// Upstream: [cases.test_evil_invalid_dir_pointer]
@@ -132,20 +132,20 @@ fn evil_invalid_dir_pointer(invalset: u32) {
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_err(Error::Corrupt, lfs_dir_open(lfs, dir, dir_name));
+    assert_err!(Error::Corrupt, lfs_dir_open(lfs, dir, dir_name));
 
     let child_file = "dir_here/file_here";
-    assert_err(Error::Corrupt, lfs_stat(lfs, child_file, info));
+    assert_err!(Error::Corrupt, lfs_stat(lfs, child_file, info));
 
     let child_dir = "dir_here/dir_here";
-    assert_err(Error::Corrupt, lfs_dir_open(lfs, dir, child_dir));
+    assert_err!(Error::Corrupt, lfs_dir_open(lfs, dir, child_dir));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
+    assert_err!(
         Error::Corrupt,
         lfs_file_open(lfs, file, child_file, LFS_O_RDONLY),
     );
-    assert_err(
+    assert_err!(
         Error::Corrupt,
         lfs_file_open(lfs, file, child_file, LFS_O_WRONLY | LFS_O_CREAT),
     );
@@ -228,7 +228,7 @@ fn evil_invalid_file_pointer(size: u32) {
     assert_eq!(info.size, size);
 
     assert_ok(lfs_file_open(lfs, file, file_name, LFS_O_RDONLY));
-    assert_err(
+    assert_err!(
         Error::Corrupt,
         lfs_file_read(lfs, file, &mut buffer[..size as usize]),
     );
@@ -236,7 +236,7 @@ fn evil_invalid_file_pointer(size: u32) {
 
     if size > 2 * BLOCK_SIZE {
         let dir_name = "dir_here";
-        assert_err(Error::Corrupt, lfs_mkdir(lfs, dir_name));
+        assert_err!(Error::Corrupt, lfs_mkdir(lfs, dir_name));
     }
 
     assert_ok(lfs_unmount(lfs));
@@ -335,7 +335,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     assert_eq!(info.size, size);
 
     assert_ok(lfs_file_open(lfs, file, file_name, LFS_O_RDONLY));
-    assert_err(
+    assert_err!(
         Error::Corrupt,
         lfs_file_read(lfs, file, &mut buffer[..size as usize]),
     );
@@ -343,7 +343,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
 
     if size > 2 * BLOCK_SIZE {
         let dir_name = "dir_here";
-        assert_err(Error::Corrupt, lfs_mkdir(lfs, dir_name));
+        assert_err!(Error::Corrupt, lfs_mkdir(lfs, dir_name));
     }
 
     assert_ok(lfs_unmount(lfs));
@@ -385,7 +385,7 @@ unsafe fn evil_invalid_gstate_pointer(invalset: u32) {
 
     assert_ok(lfs_mount(lfs, cfg));
     let dir_name = "should_fail";
-    assert_err(Error::Corrupt, lfs_mkdir(lfs, dir_name));
+    assert_err!(Error::Corrupt, lfs_mkdir(lfs, dir_name));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -419,7 +419,7 @@ unsafe fn evil_mdir_loop() {
     assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
 
-    assert_err(Error::Corrupt, lfs_mount(lfs, cfg));
+    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg));
 }
 
 /// Upstream: [cases.test_evil_mdir_loop2]
@@ -481,7 +481,7 @@ unsafe fn evil_mdir_loop2() {
     assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
 
-    assert_err(Error::Corrupt, lfs_mount(lfs, cfg));
+    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg));
 }
 
 /// Upstream: [cases.test_evil_mdir_loop_child]
@@ -543,5 +543,5 @@ unsafe fn evil_mdir_loop_child() {
     assert_ok(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok(lfs_deinit(lfs));
 
-    assert_err(Error::Corrupt, lfs_mount(lfs, cfg));
+    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg));
 }
