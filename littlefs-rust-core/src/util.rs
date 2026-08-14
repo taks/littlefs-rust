@@ -220,8 +220,7 @@ pub fn lfs_path_namelen(path: &[u8]) -> u32 {
 pub fn lfs_path_islast(path: &[u8]) -> bool {
     let namelen = lfs_path_namelen(path) as usize;
     let rest = path.get(namelen..).unwrap_or(&[]);
-    let skip = rest.iter().take_while(|&&b| b == b'/').count();
-    path.get(namelen + skip).is_none_or(|&b| b == 0)
+    rest.iter().all(|&b| b == b'/')
 }
 
 /// Per lfs.c lfs_path_isdir (lines 298-300)
