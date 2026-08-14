@@ -1103,7 +1103,7 @@ pub fn lfs_dir_compact(
                         relocate_count,
                         dir.pair
                     );
-                    lfs_alloc_lookahead(lfs, dir.pair[1]);
+                    let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                     lfs_cache_drop(lfs, &mut *lfs.pcache.get());
                     if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+err traverse");
@@ -1148,7 +1148,7 @@ pub fn lfs_dir_compact(
                             relocate_count,
                             dir.pair
                         );
-                        lfs_alloc_lookahead(lfs, dir.pair[1]);
+                        let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                         lfs_cache_drop(lfs, &mut *lfs.pcache.get());
                         if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                             crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT tail");
