@@ -2170,7 +2170,6 @@ pub fn lfs_dir_orphaningcommit(
             Some(&mut pdir),
         )?);
 
-
         if lfs_pair_cmp(&dir.pair, &lpair) == 0 {
             *dir = ldir;
         }

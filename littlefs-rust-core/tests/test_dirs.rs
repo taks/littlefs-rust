@@ -8,7 +8,7 @@ mod common;
 #[cfg(feature = "slow_tests")]
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
-    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok, default_config,
+    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok, default_config,
     dir_entry_names, init_context, init_logger,
 };
 use littlefs_rust_core::error::Error;
@@ -727,16 +727,16 @@ fn test_dirs_nested() {
     names_sorted.sort();
     assert_eq!(names_sorted, vec!["baked", "fried", "sweet"]);
 
-    assert_err(Error::NotEmpty, lfs_remove(lfs, "potato"));
+    assert_err!(Error::NotEmpty, lfs_remove(lfs, "potato"));
 
     assert_ok(lfs_rename(lfs, "potato", "coldpotato"));
     assert_ok(lfs_rename(lfs, "coldpotato", "warmpotato"));
     assert_ok(lfs_rename(lfs, "warmpotato", "hotpotato"));
 
-    assert_err(Error::NoEntry, lfs_remove(lfs, "potato"));
-    assert_err(Error::NoEntry, lfs_remove(lfs, "coldpotato"));
-    assert_err(Error::NoEntry, lfs_remove(lfs, "warmpotato"));
-    assert_err(Error::NotEmpty, lfs_remove(lfs, "hotpotato"));
+    assert_err!(Error::NoEntry, lfs_remove(lfs, "potato"));
+    assert_err!(Error::NoEntry, lfs_remove(lfs, "coldpotato"));
+    assert_err!(Error::NoEntry, lfs_remove(lfs, "warmpotato"));
+    assert_err!(Error::NotEmpty, lfs_remove(lfs, "hotpotato"));
 
     assert_ok(lfs_mkdir(lfs, "coldpotato"));
     assert_ok(lfs_rename(lfs, "hotpotato/baked", "coldpotato/baked"));
@@ -781,7 +781,7 @@ fn test_dirs_recursive_remove() {
             .expect("prickly-pear dir_entry_names");
         assert_eq!(names.len(), n, "N={n} subdir count");
 
-        assert_err(Error::NotEmpty, lfs_remove(lfs, "prickly-pear"));
+        assert_err!(Error::NotEmpty, lfs_remove(lfs, "prickly-pear"));
 
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
         assert_ok(lfs_dir_open(lfs, dir, "prickly-pear"));
@@ -807,7 +807,7 @@ fn test_dirs_recursive_remove() {
 
         assert_ok(lfs_mount(lfs, &env.config));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_err(Error::NoEntry, lfs_stat(lfs, "prickly-pear", info));
+        assert_err!(Error::NoEntry, lfs_stat(lfs, "prickly-pear", info));
         assert_ok(lfs_unmount(lfs));
     }
 }
@@ -876,49 +876,49 @@ fn test_dirs_other_errors() {
     ));
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_err(Error::Exists, lfs_mkdir(lfs, "potato"));
-    assert_err(Error::Exists, lfs_mkdir(lfs, "burito"));
+    assert_err!(Error::Exists, lfs_mkdir(lfs, "potato"));
+    assert_err!(Error::Exists, lfs_mkdir(lfs, "burito"));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
+    assert_err!(
         Error::Exists,
         lfs_file_open(lfs, file, "burito", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
+    assert_err!(
         Error::Exists,
         lfs_file_open(lfs, file, "potato", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
     );
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_err(Error::NoEntry, lfs_dir_open(lfs, dir, "tomato"));
+    assert_err!(Error::NoEntry, lfs_dir_open(lfs, dir, "tomato"));
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_err(Error::NotDir, lfs_dir_open(lfs, dir, "burito"));
+    assert_err!(Error::NotDir, lfs_dir_open(lfs, dir, "burito"));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
+    assert_err!(
         Error::NoEntry,
         lfs_file_open(lfs, file, "tomato", LFS_O_RDONLY),
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
+    assert_err!(
         Error::IsDir,
         lfs_file_open(lfs, file, "potato", LFS_O_RDONLY),
     );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
+    assert_err!(
         Error::NoEntry,
         lfs_file_open(lfs, file, "tomato", LFS_O_WRONLY),
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
+    assert_err!(
         Error::IsDir,
         lfs_file_open(lfs, file, "potato", LFS_O_WRONLY),
     );
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
+    assert_err!(
         Error::IsDir,
         lfs_file_open(lfs, file, "potato", LFS_O_WRONLY | LFS_O_CREAT),
     );
@@ -932,21 +932,21 @@ fn test_dirs_other_errors() {
     ));
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_err(Error::IsDir, lfs_rename(lfs, "tacoto", "potato"));
-    assert_err(Error::NotDir, lfs_rename(lfs, "potato", "tacoto"));
+    assert_err!(Error::IsDir, lfs_rename(lfs, "tacoto", "potato"));
+    assert_err!(Error::NotDir, lfs_rename(lfs, "potato", "tacoto"));
 
-    assert_err(Error::Exists, lfs_mkdir(lfs, "/"));
+    assert_err!(Error::Exists, lfs_mkdir(lfs, "/"));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
+    assert_err!(
         Error::Exists,
         lfs_file_open(lfs, file, "/", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
     );
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(Error::IsDir, lfs_file_open(lfs, file, "/", LFS_O_RDONLY));
+    assert_err!(Error::IsDir, lfs_file_open(lfs, file, "/", LFS_O_RDONLY));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(Error::IsDir, lfs_file_open(lfs, file, "/", LFS_O_WRONLY));
+    assert_err!(Error::IsDir, lfs_file_open(lfs, file, "/", LFS_O_WRONLY));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_err(
+    assert_err!(
         Error::IsDir,
         lfs_file_open(lfs, file, "/", LFS_O_WRONLY | LFS_O_CREAT),
     );

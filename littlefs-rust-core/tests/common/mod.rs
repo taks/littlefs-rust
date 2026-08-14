@@ -489,13 +489,17 @@ pub fn assert_ok_at(step: &str, result: Result<(), Error>) {
 }
 
 /// Panic if actual is not expected error code.
-pub fn assert_err<T>(expected: Error, actual: Result<T, Error>)
-where
-    T: core::fmt::Debug + Copy,
-{
-    if actual.is_ok() || actual.unwrap_err() != expected {
-        panic!("expected error {:?}, got {:?}", expected, actual);
-    }
+#[macro_export]
+macro_rules! assert_err {
+    ($expected:expr, $actual:expr$ (,)?) => {{
+        let actual = $actual;
+        assert!(
+            actual == Err($expected),
+            "expected error {:?}, got {:?}",
+            $expected,
+            actual
+        );
+    }};
 }
 
 /// Check if block has "littlefs" at offset 8 or 12 (layout varies by commit path).

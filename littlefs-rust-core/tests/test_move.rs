@@ -9,9 +9,9 @@
 mod common;
 
 use common::{
-    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, assert_err, assert_ok,
-    config_with_wear_leveling, corrupt_block, default_config, dir_block, dir_entry_names, dir_pair,
-    init_context, init_logger, init_wear_leveling_context,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, assert_ok, config_with_wear_leveling,
+    corrupt_block, default_config, dir_block, dir_entry_names, dir_pair, init_context, init_logger,
+    init_wear_leveling_context,
     powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
 };
 use littlefs_rust_core::{
@@ -108,9 +108,9 @@ fn test_move_file() {
 
     let info_dummy = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     let err_a = lfs_stat(lfs, "a/hello", info_dummy);
-    assert_err(Error::NoEntry, err_a);
+    assert_err!(Error::NoEntry, err_a);
     let err_b = lfs_stat(lfs, "b/hello", info_dummy);
-    assert_err(Error::NoEntry, err_b);
+    assert_err!(Error::NoEntry, err_b);
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY));
@@ -124,7 +124,7 @@ fn test_move_file() {
 
     let file_dummy = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     let err_d = lfs_file_open(lfs, file_dummy, "d/hello", LFS_O_RDONLY);
-    assert_err(Error::NoEntry, err_d);
+    assert_err!(Error::NoEntry, err_d);
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -487,8 +487,8 @@ fn test_move_file_corrupt_source() {
     assert_ok(lfs_stat(lfs, "c/hello", info));
     assert_eq!({ info.size }, 5 + 8 + 6);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, "a/hello", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hello", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY));
@@ -500,7 +500,7 @@ fn test_move_file_corrupt_source() {
     assert_eq!(&buf[13..19], b"ohayo\n");
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_err(
+    assert_err!(
         Error::NoEntry,
         lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY),
     );
@@ -556,8 +556,8 @@ fn test_move_file_corrupt_source_dest() {
     assert_ok(lfs_stat(lfs, "a/hello", info));
     assert_eq!({ info.size }, 5 + 8 + 6);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, "c/hello", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "c/hello", info));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, "a/hello", LFS_O_RDONLY));
@@ -569,7 +569,7 @@ fn test_move_file_corrupt_source_dest() {
     assert_eq!(&buf[13..19], b"ohayo\n");
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_err(
+    assert_err!(
         Error::NoEntry,
         lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY),
     );
@@ -629,8 +629,8 @@ fn test_move_file_after_corrupt() {
     assert_ok(lfs_stat(lfs, "c/hello", info));
     assert_eq!({ info.size }, 5 + 8 + 6);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, "a/hello", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hello", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
     assert_ok(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY));
@@ -642,7 +642,7 @@ fn test_move_file_after_corrupt() {
     assert_eq!(&buf[13..19], b"ohayo\n");
     assert_ok(lfs_file_close(lfs, file));
 
-    assert_err(
+    assert_err!(
         Error::NoEntry,
         lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY),
     );
@@ -740,15 +740,15 @@ fn test_move_dir_corrupt_source() {
     assert_ok(lfs_stat(lfs, "c/hi", info));
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, "a/hi", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hi", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
 
     let hi_names = dir_entry_names(lfs, &env.config, "c/hi").unwrap();
     assert!(hi_names.contains(&"hola".to_string()));
     assert!(hi_names.contains(&"bonjour".to_string()));
     assert!(hi_names.contains(&"ohayo".to_string()));
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, "d/hi", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "d/hi", info));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -793,15 +793,15 @@ fn test_move_dir_corrupt_source_dest() {
     assert_ok(lfs_stat(lfs, "a/hi", info));
     assert_eq!({ info.type_ }, LFS_TYPE_DIR as u8);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, "c/hi", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "c/hi", info));
 
     let hi_names = dir_entry_names(lfs, &env.config, "a/hi").unwrap();
     assert!(hi_names.contains(&"hola".to_string()));
     assert!(hi_names.contains(&"bonjour".to_string()));
     assert!(hi_names.contains(&"ohayo".to_string()));
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, "d/hi", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "d/hi", info));
     assert_ok(lfs_unmount(lfs));
 }
 
@@ -850,15 +850,15 @@ fn test_move_dir_after_corrupt() {
     assert_ok(lfs_stat(lfs, "c/hi", info));
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, "a/hi", info));
-    assert_err(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hi", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
 
     let hi_names = dir_entry_names(lfs, &env.config, "c/hi").unwrap();
     assert!(hi_names.contains(&"hola".to_string()));
     assert!(hi_names.contains(&"bonjour".to_string()));
     assert!(hi_names.contains(&"ohayo".to_string()));
 
-    assert_err(Error::NoEntry, lfs_stat(lfs, "d/hi", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "d/hi", info));
     assert_ok(lfs_unmount(lfs));
 }
 
