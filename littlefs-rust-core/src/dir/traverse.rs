@@ -759,7 +759,7 @@ pub fn lfs_dir_traverse(
                     if off + lfs_tag_dsize(ptag) < dir.off {
                         crate::lfs_trace!(
                             "traverse GetNextTag: reading from disk dir.pair[0]={} off={}",
-                            dir_ref.pair[0],
+                            dir.pair[0],
                             off
                         );
                         // Per C: advance off first to skip previous tag's data, then read
