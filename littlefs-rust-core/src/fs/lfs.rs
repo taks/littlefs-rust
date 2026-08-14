@@ -20,7 +20,7 @@ pub struct Lfs {
     pub seed: u32,
     pub gstate: LfsGstate,
     pub gdisk: LfsGstate,
-    pub gdelta: LfsGstate,
+    pub gdelta: UnsafeCell<LfsGstate>,
     pub lookahead: LfsLookahead,
     pub cfg: *const LfsConfig,
     pub block_count: u32,

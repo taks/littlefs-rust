@@ -570,8 +570,7 @@ pub fn lfs_dir_drop(
     use crate::util::lfs_pair_tole32;
 
     unsafe {
-        let lfs_gdelta = borrow_unchecked(&mut lfs.gdelta);
-        lfs_dir_getgstate(lfs, tail, lfs_gdelta)?;
+        lfs_dir_getgstate(lfs, tail, &mut *lfs.gdelta.get())?;
 
         let tail_ref = tail;
         let mut tail_pair = tail_ref.tail;
@@ -1181,7 +1180,7 @@ pub fn lfs_dir_compact(
                 lfs_gstate_xor(&mut delta, &lfs.gdisk);
                 lfs_gstate_xor(&mut delta, &lfs.gstate);
             }
-            lfs_gstate_xor(&mut delta, &lfs.gdelta);
+            lfs_gstate_xor(&mut delta, lfs.gdelta.get_mut());
             delta.tag &= !lfs_mktag(0, 0, 0x3ff);
 
             lfs_dir_getgstate(lfs, dir, &mut delta)?;
@@ -1271,7 +1270,7 @@ pub fn lfs_dir_compact(
             dir.count = end - begin;
             dir.off = commit.off;
             dir.etag = commit.ptag;
-            lfs.gdelta = crate::lfs_gstate::LfsGstate {
+            *lfs.gdelta.get_mut() = crate::lfs_gstate::LfsGstate {
                 tag: 0,
                 pair: [0, 0],
             };
@@ -1802,7 +1801,7 @@ pub fn lfs_dir_relocatingcommit(
                     };
                     lfs_gstate_xor(&mut delta, &lfs.gstate);
                     lfs_gstate_xor(&mut delta, &lfs.gdisk);
-                    lfs_gstate_xor(&mut delta, &lfs.gdelta);
+                    lfs_gstate_xor(&mut delta, lfs.gdelta.get_mut());
                     delta.tag &= !lfs_mktag(0, 0, 0x3ff);
                     if !lfs_gstate_iszero(&delta) {
                         lfs_dir_getgstate(lfs, dir, &mut delta)?;
@@ -1835,7 +1834,7 @@ pub fn lfs_dir_relocatingcommit(
                             dir.off = commit.off;
                             dir.etag = commit.ptag;
                             lfs.gdisk = lfs.gstate;
-                            lfs.gdelta = crate::lfs_gstate::LfsGstate {
+                            *lfs.gdelta.get_mut() = crate::lfs_gstate::LfsGstate {
                                 tag: 0,
                                 pair: [0, 0],
                             };
@@ -2191,8 +2190,7 @@ pub fn lfs_dir_orphaningcommit(
         }
 
         if state == crate::error::LFS_OK_DROPPED {
-            let lfs_gstate = borrow_unchecked(&mut lfs.gdelta);
-            lfs_dir_getgstate(lfs, dir, lfs_gstate)?;
+            lfs_dir_getgstate(lfs, dir, &mut *lfs.gdelta.get())?;
 
             let plpair = [pdir.pair[0], pdir.pair[1]];
             lfs_pair_tole32(&mut dir.tail);

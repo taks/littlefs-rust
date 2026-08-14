@@ -289,7 +289,7 @@ pub fn lfs_init(
             tag: 0,
             pair: [0, 0],
         };
-        lfs.gdelta = crate::lfs_gstate::LfsGstate {
+        *lfs.gdelta.get_mut() = crate::lfs_gstate::LfsGstate {
             tag: 0,
             pair: [0, 0],
         };
