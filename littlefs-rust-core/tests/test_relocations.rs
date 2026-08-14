@@ -206,7 +206,7 @@ fn test_relocations_nonreentrant_renames(
 #[case(26, 1, 20)]
 #[case(3, 3, 20)]
 #[cfg(feature = "slow_tests")]
-#[ignore = "bug: power-loss iteration returns -5 for some cases"]
+#[ignore = "bug: power-loss iteration returns Error::Io for some cases"]
 fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case] cycles: usize) {
     if depth == 3 {
         return; // guard: DEPTH==3 && CACHE_SIZE!=64

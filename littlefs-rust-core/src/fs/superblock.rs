@@ -87,8 +87,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         crate::lfs_trace!("desuperblock: need superblock, fetching root");
 
         let mut root = core::mem::zeroed();
-        let lfs_root = borrow_unchecked(&mut lfs.root);
-        lfs_dir_fetch(lfs, &mut root, lfs_root)?;
+        lfs_dir_fetch(lfs, &mut root, lfs.root)?;
 
         // write a new superblock
         let mut superblock = LfsSuperblock {
@@ -173,8 +172,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         crate::lfs_assert!((lfs_tag_type3(lfs.gdisk.tag)) == LFS_TYPE_DELETE);
 
         let mut movedir = core::mem::zeroed();
-        let lfs_gdisk = borrow_unchecked(&lfs.gdisk);
-        lfs_dir_fetch(lfs, &mut movedir, &lfs_gdisk.pair)?;
+        lfs_dir_fetch(lfs, &mut movedir, lfs.gdisk.pair)?;
 
         let moveid = lfs_tag_id(lfs.gdisk.tag);
         lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
@@ -360,7 +358,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
             let mut moreorphans = false;
 
             while !crate::util::lfs_pair_isnull(&pdir.tail) {
-                lfs_dir_fetch(lfs, &mut dir, &pdir.tail)?;
+                lfs_dir_fetch(lfs, &mut dir, pdir.tail)?;
 
                 if !pdir.split {
                     let mut parent = core::mem::zeroed();

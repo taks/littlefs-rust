@@ -167,7 +167,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
                 iter += 1;
             }
 
-            let pred_tail = borrow_unchecked(&pred.tail);
+            let pred_tail = pred.tail;
             lfs_dir_fetch(lfs, &mut pred, pred_tail)?;
         }
 

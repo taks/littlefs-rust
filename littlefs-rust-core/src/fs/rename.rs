@@ -320,7 +320,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
 
             lfs_pair_fromle32(&mut prevpair);
 
-            lfs_dir_fetch(lfs, &mut prevdir.m, &prevpair)?;
+            lfs_dir_fetch(lfs, &mut prevdir.m, prevpair)?;
 
             if prevdir.m.count > 0 || prevdir.m.split {
                 return crate::lfs_err!(Err(Error::NotEmpty));

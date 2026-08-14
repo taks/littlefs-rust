@@ -82,8 +82,7 @@ pub fn lfs_fs_pred(
                 if !have_fetched {
                     // Matched before any fetch: tail [0,1] == pair (root).
                     // The root has no predecessor.
-                    let pdir_tail = borrow_unchecked(&pdir.tail);
-                    lfs_dir_fetch(lfs, pdir, pdir_tail)?;
+                    lfs_dir_fetch(lfs, pdir, pdir.tail)?;
 
                     if lfs_pair_isnull(&pdir.tail) {
                         return Err(crate::error::Error::NoEntry);
@@ -92,8 +91,7 @@ pub fn lfs_fs_pred(
                 return Ok(());
             }
 
-            let pdir_tail = borrow_unchecked(&pdir.tail);
-            lfs_dir_fetch(lfs, pdir, pdir_tail)?;
+            lfs_dir_fetch(lfs, pdir, pdir.tail)?;
             have_fetched = true;
         }
 
@@ -235,11 +233,10 @@ pub fn lfs_fs_parent(
                 lfs,
                 pair: [(*pair)[0], (*pair)[1]],
             };
-            let parent_tail = borrow_unchecked(&parent.tail);
             let tag = lfs_dir_fetchmatch(
                 lfs,
                 parent,
-                parent_tail,
+                parent.tail,
                 lfs_mktag(0x7ff, 0, 0x3ff),
                 lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
                 &mut None,

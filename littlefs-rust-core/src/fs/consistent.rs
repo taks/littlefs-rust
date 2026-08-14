@@ -59,8 +59,7 @@ pub fn lfs_fs_mkconsistent_(lfs: &mut Lfs) -> Result<(), Error> {
         if !lfs_gstate_iszero(&delta) {
             let mut root = core::mem::zeroed::<LfsMdir>();
 
-            let lfs_root = borrow_unchecked(&mut lfs.root);
-            lfs_dir_fetch(lfs, &mut root, lfs_root)?;
+            lfs_dir_fetch(lfs, &mut root, lfs.root)?;
             lfs_dir_commit(lfs, &mut root, &[])?;
         }
     }
@@ -167,7 +166,7 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
                     }
                     iter += 1;
                 }
-                let mdir_tail = borrow_unchecked(&mdir.tail);
+                let mdir_tail = mdir.tail;
                 lfs_dir_fetch(lfs, &mut mdir, mdir_tail)?;
 
                 let should_compact = !mdir.erased

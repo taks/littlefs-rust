@@ -51,7 +51,7 @@ unsafe fn evil_invalid_tail_pointer(tail_type: u16, invalset: u32) {
     assert_ok(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, mdir, &pair));
+    assert_ok(lfs_dir_fetch(lfs, mdir, pair));
 
     let invalid_pair: [u32; 2] = [
         if invalset & 0x1 != 0 { 0xcccccccc } else { 0 },
@@ -97,7 +97,7 @@ fn evil_invalid_dir_pointer(invalset: u32) {
     assert_ok(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, mdir, &pair));
+    assert_ok(lfs_dir_fetch(lfs, mdir, pair));
 
     // Verify id 1 == our directory
     let mut buffer = [0u8; 1024];
@@ -191,7 +191,7 @@ fn evil_invalid_file_pointer(size: u32) {
     assert_ok(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, mdir, &pair));
+    assert_ok(lfs_dir_fetch(lfs, mdir, pair));
 
     // Verify id 1 == our file
     let mut buffer = [0u8; 100000];
@@ -285,7 +285,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     assert_ok(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, mdir, &pair));
+    assert_ok(lfs_dir_fetch(lfs, mdir, pair));
 
     // Verify id 1 == our file
     let mut buffer = vec![0u8; 4 * BLOCK_SIZE as usize];
@@ -373,7 +373,7 @@ unsafe fn evil_invalid_gstate_pointer(invalset: u32) {
     assert_ok(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, mdir, &pair));
+    assert_ok(lfs_dir_fetch(lfs, mdir, pair));
 
     let invalid_pair: [u32; 2] = [
         if invalset & 0x1 != 0 { 0xcccccccc } else { 0 },
@@ -409,7 +409,7 @@ unsafe fn evil_mdir_loop() {
     assert_ok(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, mdir, &pair));
+    assert_ok(lfs_dir_fetch(lfs, mdir, pair));
 
     let self_pair: [u32; 2] = [0, 1];
     let attrs = [lfs_mattr {
@@ -447,7 +447,7 @@ unsafe fn evil_mdir_loop2() {
     assert_ok(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, mdir, &root_pair));
+    assert_ok(lfs_dir_fetch(lfs, mdir, root_pair));
 
     let mut child_pair: [u32; 2] = [0; 2];
     let tag = lfs_dir_get(
@@ -472,7 +472,7 @@ unsafe fn evil_mdir_loop2() {
     lfs_pair_fromle32(&mut child_pair);
 
     // Corrupt child's tail to point at root
-    assert_ok(lfs_dir_fetch(lfs, mdir, &child_pair));
+    assert_ok(lfs_dir_fetch(lfs, mdir, child_pair));
     let root_ptr: [u32; 2] = [0, 1];
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
@@ -510,7 +510,7 @@ unsafe fn evil_mdir_loop_child() {
     assert_ok(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, mdir, &root_pair));
+    assert_ok(lfs_dir_fetch(lfs, mdir, root_pair));
 
     let mut child_pair: [u32; 2] = [0; 2];
     let tag = lfs_dir_get(
@@ -535,7 +535,7 @@ unsafe fn evil_mdir_loop_child() {
     lfs_pair_fromle32(&mut child_pair);
 
     // Corrupt child's tail to point at itself
-    assert_ok(lfs_dir_fetch(lfs, mdir, &child_pair));
+    assert_ok(lfs_dir_fetch(lfs, mdir, child_pair));
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: child_pair.as_bytes(),

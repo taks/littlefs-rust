@@ -115,8 +115,7 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
         // fetch the root
         let mut root = core::mem::MaybeUninit::<LfsMdir>::zeroed();
         let root = root.assume_init_mut();
-        let lfs_root = borrow_unchecked(&lfs.root);
-        lfs_dir_fetch(lfs, root, lfs_root)?;
+        lfs_dir_fetch(lfs, root, lfs.root)?;
 
         // update the superblock
         let mut superblock = core::mem::zeroed::<LfsSuperblock>();

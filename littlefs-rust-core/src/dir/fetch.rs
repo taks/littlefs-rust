@@ -316,10 +316,10 @@ use core::mem;
 pub fn lfs_dir_fetchmatch(
     lfs: &mut crate::fs::Lfs,
     dir: &mut LfsMdir,
-    pair: &[lfs_block_t; 2],
-    _fmask: lfs_tag_t,
-    _ftag: lfs_tag_t,
-    _id: &mut Option<&mut u16>,
+    pair: [lfs_block_t; 2],
+    fmask: lfs_tag_t,
+    ftag: lfs_tag_t,
+    id: &mut Option<&mut u16>,
     cb: Option<
         fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>,
     >,
@@ -569,7 +569,7 @@ pub fn lfs_dir_fetchmatch(
                     hasfcrc = true;
                 }
 
-                if (_fmask & tag) == (_fmask & _ftag) {
+                if (fmask & tag) == (fmask & ftag) {
                     if let Some(cb) = cb {
                         let diskoff = crate::tag::lfs_diskoff {
                             block: dir.pair[0],
@@ -637,7 +637,7 @@ pub fn lfs_dir_fetchmatch(
                 }
             }
 
-            if let Some(_id) = _id {
+            if let Some(_id) = id {
                 **_id = lfs_min(lfs_tag_id(besttag as lfs_tag_t) as u32, dir.count as u32) as u16;
             }
 
@@ -698,7 +698,7 @@ pub fn lfs_dir_fetchmatch(
 pub fn lfs_dir_fetch(
     lfs: &mut crate::fs::Lfs,
     dir: &mut LfsMdir,
-    pair: &[lfs_block_t; 2],
+    pair: [lfs_block_t; 2],
 ) -> Result<(), Error> {
     let res = lfs_dir_fetchmatch(
         lfs,

@@ -272,7 +272,7 @@ pub fn lfs_mount_(
                 break;
             }
 
-            let dir_tail = borrow_unchecked(&dir.tail);
+            let dir_tail = dir.tail;
             let tag = lfs_dir_fetchmatch(
                 lfs,
                 &mut dir,

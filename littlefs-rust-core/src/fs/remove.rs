@@ -142,7 +142,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
             )?;
             lfs_pair_fromle32(&mut pair);
 
-            lfs_dir_fetch(lfs, &mut dir.m, &pair)?;
+            lfs_dir_fetch(lfs, &mut dir.m, pair)?;
 
             if dir.m.count > 0 || dir.m.split {
                 return crate::lfs_err!(Err(Error::NotEmpty));

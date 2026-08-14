@@ -240,7 +240,7 @@ fn test_orphans_one_orphan() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs_ptr, &mut mdir, &root_pair));
+    assert_ok(lfs_dir_fetch(lfs_ptr, &mut mdir, root_pair));
     lfs_pair_tole32(&mut orphan.pair);
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
@@ -303,7 +303,7 @@ fn test_orphans_mkconsistent_one_orphan() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs_ptr, &mut mdir, &root_pair));
+    assert_ok(lfs_dir_fetch(lfs_ptr, &mut mdir, root_pair));
     lfs_pair_tole32(&mut orphan.pair);
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),

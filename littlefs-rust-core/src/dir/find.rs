@@ -349,11 +349,10 @@ pub fn lfs_dir_find(
                     name,
                     size: namelen as u32,
                 };
-                let dir_tail = borrow_unchecked(&dir.tail);
                 tag = lfs_dir_fetchmatch(
                     lfs,
                     dir,
-                    dir_tail,
+                    dir.tail,
                     lfs_mktag(0x780, 0, 0),
                     lfs_mktag(LFS_TYPE_NAME, 0, namelen as u32),
                     id,

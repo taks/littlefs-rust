@@ -41,7 +41,7 @@ fn test_compat_major_incompat() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(&mut lfs, &mut mdir, &root_pair));
+    assert_ok(lfs_dir_fetch(&mut lfs, &mut mdir, root_pair));
 
     let mut superblock = LfsSuperblock {
         version: LFS_DISK_VERSION + 0x0001_0000,
@@ -91,7 +91,7 @@ fn test_compat_minor_incompat() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, &mut mdir, &root_pair));
+    assert_ok(lfs_dir_fetch(lfs, &mut mdir, root_pair));
 
     let mut superblock = LfsSuperblock {
         version: LFS_DISK_VERSION + 0x0000_0001,
@@ -159,7 +159,7 @@ fn test_compat_minor_bump() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, &mut mdir, &root_pair));
+    assert_ok(lfs_dir_fetch(lfs, &mut mdir, root_pair));
 
     let cfg = unsafe { &*lfs.cfg };
     let mut superblock = LfsSuperblock {

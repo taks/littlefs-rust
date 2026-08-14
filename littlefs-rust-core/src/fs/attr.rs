@@ -78,8 +78,7 @@ pub fn lfs_getattr_(
         let mut id = lfs_tag_id(tag);
         if id == 0x3ff {
             id = 0;
-            let lfs_root = borrow_unchecked(&lfs.root);
-            lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
+            lfs_dir_fetch(lfs, &mut cwd, lfs.root)?;
         }
         let size = lfs_min(buffer.len() as u32, lfs.attr_max);
         let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size);
@@ -152,7 +151,7 @@ pub fn lfs_commitattr(
         let mut id = lfs_tag_id(tag);
         if id == 0x3ff {
             id = 0;
-            let lfs_root = borrow_unchecked(&lfs.root);
+            let lfs_root = lfs.root;
             lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
         }
 

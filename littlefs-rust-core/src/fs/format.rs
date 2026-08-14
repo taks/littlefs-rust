@@ -187,7 +187,7 @@ pub fn lfs_format_(
         }
 
         // sanity check that fetch works
-        let root_pair = borrow_unchecked(&root.pair);
+        let root_pair = root.pair;
         err = lfs_dir_fetch(lfs, &mut root, root_pair);
         if err.is_err() {
             lfs_deinit(lfs);

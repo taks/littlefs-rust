@@ -1932,7 +1932,7 @@ fn relocatingcommit_fixmlist(
                     if lfs_pair_cmp(&d_ref.m.tail, &lfs.root) != 0 {
                         d_ref.id -= d_ref.m.count;
                     }
-                    let d_ref_m_tail = borrow_unchecked(&d_ref.m.tail);
+                    let d_ref_m_tail = d_ref.m.tail;
                     lfs_dir_fetch(lfs, &mut d_ref.m, d_ref_m_tail)?;
                 }
             }

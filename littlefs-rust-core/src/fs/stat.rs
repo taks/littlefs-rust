@@ -122,8 +122,7 @@ pub fn lfs_fs_stat_(
                 split: false,
                 tail: [0, 0],
             };
-            let lfs_root = borrow_unchecked(&lfs.root);
-            lfs_dir_fetch(lfs, &mut dir, lfs_root)?;
+            lfs_dir_fetch(lfs, &mut dir, lfs.root)?;
 
             let mut superblock = core::mem::zeroed::<LfsSuperblock>();
             let tag = lfs_dir_get(
