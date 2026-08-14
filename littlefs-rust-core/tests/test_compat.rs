@@ -6,7 +6,7 @@
 
 mod common;
 
-use common::{assert_ok, default_config, init_context, init_logger};
+use common::{assert_err, assert_ok, default_config, init_context, init_logger};
 use littlefs_rust_core::LfsFile;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
@@ -63,7 +63,7 @@ fn test_compat_major_incompat() {
     assert_ok(lfs_dir_commit(&mut lfs, &mut mdir, &attrs));
     assert_ok(lfs_unmount(&mut lfs));
 
-    assert_err!(Error::Invalid, lfs_mount(&mut lfs, cfg));
+    assert_err(Error::Invalid, lfs_mount(&mut lfs, cfg));
 }
 
 /// Upstream: [cases.test_compat_minor_incompat]
@@ -113,7 +113,7 @@ fn test_compat_minor_incompat() {
     assert_ok(lfs_dir_commit(lfs, &mut mdir, &attrs));
     assert_ok(lfs_unmount(lfs));
 
-    assert_err!(Error::Invalid, lfs_mount(lfs, cfg));
+    assert_err(Error::Invalid, lfs_mount(lfs, cfg));
 }
 
 /// Upstream: [cases.test_compat_minor_bump]

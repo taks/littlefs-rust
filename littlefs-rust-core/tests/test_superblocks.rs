@@ -8,8 +8,8 @@ mod common;
 #[cfg(feature = "slow_tests")]
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
-    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok, assert_superblock_magic,
-    clone_config_with_block_count, default_config, init_context,
+    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok,
+    assert_superblock_magic, clone_config_with_block_count, default_config, init_context,
 };
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;
@@ -115,7 +115,7 @@ fn test_superblocks_invalid_mount() {
     init_context(&mut env);
     let lfs = &mut Lfs::default();
     let err = lfs_mount(lfs, &env.config);
-    assert_err!(Error::Corrupt, err);
+    assert_err(Error::Corrupt, err);
 }
 
 // --- test_superblocks_stat ---
@@ -502,7 +502,7 @@ fn test_superblocks_fewer_blocks() {
 
         let cfg_full = clone_config_with_block_count(&env, ERASE_COUNT);
         let err = lfs_mount(lfs, &cfg_full.config);
-        assert_err!(Error::Invalid, err);
+        assert_err(Error::Invalid, err);
 
         let cfg0 = clone_config_with_block_count(&env, 0);
         assert_ok(lfs_mount(lfs, &cfg0.config));
@@ -547,7 +547,7 @@ fn test_superblocks_more_blocks() {
 
     let cfg_half = clone_config_with_block_count(&env, ERASE_COUNT);
     let err = lfs_mount(lfs, &cfg_half.config);
-    assert_err!(Error::Invalid, err);
+    assert_err(Error::Invalid, err);
 }
 
 const ERASE_COUNT_GROW: u32 = 128;
@@ -673,7 +673,7 @@ fn test_superblocks_shrink(
 
     // mounting with the previous (larger) size should fail
     let cfg_old = clone_config_with_block_count(&env, BLOCK_COUNT);
-    assert_err!(Error::Invalid, lfs_mount(lfs, &cfg_old.config));
+    assert_err(Error::Invalid, lfs_mount(lfs, &cfg_old.config));
 
     env.config.block_count = if known_block_count { block_count_2 } else { 0 };
 

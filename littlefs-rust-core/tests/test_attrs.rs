@@ -6,7 +6,8 @@
 mod common;
 
 use common::{
-    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok, default_config, init_context, init_logger,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_err, assert_ok, default_config, init_context,
+    init_logger,
 };
 use littlefs_rust_core::{
     Lfs, LfsAttr, LfsFile, LfsFileConfig, error::Error, lfs_file_close, lfs_file_open,
@@ -66,14 +67,14 @@ fn test_attrs_get_set() {
 
     assert_ok(lfs_removeattr(lfs, "hello", b'B'));
     let err = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]);
-    assert_err!(Error::NoAttribute, err);
+    assert_err(Error::NoAttribute, err);
 
     assert_ok(lfs_setattr(lfs, "hello", b'B', b"dddddd", 6));
     assert_ok(lfs_setattr(lfs, "hello", b'B', b"eee", 3));
 
     let oversized = vec![0u8; ATTR_MAX + 1];
     let err = lfs_setattr(lfs, "hello", b'A', &oversized, (ATTR_MAX + 1) as u32);
-    assert_err!(Error::NoSpace, err);
+    assert_err(Error::NoSpace, err);
 
     assert_ok(lfs_setattr(lfs, "hello", b'B', b"fffffffff", 9));
     assert_ok(lfs_unmount(lfs));
