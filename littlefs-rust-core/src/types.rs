@@ -25,8 +25,11 @@ pub const LFS_FILE_MAX: i64 = 2_147_483_647;
 pub const LFS_ATTR_MAX: usize = 1022;
 
 /// Version info. Per lfs.h LFS_VERSION.
+#[allow(unused)]
 pub const LFS_VERSION: u32 = 0x0002_000b;
+#[allow(unused)]
 pub const LFS_VERSION_MAJOR: u32 = 0xffff & (LFS_VERSION >> 16);
+#[allow(unused)]
 pub const LFS_VERSION_MINOR: u32 = 0xffff & LFS_VERSION;
 
 /// On-disk version. Per lfs.h LFS_DISK_VERSION.

@@ -1,12 +1,8 @@
 //! Block allocator. Per lfs.c lfs_alloc, lfs_alloc_scan, lfs_alloc_lookahead, etc.
 
-use core::f32::consts::E;
-
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::types::lfs_block_t;
-use crate::util::as_void_ptr;
 
 /// Per lfs.c lfs_alloc_ckpoint (lines 614-616)
 ///

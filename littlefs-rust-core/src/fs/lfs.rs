@@ -1,6 +1,6 @@
 //! Main filesystem type. Per lfs.h typedef struct lfs.
 
-use core::cell::{Ref, RefCell, UnsafeCell};
+use core::cell::{RefCell, UnsafeCell};
 
 use crate::bd::LfsCache;
 use crate::dir::LfsMlist;

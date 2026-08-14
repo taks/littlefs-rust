@@ -51,7 +51,7 @@ pub fn lfs_dir_commitprog(
         )?;
 
         commit.crc = lfs_crc(commit.crc, buffer);
-        commit.off += (buffer.len() as u32);
+        commit.off += buffer.len() as u32;
         Ok(())
     }
 }
@@ -951,7 +951,6 @@ pub fn lfs_dir_compact(
     use crate::dir::traverse::lfs_dir_traverse;
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_tole32, lfs_gstate_xor};
     use crate::tag::lfs_mktag;
-    use crate::types::LFS_BLOCK_NULL;
     use crate::util::{
         lfs_fromle32, lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_isnull, lfs_pair_swap,
         lfs_pair_tole32, lfs_tole32,
@@ -959,6 +958,7 @@ pub fn lfs_dir_compact(
 
     unsafe {
         let mut relocated = false;
+        #[allow(unused)]
         let mut relocate_count: u32 = 0;
         let mut tired = lfs_dir_needsrelocation(lfs, dir);
         let superblock_pair = [0u32, 1u32];
@@ -1046,8 +1046,8 @@ pub fn lfs_dir_compact(
                 return crate::lfs_pass_err!(Err(err));
             }
 
-            let mut rev = lfs_tole32(dir.rev);
-            let mut err = lfs_dir_commitprog(lfs, &mut commit, rev.as_bytes());
+            let rev = lfs_tole32(dir.rev);
+            let err = lfs_dir_commitprog(lfs, &mut commit, rev.as_bytes());
             dir.rev = lfs_fromle32(rev);
             if let Err(err) = err {
                 if err == Error::Corrupt {
@@ -1058,7 +1058,7 @@ pub fn lfs_dir_compact(
                         relocate_count,
                         dir.pair
                     );
-                    lfs_alloc_lookahead(lfs, dir.pair[1]);
+                    let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                     lfs_cache_drop(lfs, &mut *lfs.pcache.get());
                     if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT commitprog");
@@ -1206,7 +1206,7 @@ pub fn lfs_dir_compact(
                             relocate_count,
                             dir.pair
                         );
-                        lfs_alloc_lookahead(lfs, dir.pair[1]);
+                        let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                         lfs_cache_drop(lfs, &mut *lfs.pcache.get());
                         if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                             crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT movestate");
@@ -1710,8 +1710,7 @@ pub fn lfs_dir_relocatingcommit(
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_tole32, lfs_gstate_xor};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_DELETE, LFS_TYPE_TAIL};
     use crate::tag::{lfs_mktag, lfs_tag_type1, lfs_tag_type3};
-    use crate::types::LFS_BLOCK_NULL;
-    use crate::util::{lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_tole32};
+    use crate::util::{lfs_pair_fromle32, lfs_pair_tole32};
 
     unsafe {
         let mut state = 0i32;
@@ -1954,6 +1953,7 @@ fn lfs_dir_commit_commit_raw(
         buffer
     );
     if (crate::tag::lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK {
+        #[cfg(feature = "log")]
         let preview: [u8; 8] = if buffer.is_empty() {
             [0u8; 8]
         } else {
@@ -2183,7 +2183,7 @@ pub fn lfs_dir_orphaningcommit(
 
         // TODO: It doesn't work when optimized
         let state =
-            (lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?);
+            lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?;
 
         if lfs_pair_cmp(&dir.pair, &lpair) == 0 {
             *dir = ldir;
@@ -2248,7 +2248,7 @@ pub fn lfs_dir_orphaningcommit(
             }
 
             // C: lfs.c:2500-2547 — find parent and update
-            let mut tag = crate::fs::parent::lfs_fs_parent(lfs, &lpair, &mut pdir);
+            let tag = crate::fs::parent::lfs_fs_parent(lfs, &lpair, &mut pdir);
             if let Err(err) = tag
                 && err != Error::NoEntry
             {
@@ -2388,13 +2388,11 @@ pub fn lfs_dir_commit(
     use crate::error::LFS_OK_ORPHANED;
     use crate::fs::superblock::lfs_fs_deorphan;
 
-    unsafe {
-        let orphans = lfs_dir_orphaningcommit(lfs, dir, attrs_slice)?;
+    let orphans = lfs_dir_orphaningcommit(lfs, dir, attrs_slice)?;
 
-        if orphans == LFS_OK_ORPHANED {
-            lfs_fs_deorphan(lfs, false)?;
-        }
-
-        Ok(())
+    if orphans == LFS_OK_ORPHANED {
+        lfs_fs_deorphan(lfs, false)?;
     }
+
+    Ok(())
 }

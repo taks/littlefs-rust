@@ -267,57 +267,55 @@ pub fn lfs_ctz_traverse(
         return Ok(());
     }
 
-    unsafe {
-        let mut index_off = size - 1;
-        let mut index = lfs_ctz_index(lfs, &mut index_off) as u32;
-        let mut current_head = head;
+    let mut index_off = size - 1;
+    let mut index = lfs_ctz_index(lfs, &mut index_off) as u32;
+    let mut current_head = head;
+    #[cfg(feature = "loop_limits")]
+    let block_count = lfs.block_count;
+    #[cfg(feature = "loop_limits")]
+    let mut iter: u32 = 0;
+
+    loop {
         #[cfg(feature = "loop_limits")]
-        let block_count = lfs.block_count;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
-
-        loop {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= block_count {
-                    panic!(
-                        "loop_limits: lfs_ctz_traverse iter ({}) >= block_count ({})",
-                        iter, block_count
-                    );
-                }
-                iter += 1;
+        {
+            if iter >= block_count {
+                panic!(
+                    "loop_limits: lfs_ctz_traverse iter ({}) >= block_count ({})",
+                    iter, block_count
+                );
             }
-            cb(data, current_head)?;
-
-            if index == 0 {
-                return Ok(());
-            }
-
-            // C: count*sizeof(head) as hint
-            let count = (2 - (index & 1)) as usize;
-            let mut heads = [0u32; 2];
-            let read_size = (count * core::mem::size_of::<lfs_block_t>()) as u32;
-            lfs_bd_read(
-                lfs,
-                pcache,
-                rcache,
-                read_size,
-                current_head,
-                0,
-                heads.as_mut_bytes(),
-            )?;
-
-            heads[0] = lfs_fromle32(heads[0]);
-            heads[1] = lfs_fromle32(heads[1]);
-
-            #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
-            for i in 0..count - 1 {
-                cb(data, heads[i])?;
-            }
-
-            current_head = heads[count - 1];
-            index = index.wrapping_sub(count as u32);
+            iter += 1;
         }
+        cb(data, current_head)?;
+
+        if index == 0 {
+            return Ok(());
+        }
+
+        // C: count*sizeof(head) as hint
+        let count = (2 - (index & 1)) as usize;
+        let mut heads = [0u32; 2];
+        let read_size = (count * core::mem::size_of::<lfs_block_t>()) as u32;
+        lfs_bd_read(
+            lfs,
+            pcache,
+            rcache,
+            read_size,
+            current_head,
+            0,
+            heads.as_mut_bytes(),
+        )?;
+
+        heads[0] = lfs_fromle32(heads[0]);
+        heads[1] = lfs_fromle32(heads[1]);
+
+        #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
+        for i in 0..count - 1 {
+            cb(data, heads[i])?;
+        }
+
+        current_head = heads[count - 1];
+        index = index.wrapping_sub(count as u32);
     }
 }
 
@@ -434,8 +432,8 @@ pub fn lfs_ctz_extend(
     rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
     size: lfs_size_t,
-    block: *mut lfs_block_t,
-    off: *mut lfs_off_t,
+    block: &mut lfs_block_t,
+    off: &mut lfs_off_t,
 ) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_prog, lfs_bd_read, lfs_cache_drop};
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
@@ -504,7 +502,7 @@ pub fn lfs_ctz_extend(
                 );
                 if let Err(err) = err {
                     if err == Error::Corrupt {
-                        lfs_alloc_lookahead(lfs, nblock);
+                        let _ = lfs_alloc_lookahead(lfs, nblock);
                         lfs_cache_drop(lfs, pcache);
                         continue 'relocate;
                     }

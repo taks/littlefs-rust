@@ -370,7 +370,7 @@ pub fn lfs_mount_(
         }
 
         if err_inner.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             err_inner
         } else {
             if !lfs_gstate_iszero(&lfs.gstate) {

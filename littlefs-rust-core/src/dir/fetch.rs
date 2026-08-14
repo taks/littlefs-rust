@@ -3,7 +3,6 @@
 use zerocopy::IntoBytes;
 
 use crate::bd::bd::{lfs_bd_crc, lfs_bd_read};
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::crc::lfs_crc;
 use crate::dir::LfsFcrc;
 use crate::dir::LfsMdir;
@@ -431,7 +430,7 @@ pub fn lfs_dir_fetchmatch(
 
                 crc = lfs_crc(crc, &tag_buf);
                 let tag_raw = u32::from_be_bytes(tag_buf);
-                let mut tag = tag_raw ^ ptag;
+                let tag = tag_raw ^ ptag;
 
                 if !lfs_tag_isvalid(tag) {
                     maybeerased = (lfs_tag_type2(ptag)) == LFS_TYPE_CCRC;
@@ -740,33 +739,31 @@ pub fn lfs_dir_getgstate(
     dir: &LfsMdir,
     gstate: &mut LfsGstate,
 ) -> Result<(), Error> {
-    unsafe {
-        let mut temp = crate::lfs_gstate::LfsGstate {
-            tag: 0,
-            pair: [0, 0],
-        };
-        let res = lfs_dir_get(
-            lfs,
-            dir,
-            crate::tag::lfs_mktag(0x7ff, 0, 0),
-            crate::tag::lfs_mktag(
-                crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
-                0,
-                core::mem::size_of::<LfsGstate>() as u32,
-            ),
-            temp.as_mut_bytes(),
-        );
-        if let Err(err) = res
-            && err != Error::NoEntry
-        {
-            return Err(err);
-        }
-        if res != Err(Error::NoEntry) {
-            lfs_gstate_fromle32(&mut temp);
-            lfs_gstate_xor(gstate, &temp);
-        }
-        Ok(())
+    let mut temp = crate::lfs_gstate::LfsGstate {
+        tag: 0,
+        pair: [0, 0],
+    };
+    let res = lfs_dir_get(
+        lfs,
+        dir,
+        crate::tag::lfs_mktag(0x7ff, 0, 0),
+        crate::tag::lfs_mktag(
+            crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
+            0,
+            core::mem::size_of::<LfsGstate>() as u32,
+        ),
+        temp.as_mut_bytes(),
+    );
+    if let Err(err) = res
+        && err != Error::NoEntry
+    {
+        return Err(err);
     }
+    if res != Err(Error::NoEntry) {
+        lfs_gstate_fromle32(&mut temp);
+        lfs_gstate_xor(gstate, &temp);
+    }
+    Ok(())
 }
 
 /// Per lfs.c lfs_dir_getinfo (lines 1413-1445)
@@ -813,45 +810,43 @@ pub fn lfs_dir_getinfo(
     id: u16,
     info: &mut LfsInfo,
 ) -> Result<(), Error> {
-    unsafe {
-        // C: lfs.c:1415-1420
-        if id == 0x3ff {
-            info.type_ = LFS_TYPE_DIR as u8;
-            info.name[0] = b'/';
-            info.name[1] = 0;
-            return Ok(());
-        }
-
-        // C: lfs.c:1422-1426
-        let name_max = lfs.name_max;
-        let tag = lfs_dir_get(
-            lfs,
-            dir,
-            lfs_mktag(0x780, 0x3ff, 0),
-            lfs_mktag(LFS_TYPE_NAME, id as u32, name_max + 1),
-            &mut info.name,
-        )?;
-
-        info.type_ = lfs_tag_type3(tag as _) as u8;
-
-        // C: lfs.c:1430-1441
-        let mut ctz = LfsCtz { head: 0, size: 0 };
-        let tag = lfs_dir_get(
-            lfs,
-            dir,
-            lfs_mktag(0x700, 0x3ff, 0),
-            lfs_mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>() as u32),
-            ctz.as_mut_bytes(),
-        )?;
-
-        lfs_ctz_fromle32(&mut ctz);
-
-        if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
-            info.size = ctz.size;
-        } else if (lfs_tag_type3(tag)) == LFS_TYPE_INLINESTRUCT {
-            info.size = lfs_tag_size(tag as u32);
-        }
-
-        Ok(())
+    // C: lfs.c:1415-1420
+    if id == 0x3ff {
+        info.type_ = LFS_TYPE_DIR as u8;
+        info.name[0] = b'/';
+        info.name[1] = 0;
+        return Ok(());
     }
+
+    // C: lfs.c:1422-1426
+    let name_max = lfs.name_max;
+    let tag = lfs_dir_get(
+        lfs,
+        dir,
+        lfs_mktag(0x780, 0x3ff, 0),
+        lfs_mktag(LFS_TYPE_NAME, id as u32, name_max + 1),
+        &mut info.name,
+    )?;
+
+    info.type_ = lfs_tag_type3(tag as _) as u8;
+
+    // C: lfs.c:1430-1441
+    let mut ctz = LfsCtz { head: 0, size: 0 };
+    let tag = lfs_dir_get(
+        lfs,
+        dir,
+        lfs_mktag(0x700, 0x3ff, 0),
+        lfs_mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>() as u32),
+        ctz.as_mut_bytes(),
+    )?;
+
+    lfs_ctz_fromle32(&mut ctz);
+
+    if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
+        info.size = ctz.size;
+    } else if (lfs_tag_type3(tag)) == LFS_TYPE_INLINESTRUCT {
+        info.size = lfs_tag_size(tag as u32);
+    }
+
+    Ok(())
 }

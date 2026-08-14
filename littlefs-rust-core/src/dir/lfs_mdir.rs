@@ -1,6 +1,6 @@
 //! Metadata directory. Per lfs.h lfs_mdir_t.
 
-use zerocopy_derive::{FromBytes, Immutable, IntoBytes, KnownLayout, TryFromBytes};
+use zerocopy_derive::{Immutable, IntoBytes, KnownLayout, TryFromBytes};
 
 use crate::types::lfs_block_t;
 

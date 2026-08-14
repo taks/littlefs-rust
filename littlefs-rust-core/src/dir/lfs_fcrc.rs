@@ -34,6 +34,7 @@ pub fn lfs_fcrc_fromle32(fcrc: &mut LfsFcrc) {
 ///     fcrc->crc = lfs_tole32(fcrc->crc);
 /// }
 /// ```
+#[allow(unused)]
 #[inline(always)]
 pub fn lfs_fcrc_tole32(fcrc: &mut LfsFcrc) {
     fcrc.size = lfs_tole32(fcrc.size);

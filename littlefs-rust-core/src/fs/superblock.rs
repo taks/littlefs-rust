@@ -2,7 +2,6 @@
 
 use zerocopy::IntoBytes;
 
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::types::lfs_block_t;
 use crate::{lfs_debug, lfs_pass_err};
@@ -29,15 +28,13 @@ pub fn lfs_fs_preporphans(lfs: &mut super::lfs::Lfs, orphans: i8) -> Result<(), 
     use crate::lfs_gstate::lfs_gstate_hasorphans;
     use crate::tag::{lfs_mktag, lfs_tag_size};
 
-    unsafe {
-        let tag_size = lfs_tag_size(lfs.gstate.tag);
-        crate::lfs_assert!(tag_size > 0x000 || orphans >= 0);
-        crate::lfs_assert!(tag_size < 0x1ff || orphans <= 0);
-        lfs.gstate.tag = lfs.gstate.tag.wrapping_add(orphans as u32);
-        lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0x800, 0, 0))
-            | ((lfs_gstate_hasorphans(&lfs.gstate) as u32) << 31);
-        Ok(())
-    }
+    let tag_size = lfs_tag_size(lfs.gstate.tag);
+    crate::lfs_assert!(tag_size > 0x000 || orphans >= 0);
+    crate::lfs_assert!(tag_size < 0x1ff || orphans <= 0);
+    lfs.gstate.tag = lfs.gstate.tag.wrapping_add(orphans as u32);
+    lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0x800, 0, 0))
+        | ((lfs_gstate_hasorphans(&lfs.gstate) as u32) << 31);
+    Ok(())
 }
 
 /// Translation docs: Record a pending move (or clear it when id=0x3ff) in gstate.
@@ -326,7 +323,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(), Error> {
     crate::lfs_trace!("deorphan: start powerloss={}", powerloss);
     use crate::dir::LfsMdir;
-    use crate::dir::commit::{lfs_dir_commit, lfs_dir_orphaningcommit};
+    use crate::dir::commit::lfs_dir_orphaningcommit;
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::dir::traverse::lfs_dir_get;
     use crate::error::LFS_OK_ORPHANED;
@@ -334,7 +331,6 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
     use crate::lfs_gstate::{lfs_gstate_getorphans, lfs_gstate_hasmovehere};
     use crate::lfs_type::lfs_type::{LFS_TYPE_SOFTTAIL, LFS_TYPE_TAIL};
     use crate::tag::{lfs_mktag, lfs_mktag_if, lfs_tag_id};
-    use crate::types::LFS_BLOCK_NULL;
     use crate::util::{lfs_pair_fromle32, lfs_pair_issync, lfs_pair_tole32};
 
     unsafe {
@@ -371,7 +367,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
 
                     if pass == 0 && tag != Err(Error::NoEntry) {
                         let mut pair: [crate::types::lfs_block_t; 2] = [0, 0];
-                        let state = lfs_dir_get(
+                        let _state = lfs_dir_get(
                             lfs,
                             &parent,
                             lfs_mktag(0x7ff, 0x3ff, 0),

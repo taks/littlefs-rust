@@ -2,7 +2,7 @@
 
 use zerocopy::IntoBytes;
 
-use crate::{error::Error, tag};
+use crate::error::Error;
 //
 /// Per lfs.c lfs_fs_traverse_ (lines 4693-4794)
 ///
@@ -124,7 +124,6 @@ pub fn lfs_fs_traverse_(
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::dir::traverse::lfs_dir_get;
-    use crate::file::ctz::lfs_ctz_traverse;
     use crate::fs::mount::{LfsTortoise, lfs_tortoise_detectcycles};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CTZSTRUCT, LFS_TYPE_DIRSTRUCT};
     use crate::tag::{lfs_mktag, lfs_tag_type3};
@@ -212,7 +211,6 @@ pub fn lfs_fs_traverse_(
         }
 
         // iterate over any open files
-        use crate::dir::LfsMlist;
         use crate::file::LfsFile;
         use crate::file::ctz::lfs_ctz_traverse;
         use crate::lfs_type::lfs_open_flags::{LFS_F_DIRTY, LFS_F_INLINE, LFS_F_WRITING};

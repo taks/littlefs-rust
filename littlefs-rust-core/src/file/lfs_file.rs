@@ -1,7 +1,5 @@
 //! File handle. Per lfs.h lfs_file_t.
 
-use core::array::from_mut;
-
 use crate::bd::LfsCache;
 use crate::dir::{LfsMdir, LfsMlist};
 use crate::lfs_info::LfsFileConfig;

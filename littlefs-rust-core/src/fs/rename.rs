@@ -1,6 +1,5 @@
 //! Rename. Per lfs.c lfs_rename_.
 
-use core::ffi::CStr;
 use zerocopy::IntoBytes;
 
 use crate::dir::commit::{lfs_dir_commit, lfs_dir_drop};
@@ -13,7 +12,7 @@ use crate::fs::parent::lfs_fs_pred;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_prepmove, lfs_fs_preporphans};
 use crate::lfs_gstate::{lfs_gstate_hasmove, lfs_gstate_hasorphans};
 use crate::lfs_type::lfs_type::{
-    LFS_FROM_MOVE, LFS_TYPE_CREATE, LFS_TYPE_DELETE, LFS_TYPE_DIR, LFS_TYPE_STRUCT, LFS_TYPE3_DIR,
+    LFS_FROM_MOVE, LFS_TYPE_CREATE, LFS_TYPE_DELETE, LFS_TYPE_STRUCT, LFS_TYPE3_DIR,
 };
 use crate::tag::{lfs_mattr, lfs_mktag, lfs_mktag_if, lfs_tag_id, lfs_tag_type3};
 use crate::types::lfs_block_t;
@@ -208,32 +207,6 @@ use crate::util::{
 ///     return lfs_tag_size(tag);
 /// }
 /// ```
-fn slice_until_nul(ptr: *const u8) -> &'static [u8] {
-    if ptr.is_null() {
-        return &[];
-    }
-    unsafe {
-        let mut len = 0;
-        #[cfg(feature = "loop_limits")]
-        const MAX_SLICE_NUL_ITER: u32 = 4096;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
-        while *ptr.add(len) != 0 {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_SLICE_NUL_ITER {
-                    panic!(
-                        "loop_limits: MAX_SLICE_NUL_ITER ({}) exceeded",
-                        MAX_SLICE_NUL_ITER
-                    );
-                }
-                iter += 1;
-            }
-            len += 1;
-        }
-        core::slice::from_raw_parts(ptr, len)
-    }
-}
 
 pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
@@ -310,7 +283,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
             return Ok(());
         } else if (lfs_tag_type3(prevtag.unwrap())) == LFS_TYPE3_DIR {
             let mut prevpair: [lfs_block_t; 2] = [0, 0];
-            let res = lfs_dir_get(
+            lfs_dir_get(
                 lfs,
                 &newcwd,
                 lfs_mktag(0x700, 0x3ff, 0),
@@ -352,7 +325,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
                 buffer: &[],
             },
             lfs_mattr {
-                tag: lfs_mktag((lfs_tag_type3(oldtag)), newid as u32, nlen),
+                tag: lfs_mktag(lfs_tag_type3(oldtag), newid as u32, nlen),
                 buffer: newpath_ptr.as_bytes(),
             },
             lfs_mattr {

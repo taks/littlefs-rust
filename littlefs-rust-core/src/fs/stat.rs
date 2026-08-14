@@ -1,9 +1,7 @@
 //! Stat. Per lfs.c lfs_stat_, lfs_fs_stat_, lfs_fs_size_.
 
-use core::ffi::CStr;
 use zerocopy::IntoBytes;
 
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::fs::traverse::lfs_fs_traverse_;
 use crate::types::{lfs_block_t, lfs_size_t};
@@ -125,7 +123,7 @@ pub fn lfs_fs_stat_(
             lfs_dir_fetch(lfs, &mut dir, lfs.root)?;
 
             let mut superblock = core::mem::zeroed::<LfsSuperblock>();
-            let tag = lfs_dir_get(
+            let _tag = lfs_dir_get(
                 lfs,
                 &dir,
                 lfs_mktag(0x7ff, 0x3ff, 0),

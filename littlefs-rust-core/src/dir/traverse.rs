@@ -307,7 +307,7 @@ pub fn lfs_dir_getread(
             rcache_ref.block = LFS_BLOCK_INLINE;
             rcache_ref.off = lfs_aligndown(off, cfg.read_size);
             rcache_ref.size = lfs_min(lfs_alignup(off + hint, cfg.read_size), cfg.cache_size);
-            let res = lfs_dir_getslice(
+            let _res = lfs_dir_getslice(
                 lfs,
                 dir,
                 gmask,
@@ -707,7 +707,7 @@ pub fn lfs_dir_traverse(
 ) -> Result<i32, Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::lfs_type::lfs_type::LFS_FROM_NOOP;
-    use crate::tag::{lfs_mktag, lfs_tag_dsize, lfs_tag_id, lfs_tag_type3};
+    use crate::tag::{lfs_mktag, lfs_tag_dsize, lfs_tag_type3};
     use crate::types::lfs_tag_t;
     use crate::util::lfs_frombe32;
 
@@ -827,28 +827,28 @@ pub fn lfs_dir_traverse(
                         attr_i
                     );
                     crate::lfs_assert!(sp < LFS_DIR_TRAVERSE_DEPTH);
-                    unsafe {
-                        let frame = LfsDirTraverseStack {
-                            dir,
-                            off,
-                            ptag,
-                            attr_i,
-                            use_empty_attrs,
-                            tmask,
-                            ttag,
-                            begin,
-                            end,
-                            diff,
-                            cb,
-                            data,
-                            tag,
-                            buffer,
-                            disk,
-                            redundant_tag: 0xffff_ffff,
-                            redundant_buffer: core::ptr::null(),
-                        };
-                        stack[sp].write(frame);
-                    }
+
+                    let frame = LfsDirTraverseStack {
+                        dir,
+                        off,
+                        ptag,
+                        attr_i,
+                        use_empty_attrs,
+                        tmask,
+                        ttag,
+                        begin,
+                        end,
+                        diff,
+                        cb,
+                        data,
+                        tag,
+                        buffer,
+                        disk,
+                        redundant_tag: 0xffff_ffff,
+                        redundant_buffer: core::ptr::null(),
+                    };
+                    stack[sp].write(frame);
+
                     sp += 1;
                     tmask = 0;
                     ttag = 0;
@@ -898,30 +898,30 @@ pub fn lfs_dir_traverse(
                             let toid = crate::tag::lfs_tag_id(tag);
                             let new_diff = (toid as i16) - (fromid as i16) + diff;
                             crate::lfs_assert!(sp < LFS_DIR_TRAVERSE_DEPTH);
-                            unsafe {
-                                let noop_tag =
-                                    lfs_mktag(crate::lfs_type::lfs_type::LFS_FROM_NOOP, 0, 0);
-                                let frame = LfsDirTraverseStack {
-                                    dir,
-                                    off,
-                                    ptag,
-                                    attr_i,
-                                    use_empty_attrs,
-                                    tmask,
-                                    ttag,
-                                    begin,
-                                    end,
-                                    diff,
-                                    cb,
-                                    data,
-                                    tag: noop_tag,
-                                    buffer: &[],
-                                    disk,
-                                    redundant_tag: 0xffff_ffff,
-                                    redundant_buffer: core::ptr::null(),
-                                };
-                                stack[sp].write(frame);
-                            }
+
+                            let noop_tag =
+                                lfs_mktag(crate::lfs_type::lfs_type::LFS_FROM_NOOP, 0, 0);
+                            let frame = LfsDirTraverseStack {
+                                dir,
+                                off,
+                                ptag,
+                                attr_i,
+                                use_empty_attrs,
+                                tmask,
+                                ttag,
+                                begin,
+                                end,
+                                diff,
+                                cb,
+                                data,
+                                tag: noop_tag,
+                                buffer: &[],
+                                disk,
+                                redundant_tag: 0xffff_ffff,
+                                redundant_buffer: core::ptr::null(),
+                            };
+                            stack[sp].write(frame);
+
                             sp += 1;
                             dir = LfsMdir::try_ref_from_bytes(buffer).unwrap();
                             off = 0;

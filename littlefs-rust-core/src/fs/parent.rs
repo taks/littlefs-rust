@@ -49,54 +49,52 @@ pub fn lfs_fs_pred(
     use crate::types::LFS_BLOCK_NULL;
     use crate::util::{lfs_pair_cmp, lfs_pair_isnull};
 
-    unsafe {
-        pdir.tail = [0, 1];
-        let mut tortoise = LfsTortoise {
-            pair: [LFS_BLOCK_NULL, LFS_BLOCK_NULL],
-            i: 1,
-            period: 1,
-        };
-        let mut have_fetched = false;
+    pdir.tail = [0, 1];
+    let mut tortoise = LfsTortoise {
+        pair: [LFS_BLOCK_NULL, LFS_BLOCK_NULL],
+        i: 1,
+        period: 1,
+    };
+    let mut have_fetched = false;
+    #[cfg(feature = "loop_limits")]
+    const MAX_PARENT_ITER: u32 = 2048;
+    #[cfg(feature = "loop_limits")]
+    let mut iter: u32 = 0;
+
+    while !lfs_pair_isnull(&pdir.tail) {
         #[cfg(feature = "loop_limits")]
-        const MAX_PARENT_ITER: u32 = 2048;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
-
-        while !lfs_pair_isnull(&pdir.tail) {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_PARENT_ITER {
-                    panic!(
-                        "loop_limits: MAX_PARENT_ITER ({}) exceeded in lfs_fs_parent",
-                        MAX_PARENT_ITER
-                    );
-                }
-                iter += 1;
+        {
+            if iter >= MAX_PARENT_ITER {
+                panic!(
+                    "loop_limits: MAX_PARENT_ITER ({}) exceeded in lfs_fs_parent",
+                    MAX_PARENT_ITER
+                );
             }
-            let err = lfs_tortoise_detectcycles(pdir, &mut tortoise);
-            if err.is_err() {
-                return Err(Error::Corrupt);
-            }
-
-            if lfs_pair_cmp(&pdir.tail, pair) == 0 {
-                if !have_fetched {
-                    // Matched before any fetch: tail [0,1] == pair (root).
-                    // The root has no predecessor.
-                    lfs_dir_fetch(lfs, pdir, pdir.tail)?;
-
-                    if lfs_pair_isnull(&pdir.tail) {
-                        return Err(crate::error::Error::NoEntry);
-                    }
-                }
-                return Ok(());
-            }
-
-            lfs_dir_fetch(lfs, pdir, pdir.tail)?;
-            have_fetched = true;
+            iter += 1;
+        }
+        let err = lfs_tortoise_detectcycles(pdir, &mut tortoise);
+        if err.is_err() {
+            return Err(Error::Corrupt);
         }
 
-        Err(Error::NoEntry)
+        if lfs_pair_cmp(&pdir.tail, pair) == 0 {
+            if !have_fetched {
+                // Matched before any fetch: tail [0,1] == pair (root).
+                // The root has no predecessor.
+                lfs_dir_fetch(lfs, pdir, pdir.tail)?;
+
+                if lfs_pair_isnull(&pdir.tail) {
+                    return Err(crate::error::Error::NoEntry);
+                }
+            }
+            return Ok(());
+        }
+
+        lfs_dir_fetch(lfs, pdir, pdir.tail)?;
+        have_fetched = true;
     }
+
+    Err(Error::NoEntry)
 }
 
 /// C: lfs.c:4835-4853
@@ -128,7 +126,6 @@ pub fn lfs_fs_parent_match(
     disk: &crate::tag::lfs_diskoff,
 ) -> Result<core::cmp::Ordering, Error> {
     use crate::bd::bd::lfs_bd_read;
-    use crate::tag::lfs_diskoff;
     use crate::util::{lfs_pair_cmp, lfs_pair_fromle32};
 
     if data.is_null() {
@@ -201,54 +198,52 @@ pub fn lfs_fs_parent(
     use crate::fs::mount::{LfsTortoise, lfs_tortoise_detectcycles};
     use crate::lfs_type::lfs_type::LFS_TYPE_DIRSTRUCT;
     use crate::tag::lfs_mktag;
-    use crate::types::{LFS_BLOCK_NULL, lfs_block_t};
+    use crate::types::LFS_BLOCK_NULL;
     use crate::util::lfs_pair_isnull;
 
-    unsafe {
-        parent.tail = [0, 1];
-        let mut tortoise = LfsTortoise {
-            pair: [LFS_BLOCK_NULL, LFS_BLOCK_NULL],
-            i: 1,
-            period: 1,
-        };
+    parent.tail = [0, 1];
+    let mut tortoise = LfsTortoise {
+        pair: [LFS_BLOCK_NULL, LFS_BLOCK_NULL],
+        i: 1,
+        period: 1,
+    };
+    #[cfg(feature = "loop_limits")]
+    const MAX_PARENT_ITER: u32 = 2048;
+    #[cfg(feature = "loop_limits")]
+    let mut iter: u32 = 0;
+
+    while !lfs_pair_isnull(&parent.tail) {
         #[cfg(feature = "loop_limits")]
-        const MAX_PARENT_ITER: u32 = 2048;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
-
-        while !lfs_pair_isnull(&parent.tail) {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_PARENT_ITER {
-                    panic!(
-                        "loop_limits: MAX_PARENT_ITER ({}) exceeded in lfs_fs_parent (parent)",
-                        MAX_PARENT_ITER
-                    );
-                }
-                iter += 1;
+        {
+            if iter >= MAX_PARENT_ITER {
+                panic!(
+                    "loop_limits: MAX_PARENT_ITER ({}) exceeded in lfs_fs_parent (parent)",
+                    MAX_PARENT_ITER
+                );
             }
-            lfs_pass_err!(lfs_tortoise_detectcycles(parent, &mut tortoise))?;
-
-            let find_match = LfsFsParentMatch {
-                lfs,
-                pair: [(*pair)[0], (*pair)[1]],
-            };
-            let tag = lfs_dir_fetchmatch(
-                lfs,
-                parent,
-                parent.tail,
-                lfs_mktag(0x7ff, 0, 0x3ff),
-                lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
-                &mut None,
-                Some(lfs_fs_parent_match),
-                &find_match as *const _ as *mut core::ffi::c_void,
-            );
-
-            if tag != Ok(0) && tag != Err(Error::NoEntry) {
-                return tag;
-            }
+            iter += 1;
         }
+        lfs_pass_err!(lfs_tortoise_detectcycles(parent, &mut tortoise))?;
 
-        Err(Error::NoEntry)
+        let find_match = LfsFsParentMatch {
+            lfs,
+            pair: [(*pair)[0], (*pair)[1]],
+        };
+        let tag = lfs_dir_fetchmatch(
+            lfs,
+            parent,
+            parent.tail,
+            lfs_mktag(0x7ff, 0, 0x3ff),
+            lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
+            &mut None,
+            Some(lfs_fs_parent_match),
+            &find_match as *const _ as *mut core::ffi::c_void,
+        );
+
+        if tag != Ok(0) && tag != Err(Error::NoEntry) {
+            return tag;
+        }
     }
+
+    Err(Error::NoEntry)
 }

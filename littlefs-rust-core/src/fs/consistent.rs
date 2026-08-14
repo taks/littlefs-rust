@@ -1,7 +1,6 @@
 //! Consistency. Per lfs.c lfs_fs_mkconsistent_, lfs_fs_gc_.
 
 use crate::Lfs;
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::error::Error;

@@ -4,7 +4,6 @@ use zerocopy::IntoBytes;
 
 use crate::bd::bd::lfs_bd_sync;
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_alloc;
 use crate::dir::commit::lfs_dir_commit;
@@ -101,7 +100,7 @@ pub fn lfs_format_(
 ) -> Result<(), Error> {
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
-        lfs_deinit(lfs);
+        let _ = lfs_deinit(lfs);
         return crate::lfs_pass_err!(err);
     }
 
@@ -115,7 +114,7 @@ pub fn lfs_format_(
         lfs.lookahead.start = 0;
         lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
         lfs.lookahead.next = 0;
-        unsafe { lfs_alloc_ckpoint(lfs) };
+        lfs_alloc_ckpoint(lfs);
 
         // create root dir
         let mut root = LfsMdir {
@@ -130,7 +129,7 @@ pub fn lfs_format_(
         };
         err = lfs_dir_alloc(lfs, &mut root);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
@@ -166,7 +165,7 @@ pub fn lfs_format_(
         ];
         err = lfs_dir_commit(lfs, &mut root, &attrs);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
@@ -174,7 +173,7 @@ pub fn lfs_format_(
         // Otherwise the second compact reads from a block that was never written.
         err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
@@ -182,7 +181,7 @@ pub fn lfs_format_(
         root.erased = false;
         err = lfs_dir_commit(lfs, &mut root, &[]);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
@@ -190,19 +189,19 @@ pub fn lfs_format_(
         let root_pair = root.pair;
         err = lfs_dir_fetch(lfs, &mut root, root_pair);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
         // flush pcache so raw block reads (e.g. test_superblocks_magic) see data
         err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
     }
 
-    lfs_deinit(lfs);
+    let _ = lfs_deinit(lfs);
     Ok(())
 }
 
@@ -227,7 +226,7 @@ pub unsafe fn test_traverse_format_attrs(
 
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
-        lfs_deinit(lfs);
+        let _ = lfs_deinit(lfs);
         return crate::lfs_pass_err!(err);
     }
 
@@ -238,7 +237,7 @@ pub unsafe fn test_traverse_format_attrs(
         lfs.lookahead.start = 0;
         lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
         lfs.lookahead.next = 0;
-        unsafe { lfs_alloc_ckpoint(lfs) };
+        lfs_alloc_ckpoint(lfs);
 
         let mut root = LfsMdir {
             pair: [0, 0],
@@ -252,7 +251,7 @@ pub unsafe fn test_traverse_format_attrs(
         };
         err = lfs_dir_alloc(lfs, &mut root);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
@@ -301,12 +300,12 @@ pub unsafe fn test_traverse_format_attrs(
             out as *mut core::ffi::c_void,
         );
         if let Err(err) = err {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(Err(err));
         }
     }
 
-    lfs_deinit(lfs);
+    let _ = lfs_deinit(lfs);
     Ok(())
 }
 
@@ -333,7 +332,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
 
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
-        lfs_deinit(lfs);
+        let _ = lfs_deinit(lfs);
         return crate::lfs_pass_err!(err);
     }
 
@@ -344,7 +343,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
         lfs.lookahead.start = 0;
         lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
         lfs.lookahead.next = 0;
-        unsafe { lfs_alloc_ckpoint(lfs) };
+        lfs_alloc_ckpoint(lfs);
 
         let mut root = crate::dir::LfsMdir {
             pair: [0, 0],
@@ -358,7 +357,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
         };
         err = lfs_dir_alloc(lfs, &mut root);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
@@ -407,12 +406,12 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
             out as *mut core::ffi::c_void,
         );
         if let Err(err) = err {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(Err(err));
         }
     }
 
-    lfs_deinit(lfs);
+    let _ = lfs_deinit(lfs);
     Ok(())
 }
 
@@ -439,7 +438,7 @@ pub unsafe fn test_format_minimal_superblock(
 
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
-        lfs_deinit(lfs);
+        let _ = lfs_deinit(lfs);
         return crate::lfs_pass_err!(err);
     }
 
@@ -452,7 +451,7 @@ pub unsafe fn test_format_minimal_superblock(
         lfs.lookahead.start = 0;
         lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
         lfs.lookahead.next = 0;
-        unsafe { lfs_alloc_ckpoint(lfs) };
+        lfs_alloc_ckpoint(lfs);
 
         let mut root = LfsMdir {
             pair: [0, 0],
@@ -466,7 +465,7 @@ pub unsafe fn test_format_minimal_superblock(
         };
         err = lfs_dir_alloc(lfs, &mut root);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
@@ -475,7 +474,7 @@ pub unsafe fn test_format_minimal_superblock(
         let block = root.pair[1];
         let err = lfs_bd_erase(lfs, block);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
@@ -493,7 +492,7 @@ pub unsafe fn test_format_minimal_superblock(
         let rev_le = lfs_tole32(rev);
         let err = lfs_dir_commitprog(lfs, &mut commit, rev_le.as_bytes());
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
         commit.ptag = rev & 0x7fff_ffff;
@@ -501,7 +500,7 @@ pub unsafe fn test_format_minimal_superblock(
         let magic = b"littlefs";
         let err = lfs_dir_commitattr(lfs, &mut commit, lfs_mktag(LFS_TYPE_CREATE, 0, 0), &[]);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
         let err = lfs_dir_commitattr(
@@ -511,23 +510,23 @@ pub unsafe fn test_format_minimal_superblock(
             magic,
         );
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
         let err = lfs_dir_commitcrc(lfs, &mut commit);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
 
         let err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
         if err.is_err() {
-            lfs_deinit(lfs);
+            let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
         }
     }
 
-    lfs_deinit(lfs);
+    let _ = lfs_deinit(lfs);
     Ok(())
 }

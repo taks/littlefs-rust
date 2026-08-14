@@ -26,6 +26,7 @@ pub struct LfsMlist {
 ///     return false;
 /// }
 /// ```
+#[allow(unused)]
 pub fn lfs_mlist_isopen(head: *mut LfsMlist, node: *const LfsMlist) -> bool {
     if head.is_null() || node.is_null() {
         return false;

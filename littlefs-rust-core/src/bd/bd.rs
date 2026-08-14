@@ -352,7 +352,6 @@ pub fn lfs_bd_crc(
     crc: &mut u32,
 ) -> Result<(), Error> {
     use crate::crc::lfs_crc;
-    use crate::util::lfs_min;
 
     let mut i: lfs_off_t = 0;
     while i < size {
@@ -593,10 +592,6 @@ pub fn lfs_bd_prog(
                         let magic_start = 12usize.saturating_sub(off as usize);
                         let magic_len = (8).min(diff as usize - magic_start);
                         if magic_len > 0 {
-                            let slice = core::slice::from_raw_parts(
-                                data.as_ptr().add(magic_start),
-                                magic_len,
-                            );
                             crate::lfs_trace!(
                                 "bd_prog superblock block={} off={} size={} magic_region[{}..{}]={:?}",
                                 block,
@@ -604,7 +599,10 @@ pub fn lfs_bd_prog(
                                 size,
                                 magic_start,
                                 magic_start + magic_len,
-                                slice
+                                core::slice::from_raw_parts(
+                                    data.as_ptr().add(magic_start),
+                                    magic_len,
+                                )
                             );
                         }
                     }

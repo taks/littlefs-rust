@@ -1,6 +1,5 @@
 //! Directory find. Per lfs.c lfs_dir_find, lfs_dir_find_match.
 
-use core::ffi::CStr;
 use zerocopy::IntoBytes;
 
 use crate::bd::bd::lfs_bd_cmp;
@@ -10,14 +9,11 @@ use crate::dir::fetch::lfs_dir_fetchmatch;
 use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::fs::Lfs;
-use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
+use crate::lfs_type::lfs_type::{LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
 use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
 use crate::types::{lfs_size_t, lfs_tag_t};
 use crate::util::{lfs_min, lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 
-const LFS_CMP_EQ: core::cmp::Ordering = core::cmp::Ordering::Equal;
-const LFS_CMP_LT: core::cmp::Ordering = core::cmp::Ordering::Less;
-const LFS_CMP_GT: core::cmp::Ordering = core::cmp::Ordering::Greater;
 /// Per lfs.c struct lfs_dir_find_match (lines 1447-1475)
 #[repr(C)]
 pub struct LfsDirFindMatch<'a> {
@@ -95,7 +91,7 @@ pub fn lfs_dir_find_match(
                 Ok(core::cmp::Ordering::Greater)
             };
         }
-        Ok(LFS_CMP_EQ)
+        Ok(core::cmp::Ordering::Equal)
     }
 }
 
