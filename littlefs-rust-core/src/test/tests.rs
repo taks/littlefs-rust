@@ -12,7 +12,7 @@ fn test_context_smoke() {
     assert_eq!(ctx.ram.data.len(), 512 * 128);
     // Direct read through callback
     let mut buf = [0u8; 8];
-    let err = cfg.read.expect("read")(ctx.config(), 0, 0, &mut buf) ;
+    let err = cfg.read.expect("read")(ctx.config(), 0, 0, &mut buf);
     assert_eq!(err, Ok(()));
     assert_eq!(buf, [0u8; 8]);
 }
