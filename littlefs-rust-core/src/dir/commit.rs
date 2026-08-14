@@ -40,9 +40,6 @@ pub fn lfs_dir_commitprog(
     use crate::crc::lfs_crc;
 
     unsafe {
-        let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
-        let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-
         lfs_bd_prog(
             lfs,
             &mut *lfs.pcache.get(),
@@ -158,7 +155,6 @@ pub fn lfs_dir_commitattr(
             let data_size = dsize.saturating_sub(4);
             for i in 0..data_size {
                 let mut dat: u8 = 0;
-                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 lfs_bd_read(
                     lfs,
                     None,
@@ -387,8 +383,6 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
                 4,
             );
 
-            let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
-            let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
             lfs_bd_prog(
                 lfs,
                 &mut *lfs.pcache.get(),
@@ -409,8 +403,6 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             commit.crc = 0xffff_ffff;
 
             if noff >= end || noff >= lfs.pcache.get_mut().off + cfg.cache_size {
-                let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
-                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false)?;
             }
         }
@@ -431,7 +423,16 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             return crate::lfs_err!(Err(Error::Corrupt));
         }
 
-        lfs_bd_crc(lfs, None, &mut *lfs.rcache.get(), 4, commit.block, off1, 4, &mut crc)?;
+        lfs_bd_crc(
+            lfs,
+            None,
+            &mut *lfs.rcache.get(),
+            4,
+            commit.block,
+            off1,
+            4,
+            &mut crc,
+        )?;
 
         if crc != 0 {
             return crate::lfs_err!(Err(Error::Corrupt));
@@ -967,7 +968,6 @@ pub fn lfs_dir_compact(
 
         if tired && lfs_pair_cmp(&dir.pair, &superblock_pair) != 0 {
             relocated = true;
-            let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
             lfs_cache_drop(lfs, &mut *lfs.pcache.get());
             let err = lfs_alloc(lfs, &mut dir.pair[1]);
             if let Err(err) = err
@@ -1026,7 +1026,6 @@ pub fn lfs_dir_compact(
                         dir.pair
                     );
                     lfs_alloc_lookahead(lfs, dir.pair[1]);
-                    let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
                     lfs_cache_drop(lfs, &mut *lfs.pcache.get());
                     if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT bd_erase");
@@ -1061,7 +1060,6 @@ pub fn lfs_dir_compact(
                         dir.pair
                     );
                     lfs_alloc_lookahead(lfs, dir.pair[1]);
-                    let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
                     lfs_cache_drop(lfs, &mut *lfs.pcache.get());
                     if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT commitprog");
@@ -1153,7 +1151,6 @@ pub fn lfs_dir_compact(
                             dir.pair
                         );
                         lfs_alloc_lookahead(lfs, dir.pair[1]);
-                        let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
                         lfs_cache_drop(lfs, &mut *lfs.pcache.get());
                         if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
                             crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT tail");
@@ -2186,13 +2183,8 @@ pub fn lfs_dir_orphaningcommit(
         let mut pdir = core::mem::zeroed();
 
         // TODO: It doesn't work when optimized
-        let state = core::hint::black_box(lfs_dir_relocatingcommit(
-            lfs,
-            &mut ldir,
-            &dir.pair,
-            attrs_slice,
-            Some(&mut pdir),
-        )?);
+        let state =
+            (lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?);
 
         if lfs_pair_cmp(&dir.pair, &lpair) == 0 {
             *dir = ldir;

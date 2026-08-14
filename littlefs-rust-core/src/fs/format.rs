@@ -172,12 +172,7 @@ pub fn lfs_format_(
 
         // Flush pcache so the second commit can read the first block from disk.
         // Otherwise the second compact reads from a block that was never written.
-        err = lfs_bd_sync(
-            lfs,
-            &mut *lfs.pcache.get(),
-            &mut *lfs.rcache.get(),
-            false,
-        );
+        err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
         if err.is_err() {
             lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
@@ -200,12 +195,7 @@ pub fn lfs_format_(
         }
 
         // flush pcache so raw block reads (e.g. test_superblocks_magic) see data
-        err = lfs_bd_sync(
-            lfs,
-            &mut *lfs.pcache.get(),
-            &mut *lfs.rcache.get(),
-            false,
-        );
+        err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
         if err.is_err() {
             lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
@@ -531,12 +521,7 @@ pub unsafe fn test_format_minimal_superblock(
             return crate::lfs_pass_err!(err);
         }
 
-        let err = lfs_bd_sync(
-            lfs,
-            &mut *lfs.pcache.get(),
-            &mut *lfs.rcache.get(),
-            false,
-        );
+        let err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
         if err.is_err() {
             lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);

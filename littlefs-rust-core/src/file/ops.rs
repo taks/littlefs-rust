@@ -1202,7 +1202,6 @@ pub fn lfs_file_flushedwrite(
                         lfs_cache_zero(lfs, &mut file.cache);
                     }
                     lfs_alloc_ckpoint(lfs);
-                    let lfs_rcache = lfs.rcache.borrow_unchecked();
                     let err = lfs_ctz_extend(
                         lfs,
                         &mut file.cache,

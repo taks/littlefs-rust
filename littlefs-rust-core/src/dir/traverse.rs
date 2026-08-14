@@ -128,7 +128,6 @@ pub fn lfs_dir_getslice(
             off -= lfs_tag_dsize(ntag);
             let tag = ntag;
             let mut ntag_buf: lfs_tag_t = 0;
-            let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
             lfs_bd_read(
                 lfs,
                 None,
@@ -768,7 +767,6 @@ pub fn lfs_dir_traverse(
                         // Per C: advance off first to skip previous tag's data, then read
                         off += lfs_tag_dsize(ptag);
                         let mut tag_raw: lfs_tag_t = 0;
-                        let lfs_rcache = unsafe { borrow_unchecked(&mut lfs.rcache) };
                         lfs_bd_read(
                             lfs,
                             None,

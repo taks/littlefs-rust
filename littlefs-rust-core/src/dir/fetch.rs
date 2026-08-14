@@ -342,7 +342,15 @@ pub fn lfs_dir_fetchmatch(
         for i in 0..2 {
             crate::lfs_trace!("fetchmatch: reading rev for pair[{}]={}", i, pair[i]);
             let mut rev_buf = [0u8; 4];
-            let err = lfs_bd_read(lfs, None, &mut *lfs.rcache.get(), 4, pair[i], 0, &mut rev_buf);
+            let err = lfs_bd_read(
+                lfs,
+                None,
+                &mut *lfs.rcache.get(),
+                4,
+                pair[i],
+                0,
+                &mut rev_buf,
+            );
             revs[i] = u32::from_le_bytes(rev_buf);
             if let Err(err) = err
                 && err != Error::Corrupt
@@ -475,7 +483,6 @@ pub fn lfs_dir_fetchmatch(
 
                 let entry_size = lfs_tag_dsize(tag) - 4;
                 let mut crc_val = crc;
-                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 let err = lfs_bd_crc(
                     lfs,
                     None,

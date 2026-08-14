@@ -201,15 +201,7 @@ pub fn lfs_fs_traverse_(
 
                 let tag = tag.unwrap();
                 if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
-                    lfs_ctz_traverse(
-                        lfs,
-                        None,
-                        &mut *lfs.rcache.get(),
-                        raw[0],
-                        raw[1],
-                        cb,
-                        data,
-                    )?;
+                    lfs_ctz_traverse(lfs, None, &mut *lfs.rcache.get(), raw[0], raw[1], cb, data)?;
                 } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
                     #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
                     for i in 0..2 {
