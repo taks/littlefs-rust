@@ -692,7 +692,7 @@ fn dispatch_tag(
 
 #[allow(clippy::type_complexity)]
 pub fn lfs_dir_traverse(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &crate::fs::Lfs,
     dir: *const LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
