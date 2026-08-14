@@ -2,7 +2,6 @@
 
 use core::ffi::CStr;
 
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;

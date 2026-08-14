@@ -2,7 +2,7 @@
 
 use zerocopy::IntoBytes;
 
-use crate::{borrow_unchecked::borrow_unchecked, error::Error, tag};
+use crate::{error::Error, tag};
 //
 /// Per lfs.c lfs_fs_traverse_ (lines 4693-4794)
 ///

@@ -1,7 +1,5 @@
 //! Utility functions. Per lfs_util.h static inline and lfs.c small type-level utils.
 
-use core::ffi::CStr;
-
 use crate::types::{lfs_block_t, lfs_size_t};
 
 /// Per lfs_util.h lfs_max (lines 129-131)

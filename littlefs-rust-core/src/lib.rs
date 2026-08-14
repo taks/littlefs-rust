@@ -34,8 +34,7 @@ mod tag;
 mod types;
 mod util;
 
-use core::ffi::{CStr, c_void};
-use core::future::Ready;
+use core::ffi::c_void;
 
 pub use crate::dir::LfsDir;
 use crate::error::Error;

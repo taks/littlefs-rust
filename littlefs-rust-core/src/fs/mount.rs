@@ -14,23 +14,21 @@ pub struct LfsTortoise {
 
 /// Per lfs.c lfs_tortoise_detectcycles (lines 4464-4480)
 pub fn lfs_tortoise_detectcycles(
-    dir: *const crate::dir::LfsMdir,
+    dir: &crate::dir::LfsMdir,
     tortoise: *mut LfsTortoise,
 ) -> Result<(), Error> {
-    use crate::types::LFS_BLOCK_NULL;
     use crate::util::lfs_pair_issync;
 
     if tortoise.is_null() {
         return Ok(());
     }
     unsafe {
-        let dir_ref = &*dir;
         let tortoise_ref = &mut *tortoise;
-        if lfs_pair_issync(&dir_ref.tail, &tortoise_ref.pair) {
+        if lfs_pair_issync(&dir.tail, &tortoise_ref.pair) {
             return Err(crate::error::Error::Corrupt);
         }
         if tortoise_ref.i == tortoise_ref.period {
-            tortoise_ref.pair = dir_ref.tail;
+            tortoise_ref.pair = dir.tail;
             tortoise_ref.i = 0;
             tortoise_ref.period *= 2;
         }
@@ -266,7 +264,7 @@ pub fn lfs_mount_(
                 }
                 mount_iter += 1;
             }
-            err_inner = lfs_tortoise_detectcycles(&dir as *const _, &mut tortoise);
+            err_inner = lfs_tortoise_detectcycles(&dir, &mut tortoise);
             if err_inner.is_err() {
                 crate::lfs_trace!("mount: tortoise err={:?}", err_inner);
                 break;
