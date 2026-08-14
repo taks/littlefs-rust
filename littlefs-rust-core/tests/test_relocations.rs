@@ -36,7 +36,7 @@ fn test_relocations_dangling_split_dir(#[values(8, 1)] block_cycles: i32) {
     init_context(&mut env);
     env.config.block_cycles = block_cycles;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -76,7 +76,7 @@ fn test_relocations_outdated_head(#[values(8, 1)] block_cycles: i32) {
     init_context(&mut env);
     env.config.block_cycles = block_cycles;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -127,7 +127,7 @@ fn test_relocations_nonreentrant(
     let mut env = default_config(block_count);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -169,7 +169,7 @@ fn test_relocations_nonreentrant_renames(
     let mut env = config_with_cache(64, block_count);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -216,7 +216,7 @@ fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case
     let mut env = powerloss_config(block_count);
     init_powerloss_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     let snapshot = env.snapshot();
 
@@ -284,7 +284,7 @@ fn test_relocations_reentrant_renames(
     let mut env = powerloss_config(block_count);
     init_powerloss_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
     for name in ["x", "y"] {

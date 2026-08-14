@@ -134,7 +134,7 @@ fn test_exhaustion_normal(
 
     let mut env = init_exhaustion_env(erase_cycles, block_cycles, behavior);
     init_wear_leveling_context(&mut env);
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
 
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
@@ -166,7 +166,7 @@ fn test_exhaustion_superblocks(
 
     let mut env = init_exhaustion_env(erase_cycles, block_cycles, behavior);
     init_wear_leveling_context(&mut env);
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
 
     // No mkdir — files go directly in root
     assert_ok(lfs_format(lfs, &env.config));
@@ -284,7 +284,7 @@ fn test_exhaustion_wear_leveling() {
             }
         }
 
-        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        let lfs = &mut Lfs::default();
         assert_ok(lfs_format(lfs, &env.config));
         assert_ok(lfs_mount(lfs, &env.config));
         assert_ok(lfs_mkdir(lfs, "roadrunner"));
@@ -339,7 +339,7 @@ fn test_exhaustion_wear_leveling_superblocks() {
             }
         }
 
-        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        let lfs = &mut Lfs::default();
         assert_ok(lfs_format(lfs, &env.config));
 
         let cycle = run_exhaustion_root(lfs, &env.config, files);
@@ -383,7 +383,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
     env.config.block_cycles = block_cycles_val;
     init_wear_leveling_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
     assert_ok(lfs_mkdir(lfs, "roadrunner"));

@@ -266,7 +266,7 @@ fn test_write_verify_prng_file() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(littlefs_rust_core::lfs_format(lfs, &env.config));
     assert_ok(littlefs_rust_core::lfs_mount(lfs, &env.config));
 

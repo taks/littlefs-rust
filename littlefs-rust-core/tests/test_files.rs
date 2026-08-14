@@ -35,7 +35,7 @@ fn test_files_simple(#[values(0, -1, 8)] inline_max: i32) {
     let mut env = config_with_inline_max(128, inline_max);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -80,7 +80,7 @@ fn test_files_large(
     let mut env = config_with_inline_max(BLOCK_COUNT_LARGE, inline_max);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     // write
@@ -128,7 +128,7 @@ fn test_files_rewrite(
     let mut env = config_with_inline_max(BLOCK_COUNT_LARGE, inline_max);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     let path = "avacado";
@@ -196,7 +196,7 @@ fn test_files_append(
     let mut env = config_with_inline_max(BLOCK_COUNT_LARGE, inline_max);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     let path = "avacado";
@@ -248,7 +248,7 @@ fn test_files_truncate(
     let mut env = config_with_inline_max(BLOCK_COUNT_LARGE, inline_max);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     let path = "avacado";
@@ -308,7 +308,7 @@ fn test_files_reentrant_write(
     };
 
     let config_ptr = &env.config;
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
 
     // Format and mount for initial snapshot
     assert_ok(littlefs_rust_core::lfs_format(lfs, config_ptr));
@@ -388,7 +388,7 @@ fn test_files_reentrant_write_sync(
     };
 
     let config_ptr = &env.config;
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
 
     assert_ok(littlefs_rust_core::lfs_format(lfs, config_ptr));
     assert_ok(littlefs_rust_core::lfs_mount(lfs, config_ptr));
@@ -492,7 +492,7 @@ fn test_files_many() {
     let mut env = default_config(BLOCK_COUNT_MANY);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -533,7 +533,7 @@ fn test_files_many_power_cycle() {
     let mut env = default_config(BLOCK_COUNT_MANY);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     for i in 0..N {
@@ -579,7 +579,7 @@ fn test_files_many_power_loss() {
     init_powerloss_context(&mut env);
 
     let config_ptr = &env.config;
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
 
     assert_ok(littlefs_rust_core::lfs_format(lfs, config_ptr));
     assert_ok(littlefs_rust_core::lfs_mount(lfs, config_ptr));
@@ -634,7 +634,7 @@ fn test_files_same_session() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(littlefs_rust_core::lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -662,7 +662,7 @@ fn test_files_simple_read() {
     fs_with_hello(&mut env).expect("fs_with_hello");
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_mount(lfs, &env.config));
 
     let path = "hello";
@@ -690,7 +690,7 @@ fn test_files_seek_tell() {
     fs_with_hello(&mut env).expect("fs_with_hello");
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_mount(lfs, &env.config));
 
     let path = "hello";
@@ -725,7 +725,7 @@ fn test_files_truncate_api() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 

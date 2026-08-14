@@ -35,7 +35,7 @@ fn test_seek_read(#[case] count: u32, #[case] skip: u32) {
     let mut env = default_config(256);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -136,7 +136,7 @@ fn test_seek_write(#[case] count: u32, #[case] skip: u32) {
     let mut env = default_config(256);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -213,7 +213,7 @@ fn test_seek_boundary_read() {
     let mut env = default_config(256);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -387,7 +387,7 @@ fn test_seek_boundary_write() {
     let mut env = default_config(256);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -491,7 +491,7 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
     let mut env = default_config(256);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -584,7 +584,7 @@ fn test_seek_inline_write(#[case] size: u32) {
     let mut env = default_config(256);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -677,7 +677,6 @@ fn test_seek_inline_write(#[case] size: u32) {
 #[case(64)]
 #[case(128)]
 #[cfg(feature = "slow_tests")]
-#[ignore = "bug: power-loss iteration returns -1 for some cases"]
 fn test_seek_reentrant_write(#[case] count: u32) {
     use littlefs_rust_core::LfsConfig;
 
@@ -685,7 +684,7 @@ fn test_seek_reentrant_write(#[case] count: u32) {
     init_powerloss_context(&mut env);
 
     let config_ptr = &env.config;
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
 
     assert_ok(littlefs_rust_core::lfs_format(lfs, config_ptr));
     assert_ok(littlefs_rust_core::lfs_mount(lfs, config_ptr));
@@ -819,7 +818,7 @@ fn test_seek_filemax() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -859,7 +858,7 @@ fn test_seek_underflow() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -923,7 +922,7 @@ fn test_seek_overflow() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 

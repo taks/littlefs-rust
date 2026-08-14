@@ -4,6 +4,7 @@ use crate::types::lfs_block_t;
 
 /// Per lfs.h struct lfs_lookahead
 #[repr(C)]
+#[derive(Default)]
 pub struct LfsLookahead {
     pub start: lfs_block_t,
     pub size: lfs_block_t,

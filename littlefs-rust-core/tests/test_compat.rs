@@ -76,7 +76,7 @@ fn test_compat_minor_incompat() {
     init_context(&mut env);
     let cfg = &env.config;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs, cfg));
 
@@ -131,7 +131,7 @@ fn test_compat_minor_bump() {
     init_context(&mut env);
     let cfg = &env.config;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs, cfg));
 

@@ -47,7 +47,7 @@ fn test_alloc_parallel(
 
     env.config.compact_thresh = compact_thresh_u32(compact_thresh_val);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
@@ -130,7 +130,7 @@ fn test_alloc_serial(
 
     env.config.compact_thresh = compact_thresh_u32(compact_thresh_val);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
@@ -203,7 +203,7 @@ fn test_alloc_parallel_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)
     let block_count = env.config.block_count;
     let size: usize = ((block_size - 8) as usize * (block_count - 6) as usize) / FILES as usize;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
@@ -290,7 +290,7 @@ fn test_alloc_serial_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)] 
     let block_count = env.config.block_count;
     let size: usize = ((block_size - 8) as usize * (block_count - 6) as usize) / FILES as usize;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
@@ -370,7 +370,7 @@ fn test_alloc_exhaustion(#[values(false, true)] infer_bc: bool) {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     let mount_cfg =
@@ -428,7 +428,7 @@ fn test_alloc_split_dir() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -470,7 +470,7 @@ fn test_alloc_exhaustion_wraparound(#[values(false, true)] infer_bc: bool) {
     let block_count = env.config.block_count;
     let size: usize = ((block_size - 8) as usize * (block_count - 4) as usize) / 3;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
@@ -546,7 +546,7 @@ fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
     let block_count = env.config.block_count;
     let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &mount_cfg.config));
 
@@ -624,7 +624,7 @@ fn test_alloc_two_files_ctz() {
     init_context(&mut env);
     let block_size = env.config.block_size;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -718,7 +718,7 @@ fn test_alloc_bad_blocks_body() {
 
     let block_size = env.config.block_size;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -870,7 +870,7 @@ fn test_alloc_chained_dir_exhaustion() {
     let mut env = config_with_geometry(512, 1024);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -969,7 +969,7 @@ fn test_alloc_outdated_lookahead() {
     let size1 = ((block_count - 2) / 2) * (block_size - 8);
     let size2 = (block_count - 2).div_ceil(2) * (block_size - 8);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -1050,7 +1050,7 @@ fn test_alloc_outdated_lookahead_split_dir() {
     let size2 = (block_count - 2).div_ceil(2) * (block_size - 8);
     let size1_hole = ((block_count - 2) / 2 - 1) * (block_size - 8);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 

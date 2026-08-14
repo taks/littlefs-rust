@@ -570,7 +570,7 @@ pub fn lfs_dir_drop(
     use crate::util::lfs_pair_tole32;
 
     unsafe {
-        lfs_dir_getgstate(lfs, tail, &mut *lfs.gdelta.get())?;
+        lfs_dir_getgstate(lfs, tail, &mut lfs.gdelta.borrow_mut())?;
 
         let tail_ref = tail;
         let mut tail_pair = tail_ref.tail;
@@ -2190,7 +2190,7 @@ pub fn lfs_dir_orphaningcommit(
         }
 
         if state == crate::error::LFS_OK_DROPPED {
-            lfs_dir_getgstate(lfs, dir, &mut *lfs.gdelta.get())?;
+            lfs_dir_getgstate(lfs, dir, &mut lfs.gdelta.borrow_mut())?;
 
             let plpair = [pdir.pair[0], pdir.pair[1]];
             lfs_pair_tole32(&mut dir.tail);

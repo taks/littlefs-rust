@@ -45,7 +45,7 @@ unsafe fn evil_invalid_tail_pointer(tail_type: u16, invalset: u32) {
     init_context(&mut env);
     let cfg = &env.config;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, cfg));
 
     assert_ok(lfs_init(lfs, cfg));
@@ -86,7 +86,7 @@ fn evil_invalid_dir_pointer(invalset: u32) {
     init_context(&mut env);
     let cfg = &env.config;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs, cfg));
     let dir_name = "dir_here";
@@ -172,7 +172,7 @@ fn evil_invalid_file_pointer(size: u32) {
     init_context(&mut env);
     let cfg = &env.config;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs, cfg));
 
@@ -261,7 +261,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     init_context(&mut env);
     let cfg = &env.config;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs, cfg));
 
@@ -367,7 +367,7 @@ unsafe fn evil_invalid_gstate_pointer(invalset: u32) {
     init_context(&mut env);
     let cfg = &env.config;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, cfg));
 
     assert_ok(lfs_init(lfs, cfg));
@@ -403,7 +403,7 @@ unsafe fn evil_mdir_loop() {
     init_context(&mut env);
     let cfg = &env.config;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, cfg));
 
     assert_ok(lfs_init(lfs, cfg));
@@ -436,7 +436,7 @@ unsafe fn evil_mdir_loop2() {
     init_context(&mut env);
     let cfg = &env.config;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs, cfg));
     let child = "child";
@@ -499,7 +499,7 @@ unsafe fn evil_mdir_loop_child() {
     init_context(&mut env);
     let cfg = &env.config;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, cfg));
     assert_ok(lfs_mount(lfs, cfg));
     let child = "child";

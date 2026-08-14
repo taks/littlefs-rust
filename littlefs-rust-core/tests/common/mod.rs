@@ -637,7 +637,7 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
     };
 
     init_context(env);
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     lfs_format(lfs, &env.config as &LfsConfig)?;
 
     lfs_mount(lfs, &env.config as &LfsConfig)?;
@@ -730,7 +730,7 @@ pub fn config_with_inline_max(block_count: u32, inline_max: i32) -> TestEnv {
 pub fn format_and_read_superblock_blocks(env: &mut TestEnv) -> Result<(Vec<u8>, Vec<u8>), Error> {
     use littlefs_rust_core::{Lfs, lfs_format};
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     lfs_format(lfs, &env.config as &LfsConfig)?;
 
     let block_size = env.config.block_size as usize;

@@ -42,7 +42,7 @@ fn test_truncate_simple(#[case] medium: u32, #[case] large: u32) {
     let mut env = default_config(1024);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -106,7 +106,7 @@ fn test_truncate_read(#[case] medium: u32, #[case] large: u32) {
     let mut env = default_config(1024);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -179,7 +179,7 @@ fn test_truncate_write_read() {
     let size = core::cmp::min(cache_size, 512); // buffer size
     let qsize = size / 4;
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -247,7 +247,7 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
     let mut env = default_config(512);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 
@@ -325,7 +325,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
         common::powerloss::init_powerloss_context(&mut env);
 
         let config_ptr = &env.config;
-        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        let lfs = &mut Lfs::default();
         assert_ok(littlefs_rust_core::lfs_format(lfs, config_ptr));
         assert_ok(littlefs_rust_core::lfs_mount(lfs, config_ptr));
         assert_ok(littlefs_rust_core::lfs_unmount(lfs));
@@ -472,7 +472,7 @@ fn test_truncate_aggressive() {
     let mut env = default_config(1024);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
 
     for (config, _) in configs.iter().enumerate() {
         assert_ok(lfs_format(lfs, &env.config));
@@ -606,7 +606,7 @@ fn test_truncate_nop(#[case] medium: u32) {
     let mut env = default_config(512);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
     assert_ok(lfs_mount(lfs, &env.config));
 

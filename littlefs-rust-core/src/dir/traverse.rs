@@ -81,7 +81,7 @@ use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
 /// }
 /// ```
 pub fn lfs_dir_getslice(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &crate::fs::Lfs,
     dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
@@ -191,7 +191,7 @@ pub fn lfs_dir_getslice(
 /// }
 /// ```
 pub fn lfs_dir_get(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &crate::fs::Lfs,
     dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,

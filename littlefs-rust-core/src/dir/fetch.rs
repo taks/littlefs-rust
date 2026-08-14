@@ -736,7 +736,7 @@ pub fn lfs_dir_fetch(
 /// }
 /// ```
 pub fn lfs_dir_getgstate(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &crate::fs::Lfs,
     dir: &LfsMdir,
     gstate: &mut LfsGstate,
 ) -> Result<(), Error> {

@@ -56,7 +56,7 @@ fn test_badblocks_single(
         // C: lfs_emubd_setwear(cfg, badblock, 0xffffffff)
         env.bd.set_wear(badblock, 0xffffffff);
 
-        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        let lfs = &mut Lfs::default();
         assert_ok(lfs_format(lfs, &env.config));
 
         assert_ok(lfs_mount(lfs, &env.config));
@@ -176,7 +176,7 @@ fn test_badblocks_region_corruption(
         env.bd.set_wear(i + 2, 0xffffffff);
     }
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     assert_ok(lfs_mount(lfs, &env.config));
@@ -221,7 +221,7 @@ fn test_badblocks_alternating_corruption(
         env.bd.set_wear((2 * i) + 2, 0xffffffff);
     }
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok(lfs_format(lfs, &env.config));
 
     assert_ok(lfs_mount(lfs, &env.config));
@@ -263,7 +263,7 @@ fn test_badblocks_superblocks(
     env.bd.set_wear(0, 0xffffffff);
     env.bd.set_wear(1, 0xffffffff);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     let err = lfs_format(lfs, &env.config);
     assert_eq!(
         err,
