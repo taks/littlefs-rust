@@ -106,45 +106,44 @@ pub fn lfs_fs_stat_(
     use crate::tag::lfs_mktag;
     use crate::types::LFS_DISK_VERSION;
 
-    unsafe {
-        if !lfs_gstate_needssuperblock(&lfs.gstate) {
-            fsinfo.disk_version = LFS_DISK_VERSION;
-        } else {
-            let mut dir = crate::dir::LfsMdir {
-                pair: [0, 0],
-                rev: 0,
-                off: 0,
-                etag: 0,
-                count: 0,
-                erased: false,
-                split: false,
-                tail: [0, 0],
-            };
-            lfs_dir_fetch(lfs, &mut dir, lfs.root)?;
+    if !lfs_gstate_needssuperblock(&lfs.gstate) {
+        fsinfo.disk_version = LFS_DISK_VERSION;
+    } else {
+        let mut dir = crate::dir::LfsMdir {
+            pair: [0, 0],
+            rev: 0,
+            off: 0,
+            etag: 0,
+            count: 0,
+            erased: false,
+            split: false,
+            tail: [0, 0],
+        };
+        lfs_dir_fetch(lfs, &mut dir, lfs.root)?;
 
-            let mut superblock = core::mem::zeroed::<LfsSuperblock>();
-            let _tag = lfs_dir_get(
-                lfs,
-                &dir,
-                lfs_mktag(0x7ff, 0x3ff, 0),
-                lfs_mktag(
-                    LFS_TYPE_INLINESTRUCT,
-                    0,
-                    core::mem::size_of::<LfsSuperblock>() as u32,
-                ),
-                superblock.as_mut_bytes(),
-            )?;
+        let mut superblock = unsafe { core::mem::zeroed::<LfsSuperblock>() };
+        let _tag = lfs_dir_get(
+            lfs,
+            &dir,
+            lfs_mktag(0x7ff, 0x3ff, 0),
+            lfs_mktag(
+                LFS_TYPE_INLINESTRUCT,
+                0,
+                core::mem::size_of::<LfsSuperblock>() as u32,
+            ),
+            superblock.as_mut_bytes(),
+        )?;
 
-            lfs_superblock_fromle32(&mut superblock);
-            fsinfo.disk_version = superblock.version;
-        }
-
-        fsinfo.block_size = (*lfs.cfg).block_size;
-        fsinfo.block_count = lfs.block_count;
-        fsinfo.name_max = lfs.name_max;
-        fsinfo.file_max = lfs.file_max;
-        fsinfo.attr_max = lfs.attr_max;
+        lfs_superblock_fromle32(&mut superblock);
+        fsinfo.disk_version = superblock.version;
     }
+
+    fsinfo.block_size = unsafe { (*lfs.cfg).block_size };
+    fsinfo.block_count = lfs.block_count;
+    fsinfo.name_max = lfs.name_max;
+    fsinfo.file_max = lfs.file_max;
+    fsinfo.attr_max = lfs.attr_max;
+
     Ok(())
 }
 

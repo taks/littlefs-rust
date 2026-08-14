@@ -25,7 +25,7 @@ pub mod lfs_type {
     pub const LFS_TYPE_USERATTR: u16 = 0x300;
     pub const LFS_TYPE_FROM: u16 = 0x100;
     pub const LFS_TYPE_TAIL: u16 = 0x600;
-    pub const LFS_TYPE_GLOBALS: u32 = 0x700;
+    pub const LFS_TYPE_GLOBALS: u16 = 0x700;
     pub const LFS_TYPE_CRC: u32 = 0x500;
     pub const LFS_TYPE_CREATE: u16 = 0x401;
     pub const LFS_TYPE_DELETE: u16 = 0x4ff;

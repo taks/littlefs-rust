@@ -1270,7 +1270,7 @@ pub fn lfs_dir_compact(
         crate::lfs_assert!(
             commit
                 .off
-                .is_multiple_of(unsafe { lfs.cfg.as_ref().unwrap().prog_size  })
+                .is_multiple_of(unsafe { lfs.cfg.as_ref().unwrap().prog_size })
         );
         lfs_pair_swap(&mut dir.pair);
         dir.count = end - begin;

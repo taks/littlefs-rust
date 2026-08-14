@@ -9,7 +9,7 @@ use crate::dir::fetch::lfs_dir_fetchmatch;
 use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::fs::Lfs;
-use crate::lfs_type::lfs_type::{LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
+use crate::lfs_type::lfs_type::{LFS_TYPE_GLOBALS, LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
 use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
 use crate::types::{lfs_size_t, lfs_tag_t};
 use crate::util::{lfs_min, lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
@@ -306,7 +306,7 @@ pub fn lfs_dir_find(
                 let res = lfs_dir_get(
                     lfs,
                     dir,
-                    lfs_mktag(0x700, 0x3ff, 0),
+                    lfs_mktag(LFS_TYPE_GLOBALS, 0x3ff, 0),
                     lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
                     dir_tail.as_mut_bytes(),
                 );
@@ -315,31 +315,7 @@ pub fn lfs_dir_find(
             }
 
             // C: lfs.c:1567-1584 - find entry matching name
-            #[cfg(feature = "loop_limits")]
-            const MAX_FIND_ITER: u32 = 256;
-            #[cfg(feature = "loop_limits")]
-            let mut find_iter: u32 = 0;
             loop {
-                #[cfg(feature = "loop_limits")]
-                {
-                    find_iter += 1;
-                    if find_iter > MAX_FIND_ITER {
-                        panic!(
-                            "loop_limits: MAX_FIND_ITER ({}) exceeded name_len={} tail={:?}",
-                            MAX_FIND_ITER, namelen, dir.tail
-                        );
-                    }
-                }
-                #[cfg(feature = "loop_limits")]
-                crate::lfs_trace!(
-                    "dir_find: iter={} tag={} split={} tail=[{},{}] namelen={}",
-                    find_iter,
-                    tag,
-                    dir.split,
-                    dir.tail[0],
-                    dir.tail[1],
-                    namelen
-                );
                 let mut match_data = LfsDirFindMatch {
                     lfs,
                     name,
