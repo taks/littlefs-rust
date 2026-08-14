@@ -2162,8 +2162,14 @@ pub fn lfs_dir_orphaningcommit(
         let mut pdir = core::mem::zeroed();
 
         // TODO: It doesn't work when optimized
-        let state =
-            lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?;
+        let state = core::hint::black_box(lfs_dir_relocatingcommit(
+            lfs,
+            &mut ldir,
+            &dir.pair,
+            attrs_slice,
+            Some(&mut pdir),
+        )?);
+
 
         if lfs_pair_cmp(&dir.pair, &lpair) == 0 {
             *dir = ldir;
