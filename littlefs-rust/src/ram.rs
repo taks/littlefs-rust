@@ -14,6 +14,7 @@ pub struct RamStorage<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> {
 }
 
 impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> RamStorage<BLOCK_SIZE, BLOCK_COUNT> {
+    #[allow(clippy::new_without_default)]
     /// Create a new RAM-backed storage with the given block geometry.
     pub fn new() -> Self {
         let size = (BLOCK_SIZE as usize)
