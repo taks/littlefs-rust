@@ -333,117 +333,116 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
     use crate::tag::lfs_mktag;
     use crate::util::{lfs_alignup, lfs_min, lfs_tobe32, lfs_tole32};
 
-    unsafe {
-        let cfg = lfs.cfg.as_ref().unwrap();
-        let block_size = cfg.block_size;
-        let prog_size = cfg.prog_size;
+    let cfg = unsafe { lfs.cfg.as_ref().unwrap() };
+    let block_size = cfg.block_size;
+    let prog_size = cfg.prog_size;
 
-        let end = lfs_alignup(lfs_min(commit.off + 20, block_size), prog_size);
+    let end = lfs_alignup(lfs_min(commit.off + 20, block_size), prog_size);
 
-        let mut off1: lfs_off_t = 0;
-        let mut crc1: u32 = 0;
+    let mut off1: lfs_off_t = 0;
+    let mut crc1: u32 = 0;
 
-        while commit.off < end {
-            let noff = lfs_min(end - (commit.off + 4), 0x3fe) + (commit.off + 4);
-            let noff = if noff < end {
-                lfs_min(noff, end - 20)
-            } else {
-                noff
-            };
+    while commit.off < end {
+        let noff = lfs_min(end - (commit.off + 4), 0x3fe) + (commit.off + 4);
+        let noff = if noff < end {
+            lfs_min(noff, end - 20)
+        } else {
+            noff
+        };
 
-            let mut eperturb: u8 = 0xff;
-            if noff >= end && noff <= block_size - prog_size {
-                let ret = crate::bd::bd::lfs_bd_read(
-                    lfs,
-                    None,
-                    &mut *lfs.rcache.get(),
-                    prog_size,
-                    commit.block,
-                    noff,
-                    eperturb.as_mut_bytes(),
-                );
-                if let Err(err) = ret
-                    && err != Error::Corrupt
-                {
-                    return crate::lfs_pass_err!(ret);
-                }
-            }
-
-            let ntag = lfs_mktag(
-                crate::lfs_type::lfs_type::LFS_TYPE_CCRC + (u16::from(!eperturb) >> 7),
-                0x3ff,
-                noff - (commit.off + 4),
-            );
-
-            let xor_tag = lfs_tobe32(ntag ^ commit.ptag);
-            commit.crc = lfs_crc(commit.crc, xor_tag.as_bytes());
-            let crc_le = lfs_tole32(commit.crc);
-
-            let mut ccrc: [u8; 8] = [0; 8];
-            core::ptr::copy_nonoverlapping(&xor_tag as *const _ as *const u8, ccrc.as_mut_ptr(), 4);
-            core::ptr::copy_nonoverlapping(
-                &crc_le as *const _ as *const u8,
-                ccrc.as_mut_ptr().add(4),
-                4,
-            );
-
-            lfs_bd_prog(
+        let mut eperturb: u8 = 0xff;
+        if noff >= end && noff <= block_size - prog_size {
+            let ret = crate::bd::bd::lfs_bd_read(
                 lfs,
-                &mut *lfs.pcache.get(),
-                &mut *lfs.rcache.get(),
-                false,
+                None,
+                unsafe { &mut *lfs.rcache.get() },
+                prog_size,
                 commit.block,
-                commit.off,
-                &ccrc,
+                noff,
+                eperturb.as_mut_bytes(),
+            );
+            if let Err(err) = ret
+                && err != Error::Corrupt
+            {
+                return crate::lfs_pass_err!(ret);
+            }
+        }
+
+        let ntag = lfs_mktag(
+            crate::lfs_type::lfs_type::LFS_TYPE_CCRC + (u16::from(!eperturb) >> 7),
+            0x3ff,
+            noff - (commit.off + 4),
+        );
+
+        let xor_tag = lfs_tobe32(ntag ^ commit.ptag);
+        commit.crc = lfs_crc(commit.crc, xor_tag.as_bytes());
+        let crc_le = lfs_tole32(commit.crc);
+
+        let mut ccrc: [u8; 8] = [0; 8];
+        ccrc[..4].copy_from_slice(&xor_tag.as_bytes());
+        ccrc[4..].copy_from_slice(crc_le.as_bytes());
+
+        lfs_bd_prog(
+            lfs,
+            unsafe { &mut *lfs.pcache.get() },
+            unsafe { &mut *lfs.rcache.get() },
+            false,
+            commit.block,
+            commit.off,
+            &ccrc,
+        )?;
+
+        if off1 == 0 {
+            off1 = commit.off + 4;
+            crc1 = commit.crc;
+        }
+
+        commit.off = noff;
+        commit.ptag = ntag ^ ((0x80 & !eperturb) as u32) << 24;
+        commit.crc = 0xffff_ffff;
+
+        if noff >= end || noff >= lfs.pcache.get_mut().off + cfg.cache_size {
+            lfs_bd_sync(
+                lfs,
+                unsafe { &mut *lfs.pcache.get() },
+                unsafe { &mut *lfs.rcache.get() },
+                false,
             )?;
-
-            if off1 == 0 {
-                off1 = commit.off + 4;
-                crc1 = commit.crc;
-            }
-
-            commit.off = noff;
-            commit.ptag = ntag ^ ((0x80 & !eperturb) as u32) << 24;
-            commit.crc = 0xffff_ffff;
-
-            if noff >= end || noff >= lfs.pcache.get_mut().off + cfg.cache_size {
-                lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false)?;
-            }
         }
-
-        let mut crc: u32 = 0xffff_ffff;
-        lfs_bd_crc(
-            lfs,
-            None,
-            &mut *lfs.rcache.get(),
-            off1 + 4,
-            commit.block,
-            commit.begin,
-            off1 - commit.begin,
-            &mut crc,
-        )?;
-
-        if crc != crc1 {
-            return crate::lfs_err!(Err(Error::Corrupt));
-        }
-
-        lfs_bd_crc(
-            lfs,
-            None,
-            &mut *lfs.rcache.get(),
-            4,
-            commit.block,
-            off1,
-            4,
-            &mut crc,
-        )?;
-
-        if crc != 0 {
-            return crate::lfs_err!(Err(Error::Corrupt));
-        }
-
-        Ok(())
     }
+
+    let mut crc: u32 = 0xffff_ffff;
+    lfs_bd_crc(
+        lfs,
+        None,
+        unsafe { &mut *lfs.rcache.get() },
+        off1 + 4,
+        commit.block,
+        commit.begin,
+        off1 - commit.begin,
+        &mut crc,
+    )?;
+
+    if crc != crc1 {
+        return crate::lfs_err!(Err(Error::Corrupt));
+    }
+
+    lfs_bd_crc(
+        lfs,
+        None,
+        unsafe { &mut *lfs.rcache.get() },
+        4,
+        commit.block,
+        off1,
+        4,
+        &mut crc,
+    )?;
+
+    if crc != 0 {
+        return crate::lfs_err!(Err(Error::Corrupt));
+    }
+
+    Ok(())
 }
 
 /// Per lfs.c lfs_dir_alloc (lines 1815-1857)
@@ -630,7 +629,7 @@ pub fn lfs_dir_split(
     lfs: &mut Lfs,
     dir: &mut LfsMdir,
     attrs: &[crate::tag::lfs_mattr],
-    source: *const LfsMdir,
+    source: &LfsMdir,
     split: u16,
     end: u16,
 ) -> Result<(), Error> {
@@ -764,19 +763,10 @@ fn lfs_dir_commit_commit(
 ///             && ((dir->rev + 1) % ((lfs->cfg->block_cycles+1)|1) == 0));
 /// }
 /// ```
-pub fn lfs_dir_needsrelocation(lfs: *const Lfs, dir: *const LfsMdir) -> bool {
-    unsafe {
-        let cfg = (*lfs).cfg.as_ref();
-        match cfg {
-            None => false,
-            Some(c) if c.block_cycles <= 0 => false, // C: block_cycles > 0 required
-            Some(c) => {
-                let modulus = ((c.block_cycles as u32).wrapping_add(1)) | 1;
-                let dir_ref = &*dir;
-                (dir_ref.rev.wrapping_add(1)).is_multiple_of(modulus)
-            }
-        }
-    }
+pub fn lfs_dir_needsrelocation(lfs: &Lfs, dir: &LfsMdir) -> bool {
+    let cfg = unsafe { lfs.cfg.as_ref().unwrap() };
+
+    cfg.block_cycles > 0 && (dir.rev + 1).is_multiple_of(((cfg.block_cycles as u32) + 1) | 1)
 }
 
 /// Per lfs.c lfs_dir_compact (lines 1952-2123)
@@ -958,7 +948,7 @@ pub fn lfs_dir_compact(
     lfs: &mut Lfs,
     dir: &mut LfsMdir,
     attrs_slice: &[crate::tag::lfs_mattr],
-    source: *const LfsMdir,
+    source: &LfsMdir,
     begin: u16,
     end: u16,
 ) -> Result<i32, Error> {
@@ -1408,7 +1398,7 @@ pub fn lfs_dir_splittingcompact(
     lfs: &mut Lfs,
     dir: &mut LfsMdir,
     attrs: &[crate::tag::lfs_mattr],
-    source: *const LfsMdir,
+    source: &LfsMdir,
     begin: u16,
     end: u16,
 ) -> Result<i32, Error> {
@@ -1864,7 +1854,15 @@ pub fn lfs_dir_relocatingcommit(
 
         if do_compact {
             lfs_cache_drop(lfs, &mut *lfs.pcache.get());
-            state = lfs_dir_splittingcompact(lfs, dir, attrs, dir, 0, dir.count)?;
+            let dir = UnsafeCell::new(&mut *dir);
+            state = lfs_dir_splittingcompact(
+                lfs,
+                *dir.get(),
+                attrs,
+                *dir.get(),
+                0,
+                (*dir.get()).count,
+            )?;
         }
 
         relocatingcommit_fixmlist(lfs, dir, pair, attrs, state)

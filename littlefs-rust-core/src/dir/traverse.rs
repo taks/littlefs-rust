@@ -235,7 +235,7 @@ pub fn lfs_dir_getread(
     lfs: &mut crate::fs::Lfs,
     dir: &LfsMdir,
     pcache: *const LfsCache,
-    rcache: *mut LfsCache,
+    rcache: &mut LfsCache,
     hint: lfs_size_t,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
@@ -455,7 +455,7 @@ const EMPTY_ATTRS: &[crate::tag::lfs_mattr] = &[];
 /// When the filter marks redundant (returns 1, sets tag=NOOP), we store the tag we were
 /// processing so it still gets committed when we pop.
 struct LfsDirTraverseStack<'a> {
-    dir: *const LfsMdir,
+    dir: &'a LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
     attr_i: usize,
@@ -693,7 +693,7 @@ fn dispatch_tag(
 #[allow(clippy::type_complexity)]
 pub fn lfs_dir_traverse(
     lfs: &crate::fs::Lfs,
-    dir: *const LfsMdir,
+    dir: &LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
     attrs_slice: &[crate::tag::lfs_mattr],
@@ -756,9 +756,7 @@ pub fn lfs_dir_traverse(
                 // Per C: get next tag from disk or attrs. Never pop here.
                 // Pop only happens in PopAndProcess (after exhaust or callback res!=0).
                 let (tag, buffer) = {
-                    let dir_ref = unsafe { &*dir };
-
-                    if off + lfs_tag_dsize(ptag) < dir_ref.off {
+                    if off + lfs_tag_dsize(ptag) < dir.off {
                         crate::lfs_trace!(
                             "traverse GetNextTag: reading from disk dir.pair[0]={} off={}",
                             dir_ref.pair[0],
@@ -772,14 +770,14 @@ pub fn lfs_dir_traverse(
                             None,
                             unsafe { &mut *lfs.rcache.get() },
                             core::mem::size_of::<lfs_tag_t>() as u32,
-                            dir_ref.pair[0],
+                            dir.pair[0],
                             off,
                             tag_raw.as_mut_bytes(),
                         )?;
 
                         let tag_val = (lfs_frombe32(tag_raw) ^ ptag) | 0x8000_0000;
                         disk = crate::tag::lfs_diskoff {
-                            block: dir_ref.pair[0],
+                            block: dir.pair[0],
                             off: off + 4,
                         };
                         ptag = tag_val;

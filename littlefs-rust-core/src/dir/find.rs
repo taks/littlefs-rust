@@ -65,34 +65,33 @@ pub fn lfs_dir_find_match(
     if data.is_null() {
         return Ok(core::cmp::Ordering::Less);
     }
-    unsafe {
-        let name = &*(data as *const LfsDirFindMatch);
-        let disk = &*(buffer as *const lfs_diskoff);
-        let lfs = &mut *name.lfs;
 
-        let diff = lfs_min(name.size, lfs_tag_size(tag));
-        let res = lfs_bd_cmp(
-            lfs,
-            None,
-            &mut *lfs.rcache.get(),
-            diff,
-            disk.block,
-            disk.off,
-            name.name.as_ptr(),
-            diff,
-        );
-        if res != Ok(core::cmp::Ordering::Equal) {
-            return res;
-        }
-        if name.size != lfs_tag_size(tag) {
-            return if name.size < lfs_tag_size(tag) {
-                Ok(core::cmp::Ordering::Less)
-            } else {
-                Ok(core::cmp::Ordering::Greater)
-            };
-        }
-        Ok(core::cmp::Ordering::Equal)
+    let name = unsafe { &*(data as *const LfsDirFindMatch) };
+    let disk = unsafe { &*(buffer as *const lfs_diskoff) };
+    let lfs = unsafe { &mut *name.lfs };
+
+    let diff = lfs_min(name.size, lfs_tag_size(tag));
+    let res = lfs_bd_cmp(
+        lfs,
+        None,
+        unsafe { &mut *lfs.rcache.get() },
+        diff,
+        disk.block,
+        disk.off,
+        name.name.as_ptr(),
+        diff,
+    );
+    if res != Ok(core::cmp::Ordering::Equal) {
+        return res;
     }
+    if name.size != lfs_tag_size(tag) {
+        return if name.size < lfs_tag_size(tag) {
+            Ok(core::cmp::Ordering::Less)
+        } else {
+            Ok(core::cmp::Ordering::Greater)
+        };
+    }
+    Ok(core::cmp::Ordering::Equal)
 }
 
 /// Per lfs.c lfs_dir_find (lines 1483-1590)
