@@ -4,8 +4,8 @@ use zerocopy::IntoBytes;
 
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
-use crate::lfs_pass_err;
 use crate::types::lfs_block_t;
+use crate::{lfs_debug, lfs_pass_err};
 
 /// Per lfs.c lfs_fs_prepsuperblock (lines 4888-4892)
 ///
@@ -358,30 +358,8 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
             };
             let mut dir = core::mem::zeroed::<LfsMdir>();
             let mut moreorphans = false;
-            #[cfg(feature = "loop_limits")]
-            let mut iter: u32 = 0;
-            #[cfg(feature = "loop_limits")]
-            const MAX_DEORPHAN_ITER: u32 = 512;
 
             while !crate::util::lfs_pair_isnull(&pdir.tail) {
-                #[cfg(feature = "loop_limits")]
-                {
-                    if iter >= MAX_DEORPHAN_ITER {
-                        panic!(
-                            "loop_limits: MAX_DEORPHAN_ITER ({}) exceeded",
-                            MAX_DEORPHAN_ITER
-                        );
-                    }
-                    if iter > 0 && iter.is_multiple_of(20) {
-                        crate::lfs_trace!(
-                            "deorphan: pass={} iter={} tail={:?}",
-                            pass,
-                            iter,
-                            pdir.tail
-                        );
-                    }
-                    iter += 1;
-                }
                 lfs_dir_fetch(lfs, &mut dir, &pdir.tail)?;
 
                 if !pdir.split {
@@ -440,8 +418,17 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                         }
                     }
 
+                    // note we only check for full orphans if we may have had a
+                    // power-loss, otherwise orphans are created intentionally
+                    // during operations such as lfs_mkdir
                     if pass == 1 && tag == Err(Error::NoEntry) && powerloss {
-                        lfs_pass_err!(crate::dir::fetch::lfs_dir_getgstate(lfs, &dir, &mut lfs.gdelta.borrow_mut()))?;
+                        lfs_debug!("Fixing orphan 0x{:x}, 0x{:x}", pdir.tail[0], pdir.tail[1]);
+
+                        lfs_pass_err!(crate::dir::fetch::lfs_dir_getgstate(
+                            lfs,
+                            &dir,
+                            &mut lfs.gdelta.borrow_mut()
+                        ))?;
 
                         let mut dir_tail = dir.tail;
                         lfs_pair_tole32(&mut dir_tail);
