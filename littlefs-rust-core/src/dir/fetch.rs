@@ -312,7 +312,7 @@ use core::mem;
 /// ```
 #[allow(clippy::type_complexity)]
 pub fn lfs_dir_fetchmatch(
-    lfs: &mut crate::fs::Lfs<T>
+    lfs: &mut crate::fs::Lfs<T, U>
     dir: &mut LfsMdir,
     pair: [lfs_block_t; 2],
     fmask: lfs_tag_t,
@@ -694,7 +694,7 @@ pub fn lfs_dir_fetchmatch(
 /// }
 /// ```
 pub fn lfs_dir_fetch(
-    lfs: &mut crate::fs::Lfs<T>
+    lfs: &mut crate::fs::Lfs<T, U>
     dir: &mut LfsMdir,
     pair: [lfs_block_t; 2],
 ) -> Result<(), Error> {
@@ -734,7 +734,7 @@ pub fn lfs_dir_fetch(
 /// }
 /// ```
 pub fn lfs_dir_getgstate(
-    lfs: &crate::fs::Lfs<T>
+    lfs: &crate::fs::Lfs<T, U>
     dir: &LfsMdir,
     gstate: &mut LfsGstate,
 ) -> Result<(), Error> {
@@ -804,7 +804,7 @@ pub fn lfs_dir_getgstate(
 /// }
 /// ```
 pub fn lfs_dir_getinfo(
-    lfs: &mut crate::fs::Lfs<T>
+    lfs: &mut crate::fs::Lfs<T, U>
     dir: &LfsMdir,
     id: u16,
     info: &mut LfsInfo,

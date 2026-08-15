@@ -19,7 +19,7 @@ use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_cache_drop(_lfs: &Lfs<T> rcache: &mut LfsCache) {
+pub fn lfs_cache_drop(_lfs: &Lfs<T, U> rcache: &mut LfsCache) {
     rcache.block = crate::types::LFS_BLOCK_NULL;
 }
 
@@ -34,7 +34,7 @@ pub fn lfs_cache_drop(_lfs: &Lfs<T> rcache: &mut LfsCache) {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_cache_zero(lfs: &Lfs<T> pcache: &mut LfsCache) {
+pub fn lfs_cache_zero(lfs: &Lfs<T, U> pcache: &mut LfsCache) {
     unsafe {
         let cfg = lfs.cfg;
         let cache_size = (*cfg).cache_size as usize;
@@ -135,7 +135,7 @@ pub fn lfs_cache_zero(lfs: &Lfs<T> pcache: &mut LfsCache) {
 /// }
 /// ```
 pub fn lfs_bd_read(
-    lfs: &Lfs<T>
+    lfs: &Lfs<T, U>
     pcache: Option<&LfsCache>,
     rcache: &mut LfsCache,
     hint: lfs_size_t,
@@ -278,7 +278,7 @@ pub fn lfs_bd_read(
 /// }
 /// ```
 pub fn lfs_bd_cmp(
-    lfs: &Lfs<T>
+    lfs: &Lfs<T, U>
     pcache: Option<&LfsCache>,
     rcache: &mut LfsCache,
     hint: lfs_size_t,
@@ -342,7 +342,7 @@ pub fn lfs_bd_cmp(
 /// }
 /// ```
 pub fn lfs_bd_crc(
-    lfs: &Lfs<T>
+    lfs: &Lfs<T, U>
     pcache: Option<&LfsCache>,
     rcache: &mut LfsCache,
     hint: lfs_size_t,
@@ -414,7 +414,7 @@ pub fn lfs_bd_crc(
 /// #endif
 /// ```
 pub fn lfs_bd_flush(
-    lfs: &Lfs<T>
+    lfs: &Lfs<T, U>
     pcache: &mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
@@ -490,7 +490,7 @@ pub fn lfs_bd_flush(
 /// #endif
 /// ```
 pub fn lfs_bd_sync(
-    lfs: &Lfs<T>
+    lfs: &Lfs<T, U>
     pcache: &mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
@@ -562,7 +562,7 @@ pub fn lfs_bd_sync(
 /// #endif
 /// ```
 pub fn lfs_bd_prog(
-    lfs: &Lfs<T>
+    lfs: &Lfs<T, U>
     pcache: &mut LfsCache,
     rcache: &mut LfsCache,
     validate: bool,
@@ -649,7 +649,7 @@ pub fn lfs_bd_prog(
 /// }
 /// #endif
 /// ```
-pub fn lfs_bd_erase(lfs: &Lfs<T> block: lfs_block_t) -> Result<(), Error> {
+pub fn lfs_bd_erase(lfs: &Lfs<T, U> block: lfs_block_t) -> Result<(), Error> {
     unsafe {
         crate::lfs_assert!(block < lfs.block_count);
         let erase = match (*lfs.cfg).erase {

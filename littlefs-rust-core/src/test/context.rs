@@ -1,4 +1,4 @@
-//! TestContext: env + Lfs<T> ready for format/mount. Single setup for unit tests.
+//! TestContext: env + Lfs<T, U> ready for format/mount. Single setup for unit tests.
 
 use alloc::vec::Vec;
 

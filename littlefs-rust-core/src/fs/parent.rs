@@ -40,7 +40,7 @@ use crate::{error::Error, lfs_pass_err};
 /// #endif
 /// ```
 pub fn lfs_fs_pred(
-    lfs: &mut crate::fs::Lfs<T>
+    lfs: &mut crate::fs::Lfs<T, U>
     pair: &[crate::types::lfs_block_t; 2],
     pdir: &mut crate::dir::LfsMdir,
 ) -> Result<(), Error> {
@@ -99,8 +99,8 @@ pub fn lfs_fs_pred(
 
 /// C: lfs.c:4835-4853
 #[repr(C)]
-pub struct LfsFsParentMatch<T> {
-    pub lfs: *mut crate::fs::Lfs<T>,
+pub struct LfsFsParentMatch<T, U> {
+    pub lfs: *mut crate::fs::Lfs<T, U>,
     pub pair: [crate::types::lfs_block_t; 2],
 }
 
@@ -120,7 +120,7 @@ pub struct LfsFsParentMatch<T> {
 ///     return (lfs_pair_cmp(child, find->pair) == 0) ? LFS_CMP_EQ : LFS_CMP_LT;
 /// }
 /// ```
-pub fn lfs_fs_parent_match<T>(
+pub fn lfs_fs_parent_match<T, U>(
     data: *mut core::ffi::c_void,
     _tag: crate::types::lfs_tag_t,
     disk: &crate::tag::lfs_diskoff,
@@ -131,7 +131,7 @@ pub fn lfs_fs_parent_match<T>(
     if data.is_null() {
         return Ok(core::cmp::Ordering::Less);
     }
-    let find = unsafe { &*(data as *const LfsFsParentMatch<T>) };
+    let find = unsafe { &*(data as *const LfsFsParentMatch<T, U>) };
 
     let mut child: [crate::types::lfs_block_t; 2] = [0, 0];
     let lfs = unsafe { find.lfs.as_ref().unwrap() };
@@ -190,7 +190,7 @@ pub fn lfs_fs_parent_match<T>(
 /// #endif
 /// ```
 pub fn lfs_fs_parent(
-    lfs: &mut crate::fs::Lfs<T>
+    lfs: &mut crate::fs::Lfs<T, U>
     pair: &[crate::types::lfs_block_t; 2],
     parent: &mut crate::dir::LfsMdir,
 ) -> Result<crate::types::lfs_tag_t, Error> {

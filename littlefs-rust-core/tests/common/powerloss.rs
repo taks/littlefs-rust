@@ -10,7 +10,7 @@
 
 use core::cell::Cell;
 
-use littlefs_rust_core::{Lfs<T> LfsConfig, error::Error};
+use littlefs_rust_core::{Lfs, LfsConfig, error::Error};
 
 use super::{BLOCK_SIZE, RamStorage};
 
@@ -139,7 +139,7 @@ fn powerloss_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     Ok(())
 }
 
-fn powerloss_sync(cfg: &LfsConfig) -> Result<(), Error> {
+fn powerloss_sync(cfg: &LfsConfig<T, U>) -> Result<(), Error> {
     let ctx = cfg.context as *mut PowerLossCtx;
     let ctx = unsafe { &mut *ctx };
     ctx.clear_ooo_tracking();
@@ -288,8 +288,8 @@ pub fn run_powerloss_linear<O, V>(
     mut verify: V,
 ) -> Result<(), Error>
 where
-    O: FnMut(&mut Lfs<T> &LfsConfig) -> Result<(), Error>,
-    V: FnMut(&mut Lfs<T> &LfsConfig) -> Result<(), Error>,
+    O: FnMut(&mut Lfs<T, U>, &LfsConfig<T, U>) -> Result<(), Error>,
+    V: FnMut(&mut Lfs<T, U>, &LfsConfig<T, U>) -> Result<(), Error>,
 {
     for n in 1..=max_iter {
         env.restore(snapshot);
@@ -312,7 +312,7 @@ where
 /// fail at write N=1, 2, 4, 8, 16, … Useful for faster smoke testing.
 ///
 /// Upstream: test_runner.c `log` mode.
-pub fn run_powerloss_log<O, V>(
+pub fn run_powerloss_log<O, V, T, U>(
     env: &mut PowerLossEnv,
     snapshot: &[u8],
     max_iter: u32,
@@ -320,8 +320,8 @@ pub fn run_powerloss_log<O, V>(
     mut verify: V,
 ) -> Result<(), Error>
 where
-    O: FnMut(&mut Lfs<T> &LfsConfig) -> Result<(), Error>,
-    V: FnMut(&mut Lfs<T> &LfsConfig) -> Result<(), Error>,
+    O: FnMut(&mut Lfs<T, U>, &LfsConfig<T, U>) -> Result<(), Error>,
+    V: FnMut(&mut Lfs<T, U>, &LfsConfig<T, U>) -> Result<(), Error>,
 {
     let mut n: u32 = 1;
     while n <= max_iter {
@@ -356,8 +356,8 @@ pub fn run_powerloss_exhaustive<O, V>(
     mut verify: V,
 ) -> Result<(), Error>
 where
-    O: FnMut(&mut Lfs<T> &LfsConfig) -> Result<(), Error>,
-    V: FnMut(&mut Lfs<T> &LfsConfig) -> Result<(), Error>,
+    O: FnMut(&mut Lfs<T, U>, &LfsConfig<T, U>) -> Result<(), Error>,
+    V: FnMut(&mut Lfs<T, U>, &LfsConfig<T, U>) -> Result<(), Error>,
 {
     run_powerloss_exhaustive_inner(env, snapshot, max_iter, max_depth, &mut op, &mut verify)
 }
@@ -371,8 +371,8 @@ fn run_powerloss_exhaustive_inner<O, V>(
     verify: &mut V,
 ) -> Result<(), Error>
 where
-    O: FnMut(&mut Lfs<T> &LfsConfig) -> Result<(), Error>,
-    V: FnMut(&mut Lfs<T> &LfsConfig) -> Result<(), Error>,
+    O: FnMut(&mut Lfs<T, U>, &LfsConfig<T, U>) -> Result<(), Error>,
+    V: FnMut(&mut Lfs<T, U>, &LfsConfig<T, U>) -> Result<(), Error>,
 {
     for n in 1..=max_iter {
         env.restore(snapshot);

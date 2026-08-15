@@ -98,8 +98,8 @@ use crate::util::lfs_min;
 /// };
 /// ```
 pub fn lfs_format_<T: Deref<Target = [u8]>>(
-    lfs: &mut super::lfs::Lfs<T>,
-    cfg: &crate::lfs_config::LfsConfig<T>,
+    lfs: &mut super::lfs::Lfs<T, U>,
+    cfg: &crate::lfs_config::LfsConfig<T, U>,
 ) -> Result<(), Error> {
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
@@ -215,8 +215,8 @@ pub fn lfs_format_<T: Deref<Target = [u8]>>(
 /// Caller must ensure `lfs` points to valid (e.g. zeroed) `Lfs`, `cfg` to valid `LfsConfig`,
 /// and `out` to valid `TraverseTestOut` for the duration of the call.
 pub unsafe fn test_traverse_format_attrs<T: Deref<Target = [u8]>>(
-    lfs: &mut super::lfs::Lfs<T>,
-    cfg: &crate::lfs_config::LfsConfig<T>,
+    lfs: &mut super::lfs::Lfs<T, U>,
+    cfg: &crate::lfs_config::LfsConfig<T, U>,
     out: *mut crate::dir::traverse::TraverseTestOut,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
@@ -319,8 +319,8 @@ pub unsafe fn test_traverse_format_attrs<T: Deref<Target = [u8]>>(
 /// # Safety
 /// Same as `test_traverse_format_attrs`.
 pub unsafe fn test_traverse_filter_gets_superblock_after_push(
-    lfs: &mut super::lfs::Lfs<T>
-    cfg: &crate::lfs_config::LfsConfig<T>,
+    lfs: &mut super::lfs::Lfs<T, U>
+    cfg: &crate::lfs_config::LfsConfig<T, U>,
     out: *mut crate::dir::traverse::TraverseTestOut,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
@@ -425,8 +425,8 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
 /// Caller must ensure `lfs` points to valid (e.g. zeroed) `Lfs` and `cfg` to valid
 /// `LfsConfig` for the duration of the call.
 pub unsafe fn test_format_minimal_superblock<T: Deref<Target=[u8]>>(
-    lfs: &mut super::lfs::Lfs<T>,
-    cfg: &crate::lfs_config::LfsConfig<T>,
+    lfs: &mut super::lfs::Lfs<T, U>,
+    cfg: &crate::lfs_config::LfsConfig<T, U>,
 ) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_sync};
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;

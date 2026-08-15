@@ -12,7 +12,7 @@ use common::{
     config_with_wear_leveling_full, init_wear_leveling_context,
 };
 use littlefs_rust_core::{
-    Lfs<T> LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
+    Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
     lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_unmount,
 };
 use rstest::rstest;
@@ -281,7 +281,7 @@ fn test_badblocks_superblocks(
 
 // ── Helpers shared by region/alternating tests ──────────────────────────────
 
-fn badblocks_create_dirs_and_files(lfs: &mut Lfs<T>) {
+fn badblocks_create_dirs_and_files(lfs: &mut Lfs<T, U>) {
     for i in 1..10 {
         let mut buffer = [0u8; 1024];
         for j in 0..NAMEMULT {
@@ -317,7 +317,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs<T>) {
     }
 }
 
-fn badblocks_verify_dirs_and_files(lfs: &mut Lfs<T>) {
+fn badblocks_verify_dirs_and_files(lfs: &mut Lfs<T, U>) {
     for i in 1..10 {
         let mut buffer = [0u8; 1024];
         for j in 0..NAMEMULT {

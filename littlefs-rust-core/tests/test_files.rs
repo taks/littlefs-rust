@@ -12,7 +12,7 @@ use common::{
     verify_prng_file, verify_prng_file_with_state, write_prng_file, write_prng_file_result,
 };
 use littlefs_rust_core::{
-    Lfs<T> LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
+    Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_rewind, lfs_file_seek, lfs_file_size, lfs_file_sync, lfs_file_tell, lfs_file_truncate,
     lfs_file_write, lfs_format, lfs_mount, lfs_unmount,
 };
@@ -318,7 +318,7 @@ fn test_files_reentrant_write(
 
     let max_iter = 5000;
 
-    let op = |lfs: &mut Lfs<T> cfg: &LfsConfig| -> Result<(), Error> {
+    let op = |lfs: &mut Lfs<T, U>, cfg: &LfsConfig| -> Result<(), Error> {
         let err = littlefs_rust_core::lfs_mount(lfs, cfg);
         if err.is_err() {
             let _ = littlefs_rust_core::lfs_format(lfs, cfg);
@@ -344,7 +344,7 @@ fn test_files_reentrant_write(
         Ok(())
     };
 
-    let verify = |lfs: &mut Lfs<T> cfg: &LfsConfig| -> Result<(), Error> {
+    let verify = |lfs: &mut Lfs<T, U>, cfg: &LfsConfig| -> Result<(), Error> {
         let remount = littlefs_rust_core::lfs_mount(lfs, cfg);
         if remount.is_err() {
             return Ok(());
@@ -397,7 +397,7 @@ fn test_files_reentrant_write_sync(
 
     let max_iter = 5000;
 
-    let op = |lfs: &mut Lfs<T> cfg: &LfsConfig| -> Result<(), Error> {
+    let op = |lfs: &mut Lfs<T, U>, cfg: &LfsConfig| -> Result<(), Error> {
         let err = littlefs_rust_core::lfs_mount(lfs, cfg);
         if err.is_err() {
             let _ = littlefs_rust_core::lfs_format(lfs, cfg);
@@ -458,7 +458,7 @@ fn test_files_reentrant_write_sync(
         Ok(())
     };
 
-    let verify = |lfs: &mut Lfs<T> cfg: &LfsConfig| -> Result<(), Error> {
+    let verify = |lfs: &mut Lfs<T, U>, cfg: &LfsConfig| -> Result<(), Error> {
         if littlefs_rust_core::lfs_mount(lfs, cfg).is_err() {
             return Ok(());
         }
@@ -588,7 +588,7 @@ fn test_files_many_power_loss() {
 
     let max_iter = 2000;
 
-    let op = |lfs: &mut Lfs<T> cfg: &LfsConfig| -> Result<(), Error> {
+    let op = |lfs: &mut Lfs<T, U>, cfg: &LfsConfig| -> Result<(), Error> {
         let err = littlefs_rust_core::lfs_mount(lfs, cfg);
         if err.is_err() {
             let _ = littlefs_rust_core::lfs_format(lfs, cfg);
@@ -620,7 +620,7 @@ fn test_files_many_power_loss() {
         Ok(())
     };
 
-    let verify = |_lfs: &mut Lfs<T> _cfg: &LfsConfig| -> Result<(), Error> { Ok(()) };
+    let verify = |_lfs: &mut Lfs<T, U>, _cfg: &LfsConfig| -> Result<(), Error> { Ok(()) };
 
     let result = run_powerloss_linear(&mut env, &snapshot, max_iter, op, verify);
     result.expect("many_power_loss should eventually succeed");

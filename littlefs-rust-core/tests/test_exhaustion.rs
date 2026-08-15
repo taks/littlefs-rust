@@ -12,7 +12,7 @@ use common::{
     init_wear_leveling_context, test_prng,
 };
 use littlefs_rust_core::{
-    Lfs<T> LfsConfig, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
+    Lfs, LfsConfig, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_unmount,
 };
 use rstest::rstest;
@@ -32,7 +32,7 @@ fn init_exhaustion_env(
 /// verify after each cycle, repeat until NOSPC. Returns number of completed cycles.
 ///
 /// C: test_exhaustion.toml — shared pattern across normal/superblocks/wear_leveling
-fn run_exhaustion(lfs: &mut Lfs<T> config: &LfsConfig, prefix: &str, files: u32) -> u32 {
+fn run_exhaustion(lfs: &mut Lfs<T, U>, config: &LfsConfig, prefix: &str, files: u32) -> u32 {
     let mut cycle: u32 = 0;
     'outer: loop {
         assert_ok(lfs_mount(lfs, config));
@@ -104,7 +104,7 @@ fn run_exhaustion(lfs: &mut Lfs<T> config: &LfsConfig, prefix: &str, files: u32)
 /// After exhaustion: remount and stat all files to verify they're still readable.
 ///
 /// C: `exhausted:` label in test_exhaustion.toml
-fn verify_after_exhaustion(lfs: &mut Lfs<T> config: &LfsConfig, prefix: &str, files: u32) {
+fn verify_after_exhaustion(lfs: &mut Lfs<T, U>, config: &LfsConfig, prefix: &str, files: u32) {
     assert_ok(lfs_mount(lfs, config));
     for i in 0..files {
         let path = &format!("{prefix}/test{i}");
@@ -180,7 +180,7 @@ fn test_exhaustion_superblocks(
 }
 
 /// Run exhaustion with files in root (no subdirectory prefix).
-fn run_exhaustion_root(lfs: &mut Lfs<T> config: &LfsConfig, files: u32) -> u32 {
+fn run_exhaustion_root(lfs: &mut Lfs<T, U>, config: &LfsConfig, files: u32) -> u32 {
     let mut cycle: u32 = 0;
     'outer: loop {
         assert_ok(lfs_mount(lfs, config));
@@ -243,7 +243,7 @@ fn run_exhaustion_root(lfs: &mut Lfs<T> config: &LfsConfig, files: u32) -> u32 {
     cycle
 }
 
-fn verify_after_exhaustion_root(lfs: &mut Lfs<T> config: &LfsConfig, files: u32) {
+fn verify_after_exhaustion_root(lfs: &mut Lfs<T, U>, config: &LfsConfig, files: u32) {
     assert_ok(lfs_mount(lfs, config));
     for i in 0..files {
         let path = &format!("test{i}");

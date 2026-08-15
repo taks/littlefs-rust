@@ -208,9 +208,9 @@ pub fn lfs_tortoise_detectcycles(
 ///     return err;
 /// }
 /// ```
-pub fn lfs_mount_<T: Deref<Target = [u8]>>(
-    lfs: &mut super::lfs::Lfs<T>,
-    cfg: &crate::lfs_config::LfsConfig<T>,
+pub fn lfs_mount_<T: Deref<Target = [u8]>, U: Deref<Target = [u8]>>(
+    lfs: &mut super::lfs::Lfs<T, U>,
+    cfg: &crate::lfs_config::LfsConfig<T, U>,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_drop;
     use crate::dir::fetch::{lfs_dir_fetchmatch, lfs_dir_getgstate};
@@ -401,6 +401,6 @@ pub fn lfs_mount_<T: Deref<Target = [u8]>>(
 ///
 ///
 /// ```
-pub fn lfs_unmount_<T>(lfs: &mut super::lfs::Lfs<T>) -> Result<(), Error> {
+pub fn lfs_unmount_<T, U>(lfs: &mut super::lfs::Lfs<T, U>) -> Result<(), Error> {
     crate::fs::init::lfs_deinit(lfs)
 }

@@ -16,7 +16,7 @@ use common::{
     read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::{
-    Lfs<T> LfsDir, LfsFile, LfsInfo, error::Error, lfs_dir_close, lfs_dir_open, lfs_file_close,
+    Lfs, LfsDir, LfsFile, LfsInfo, error::Error, lfs_dir_close, lfs_dir_open, lfs_file_close,
     lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
     lfs_unmount,
 };

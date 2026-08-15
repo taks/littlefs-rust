@@ -117,7 +117,7 @@ use crate::error::Error;
 ///
 /// C: lfs.c:4693-4794
 pub fn lfs_fs_traverse_(
-    lfs: &mut super::lfs::Lfs<T>
+    lfs: &mut super::lfs::Lfs<T, U>
     cb: fn(*mut core::ffi::c_void, crate::types::lfs_block_t) -> Result<(), Error>,
     data: *mut core::ffi::c_void,
     includeorphans: bool,

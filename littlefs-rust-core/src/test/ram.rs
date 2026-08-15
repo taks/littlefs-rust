@@ -81,7 +81,7 @@ fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
     Ok(())
 }
 
-fn ram_sync(_cfg: &LfsConfig) -> Result<(), Error> {
+fn ram_sync(_cfg: &LfsConfig<T, U>) -> Result<(), Error> {
     Ok(())
 }
 

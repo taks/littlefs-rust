@@ -14,7 +14,7 @@ use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_mattr;
 use littlefs_rust_core::lfs_type::lfs_type::*;
 use littlefs_rust_core::{
-    Lfs<T> LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMdir, lfs_ctz_fromle32, lfs_deinit, lfs_dir_commit,
+    Lfs, LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMdir, lfs_ctz_fromle32, lfs_deinit, lfs_dir_commit,
     lfs_dir_fetch, lfs_dir_get, lfs_dir_open, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_write, lfs_format, lfs_fs_prepmove, lfs_init, lfs_mkdir, lfs_mktag, lfs_mount,
     lfs_pair_fromle32, lfs_stat, lfs_tole32, lfs_unmount,

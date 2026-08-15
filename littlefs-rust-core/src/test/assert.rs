@@ -29,7 +29,7 @@ pub fn assert_block_has_magic(config: &LfsConfig, block: u32) {
 
 /// Panics if blocks 0 or 1 do not contain MAGIC.
 #[allow(unused)]
-pub fn assert_blocks_0_and_1_have_magic(config: &LfsConfig) {
+pub fn assert_blocks_0_and_1_have_magic(config: &LfsConfig<T, U>) {
     assert_block_has_magic(config, 0);
     assert_block_has_magic(config, 1);
 }

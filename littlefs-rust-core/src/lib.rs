@@ -86,7 +86,7 @@ pub use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_tole32};
 /// Format a block device with littlefs.
 /// Per lfs.h lfs_format. Calls lfs_format_ (lfs.c:4391).
 #[inline]
-pub fn lfs_format<T: Deref<Target = [u8]>>(lfs: &mut Lfs<T>, config: &LfsConfig<T>) -> Result<(), Error> {
+pub fn lfs_format<T: Deref<Target = [u8]>>(lfs: &mut Lfs<T, U>, config: &LfsConfig<T, U>) -> Result<(), Error> {
     crate::lfs_trace!("lfs_format({:p}, {:p})", lfs, config);
     let err = crate::fs::lfs_format_(lfs, config);
     crate::lfs_trace!("lfs_format -> {:?}", err);
@@ -96,7 +96,7 @@ pub fn lfs_format<T: Deref<Target = [u8]>>(lfs: &mut Lfs<T>, config: &LfsConfig<
 /// Mount a littlefs.
 /// Per lfs.h lfs_mount. Calls lfs_mount_ (lfs.c:4482).
 #[inline]
-pub fn lfs_mount<T:Deref<Target = [u8]>>(lfs: &mut Lfs<T>, config: &LfsConfig<T>) -> Result<(), Error> {
+pub fn lfs_mount<T:Deref<Target = [u8]>>(lfs: &mut Lfs<T, U>, config: &LfsConfig<T, U>) -> Result<(), Error> {
     crate::lfs_trace!("lfs_mount({:p}, {:p})", lfs, config);
     crate::fs::lfs_mount_(lfs, config)
 }
@@ -104,32 +104,32 @@ pub fn lfs_mount<T:Deref<Target = [u8]>>(lfs: &mut Lfs<T>, config: &LfsConfig<T>
 /// Unmount a littlefs.
 /// Per lfs.h lfs_unmount. Calls lfs_unmount_ (lfs.c:4647).
 #[inline]
-pub fn lfs_unmount(lfs: &mut Lfs<T>) -> Result<(), Error> {
+pub fn lfs_unmount(lfs: &mut Lfs<T, U>) -> Result<(), Error> {
     crate::fs::lfs_unmount_(lfs)
 }
 
 /// Remove a file or directory. Per lfs.h lfs_remove (lfs.c:6193-6195).
 #[inline]
-pub fn lfs_remove(lfs: &mut Lfs<T> path: &str) -> Result<(), Error> {
+pub fn lfs_remove(lfs: &mut Lfs<T, U> path: &str) -> Result<(), Error> {
     crate::fs::remove::lfs_remove_(lfs, path)
 }
 
 /// Rename or move a file or directory. Per lfs.h lfs_rename (lfs.c:6227-6231).
 #[inline]
-pub fn lfs_rename(lfs: &mut Lfs<T> oldpath: &str, newpath: &str) -> Result<(), Error> {
+pub fn lfs_rename(lfs: &mut Lfs<T, U> oldpath: &str, newpath: &str) -> Result<(), Error> {
     crate::fs::rename::lfs_rename_(lfs, oldpath, newpath)
 }
 
 /// Find info about a file or directory. Per lfs.h lfs_stat (lfs.c:6263-6267).
 #[inline]
-pub fn lfs_stat(lfs: &mut Lfs<T> path: &str, info: &mut LfsInfo) -> Result<(), Error> {
+pub fn lfs_stat(lfs: &mut Lfs<T, U> path: &str, info: &mut LfsInfo) -> Result<(), Error> {
     crate::fs::stat::lfs_stat_(lfs, path, info)
 }
 
 /// Get a custom attribute. Per lfs.h lfs_getattr (lfs.c:6090-6105).
 #[inline]
 pub fn lfs_getattr(
-    lfs: &mut Lfs<T>
+    lfs: &mut Lfs<T, U>
     path: &str,
     r#type: u8,
     buffer: &mut [u8],
@@ -140,7 +140,7 @@ pub fn lfs_getattr(
 /// Set custom attributes. Per lfs.h lfs_setattr (lfs.c:6471-6475).
 #[inline]
 pub fn lfs_setattr(
-    lfs: &mut Lfs<T>
+    lfs: &mut Lfs<T, U>
     path: &str,
     r#type: u8,
     buffer: &[u8],
@@ -151,14 +151,14 @@ pub fn lfs_setattr(
 
 /// Remove a custom attribute. Per lfs.h lfs_removeattr (lfs.c:6487-6491).
 #[inline]
-pub fn lfs_removeattr(lfs: &mut Lfs<T> path: &str, r#type: u8) -> Result<(), Error> {
+pub fn lfs_removeattr(lfs: &mut Lfs<T, U> path: &str, r#type: u8) -> Result<(), Error> {
     crate::fs::attr::lfs_removeattr_(lfs, path, r#type)
 }
 
 /// Open a file. Per lfs.h lfs_file_open (lfs.c:6140-6146).
 #[inline]
 pub fn lfs_file_open(
-    lfs: &mut Lfs<T>
+    lfs: &mut Lfs<T, U>
     file: &mut LfsFile,
     path: &str,
     flags: i32,
@@ -169,7 +169,7 @@ pub fn lfs_file_open(
 /// Open a file with extra configuration. Per lfs.h lfs_file_opencfg (lfs.c:6193-6197).
 #[inline]
 pub fn lfs_file_opencfg<'a>(
-    lfs: &mut Lfs<T>
+    lfs: &mut Lfs<T, U>
     file: &mut LfsFile,
     path: &str,
     flags: i32,
@@ -180,20 +180,20 @@ pub fn lfs_file_opencfg<'a>(
 
 /// Close a file. Per lfs.h lfs_file_close (lfs.c:6227-6231).
 #[inline]
-pub fn lfs_file_close(lfs: &mut Lfs<T> file: &mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_close(lfs: &mut Lfs<T, U> file: &mut LfsFile) -> Result<(), Error> {
     crate::file::ops::lfs_file_close_(lfs, file)
 }
 
 /// Synchronize a file on storage. Per lfs.h lfs_file_sync (lfs.c:6263-6267).
 #[inline]
-pub fn lfs_file_sync(lfs: &mut Lfs<T> file: &mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_sync(lfs: &mut Lfs<T, U> file: &mut LfsFile) -> Result<(), Error> {
     crate::file::ops::lfs_file_sync_(lfs, file)
 }
 
 /// Read data from file. Per lfs.h lfs_file_read (lfs.c:6210-6224).
 #[inline]
 pub fn lfs_file_read(
-    lfs: &mut Lfs<T>
+    lfs: &mut Lfs<T, U>
     file: &mut LfsFile,
     buffer: &mut [u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
@@ -203,7 +203,7 @@ pub fn lfs_file_read(
 /// Write data to file. Per lfs.h lfs_file_write (lfs.c:6228-6242).
 #[inline]
 pub fn lfs_file_write(
-    lfs: &mut Lfs<T>
+    lfs: &mut Lfs<T, U>
     file: &mut LfsFile,
     buffer: &[u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
@@ -213,7 +213,7 @@ pub fn lfs_file_write(
 /// Change the position of the file. Per lfs.h lfs_file_seek (lfs.c:6246-6260).
 #[inline]
 pub fn lfs_file_seek(
-    lfs: &mut Lfs<T>
+    lfs: &mut Lfs<T, U>
     file: &mut LfsFile,
     off: lfs_soff_t,
     whence: i32,
@@ -223,79 +223,79 @@ pub fn lfs_file_seek(
 
 /// Truncate the size of the file. Per lfs.h lfs_file_truncate (lfs.c:6471-6475).
 #[inline]
-pub fn lfs_file_truncate(lfs: &mut Lfs<T> file: &mut LfsFile, size: lfs_off_t) -> Result<(), Error> {
+pub fn lfs_file_truncate(lfs: &mut Lfs<T, U> file: &mut LfsFile, size: lfs_off_t) -> Result<(), Error> {
     crate::file::ops::lfs_file_truncate_(lfs, file, size)
 }
 
 /// Return the position of the file. Per lfs.h lfs_file_tell.
 #[inline]
-pub fn lfs_file_tell(_lfs: &mut Lfs<T> file: &LfsFile) -> lfs_soff_t {
+pub fn lfs_file_tell(_lfs: &mut Lfs<T, U> file: &LfsFile) -> lfs_soff_t {
     crate::file::ops::lfs_file_tell_(core::ptr::null(), file)
 }
 
 /// Change the position to the beginning of the file. Per lfs.h lfs_file_rewind (lfs.c:6487-6491).
 #[inline]
-pub fn lfs_file_rewind(lfs: &mut Lfs<T> file: &mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_rewind(lfs: &mut Lfs<T, U> file: &mut LfsFile) -> Result<(), Error> {
     crate::file::ops::lfs_file_rewind_(lfs, file)
 }
 
 /// Return the size of the file. Per lfs.h lfs_file_size (lfs.c:6495-6499).
 #[inline]
-pub fn lfs_file_size(lfs: &mut Lfs<T> file: &LfsFile) -> lfs_soff_t {
+pub fn lfs_file_size(lfs: &mut Lfs<T, U> file: &LfsFile) -> lfs_soff_t {
     crate::file::ops::lfs_file_size_(lfs, file)
 }
 
 /// Create a directory. Per lfs.h lfs_mkdir (lfs.c:6503-6507).
 #[inline]
-pub fn lfs_mkdir(lfs: &mut Lfs<T> path: &str) -> Result<(), Error> {
+pub fn lfs_mkdir(lfs: &mut Lfs<T, U> path: &str) -> Result<(), Error> {
     crate::fs::mkdir::lfs_mkdir_(lfs, path)
 }
 
 /// Open a directory. Per lfs.h lfs_dir_open (lfs.c:6511-6515).
 #[inline]
-pub fn lfs_dir_open(lfs: &mut Lfs<T> dir: &mut LfsDir, path: &str) -> Result<(), Error> {
+pub fn lfs_dir_open(lfs: &mut Lfs<T, U> dir: &mut LfsDir, path: &str) -> Result<(), Error> {
     crate::dir::open::lfs_dir_open_(lfs, dir, path)
 }
 
 /// Close a directory. Per lfs.h lfs_dir_close.
 #[inline]
-pub fn lfs_dir_close(lfs: &mut Lfs<T> dir: &mut LfsDir) -> Result<(), Error> {
+pub fn lfs_dir_close<T, U>(lfs: &mut Lfs<T, U>, dir: &mut LfsDir) -> Result<(), Error> {
     crate::dir::open::lfs_dir_close_(lfs, dir)
 }
 
 /// Read an entry in the directory. Per lfs.h lfs_dir_read.
 #[inline]
-pub fn lfs_dir_read(lfs: &mut Lfs<T> dir: &mut LfsDir, info: &mut LfsInfo) -> Result<i32, Error> {
+pub fn lfs_dir_read<T, U>(lfs: &mut Lfs<T, U>, dir: &mut LfsDir, info: &mut LfsInfo) -> Result<i32, Error> {
     crate::dir::open::lfs_dir_read_(lfs, dir, info)
 }
 
 /// Change the position of the directory. Per lfs.h lfs_dir_seek.
 #[inline]
-pub fn lfs_dir_seek(lfs: &mut Lfs<T> dir: &mut LfsDir, off: lfs_off_t) -> Result<(), Error> {
+pub fn lfs_dir_seek<T, U>(lfs: &mut Lfs<T, U>, dir: &mut LfsDir, off: lfs_off_t) -> Result<(), Error> {
     crate::dir::open::lfs_dir_seek_(lfs, dir, off)
 }
 
 /// Return the position of the directory. Per lfs.h lfs_dir_tell (lfs.c:6400-6412).
 #[inline]
-pub fn lfs_dir_tell(lfs: &mut Lfs<T> dir: &mut LfsDir) -> lfs_soff_t {
+pub fn lfs_dir_tell<T, U>(lfs: &mut Lfs<T, U>, dir: &mut LfsDir) -> lfs_soff_t {
     crate::dir::open::lfs_dir_tell_(lfs, dir)
 }
 
 /// Change the position to the beginning of the directory. Per lfs.h lfs_dir_rewind.
 #[inline]
-pub fn lfs_dir_rewind(lfs: &mut Lfs<T> dir: &mut LfsDir) -> Result<(), Error> {
+pub fn lfs_dir_rewind<T, U>(lfs: &mut Lfs<T, U>, dir: &mut LfsDir) -> Result<(), Error> {
     crate::dir::open::lfs_dir_rewind_(lfs, dir)
 }
 
 /// Find on-disk info about the filesystem. Per lfs.h lfs_fs_stat (lfs.c:6449-6453).
 #[inline]
-pub fn lfs_fs_stat<T>(lfs: &mut Lfs<T>, fsinfo: &mut LfsFsinfo) -> Result<(), Error> {
+pub fn lfs_fs_stat<T, U>(lfs: &mut Lfs<T, U>, fsinfo: &mut LfsFsinfo) -> Result<(), Error> {
     crate::fs::lfs_fs_stat_(lfs, fsinfo)
 }
 
 /// Find the current size of the filesystem. Per lfs.h lfs_fs_size (lfs.c:6449-6453).
 #[inline]
-pub fn lfs_fs_size<T>(lfs: &mut Lfs<T>) -> Result<lfs_size_t, Error> {
+pub fn lfs_fs_size<T, U>(lfs: &mut Lfs<T, U>) -> Result<lfs_size_t, Error> {
     crate::fs::stat::lfs_fs_size_(lfs)
 }
 
@@ -304,42 +304,42 @@ pub type LfsTraverseCb = fn(data: *mut c_void, block: lfs_block_t) -> Result<(),
 
 /// Traverse through all blocks in use by the filesystem. Per lfs.h lfs_fs_traverse.
 #[inline]
-pub fn lfs_fs_traverse<T>(lfs: &mut Lfs<T>, cb: LfsTraverseCb, data: *mut c_void) -> Result<(), Error> {
+pub fn lfs_fs_traverse<T, U>(lfs: &mut Lfs<T, U>, cb: LfsTraverseCb, data: *mut c_void) -> Result<(), Error> {
     crate::fs::traverse::lfs_fs_traverse_(lfs, cb, data, false)
 }
 
 /// Attempt to make the filesystem consistent. Per lfs.h lfs_fs_mkconsistent (lfs.c:6479-6483).
 #[inline]
-pub fn lfs_fs_mkconsistent<T>(lfs: &mut Lfs<T>) -> Result<(), Error> {
+pub fn lfs_fs_mkconsistent<T, U>(lfs: &mut Lfs<T, U>) -> Result<(), Error> {
     crate::fs::consistent::lfs_fs_mkconsistent_(lfs)
 }
 
 /// Attempt any janitorial work. Per lfs.h lfs_fs_gc (lfs.c:6495-6499).
 #[inline]
-pub fn lfs_fs_gc<T>(lfs: &mut Lfs<T>) -> Result<(), Error> {
+pub fn lfs_fs_gc<T, U>(lfs: &mut Lfs<T, U>) -> Result<(), Error> {
     crate::fs::consistent::lfs_fs_gc_(lfs)
 }
 
 /// Force consistency (deorphan, demove, desuperblock). For testing.
 #[doc(hidden)]
-pub fn lfs_fs_forceconsistency<T>(lfs: &mut Lfs<T>) -> Result<(), Error> {
+pub fn lfs_fs_forceconsistency<T, U>(lfs: &mut Lfs<T, U>) -> Result<(), Error> {
     crate::fs::superblock::lfs_fs_forceconsistency(lfs)
 }
 
 /// Prepend orphan count delta to gstate. For testing power-loss paths.
 #[doc(hidden)]
-pub fn lfs_fs_preporphans<T>(lfs: &mut Lfs<T>, orphans: i8) -> Result<(), Error> {
+pub fn lfs_fs_preporphans<T, U>(lfs: &mut Lfs<T, U>, orphans: i8) -> Result<(), Error> {
     crate::fs::superblock::lfs_fs_preporphans(lfs, orphans)
 }
 
 /// True if gstate has pending orphans. For testing.
 #[doc(hidden)]
-pub fn lfs_fs_hasorphans<T>(lfs: &Lfs<T>) -> bool {
+pub fn lfs_fs_hasorphans<T, U>(lfs: &Lfs<T, U>) -> bool {
     crate::lfs_gstate::lfs_gstate_hasorphans(&lfs.gstate)
 }
 
 /// Grow (or shrink) the filesystem to a new size. Per lfs.h lfs_fs_grow (lfs.c:6511-6515).
 #[inline(never)]
-pub fn lfs_fs_grow<T>(lfs: &mut Lfs<T>, block_count: lfs_size_t) -> Result<(), Error> {
+pub fn lfs_fs_grow<T, U>(lfs: &mut Lfs<T, U>, block_count: lfs_size_t) -> Result<(), Error> {
     crate::fs::grow::lfs_fs_grow_(lfs, block_count)
 }
