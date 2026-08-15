@@ -209,7 +209,7 @@ pub fn lfs_tortoise_detectcycles(
 /// }
 /// ```
 pub fn lfs_mount_<T: Deref<Target = [u8]>>(
-    lfs: &mut super::lfs::Lfs<T>
+    lfs: &mut super::lfs::Lfs<T>,
     cfg: &crate::lfs_config::LfsConfig<T>,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_drop;
@@ -401,6 +401,6 @@ pub fn lfs_mount_<T: Deref<Target = [u8]>>(
 ///
 ///
 /// ```
-pub fn lfs_unmount_(lfs: &mut super::lfs::Lfs<T>) -> Result<(), Error> {
+pub fn lfs_unmount_<T>(lfs: &mut super::lfs::Lfs<T>) -> Result<(), Error> {
     crate::fs::init::lfs_deinit(lfs)
 }

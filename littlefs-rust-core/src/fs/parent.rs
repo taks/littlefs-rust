@@ -99,8 +99,8 @@ pub fn lfs_fs_pred(
 
 /// C: lfs.c:4835-4853
 #[repr(C)]
-pub struct LfsFsParentMatch {
-    pub lfs: *mut crate::fs::Lfs<T>
+pub struct LfsFsParentMatch<T> {
+    pub lfs: *mut crate::fs::Lfs<T>,
     pub pair: [crate::types::lfs_block_t; 2],
 }
 
@@ -120,7 +120,7 @@ pub struct LfsFsParentMatch {
 ///     return (lfs_pair_cmp(child, find->pair) == 0) ? LFS_CMP_EQ : LFS_CMP_LT;
 /// }
 /// ```
-pub fn lfs_fs_parent_match(
+pub fn lfs_fs_parent_match<T>(
     data: *mut core::ffi::c_void,
     _tag: crate::types::lfs_tag_t,
     disk: &crate::tag::lfs_diskoff,
@@ -131,7 +131,7 @@ pub fn lfs_fs_parent_match(
     if data.is_null() {
         return Ok(core::cmp::Ordering::Less);
     }
-    let find = unsafe { &*(data as *const LfsFsParentMatch) };
+    let find = unsafe { &*(data as *const LfsFsParentMatch<T>) };
 
     let mut child: [crate::types::lfs_block_t; 2] = [0, 0];
     let lfs = unsafe { find.lfs.as_ref().unwrap() };

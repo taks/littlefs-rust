@@ -94,8 +94,8 @@ pub fn lfs_stat_(
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_fs_stat_(
-    lfs: &mut super::lfs::Lfs<T>
+pub fn lfs_fs_stat_<T>(
+    lfs: &mut super::lfs::Lfs<T>,
     fsinfo: &mut crate::lfs_info::LfsFsinfo,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;

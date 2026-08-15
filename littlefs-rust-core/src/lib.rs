@@ -86,7 +86,7 @@ pub use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_tole32};
 /// Format a block device with littlefs.
 /// Per lfs.h lfs_format. Calls lfs_format_ (lfs.c:4391).
 #[inline]
-pub fn lfs_format<T>(lfs: &mut Lfs<T> config: &LfsConfig<T>) -> Result<(), Error> {
+pub fn lfs_format<T: Deref<Target = [u8]>>(lfs: &mut Lfs<T>, config: &LfsConfig<T>) -> Result<(), Error> {
     crate::lfs_trace!("lfs_format({:p}, {:p})", lfs, config);
     let err = crate::fs::lfs_format_(lfs, config);
     crate::lfs_trace!("lfs_format -> {:?}", err);
@@ -289,13 +289,13 @@ pub fn lfs_dir_rewind(lfs: &mut Lfs<T> dir: &mut LfsDir) -> Result<(), Error> {
 
 /// Find on-disk info about the filesystem. Per lfs.h lfs_fs_stat (lfs.c:6449-6453).
 #[inline]
-pub fn lfs_fs_stat(lfs: &mut Lfs<T> fsinfo: &mut LfsFsinfo) -> Result<(), Error> {
+pub fn lfs_fs_stat<T>(lfs: &mut Lfs<T>, fsinfo: &mut LfsFsinfo) -> Result<(), Error> {
     crate::fs::lfs_fs_stat_(lfs, fsinfo)
 }
 
 /// Find the current size of the filesystem. Per lfs.h lfs_fs_size (lfs.c:6449-6453).
 #[inline]
-pub fn lfs_fs_size(lfs: &mut Lfs<T>) -> Result<lfs_size_t, Error> {
+pub fn lfs_fs_size<T>(lfs: &mut Lfs<T>) -> Result<lfs_size_t, Error> {
     crate::fs::stat::lfs_fs_size_(lfs)
 }
 
@@ -304,42 +304,42 @@ pub type LfsTraverseCb = fn(data: *mut c_void, block: lfs_block_t) -> Result<(),
 
 /// Traverse through all blocks in use by the filesystem. Per lfs.h lfs_fs_traverse.
 #[inline]
-pub fn lfs_fs_traverse(lfs: &mut Lfs<T> cb: LfsTraverseCb, data: *mut c_void) -> Result<(), Error> {
+pub fn lfs_fs_traverse<T>(lfs: &mut Lfs<T>, cb: LfsTraverseCb, data: *mut c_void) -> Result<(), Error> {
     crate::fs::traverse::lfs_fs_traverse_(lfs, cb, data, false)
 }
 
 /// Attempt to make the filesystem consistent. Per lfs.h lfs_fs_mkconsistent (lfs.c:6479-6483).
 #[inline]
-pub fn lfs_fs_mkconsistent(lfs: &mut Lfs<T>) -> Result<(), Error> {
+pub fn lfs_fs_mkconsistent<T>(lfs: &mut Lfs<T>) -> Result<(), Error> {
     crate::fs::consistent::lfs_fs_mkconsistent_(lfs)
 }
 
 /// Attempt any janitorial work. Per lfs.h lfs_fs_gc (lfs.c:6495-6499).
 #[inline]
-pub fn lfs_fs_gc(lfs: &mut Lfs<T>) -> Result<(), Error> {
+pub fn lfs_fs_gc<T>(lfs: &mut Lfs<T>) -> Result<(), Error> {
     crate::fs::consistent::lfs_fs_gc_(lfs)
 }
 
 /// Force consistency (deorphan, demove, desuperblock). For testing.
 #[doc(hidden)]
-pub fn lfs_fs_forceconsistency(lfs: &mut Lfs<T>) -> Result<(), Error> {
+pub fn lfs_fs_forceconsistency<T>(lfs: &mut Lfs<T>) -> Result<(), Error> {
     crate::fs::superblock::lfs_fs_forceconsistency(lfs)
 }
 
 /// Prepend orphan count delta to gstate. For testing power-loss paths.
 #[doc(hidden)]
-pub fn lfs_fs_preporphans(lfs: &mut Lfs<T> orphans: i8) -> Result<(), Error> {
+pub fn lfs_fs_preporphans<T>(lfs: &mut Lfs<T>, orphans: i8) -> Result<(), Error> {
     crate::fs::superblock::lfs_fs_preporphans(lfs, orphans)
 }
 
 /// True if gstate has pending orphans. For testing.
 #[doc(hidden)]
-pub fn lfs_fs_hasorphans(lfs: &Lfs<T>) -> bool {
+pub fn lfs_fs_hasorphans<T>(lfs: &Lfs<T>) -> bool {
     crate::lfs_gstate::lfs_gstate_hasorphans(&lfs.gstate)
 }
 
 /// Grow (or shrink) the filesystem to a new size. Per lfs.h lfs_fs_grow (lfs.c:6511-6515).
 #[inline(never)]
-pub fn lfs_fs_grow(lfs: &mut Lfs<T> block_count: lfs_size_t) -> Result<(), Error> {
+pub fn lfs_fs_grow<T>(lfs: &mut Lfs<T>, block_count: lfs_size_t) -> Result<(), Error> {
     crate::fs::grow::lfs_fs_grow_(lfs, block_count)
 }

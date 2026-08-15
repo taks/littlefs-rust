@@ -1,8 +1,10 @@
 //! TestContext: env + Lfs<T> ready for format/mount. Single setup for unit tests.
 
+use alloc::vec::Vec;
+
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::test::ram::{BLOCK_SIZE, RamStorage, make_config};
-use crate::{Lfs<T> LfsConfig, lfs_format, lfs_mount, lfs_unmount};
+use crate::{Lfs, LfsConfig, lfs_format, lfs_mount, lfs_unmount};
 use core::mem::MaybeUninit;
 
 const DEFAULT_BLOCK_COUNT: u32 = 128;
@@ -10,8 +12,8 @@ const DEFAULT_BLOCK_COUNT: u32 = 128;
 /// Env + Lfs in one. Owns RAM BD, config, buffers. Use new(), then format_fs/mount_fs.
 pub struct TestContext {
     pub ram: RamStorage,
-    pub config: LfsConfig,
-    lfs: MaybeUninit<Lfs>,
+    pub config: LfsConfig<Vec<u8>>,
+    lfs: MaybeUninit<Lfs<Vec<u8>>>,
     _read_buf: alloc::vec::Vec<u8>,
     _prog_buf: alloc::vec::Vec<u8>,
     _lookahead_buf: alloc::vec::Vec<u8>,
@@ -28,8 +30,8 @@ impl TestContext {
         let lookahead_buf = alloc::vec![0u8; block_size as usize];
 
         let mut config = make_config(block_count, &ram);
-        config.read_buffer = read_buf.as_ptr() as *mut core::ffi::c_void;
-        config.prog_buffer = prog_buf.as_ptr() as *mut core::ffi::c_void;
+        config.read_buffer = read_buf;
+        config.prog_buffer = prog_buf;
         config.lookahead_buffer = lookahead_buf.as_ptr() as *mut core::ffi::c_void;
 
         let mut ctx = Self {
@@ -41,9 +43,6 @@ impl TestContext {
             _lookahead_buf: lookahead_buf,
         };
         ctx.config.context = &mut ctx.ram as *mut RamStorage as *mut core::ffi::c_void;
-        ctx.config.read_buffer = ctx._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-        ctx.config.prog_buffer = ctx._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-        ctx.config.lookahead_buffer = ctx._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
         ctx
     }
 
@@ -52,11 +51,11 @@ impl TestContext {
         Self::new(DEFAULT_BLOCK_COUNT)
     }
 
-    pub fn config(&self) -> &LfsConfig {
+    pub fn config(&self) -> &LfsConfig<Vec<u8>> {
         &self.config
     }
 
-    pub fn lfs_mut(&mut self) -> &mut Lfs {
+    pub fn lfs_mut(&mut self) -> &mut Lfs<Vec<u8>> {
         unsafe { self.lfs.as_mut_ptr().as_mut().unwrap() }
     }
 
