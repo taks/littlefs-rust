@@ -379,7 +379,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
         let crc_le = lfs_tole32(commit.crc);
 
         let mut ccrc: [u8; 8] = [0; 8];
-        ccrc[..4].copy_from_slice(&xor_tag.as_bytes());
+        ccrc[..4].copy_from_slice(xor_tag.as_bytes());
         ccrc[4..].copy_from_slice(crc_le.as_bytes());
 
         lfs_bd_prog(
