@@ -52,7 +52,7 @@ use crate::util::lfs_min;
 /// }
 /// ```
 pub fn lfs_getattr_(
-    lfs: &mut Lfs,
+    lfs: &mut Lfs<T>
     path: &str,
     r#type: u8,
     buffer: &mut [u8],
@@ -119,7 +119,7 @@ pub fn lfs_getattr_(
 /// #endif
 /// ```
 pub fn lfs_commitattr(
-    lfs: &mut Lfs,
+    lfs: &mut Lfs<T>
     path: &str,
     r#type: u8,
     buffer: &[u8],
@@ -170,7 +170,7 @@ pub fn lfs_commitattr(
 /// #endif
 /// ```
 pub fn lfs_setattr_(
-    lfs: &mut Lfs,
+    lfs: &mut Lfs<T>
     path: &str,
     r#type: u8,
     buffer: &[u8],
@@ -193,6 +193,6 @@ pub fn lfs_setattr_(
 /// }
 /// #endif
 /// ```
-pub fn lfs_removeattr_(lfs: &mut Lfs, path: &str, r#type: u8) -> Result<(), Error> {
+pub fn lfs_removeattr_(lfs: &mut Lfs<T> path: &str, r#type: u8) -> Result<(), Error> {
     lfs_commitattr(lfs, path, r#type, &[], 0x3ff)
 }

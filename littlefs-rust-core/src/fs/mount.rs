@@ -1,5 +1,7 @@
 //! Mount/unmount. Per lfs.c lfs_mount_, lfs_unmount_.
 
+use core::ops::Deref;
+
 use zerocopy::IntoBytes;
 
 use crate::{borrow_unchecked::borrow_unchecked, error::Error};
@@ -206,9 +208,9 @@ pub fn lfs_tortoise_detectcycles(
 ///     return err;
 /// }
 /// ```
-pub fn lfs_mount_(
-    lfs: &mut super::lfs::Lfs,
-    cfg: &crate::lfs_config::LfsConfig,
+pub fn lfs_mount_<T: Deref<Target = [u8]>>(
+    lfs: &mut super::lfs::Lfs<T>
+    cfg: &crate::lfs_config::LfsConfig<T>,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_drop;
     use crate::dir::fetch::{lfs_dir_fetchmatch, lfs_dir_getgstate};
@@ -399,6 +401,6 @@ pub fn lfs_mount_(
 ///
 ///
 /// ```
-pub fn lfs_unmount_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_unmount_(lfs: &mut super::lfs::Lfs<T>) -> Result<(), Error> {
     crate::fs::init::lfs_deinit(lfs)
 }

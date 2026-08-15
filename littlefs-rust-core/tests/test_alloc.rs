@@ -11,7 +11,7 @@ use common::{
     init_badblock_context, init_context, init_logger, run_with_timeout,
 };
 use littlefs_rust_core::{
-    Lfs, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
+    Lfs<T> LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_size, lfs_file_sync, lfs_file_truncate, lfs_file_write, lfs_format, lfs_fs_gc,
     lfs_mkdir, lfs_mount, lfs_remove, lfs_stat, lfs_unmount,
 };

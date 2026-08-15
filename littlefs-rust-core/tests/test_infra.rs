@@ -10,7 +10,7 @@ use common::{
     init_badblock_context, init_context, init_wear_leveling_context, test_prng, verify_prng_file,
     write_block_raw, write_prng_file,
 };
-use littlefs_rust_core::{Lfs, LfsFile, error::Error};
+use littlefs_rust_core::{Lfs<T> LfsFile, error::Error};
 
 // ── PRNG tests ──────────────────────────────────────────────────────────────
 

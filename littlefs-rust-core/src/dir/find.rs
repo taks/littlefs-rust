@@ -17,7 +17,7 @@ use crate::util::{lfs_min, lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 /// Per lfs.c struct lfs_dir_find_match (lines 1447-1475)
 #[repr(C)]
 pub struct LfsDirFindMatch<'a> {
-    pub lfs: *mut Lfs,
+    pub lfs: *mut Lfs<T>
     pub name: &'a [u8],
     pub size: lfs_size_t,
 }
@@ -208,7 +208,7 @@ pub fn lfs_dir_find_match(
 /// }
 /// ```
 pub fn lfs_dir_find(
-    lfs: &mut Lfs,
+    lfs: &mut Lfs<T>
     dir: &mut LfsMdir,
     path: &mut &str,
     id: &mut Option<&mut u16>,

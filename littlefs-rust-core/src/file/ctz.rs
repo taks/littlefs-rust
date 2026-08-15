@@ -72,7 +72,7 @@ pub fn lfs_ctz_tole32(ctz: *mut LfsCtz) {
 ///     return i;
 /// }
 /// ```
-pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: *mut lfs_off_t) -> i32 {
+pub fn lfs_ctz_index(lfs: &crate::fs::Lfs<T> off: *mut lfs_off_t) -> i32 {
     use crate::util::lfs_popc;
 
     if off.is_null() {
@@ -134,7 +134,7 @@ pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: *mut lfs_off_t) -> i32 {
 /// }
 /// ```
 pub fn lfs_ctz_find(
-    lfs: &Lfs,
+    lfs: &Lfs<T>
     pcache: Option<&crate::bd::LfsCache>,
     rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
@@ -252,7 +252,7 @@ pub fn lfs_ctz_find(
 /// ```
 #[allow(clippy::type_complexity)]
 pub fn lfs_ctz_traverse(
-    lfs: &crate::fs::Lfs,
+    lfs: &crate::fs::Lfs<T>
     pcache: Option<&crate::bd::LfsCache>,
     rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
@@ -427,7 +427,7 @@ pub fn lfs_ctz_traverse(
 /// #endif
 /// ```
 pub fn lfs_ctz_extend(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     pcache: &mut crate::bd::LfsCache,
     rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,

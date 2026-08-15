@@ -1,6 +1,7 @@
 //! Main filesystem type. Per lfs.h typedef struct lfs.
 
 use core::cell::{RefCell, UnsafeCell};
+use core::ops::Deref;
 
 use crate::bd::LfsCache;
 use crate::dir::LfsMlist;
@@ -13,7 +14,7 @@ use super::lfs_lookahead::LfsLookahead;
 /// Per lfs.h typedef struct lfs
 #[repr(C)]
 #[derive(Default)]
-pub struct Lfs {
+pub struct Lfs<T> {
     pub rcache: UnsafeCell<LfsCache>,
     pub pcache: UnsafeCell<LfsCache>,
     pub root: [lfs_block_t; 2],
@@ -23,7 +24,7 @@ pub struct Lfs {
     pub gdisk: LfsGstate,
     pub gdelta: RefCell<LfsGstate>,
     pub lookahead: LfsLookahead,
-    pub cfg: *const LfsConfig,
+    pub cfg: *const LfsConfig<T>,
     pub block_count: u32,
     pub name_max: u32,
     pub file_max: u32,

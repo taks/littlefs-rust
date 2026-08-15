@@ -40,7 +40,7 @@ use crate::{error::Error, lfs_pass_err};
 /// #endif
 /// ```
 pub fn lfs_fs_pred(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     pair: &[crate::types::lfs_block_t; 2],
     pdir: &mut crate::dir::LfsMdir,
 ) -> Result<(), Error> {
@@ -100,7 +100,7 @@ pub fn lfs_fs_pred(
 /// C: lfs.c:4835-4853
 #[repr(C)]
 pub struct LfsFsParentMatch {
-    pub lfs: *mut crate::fs::Lfs,
+    pub lfs: *mut crate::fs::Lfs<T>
     pub pair: [crate::types::lfs_block_t; 2],
 }
 
@@ -190,7 +190,7 @@ pub fn lfs_fs_parent_match(
 /// #endif
 /// ```
 pub fn lfs_fs_parent(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     pair: &[crate::types::lfs_block_t; 2],
     parent: &mut crate::dir::LfsMdir,
 ) -> Result<crate::types::lfs_tag_t, Error> {

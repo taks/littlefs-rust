@@ -19,9 +19,9 @@ upstream and makes porting bug fixes straightforward.
 ### Filesystem lifecycle
 
 ```rust
-lfs_format(lfs: * mut Lfs, config: * const LfsConfig) -> i32
-lfs_mount(lfs: * mut Lfs, config: * const LfsConfig) -> i32
-lfs_unmount(lfs: * mut Lfs) -> i32
+lfs_format(lfs: * mut Lfs<T> config: * const LfsConfig) -> i32
+lfs_mount(lfs: * mut Lfs<T> config: * const LfsConfig) -> i32
+lfs_unmount(lfs: * mut Lfs<T>) -> i32
 ```
 
 ### File operations

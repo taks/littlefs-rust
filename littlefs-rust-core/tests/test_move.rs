@@ -15,7 +15,7 @@ use common::{
     powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
 };
 use littlefs_rust_core::{
-    Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close,
+    Lfs<T> LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close,
     lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_remove,
     lfs_rename, lfs_stat, lfs_unmount,
 };

@@ -7,7 +7,7 @@ use common::{
     default_config, init_context,
 };
 use littlefs_rust_core::{
-    Lfs, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_seek, lfs_file_size,
+    Lfs<T> LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_seek, lfs_file_size,
     lfs_file_tell, lfs_file_truncate, lfs_file_write, lfs_format, lfs_mount, lfs_unmount,
 };
 use rstest::rstest;
@@ -331,7 +331,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
         assert_ok(littlefs_rust_core::lfs_unmount(lfs));
         let snapshot = env.snapshot();
 
-        let op = |lfs_ptr: &mut Lfs, cfg: &LfsConfig| -> Result<(), Error> {
+        let op = |lfs_ptr: &mut Lfs<T> cfg: &LfsConfig| -> Result<(), Error> {
             let err = littlefs_rust_core::lfs_mount(lfs_ptr, cfg);
             if err.is_err() {
                 let _ = littlefs_rust_core::lfs_format(lfs_ptr, cfg);

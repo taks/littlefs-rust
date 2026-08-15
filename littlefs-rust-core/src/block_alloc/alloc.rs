@@ -1,5 +1,7 @@
 //! Block allocator. Per lfs.c lfs_alloc, lfs_alloc_scan, lfs_alloc_lookahead, etc.
 
+use core::ops::Deref;
+
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::types::lfs_block_t;
@@ -15,7 +17,7 @@ use crate::types::lfs_block_t;
 ///
 /// # Safety
 /// `lfs` must point to a valid, initialized `Lfs` instance.
-pub fn lfs_alloc_ckpoint(lfs: &mut Lfs) {
+pub fn lfs_alloc_ckpoint(lfs: &mut Lfs<T>) {
     lfs.lookahead.ckpoint = lfs.block_count;
 }
 
@@ -29,7 +31,7 @@ pub fn lfs_alloc_ckpoint(lfs: &mut Lfs) {
 ///     lfs_alloc_ckpoint(lfs);
 /// }
 /// ```
-pub fn lfs_alloc_drop(lfs: &mut Lfs) {
+pub fn lfs_alloc_drop(lfs: &mut Lfs<T>) {
     lfs.lookahead.size = 0;
     lfs.lookahead.next = 0;
     lfs_alloc_ckpoint(lfs);
@@ -54,11 +56,11 @@ pub fn lfs_alloc_drop(lfs: &mut Lfs) {
 /// #endif
 /// ```
 /// Callback wrapper for lfs_fs_traverse_: C expects (void* data, block), we pass lfs as data.
-fn lfs_alloc_lookahead_cb(data: *mut core::ffi::c_void, block: lfs_block_t) -> Result<(), Error> {
-    lfs_alloc_lookahead(unsafe { &mut *(data as *mut Lfs) }, block)
+fn lfs_alloc_lookahead_cb<T: Deref<Target = [u8]>>(data: *mut core::ffi::c_void, block: lfs_block_t) -> Result<(), Error> {
+    lfs_alloc_lookahead(unsafe { &mut *(data as *mut Lfs<T>) }, block)
 }
 
-pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Error> {
+pub fn lfs_alloc_lookahead<T: Deref<Target = [u8]>>(lfs: &mut Lfs<T>, block: lfs_block_t) -> Result<(), Error> {
     unsafe {
         // off = ((block - start) + block_count) % block_count
         let off = (block.wrapping_sub(lfs.lookahead.start)).wrapping_add(lfs.block_count)
@@ -106,7 +108,7 @@ pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Erro
 /// }
 /// #endif
 /// ```
-pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
+pub fn lfs_alloc_scan(lfs: &mut Lfs<T>) -> Result<(), Error> {
     use crate::fs::traverse::lfs_fs_traverse_;
     use crate::util::lfs_min;
 
@@ -197,7 +199,7 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
 /// }
 /// #endif
 /// ```
-pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
+pub fn lfs_alloc(lfs: &mut Lfs<T> block: *mut lfs_block_t) -> Result<(), Error> {
     unsafe {
         let buf = lfs.lookahead.buffer;
         if buf.is_null() {

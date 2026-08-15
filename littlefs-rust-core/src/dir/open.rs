@@ -63,7 +63,7 @@ use crate::util::{lfs_min, lfs_pair_cmp, lfs_pair_fromle32};
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &str) -> Result<(), Error> {
+pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs<T> dir: &mut LfsDir, path: &str) -> Result<(), Error> {
     let mut path_ptr = path;
 
     let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None)?;
@@ -115,7 +115,7 @@ pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &str) -> 
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_close_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir) -> Result<(), Error> {
+pub fn lfs_dir_close_(lfs: &mut crate::fs::Lfs<T> dir: &mut LfsDir) -> Result<(), Error> {
     lfs_mlist_remove(lfs, unsafe { dir.as_mut_lsf_mist() });
 
     Ok(())
@@ -171,7 +171,7 @@ pub fn lfs_dir_close_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir) -> Result<(), 
 /// }
 /// ```
 pub fn lfs_dir_read_(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     dir: &mut LfsDir,
     info: &mut LfsInfo,
 ) -> Result<i32, Error> {
@@ -280,7 +280,7 @@ pub fn lfs_dir_read_(
 /// }
 /// ```
 pub fn lfs_dir_seek_(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     dir: &mut LfsDir,
     off: lfs_off_t,
 ) -> Result<(), Error> {
@@ -323,7 +323,7 @@ pub fn lfs_dir_seek_(
 ///     return dir->pos;
 /// }
 /// ```
-pub fn lfs_dir_tell_(_lfs: *mut crate::fs::Lfs, dir: *const LfsDir) -> crate::types::lfs_soff_t {
+pub fn lfs_dir_tell_(_lfs: *mut crate::fs::Lfs<T> dir: *const LfsDir) -> crate::types::lfs_soff_t {
     unsafe { (*dir).pos as crate::types::lfs_soff_t }
 }
 
@@ -343,7 +343,7 @@ pub fn lfs_dir_tell_(_lfs: *mut crate::fs::Lfs, dir: *const LfsDir) -> crate::ty
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_rewind_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir) -> Result<(), Error> {
+pub fn lfs_dir_rewind_(lfs: &mut crate::fs::Lfs<T> dir: &mut LfsDir) -> Result<(), Error> {
     lfs_dir_fetch(lfs, &mut dir.m, dir.head)?;
     dir.id = 0;
     dir.pos = 0;

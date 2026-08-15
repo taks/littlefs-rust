@@ -14,7 +14,7 @@ use crate::types::{lfs_block_t, lfs_off_t, lfs_tag_t};
 
 #[allow(non_camel_case_types)]
 struct LfsDirCommitCommit<'a> {
-    lfs: &'a mut Lfs,
+    lfs: &'a mut Lfs<T>
     commit: &'a mut LfsCommit,
 }
 
@@ -38,7 +38,7 @@ struct LfsDirCommitCommit<'a> {
 /// }
 /// ```
 pub fn lfs_dir_commitprog(
-    lfs: &crate::fs::Lfs,
+    lfs: &crate::fs::Lfs<T>
     commit: &mut LfsCommit,
     buffer: &[u8],
 ) -> Result<(), Error> {
@@ -103,7 +103,7 @@ pub fn lfs_dir_commitprog(
 /// }
 /// ```
 pub fn lfs_dir_commitattr(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     commit: &mut LfsCommit,
     tag: lfs_tag_t,
     buffer: &[u8],
@@ -327,7 +327,7 @@ pub fn lfs_dir_commitattr(
 /// }
 /// #endif
 /// ```
-pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Result<(), Error> {
+pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs<T> commit: &mut LfsCommit) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_crc, lfs_bd_prog, lfs_bd_sync};
     use crate::crc::lfs_crc;
     use crate::tag::lfs_mktag;
@@ -495,7 +495,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
 /// # Safety
 ///
 /// `lfs` and `dir` must be valid, properly initialized pointers.
-pub unsafe fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), Error> {
+pub unsafe fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs<T> dir: &mut LfsMdir) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::block_alloc::alloc::lfs_alloc;
     use crate::types::LFS_BLOCK_NULL;
@@ -564,7 +564,7 @@ pub unsafe fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Resu
 /// }
 /// ```
 pub fn lfs_dir_drop(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     dir: &mut LfsMdir,
     tail: &LfsMdir,
 ) -> Result<(), Error> {
@@ -626,7 +626,7 @@ pub fn lfs_dir_drop(
 /// }
 /// ```
 pub fn lfs_dir_split(
-    lfs: &mut Lfs,
+    lfs: &mut Lfs<T>
     dir: &mut LfsMdir,
     attrs: &[crate::tag::lfs_mattr],
     source: &LfsMdir,
@@ -763,7 +763,7 @@ fn lfs_dir_commit_commit(
 ///             && ((dir->rev + 1) % ((lfs->cfg->block_cycles+1)|1) == 0));
 /// }
 /// ```
-pub fn lfs_dir_needsrelocation(lfs: &Lfs, dir: &LfsMdir) -> bool {
+pub fn lfs_dir_needsrelocation(lfs: &Lfs<T> dir: &LfsMdir) -> bool {
     let cfg = unsafe { lfs.cfg.as_ref().unwrap() };
 
     cfg.block_cycles > 0 && (dir.rev + 1).is_multiple_of(((cfg.block_cycles as u32) + 1) | 1)
@@ -945,7 +945,7 @@ pub fn lfs_dir_needsrelocation(lfs: &Lfs, dir: &LfsMdir) -> bool {
 /// }
 /// ```
 pub fn lfs_dir_compact(
-    lfs: &mut Lfs,
+    lfs: &mut Lfs<T>
     dir: &mut LfsMdir,
     attrs_slice: &[crate::tag::lfs_mattr],
     source: &LfsMdir,
@@ -1395,7 +1395,7 @@ pub fn lfs_dir_compact(
 /// }
 /// ```
 pub fn lfs_dir_splittingcompact(
-    lfs: &mut Lfs,
+    lfs: &mut Lfs<T>
     dir: &mut LfsMdir,
     attrs: &[crate::tag::lfs_mattr],
     source: &LfsMdir,
@@ -1694,7 +1694,7 @@ fn lfs_dir_commit_size_raw(
 /// }
 /// ```
 pub fn lfs_dir_relocatingcommit(
-    lfs: &mut Lfs,
+    lfs: &mut Lfs<T>
     dir: &mut LfsMdir,
     pair: &[lfs_block_t; 2],
     attrs: &[crate::tag::lfs_mattr],
@@ -1871,7 +1871,7 @@ pub fn lfs_dir_relocatingcommit(
 
 #[inline(never)]
 fn relocatingcommit_fixmlist(
-    lfs: &mut Lfs,
+    lfs: &mut Lfs<T>
     dir: *mut LfsMdir,
     pair: &[lfs_block_t; 2],
     attrs_slice: &[crate::tag::lfs_mattr],
@@ -2147,7 +2147,7 @@ fn relocatingcommit_fixmlist(
 /// }
 /// ```
 pub fn lfs_dir_orphaningcommit(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     dir: &mut LfsMdir,
     attrs_slice: &[crate::tag::lfs_mattr],
 ) -> Result<i32, Error> {
@@ -2364,7 +2364,7 @@ pub fn lfs_dir_orphaningcommit(
 /// }
 /// ```
 pub fn lfs_dir_commit(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     dir: &mut LfsMdir,
     attrs_slice: &[crate::tag::lfs_mattr],
 ) -> Result<(), Error> {

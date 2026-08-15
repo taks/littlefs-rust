@@ -207,7 +207,7 @@ use crate::util::{
 ///     return lfs_tag_size(tag);
 /// }
 /// ```
-pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> Result<(), Error> {
+pub fn lfs_rename_(lfs: &mut super::lfs::Lfs<T> oldpath: &str, newpath: &str) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {

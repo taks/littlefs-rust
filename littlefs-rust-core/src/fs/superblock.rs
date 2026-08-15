@@ -15,7 +15,7 @@ use crate::{lfs_debug, lfs_pass_err};
 ///             | (uint32_t)needssuperblock << 9;
 /// }
 /// ```
-pub fn lfs_fs_prepsuperblock(lfs: &mut super::lfs::Lfs, needssuperblock: bool) {
+pub fn lfs_fs_prepsuperblock(lfs: &mut super::lfs::Lfs<T> needssuperblock: bool) {
     use crate::tag::lfs_mktag;
     lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0, 0, 0x200)) | ((needssuperblock as u32) << 9);
 }
@@ -24,7 +24,7 @@ pub fn lfs_fs_prepsuperblock(lfs: &mut super::lfs::Lfs, needssuperblock: bool) {
 /// Assertions ensure we don't overflow the 9-bit orphan count.
 ///
 /// C: lfs.c:4894-4904
-pub fn lfs_fs_preporphans(lfs: &mut super::lfs::Lfs, orphans: i8) -> Result<(), Error> {
+pub fn lfs_fs_preporphans(lfs: &mut super::lfs::Lfs<T> orphans: i8) -> Result<(), Error> {
     use crate::lfs_gstate::lfs_gstate_hasorphans;
     use crate::tag::{lfs_mktag, lfs_tag_size};
 
@@ -41,7 +41,7 @@ pub fn lfs_fs_preporphans(lfs: &mut super::lfs::Lfs, orphans: i8) -> Result<(), 
 ///
 /// C: lfs.c:4906-4914
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn lfs_fs_prepmove(lfs: *mut super::lfs::Lfs, id: u16, pair: *const [lfs_block_t; 2]) {
+pub fn lfs_fs_prepmove(lfs: *mut super::lfs::Lfs<T> id: u16, pair: *const [lfs_block_t; 2]) {
     use crate::lfs_type::lfs_type::LFS_TYPE_DELETE;
     use crate::tag::lfs_mktag;
 
@@ -66,7 +66,7 @@ pub fn lfs_fs_prepmove(lfs: *mut super::lfs::Lfs, id: u16, pair: *const [lfs_blo
 /// Translation docs: Rewrite superblock when needssuperblock is set (older minor version on disk).
 ///
 /// C: lfs.c:4916-4953
-pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs<T>) -> Result<(), Error> {
     crate::lfs_trace!("desuperblock: start");
     use crate::dir::commit::lfs_dir_commit;
     use crate::dir::fetch::lfs_dir_fetch;
@@ -151,7 +151,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs<T>) -> Result<(), Error> {
     crate::lfs_trace!("demove: start");
     use crate::dir::commit::lfs_dir_commit;
     use crate::dir::fetch::lfs_dir_fetch;
@@ -320,7 +320,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 /// Two passes: pass 0 for half-orphans, pass 1 for full-orphans.
 ///
 /// C: lfs.c:4991-5120
-pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(), Error> {
+pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs<T> powerloss: bool) -> Result<(), Error> {
     crate::lfs_trace!("deorphan: start powerloss={}", powerloss);
     use crate::dir::LfsMdir;
     use crate::dir::commit::lfs_dir_orphaningcommit;
@@ -459,7 +459,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
 /// demove, and deorphan in sequence.
 ///
 /// C: lfs.c:5122-5140
-pub fn lfs_fs_forceconsistency(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_fs_forceconsistency(lfs: &mut super::lfs::Lfs<T>) -> Result<(), Error> {
     crate::lfs_trace!("forceconsistency: start");
     let err = lfs_fs_desuperblock(lfs);
     crate::lfs_trace!("forceconsistency: after desuperblock err={:?}", err);

@@ -10,7 +10,7 @@ use common::{assert_ok, default_config, init_context, init_logger};
 use littlefs_rust_core::LfsFile;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
-    LFS_DISK_VERSION, Lfs, LfsFsinfo, LfsMdir, LfsSuperblock, error::Error, lfs_dir_commit,
+    LFS_DISK_VERSION, Lfs<T> LfsFsinfo, LfsMdir, LfsSuperblock, error::Error, lfs_dir_commit,
     lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mattr, lfs_mktag, lfs_mount, lfs_superblock_tole32,
     lfs_unmount,
 };

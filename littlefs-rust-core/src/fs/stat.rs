@@ -27,7 +27,7 @@ use crate::types::{lfs_block_t, lfs_size_t};
 /// }
 /// ```
 pub fn lfs_stat_(
-    lfs: &mut super::lfs::Lfs,
+    lfs: &mut super::lfs::Lfs<T>
     path: &str,
     info: &mut crate::lfs_info::LfsInfo,
 ) -> Result<(), Error> {
@@ -95,7 +95,7 @@ pub fn lfs_stat_(
 /// }
 /// ```
 pub fn lfs_fs_stat_(
-    lfs: &mut super::lfs::Lfs,
+    lfs: &mut super::lfs::Lfs<T>
     fsinfo: &mut crate::lfs_info::LfsFsinfo,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
@@ -181,7 +181,7 @@ pub fn lfs_fs_size_count(p: *mut core::ffi::c_void, _block: lfs_block_t) -> Resu
 ///     return size;
 /// }
 /// ```
-pub fn lfs_fs_size_(lfs: &mut super::lfs::Lfs) -> Result<lfs_size_t, Error> {
+pub fn lfs_fs_size_(lfs: &mut super::lfs::Lfs<T>) -> Result<lfs_size_t, Error> {
     let mut size: lfs_size_t = 0;
     lfs_fs_traverse_(
         lfs,

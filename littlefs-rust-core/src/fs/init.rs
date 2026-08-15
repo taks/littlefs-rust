@@ -1,5 +1,7 @@
 //! Initialization. Per lfs.c lfs_init, lfs_deinit.
 
+use core::ops::Deref;
+
 use crate::Lfs;
 use crate::bd::bd::lfs_cache_zero;
 use crate::error::Error;
@@ -184,7 +186,7 @@ use crate::util::{lfs_min, lfs_npw2};
 /// }
 /// ```
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(), Error> {
+pub fn lfs_init<T: Deref<Target = [u8]>>(lfs: &mut Lfs<T>, cfg: &crate::lfs_config::LfsConfig<T>) -> Result<(), Error> {
     unsafe {
         // check that bool is a truthy-preserving type (C: (bool)0x80000000)
         crate::lfs_assert!(0x8000_0000u32 != 0);
@@ -229,14 +231,16 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
         lfs.cfg = cfg;
         lfs.block_count = cfg.block_count;
 
-        lfs.rcache.get_mut().buffer = cfg.read_buffer as *mut u8;
-        lfs.pcache.get_mut().buffer = cfg.prog_buffer as *mut u8;
+        let a = &mut *cfg.read_buffer;
+
+        lfs.rcache.get_mut().buffer = (&mut *cfg.read_buffer).as_mut_ptr();
+        lfs.pcache.get_mut().buffer = (&mut *cfg.prog_buffer).as_mut_ptr();
 
         lfs_cache_zero(lfs, &mut *lfs.rcache.get());
         lfs_cache_zero(lfs, &mut *lfs.pcache.get());
 
         crate::lfs_assert!(cfg.lookahead_size > 0);
-        lfs.lookahead.buffer = cfg.lookahead_buffer as *mut u8;
+        lfs.lookahead.buffer = (&mut *cfg.lookahead_buffer).as_mut_ptr();
 
         crate::lfs_assert!(cfg.name_max <= LFS_NAME_MAX as u32);
         lfs.name_max = if cfg.name_max != 0 {
@@ -317,7 +321,7 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
 ///
 ///
 /// ```
-pub fn lfs_deinit(_lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_deinit(_lfs: &mut super::lfs::Lfs<T>) -> Result<(), Error> {
     // With provided buffers (read_buffer, prog_buffer, lookahead_buffer), no free needed
     Ok(())
 }

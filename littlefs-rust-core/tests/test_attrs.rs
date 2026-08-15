@@ -9,7 +9,7 @@ use common::{
     LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok, default_config, init_context, init_logger,
 };
 use littlefs_rust_core::{
-    Lfs, LfsAttr, LfsFile, LfsFileConfig, error::Error, lfs_file_close, lfs_file_open,
+    Lfs<T> LfsAttr, LfsFile, LfsFileConfig, error::Error, lfs_file_close, lfs_file_open,
     lfs_file_opencfg, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_getattr,
     lfs_mkdir, lfs_mount, lfs_removeattr, lfs_setattr, lfs_unmount,
 };

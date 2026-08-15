@@ -17,7 +17,7 @@ use crate::tag::lfs_mktag;
 use crate::types::LFS_BLOCK_INLINE;
 use crate::types::{lfs_block_t, lfs_off_t};
 use crate::util::lfs_min;
-use crate::{Lfs, LfsAttr};
+use crate::{Lfs<T> LfsAttr};
 
 /// Per lfs.c lfs_file_opencfg_ (lines 3065-3236)
 ///
@@ -196,7 +196,7 @@ use crate::{Lfs, LfsAttr};
 /// }
 /// ```
 pub fn lfs_file_opencfg_(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     file: &mut LfsFile,
     path: &str,
     flags: i32,
@@ -415,7 +415,7 @@ static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
 
 #[allow(clippy::deref_addrof)]
 pub fn lfs_file_open_(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     file: &mut LfsFile,
     path: &str,
     flags: i32,
@@ -430,7 +430,7 @@ pub fn lfs_file_open_(
 /// Translation docs: Sync if dirty, remove from mlist, free cache buffer if we allocated it.
 ///
 /// C: lfs.c:3246-3264
-pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs<T> file: &mut LfsFile) -> Result<(), Error> {
     use crate::dir::lfs_mlist::lfs_mlist_remove;
 
     let err = lfs_file_sync_(lfs, file);
@@ -530,7 +530,7 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
 ///     }
 /// }
 /// ```
-pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs<T> file: &mut LfsFile) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_prog, lfs_bd_read, lfs_cache_drop, lfs_cache_zero};
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
 
@@ -635,7 +635,7 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_file_outline(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_outline(lfs: &mut crate::fs::Lfs<T> file: &mut LfsFile) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
 
     file.off = file.pos;
@@ -732,7 +732,7 @@ pub fn lfs_file_outline(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs<T> file: &mut LfsFile) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_flush;
     use crate::util::lfs_max;
 
@@ -866,7 +866,7 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs<T> file: &mut LfsFile) -> Result<(), Error> {
     use crate::dir::commit::lfs_dir_commit;
     use crate::tag::lfs_mktag;
     use crate::util::lfs_pair_isnull;
@@ -948,7 +948,7 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
 ///
 /// C: lfs.c:3493-3551
 pub fn lfs_file_flushedread(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     file: &mut LfsFile,
     buffer: &mut [u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
@@ -1031,7 +1031,7 @@ pub fn lfs_file_flushedread(
 ///
 /// C: lfs.c:3553-3570
 pub fn lfs_file_read_(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     file: &mut LfsFile,
     buffer: &mut [u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
@@ -1136,7 +1136,7 @@ pub fn lfs_file_read_(
 /// }
 /// ```
 pub fn lfs_file_flushedwrite(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     file: &mut LfsFile,
     buffer: &[u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
@@ -1291,7 +1291,7 @@ pub fn lfs_file_flushedwrite(
 /// }
 /// ```
 pub fn lfs_file_write_(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     file: &mut LfsFile,
     buffer: &[u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
@@ -1331,7 +1331,7 @@ pub fn lfs_file_write_(
 ///
 /// C: lfs.c:3700-3751
 pub fn lfs_file_seek_(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     file: &mut LfsFile,
     off: crate::types::lfs_soff_t,
     whence: i32,
@@ -1472,7 +1472,7 @@ pub fn lfs_file_seek_(
 /// #endif
 /// ```
 pub fn lfs_file_truncate_(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     file: &mut LfsFile,
     size: lfs_off_t,
 ) -> Result<(), Error> {
@@ -1570,7 +1570,7 @@ pub fn lfs_file_tell_(_lfs: *const core::ffi::c_void, file: &LfsFile) -> crate::
 /// Translation docs: Seek to start of file.
 ///
 /// C: lfs.c:3840-3850
-pub fn lfs_file_rewind_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
+pub fn lfs_file_rewind_(lfs: &mut crate::fs::Lfs<T> file: &mut LfsFile) -> Result<(), Error> {
     lfs_file_seek_(
         lfs,
         file,
@@ -1594,7 +1594,7 @@ pub fn lfs_file_rewind_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<
 ///     return file->ctz.size;
 /// }
 /// ```
-pub fn lfs_file_size_(_lfs: &Lfs, file: &LfsFile) -> crate::types::lfs_soff_t {
+pub fn lfs_file_size_(_lfs: &Lfs<T> file: &LfsFile) -> crate::types::lfs_soff_t {
     if (file.flags as i32 & LFS_F_WRITING) != 0 {
         return crate::util::lfs_max(file.pos, file.ctz.size) as crate::types::lfs_soff_t;
     }

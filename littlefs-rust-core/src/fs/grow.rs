@@ -92,7 +92,7 @@ fn lfs_shrink_checkblock(data: *mut core::ffi::c_void, block: lfs_block_t) -> Re
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Result<(), Error> {
+pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs<T> block_count: lfs_size_t) -> Result<(), Error> {
     unsafe {
         if block_count == lfs.block_count {
             return Ok(());

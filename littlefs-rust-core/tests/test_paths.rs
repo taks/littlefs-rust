@@ -9,7 +9,7 @@ use common::{assert_ok, default_config, init_context, init_logger};
 #[allow(unused_imports)]
 use littlefs_rust_core::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG};
 use littlefs_rust_core::{
-    Lfs, LfsDir, LfsInfo, error::Error, lfs_dir_close, lfs_dir_open, lfs_format, lfs_mkdir,
+    Lfs<T> LfsDir, LfsInfo, error::Error, lfs_dir_close, lfs_dir_open, lfs_format, lfs_mkdir,
     lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_core::{LfsFile, lfs_file_close, lfs_file_open};

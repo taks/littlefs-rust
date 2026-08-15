@@ -583,7 +583,7 @@ pub fn dump_block_hex(block: &[u8], label: &str, len: usize) {
 
 /// Read directory entry names (excluding "." and "..") from path. For use in dir tests.
 pub fn dir_entry_names(
-    lfs: &mut littlefs_rust_core::Lfs,
+    lfs: &mut littlefs_rust_core::Lfs<T>
     _config: &LfsConfig,
     path_str: &str,
 ) -> Result<Vec<String>, Error> {
@@ -636,7 +636,7 @@ pub const LFS_FILE_MAX: i32 = 2_147_483_647;
 /// Returns env. Caller mounts again before reading.
 pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
     use littlefs_rust_core::{
-        Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_write, lfs_format,
+        Lfs<T> LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_write, lfs_format,
         lfs_mount, lfs_unmount,
     };
 
@@ -672,13 +672,13 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
 
 /// Get the metadata block number (`m.pair[0]`) for a directory while mounted.
 /// Caller must unmount before corrupting the returned block.
-pub fn dir_block(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> u32 {
+pub fn dir_block(lfs: &mut littlefs_rust_core::Lfs<T> dir_path: &str) -> u32 {
     dir_pair(lfs, dir_path)[0]
 }
 
 /// Get both metadata block numbers (`m.pair[0]`, `m.pair[1]`) for a directory while mounted.
 /// Used by fix_relocation tests to set wear on dir pairs.
-pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
+pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs<T> dir_path: &str) -> [u32; 2] {
     use littlefs_rust_core::{LfsDir, lfs_dir_close, lfs_dir_open};
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
@@ -732,7 +732,7 @@ pub fn config_with_inline_max(block_count: u32, inline_max: i32) -> TestEnv {
 /// Format fs, sync, return raw content of superblock blocks 0 and 1.
 /// Helper for debug tests. Caller must init_context before.
 pub fn format_and_read_superblock_blocks(env: &mut TestEnv) -> Result<(Vec<u8>, Vec<u8>), Error> {
-    use littlefs_rust_core::{Lfs, lfs_format};
+    use littlefs_rust_core::{Lfs<T> lfs_format};
 
     let lfs = &mut Lfs::default();
     lfs_format(lfs, &env.config as &LfsConfig)?;
@@ -1068,7 +1068,7 @@ pub fn advance_prng(state: &mut u32, n: u32) {
 /// }
 /// ```
 pub fn write_prng_file(
-    lfs: &mut littlefs_rust_core::Lfs,
+    lfs: &mut littlefs_rust_core::Lfs<T>
     file: &mut littlefs_rust_core::LfsFile,
     size: u32,
     chunk_size: u32,
@@ -1099,7 +1099,7 @@ pub fn write_prng_file(
 /// Like write_prng_file but returns Err on write failure (e.g. power-loss LFS_ERR_IO).
 /// Use in power-loss tests where writes can legitimately fail.
 pub fn write_prng_file_result(
-    lfs: &mut littlefs_rust_core::Lfs,
+    lfs: &mut littlefs_rust_core::Lfs<T>
     file: &mut littlefs_rust_core::LfsFile,
     size: u32,
     chunk_size: u32,
@@ -1138,7 +1138,7 @@ pub fn write_prng_file_result(
 /// }
 /// ```
 pub fn verify_prng_file(
-    lfs: &mut littlefs_rust_core::Lfs,
+    lfs: &mut littlefs_rust_core::Lfs<T>
     file: &mut littlefs_rust_core::LfsFile,
     size: u32,
     chunk_size: u32,
@@ -1177,7 +1177,7 @@ pub fn verify_prng_file(
 /// Same as verify_prng_file but uses existing PRNG state (for verifying a tail after advance).
 /// Used when reading SIZE2..SIZE1 in test_files_rewrite (PRNG was advanced by SIZE2 from seed 1).
 pub fn verify_prng_file_with_state(
-    lfs: &mut littlefs_rust_core::Lfs,
+    lfs: &mut littlefs_rust_core::Lfs<T>
     file: &mut littlefs_rust_core::LfsFile,
     size: u32,
     chunk_size: u32,

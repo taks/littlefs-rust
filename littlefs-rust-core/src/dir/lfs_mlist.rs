@@ -56,7 +56,7 @@ pub fn lfs_mlist_isopen(head: *mut LfsMlist, node: *const LfsMlist) -> bool {
 ///     }
 /// }
 /// ```
-pub fn lfs_mlist_remove(lfs: *mut crate::fs::Lfs, mlist: *mut LfsMlist) {
+pub fn lfs_mlist_remove(lfs: *mut crate::fs::Lfs<T> mlist: *mut LfsMlist) {
     if lfs.is_null() || mlist.is_null() {
         return;
     }
@@ -95,7 +95,7 @@ pub fn lfs_mlist_remove(lfs: *mut crate::fs::Lfs, mlist: *mut LfsMlist) {
 ///     lfs->mlist = mlist;
 /// }
 /// ```
-pub fn lfs_mlist_append(lfs: &mut crate::fs::Lfs, mlist: *mut LfsMlist) {
+pub fn lfs_mlist_append(lfs: &mut crate::fs::Lfs<T> mlist: *mut LfsMlist) {
     if mlist.is_null() {
         return;
     }

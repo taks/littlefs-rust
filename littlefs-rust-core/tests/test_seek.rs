@@ -9,7 +9,7 @@ use common::{
     LFS_SEEK_END, LFS_SEEK_SET, assert_ok, default_config, init_context,
 };
 use littlefs_rust_core::{
-    Lfs, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_rewind,
+    Lfs<T> LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_rewind,
     lfs_file_seek, lfs_file_size, lfs_file_sync, lfs_file_tell, lfs_file_write, lfs_format,
     lfs_mount, lfs_unmount,
 };
@@ -691,7 +691,7 @@ fn test_seek_reentrant_write(#[case] count: u32) {
     assert_ok(littlefs_rust_core::lfs_unmount(lfs));
     let snapshot = env.snapshot();
 
-    let op = |lfs: &mut Lfs, cfg: &LfsConfig| -> Result<(), Error> {
+    let op = |lfs: &mut Lfs<T> cfg: &LfsConfig| -> Result<(), Error> {
         let err = littlefs_rust_core::lfs_mount(lfs, cfg);
         if err.is_err() {
             let _ = littlefs_rust_core::lfs_format(lfs, cfg);

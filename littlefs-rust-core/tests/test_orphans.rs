@@ -18,7 +18,7 @@ use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
 use littlefs_rust_core::{
-    Lfs, LfsInfo, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit, lfs_dir_fetch,
+    Lfs<T> LfsInfo, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit, lfs_dir_fetch,
     lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
     lfs_fs_preporphans, lfs_fs_size, lfs_mattr, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32,
     lfs_remove, lfs_stat, lfs_unmount,

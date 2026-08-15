@@ -102,7 +102,7 @@ use crate::util::lfs_pair_fromle32;
 ///
 /// #ifndef LFS_READONLY
 /// ```
-pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
+pub fn lfs_remove_(lfs: &mut super::lfs::Lfs<T> path: &str) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {

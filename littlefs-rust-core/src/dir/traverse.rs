@@ -81,7 +81,7 @@ use crate::types::{lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
 /// }
 /// ```
 pub fn lfs_dir_getslice(
-    lfs: &crate::fs::Lfs,
+    lfs: &crate::fs::Lfs<T>
     dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
@@ -191,7 +191,7 @@ pub fn lfs_dir_getslice(
 /// }
 /// ```
 pub fn lfs_dir_get(
-    lfs: &crate::fs::Lfs,
+    lfs: &crate::fs::Lfs<T>
     dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
@@ -232,7 +232,7 @@ pub fn lfs_dir_get(
 /// }
 /// ```
 pub fn lfs_dir_getread(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &mut crate::fs::Lfs<T>
     dir: &LfsMdir,
     pcache: *const LfsCache,
     rcache: &mut LfsCache,
@@ -692,7 +692,7 @@ fn dispatch_tag(
 
 #[allow(clippy::type_complexity)]
 pub fn lfs_dir_traverse(
-    lfs: &crate::fs::Lfs,
+    lfs: &crate::fs::Lfs<T>
     dir: &LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
