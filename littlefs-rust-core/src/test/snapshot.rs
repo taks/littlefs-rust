@@ -8,7 +8,6 @@ use crate::error::Error;
 use crate::test::ram::MAGIC_OFFSET;
 
 /// Captured superblock blocks. Use dump() to pretty-print.
-
 #[allow(unused)]
 pub struct SuperblockSnapshot {
     pub block0: alloc::vec::Vec<u8>,
