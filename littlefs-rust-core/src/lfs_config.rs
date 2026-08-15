@@ -11,26 +11,26 @@ use crate::{
 };
 
 /// Read callback: (cfg, block, off, buffer, size) -> 0 or negative error
-pub type lfs_read_t<T, U> = fn(&LfsConfig<T, U>, lfs_block_t, lfs_off_t, &mut [u8]) -> Result<(), Error>;
+pub type lfs_read_t = fn(&LfsConfig, lfs_block_t, lfs_off_t, &mut [u8]) -> Result<(), Error>;
 
 /// Prog callback: (cfg, block, off, buffer, size) -> 0 or negative error
-pub type lfs_prog_t<T, U> = fn(&LfsConfig<T, U>, lfs_block_t, lfs_off_t, &[u8]) -> Result<(), Error>;
+pub type lfs_prog_t = fn(&LfsConfig, lfs_block_t, lfs_off_t, &[u8]) -> Result<(), Error>;
 
 /// Erase callback: (cfg, block) -> 0 or negative error
-pub type lfs_erase_t<T, U> = fn(&LfsConfig<T, U>, lfs_block_t) -> Result<(), Error>;
+pub type lfs_erase_t = fn(&LfsConfig, lfs_block_t) -> Result<(), Error>;
 
 /// Sync callback: (cfg) -> 0 or negative error
-pub type lfs_sync_t<T, U> = fn(&LfsConfig<T, U>) -> Result<(), Error>;
+pub type lfs_sync_t = fn(&LfsConfig) -> Result<(), Error>;
 
 /// Per lfs.h struct lfs_config.
 /// Layout matches C for potential FFI. Callbacks use Option to allow null.
 #[repr(C)]
-pub struct LfsConfig<T, U> {
+pub struct LfsConfigA<T, U> {
     pub context: *mut core::ffi::c_void,
-    pub read: Option<lfs_read_t<T, U>>,
-    pub prog: Option<lfs_prog_t<T, U>>,
-    pub erase: Option<lfs_erase_t<T, U>>,
-    pub sync: Option<lfs_sync_t<T, U>>,
+    pub read: Option<lfs_read_t>,
+    pub prog: Option<lfs_prog_t>,
+    pub erase: Option<lfs_erase_t>,
+    pub sync: Option<lfs_sync_t>,
     pub read_size: lfs_size_t,
     pub prog_size: lfs_size_t,
     pub block_size: lfs_size_t,
@@ -39,12 +39,16 @@ pub struct LfsConfig<T, U> {
     pub cache_size: lfs_size_t,
     pub lookahead_size: lfs_size_t,
     pub compact_thresh: lfs_size_t,
-    pub read_buffer: T,
-    pub prog_buffer: T,
-    pub lookahead_buffer: U,
+
     pub name_max: lfs_size_t,
     pub file_max: lfs_size_t,
     pub attr_max: lfs_size_t,
     pub metadata_max: lfs_size_t,
     pub inline_max: lfs_size_t,
+
+    pub read_buffer: T,
+    pub prog_buffer: T,
+    pub lookahead_buffer: U,
 }
+
+pub type LfsConfig = LfsConfigA<(), ()>;
