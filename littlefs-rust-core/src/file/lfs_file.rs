@@ -22,6 +22,8 @@ pub struct LfsFile<'a> {
     pub off: lfs_off_t,
     pub cache: LfsCache,
     pub cfg: *const LfsFileConfig<'a, ()>,
+    #[cfg(feature = "alloc")]
+    pub(crate) allocated: bool,
 }
 
 impl<'a> LfsFile<'a> {

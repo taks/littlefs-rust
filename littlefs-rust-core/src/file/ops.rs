@@ -346,9 +346,10 @@ pub fn lfs_file_opencfg_<T: DerefMut<Target = [u8]>>(
     } else {
         #[cfg(feature = "alloc")]
         {
-            // file.cache.buffer = crate::lfs_alloc_module::lfs_malloc(unsafe {
-            //     lfs.cfg.as_ref().expect("cfg").cache_size
-            // });
+            file.cache.buffer = crate::lfs_alloc_module::lfs_malloc(unsafe {
+                lfs.cfg.as_ref().expect("cfg").cache_size
+            });
+            file.allocated = true;
         }
         #[cfg(not(feature = "alloc"))]
         {
@@ -442,18 +443,13 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
     unsafe {
         lfs_mlist_remove(lfs, file.as_mut_lsf_mist());
 
-        // TODO:
-        // let cfg = file.cfg;
-        // #[allow(clippy::needless_borrow)]
-        // #[cfg(feature = "alloc")]
-        // if !cfg.is_null() && (&(*cfg).buffer).is_empty() {
-        //     {
-        //         crate::lfs_alloc_module::lfs_free(
-        //             file.cache.buffer,
-        //             lfs.cfg.as_ref().expect("cfg").cache_size,
-        //         );
-        //     }
-        // }
+        #[cfg(feature = "alloc")]
+        if (file.allocated) {
+            crate::lfs_alloc_module::lfs_free(
+                file.cache.buffer,
+                lfs.cfg.as_ref().expect("cfg").cache_size,
+            );
+        }
     }
 
     err
@@ -769,6 +765,8 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                     off: 0,
                     cache: core::ptr::read(lfs.rcache.get()),
                     cfg: core::ptr::null(),
+                    #[cfg(feature = "alloc")]
+                    allocated: false,
                 };
                 lfs_cache_drop(lfs, &mut *lfs.rcache.get());
 
