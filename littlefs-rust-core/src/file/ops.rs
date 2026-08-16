@@ -1,5 +1,7 @@
 //! File operations. Per lfs.c lfs_file_opencfg_, lfs_file_close_, lfs_file_sync_, etc.
 
+use core::ops::{Deref, DerefMut};
+
 use zerocopy::IntoBytes;
 
 use crate::bd::bd::{lfs_bd_read, lfs_cache_drop, lfs_cache_zero};
@@ -195,12 +197,12 @@ use crate::{Lfs, LfsAttr};
 ///     return err;
 /// }
 /// ```
-pub fn lfs_file_opencfg_(
+pub fn lfs_file_opencfg_<T: DerefMut<Target = [u8]>>(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
     path: &str,
     flags: i32,
-    cfg: &mut LfsFileConfig,
+    cfg: &mut LfsFileConfig<T>,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
     use crate::dir::find::lfs_dir_find;
@@ -337,14 +339,16 @@ pub fn lfs_file_opencfg_(
         }
     }
 
-    if !(cfg).buffer.is_empty() {
-        file.cache.buffer = cfg.buffer.as_mut_ptr();
+    let a = &mut *cfg.buffer;
+
+    if !cfg.buffer.is_empty() {
+        file.cache.buffer = (&mut *cfg.buffer).as_mut_ptr();
     } else {
         #[cfg(feature = "alloc")]
         {
-            file.cache.buffer = crate::lfs_alloc_module::lfs_malloc(unsafe {
-                lfs.cfg.as_ref().expect("cfg").cache_size
-            });
+            // file.cache.buffer = crate::lfs_alloc_module::lfs_malloc(unsafe {
+            //     lfs.cfg.as_ref().expect("cfg").cache_size
+            // });
         }
         #[cfg(not(feature = "alloc"))]
         {
@@ -407,7 +411,7 @@ pub fn lfs_file_opencfg_(
 static mut BUFFER: [u8; 0] = [];
 static mut ATTRS: [LfsAttr; 0] = [];
 #[allow(clippy::deref_addrof)]
-static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
+static mut LFS_FILE_DEFAULTS: LfsFileConfig<&mut [u8]> = LfsFileConfig {
     buffer: unsafe { &mut *(&raw mut BUFFER) },
     attrs: unsafe { &mut *(&raw mut ATTRS) },
     // attr_count: 0,
@@ -438,17 +442,18 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
     unsafe {
         lfs_mlist_remove(lfs, file.as_mut_lsf_mist());
 
-        let cfg = file.cfg;
-        #[allow(clippy::needless_borrow)]
-        if !cfg.is_null() && (&(*cfg).buffer).is_empty() {
-            #[cfg(feature = "alloc")]
-            {
-                crate::lfs_alloc_module::lfs_free(
-                    file.cache.buffer,
-                    lfs.cfg.as_ref().expect("cfg").cache_size,
-                );
-            }
-        }
+        // TODO:
+        // let cfg = file.cfg;
+        // #[allow(clippy::needless_borrow)]
+        // #[cfg(feature = "alloc")]
+        // if !cfg.is_null() && (&(*cfg).buffer).is_empty() {
+        //     {
+        //         crate::lfs_alloc_module::lfs_free(
+        //             file.cache.buffer,
+        //             lfs.cfg.as_ref().expect("cfg").cache_size,
+        //         );
+        //     }
+        // }
     }
 
     err

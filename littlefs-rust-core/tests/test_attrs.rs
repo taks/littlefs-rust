@@ -200,7 +200,7 @@ fn test_attrs_get_set_file() {
             buffer: &mut buffer[10..15],
         },
     ];
-    let mut cfg = LfsFileConfig {
+    let mut cfg = LfsFileConfig::<&mut [u8]> {
         buffer: &mut [],
         attrs: &mut attrs,
     };
@@ -232,7 +232,7 @@ fn test_attrs_get_set_file() {
             // size: 5,
         },
     ];
-    let mut cfg_read = LfsFileConfig {
+    let mut cfg_read = LfsFileConfig::<&mut [u8]> {
         buffer: &mut [],
         attrs: &mut attrs_read,
     };
@@ -317,7 +317,7 @@ fn test_attrs_deferred_file() {
             // size: 4,
         },
     ];
-    let mut cfg = LfsFileConfig {
+    let mut cfg = LfsFileConfig::<&mut [u8]> {
         buffer: &mut [],
         attrs: &mut attrs,
     };

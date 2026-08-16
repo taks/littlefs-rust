@@ -21,7 +21,7 @@ pub struct LfsFile<'a> {
     pub block: lfs_block_t,
     pub off: lfs_off_t,
     pub cache: LfsCache,
-    pub cfg: *const LfsFileConfig<'a>,
+    pub cfg: *const LfsFileConfig<'a, ()>,
 }
 
 impl<'a> LfsFile<'a> {

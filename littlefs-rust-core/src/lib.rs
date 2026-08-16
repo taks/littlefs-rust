@@ -5,6 +5,7 @@
 
 #![no_std]
 #![allow(clippy::too_many_arguments)]
+#![allow(unused)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -34,6 +35,7 @@ mod types;
 mod util;
 
 use core::ffi::c_void;
+use core::ops::DerefMut;
 
 pub use crate::dir::LfsDir;
 use crate::error::Error;
@@ -167,12 +169,12 @@ pub fn lfs_file_open(
 
 /// Open a file with extra configuration. Per lfs.h lfs_file_opencfg (lfs.c:6193-6197).
 #[inline]
-pub fn lfs_file_opencfg<'a>(
+pub fn lfs_file_opencfg<'a, T: DerefMut<Target = [u8]>>(
     lfs: &mut Lfs,
     file: &mut LfsFile,
     path: &str,
     flags: i32,
-    config: &mut LfsFileConfig<'a>,
+    config: &mut LfsFileConfig<'a, T>,
 ) -> Result<(), Error> {
     crate::file::ops::lfs_file_opencfg_(lfs, file, path, flags, config)
 }

@@ -37,11 +37,11 @@ unsafe impl<'a> zerocopy::IntoBytes for LfsAttr<'a> {
 
 /// Per lfs.h struct lfs_file_config
 #[repr(C)]
-pub struct LfsFileConfig<'a> {
-    pub buffer: &'a mut [u8],
+pub struct LfsFileConfig<'a, T> {
     pub attrs: &'a mut [LfsAttr<'a>],
+    pub buffer: T,
     // pub attr_count: lfs_size_t,
 }
 
 // Safe: default config (all nulls) is shareable. Callers must not mutate.
-unsafe impl Sync for LfsFileConfig<'_> {}
+unsafe impl<T> Sync for LfsFileConfig<'_, T> {}
