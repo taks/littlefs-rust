@@ -963,6 +963,7 @@ pub fn lfs_dir_compact(
     };
 
     let mut relocated = false;
+    #[cfg(feature = "log")]
     let mut relocate_count: u32 = 0;
     let mut tired = lfs_dir_needsrelocation(lfs, dir);
     let superblock_pair = [0u32, 1u32];
@@ -1008,7 +1009,10 @@ pub fn lfs_dir_compact(
         if let Err(err) = err {
             if err == Error::Corrupt {
                 relocated = true;
-                relocate_count += 1;
+                #[cfg(feature = "log")]
+                {
+                    relocate_count += 1;
+                }
                 crate::lfs_trace!(
                     "lfs_dir_compact relocate #{}: bd_erase CORRUPT pair={:?}",
                     relocate_count,
@@ -1042,7 +1046,10 @@ pub fn lfs_dir_compact(
         if let Err(err) = err {
             if err == Error::Corrupt {
                 relocated = true;
-                relocate_count += 1;
+                #[cfg(feature = "log")]
+                {
+                    relocate_count += 1;
+                }
                 crate::lfs_trace!(
                     "lfs_dir_compact relocate #{}: commitprog CORRUPT pair={:?}",
                     relocate_count,
@@ -1094,7 +1101,10 @@ pub fn lfs_dir_compact(
         if let Err(err) = err {
             if err == Error::Corrupt {
                 relocated = true;
-                relocate_count += 1;
+                #[cfg(feature = "log")]
+                {
+                    relocate_count += 1;
+                }
                 crate::lfs_trace!(
                     "lfs_dir_compact relocate #{}: traverse CORRUPT pair={:?}",
                     relocate_count,
@@ -1139,7 +1149,10 @@ pub fn lfs_dir_compact(
             if let Err(err) = err {
                 if err == Error::Corrupt {
                     relocated = true;
-                    relocate_count += 1;
+                    #[cfg(feature = "log")]
+                    {
+                        relocate_count += 1;
+                    }
                     crate::lfs_trace!(
                         "lfs_dir_compact relocate #{}: tail CORRUPT pair={:?}",
                         relocate_count,
@@ -1196,7 +1209,10 @@ pub fn lfs_dir_compact(
             if let Err(err) = err {
                 if err == Error::Corrupt {
                     relocated = true;
-                    relocate_count += 1;
+                    #[cfg(feature = "log")]
+                    {
+                        relocate_count += 1;
+                    }
                     crate::lfs_trace!(
                         "lfs_dir_compact relocate #{}: movestate CORRUPT pair={:?}",
                         relocate_count,
@@ -1229,7 +1245,10 @@ pub fn lfs_dir_compact(
         if let Err(err) = err {
             if err == Error::Corrupt {
                 relocated = true;
-                relocate_count += 1;
+                #[cfg(feature = "log")]
+                {
+                    relocate_count += 1;
+                }
                 crate::lfs_trace!(
                     "lfs_dir_compact relocate #{}: commitcrc CORRUPT pair={:?}",
                     relocate_count,
