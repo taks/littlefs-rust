@@ -7,7 +7,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(unused)]
 
-#[cfg(feature = "alloc")]
+#[cfg(any(feature = "alloc", test))]
 extern crate alloc;
 
 mod bd;
