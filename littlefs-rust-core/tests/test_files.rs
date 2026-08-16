@@ -7,7 +7,7 @@ mod common;
 
 use common::{
     LFS_O_APPEND, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, advance_prng,
-    assert_ok, config_with_inline_max, default_config, fs_with_hello, init_context,
+    config_with_inline_max, default_config, fs_with_hello, init_context,
     powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
     verify_prng_file, verify_prng_file_with_state, write_prng_file, write_prng_file_result,
 };
@@ -36,13 +36,13 @@ fn test_files_simple(#[values(0, -1, 8)] inline_max: i32) {
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_format(lfs, &env.config));
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
 
     let path = "hello";
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_file_open(
         lfs,
         file,
         path,
@@ -50,18 +50,18 @@ fn test_files_simple(#[values(0, -1, 8)] inline_max: i32) {
     ));
     let n = lfs_file_write(lfs, file, data);
     assert_eq!(n, Ok(data.len() as u32));
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
     assert_eq!(n, Ok(data.len() as u32));
     assert_eq!(&buf[..(n.unwrap()) as usize], data);
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_files_large]
@@ -81,33 +81,33 @@ fn test_files_large(
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, &env.config));
 
     // write
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
     let path = "avacado";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_file_open(
         lfs,
         file,
         path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     write_prng_file(lfs, file, size, chunk_size, 1);
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 
     // read
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), size as i32);
     verify_prng_file(lfs, file, size, chunk_size, 1);
     // Final read past EOF returns 0
     let mut buf = [0u8; 1024];
     let n = lfs_file_read(lfs, file, &mut buf[..chunk_size as usize]);
     assert_eq!(n, Ok(0));
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_files_rewrite]
@@ -129,41 +129,41 @@ fn test_files_rewrite(
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, &env.config));
 
     let path = "avacado";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
 
     // write SIZE1
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(
         lfs,
         file,
         path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     write_prng_file(lfs, file, size1, chunk_size, 1);
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 
     // read SIZE1
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), size1 as i32);
     verify_prng_file(lfs, file, size1, chunk_size, 1);
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 
     // rewrite SIZE2 (WRONLY, no TRUNC)
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY));
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY));
     write_prng_file(lfs, file, size2, chunk_size, 2);
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 
     // read: first SIZE2 = PRNG(2), then SIZE2..SIZE1 (if size1 > size2) = PRNG(1) from offset SIZE2
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), size1.max(size2) as i32);
     verify_prng_file(lfs, file, size2, chunk_size, 2);
     if size1 > size2 {
@@ -175,8 +175,8 @@ fn test_files_rewrite(
     let mut buf = [0u8; 1024];
     let n = lfs_file_read(lfs, file, &mut buf[..chunk_size as usize]);
     assert_eq!(n, Ok(0));
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_files_append]
@@ -197,38 +197,38 @@ fn test_files_append(
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, &env.config));
 
     let path = "avacado";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
 
     // write SIZE1
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(
         lfs,
         file,
         path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     write_prng_file(lfs, file, size1, chunk_size, 1);
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 
     // append SIZE2
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_APPEND));
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_APPEND));
     write_prng_file(lfs, file, size2, chunk_size, 2);
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 
     // read: SIZE1 + SIZE2, first PRNG(1) then PRNG(2)
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), (size1 + size2) as i32);
     verify_prng_file(lfs, file, size1, chunk_size, 1);
     verify_prng_file(lfs, file, size2, chunk_size, 2);
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_files_truncate]
@@ -249,40 +249,40 @@ fn test_files_truncate(
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, &env.config));
 
     let path = "avacado";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
 
     // write SIZE1
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(
         lfs,
         file,
         path,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     write_prng_file(lfs, file, size1, chunk_size, 1);
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 
     // truncate + write SIZE2
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_TRUNC));
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_TRUNC));
     write_prng_file(lfs, file, size2, chunk_size, 2);
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 
     // read SIZE2
-    assert_ok(lfs_mount(lfs, &env.config));
-    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), size2 as i32);
     verify_prng_file(lfs, file, size2, chunk_size, 2);
     let mut buf = [0u8; 1024];
     let n = lfs_file_read(lfs, file, &mut buf[..chunk_size as usize]);
     assert_eq!(n, Ok(0));
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_files_reentrant_write]
@@ -311,9 +311,9 @@ fn test_files_reentrant_write(
     let lfs = &mut Lfs::default();
 
     // Format and mount for initial snapshot
-    assert_ok(littlefs_rust_core::lfs_format(lfs, config_ptr));
-    assert_ok(littlefs_rust_core::lfs_mount(lfs, config_ptr));
-    assert_ok(littlefs_rust_core::lfs_unmount(lfs));
+    assert_ok!(littlefs_rust_core::lfs_format(lfs, config_ptr));
+    assert_ok!(littlefs_rust_core::lfs_mount(lfs, config_ptr));
+    assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
     let snapshot = env.snapshot();
 
     let max_iter = 5000;
@@ -390,9 +390,9 @@ fn test_files_reentrant_write_sync(
     let config_ptr = &env.config;
     let lfs = &mut Lfs::default();
 
-    assert_ok(littlefs_rust_core::lfs_format(lfs, config_ptr));
-    assert_ok(littlefs_rust_core::lfs_mount(lfs, config_ptr));
-    assert_ok(littlefs_rust_core::lfs_unmount(lfs));
+    assert_ok!(littlefs_rust_core::lfs_format(lfs, config_ptr));
+    assert_ok!(littlefs_rust_core::lfs_mount(lfs, config_ptr));
+    assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
     let snapshot = env.snapshot();
 
     let max_iter = 5000;
@@ -493,13 +493,13 @@ fn test_files_many() {
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_format(lfs, &env.config));
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
 
     for i in 0..N {
         let path = &format!("file_{:03}", i);
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(
+        assert_ok!(lfs_file_open(
             lfs,
             file,
             path,
@@ -510,17 +510,17 @@ fn test_files_many() {
         assert_eq!(bytes.len(), 7);
         let n = lfs_file_write(lfs, file, bytes);
         assert_eq!(n, Ok(bytes.len() as u32));
-        assert_ok(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file));
 
         let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
         let mut buf = [0u8; 32];
         let n = lfs_file_read(lfs, rfile, &mut buf[..7]);
         assert_eq!(n, Ok(7));
         assert_eq!(&buf[..7], bytes);
-        assert_ok(lfs_file_close(lfs, rfile));
+        assert_ok!(lfs_file_close(lfs, rfile));
     }
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_files_many_power_cycle]
@@ -534,13 +534,13 @@ fn test_files_many_power_cycle() {
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, &env.config));
 
     for i in 0..N {
-        assert_ok(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, &env.config));
         let path = &format!("file_{:03}", i);
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(
+        assert_ok!(lfs_file_open(
             lfs,
             file,
             path,
@@ -551,19 +551,19 @@ fn test_files_many_power_cycle() {
         assert_eq!(bytes.len(), 7);
         let n = lfs_file_write(lfs, file, bytes);
         assert_eq!(n, Ok(bytes.len() as u32));
-        assert_ok(lfs_file_close(lfs, file));
-        assert_ok(lfs_unmount(lfs));
+        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_unmount(lfs));
 
-        assert_ok(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, &env.config));
         let rfile = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
         let mut buf = [0u8; 32];
         let n = lfs_file_read(lfs, rfile, &mut buf[..7]);
         assert_eq!(n, Ok(7));
         assert_eq!(&buf[..7], bytes);
-        assert_ok(lfs_file_close(lfs, rfile));
+        assert_ok!(lfs_file_close(lfs, rfile));
     }
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_files_many_power_loss]
@@ -581,9 +581,9 @@ fn test_files_many_power_loss() {
     let config_ptr = &env.config;
     let lfs = &mut Lfs::default();
 
-    assert_ok(littlefs_rust_core::lfs_format(lfs, config_ptr));
-    assert_ok(littlefs_rust_core::lfs_mount(lfs, config_ptr));
-    assert_ok(littlefs_rust_core::lfs_unmount(lfs));
+    assert_ok!(littlefs_rust_core::lfs_format(lfs, config_ptr));
+    assert_ok!(littlefs_rust_core::lfs_mount(lfs, config_ptr));
+    assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
     let snapshot = env.snapshot();
 
     let max_iter = 2000;
@@ -635,25 +635,25 @@ fn test_files_same_session() {
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(littlefs_rust_core::lfs_format(lfs, &env.config));
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(littlefs_rust_core::lfs_format(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
 
     let path = "hello";
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path, 0x0100 | 2));
+    assert_ok!(lfs_file_open(lfs, file, path, 0x0100 | 2));
     let n = lfs_file_write(lfs, file, data);
     assert_eq!(n, Ok(data.len() as u32));
-    assert_ok(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file));
 
     let file2 = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file2, path, 1));
+    assert_ok!(lfs_file_open(lfs, file2, path, 1));
     assert_eq!(lfs_file_size(lfs, file2), 13);
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file2, &mut buf[..32]);
     assert_eq!(n, Ok(13));
     assert_eq!(&buf[..13], b"Hello World!\0");
-    assert_ok(lfs_file_close(lfs, file2));
+    assert_ok!(lfs_file_close(lfs, file2));
 }
 
 #[test]
@@ -663,11 +663,11 @@ fn test_files_simple_read() {
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
 
     let path = "hello";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path, 1));
+    assert_ok!(lfs_file_open(lfs, file, path, 1));
 
     assert_eq!(lfs_file_size(lfs, file), 13);
     assert_eq!(lfs_file_tell(lfs, file), 0);
@@ -680,8 +680,8 @@ fn test_files_simple_read() {
     let n2 = lfs_file_read(lfs, file, &mut buf[..32]);
     assert_eq!(n2, Ok(0));
 
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 #[test]
@@ -691,11 +691,11 @@ fn test_files_seek_tell() {
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
 
     let path = "hello";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path, 1));
+    assert_ok!(lfs_file_open(lfs, file, path, 1));
 
     let mut buf = [0u8; 4];
     let n = lfs_file_read(lfs, file, &mut buf[..4]);
@@ -703,7 +703,7 @@ fn test_files_seek_tell() {
     assert_eq!(&buf[..4], b"Hell");
     assert_eq!(lfs_file_tell(lfs, file), 4);
 
-    assert_ok(lfs_file_rewind(lfs, file));
+    assert_ok!(lfs_file_rewind(lfs, file));
     assert_eq!(lfs_file_tell(lfs, file), 0);
 
     let n2 = lfs_file_read(lfs, file, &mut buf[..4]);
@@ -716,8 +716,8 @@ fn test_files_seek_tell() {
     assert_eq!(n3, Ok(4));
     assert_eq!(&buf[..4], b"Worl");
 
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 #[test]
@@ -726,12 +726,12 @@ fn test_files_truncate_api() {
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_format(lfs, &env.config));
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
 
     let path = "x";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_file_open(
         lfs,
         file,
         path,
@@ -739,20 +739,20 @@ fn test_files_truncate_api() {
     ));
     let data = b"hello world";
     let _ = lfs_file_write(lfs, file, data);
-    assert_ok(lfs_file_truncate(lfs, file, 5));
-    assert_ok(lfs_file_sync(lfs, file));
-    assert_ok(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_truncate(lfs, file, 5));
+    assert_ok!(lfs_file_sync(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file));
 
-    assert_ok(lfs_unmount(lfs));
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_unmount(lfs));
+    assert_ok!(lfs_mount(lfs, &env.config));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), 5);
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf[..32]);
     assert_eq!(n, Ok(5));
     assert_eq!(&buf[..5], b"hello");
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }

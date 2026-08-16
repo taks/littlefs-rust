@@ -475,10 +475,12 @@ where
 }
 
 /// Panic if result is not 0.
-pub fn assert_ok(result: Result<(), Error>) {
-    if result.is_err() {
-        panic!("expected 0, got {:?}", result);
-    }
+#[macro_export]
+macro_rules! assert_ok {
+    ($result:expr) => {{
+        let result = $result;
+        assert!(result.is_ok(), "expected ok, got {:?}", result);
+    }};
 }
 
 /// Panic if result is not 0, with step name for debugging.
@@ -682,9 +684,9 @@ pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
     use littlefs_rust_core::{LfsDir, lfs_dir_close, lfs_dir_open};
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, dir_path));
+    assert_ok!(lfs_dir_open(lfs, dir, dir_path));
     let pair = (dir).m.pair;
-    assert_ok(lfs_dir_close(lfs, dir));
+    assert_ok!(lfs_dir_close(lfs, dir));
     [pair[0], pair[1]]
 }
 

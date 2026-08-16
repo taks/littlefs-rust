@@ -5,10 +5,9 @@
 mod common;
 
 use common::{
-    BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok,
-    config_badblock_with_behavior, config_with_wear_leveling, default_config,
-    init_badblock_context, init_context, init_wear_leveling_context, test_prng, verify_prng_file,
-    write_block_raw, write_prng_file,
+    BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, config_badblock_with_behavior,
+    config_with_wear_leveling, default_config, init_badblock_context, init_context,
+    init_wear_leveling_context, test_prng, verify_prng_file, write_block_raw, write_prng_file,
 };
 use littlefs_rust_core::{Lfs, LfsFile, error::Error};
 
@@ -267,32 +266,32 @@ fn test_write_verify_prng_file() {
     init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok(littlefs_rust_core::lfs_format(lfs, &env.config));
-    assert_ok(littlefs_rust_core::lfs_mount(lfs, &env.config));
+    assert_ok!(littlefs_rust_core::lfs_format(lfs, &env.config));
+    assert_ok!(littlefs_rust_core::lfs_mount(lfs, &env.config));
 
     let path = "prng_test";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
 
     // Write 256 bytes in 31-byte chunks with seed=1
-    assert_ok(littlefs_rust_core::lfs_file_open(
+    assert_ok!(littlefs_rust_core::lfs_file_open(
         lfs,
         file,
         path,
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     write_prng_file(lfs, file, 256, 31, 1);
-    assert_ok(littlefs_rust_core::lfs_file_close(lfs, file));
-    assert_ok(littlefs_rust_core::lfs_unmount(lfs));
+    assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file));
+    assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
 
     // Remount and verify
-    assert_ok(littlefs_rust_core::lfs_mount(lfs, &env.config));
-    assert_ok(littlefs_rust_core::lfs_file_open(
+    assert_ok!(littlefs_rust_core::lfs_mount(lfs, &env.config));
+    assert_ok!(littlefs_rust_core::lfs_file_open(
         lfs,
         file,
         path,
         LFS_O_RDONLY,
     ));
     verify_prng_file(lfs, file, 256, 31, 1);
-    assert_ok(littlefs_rust_core::lfs_file_close(lfs, file));
-    assert_ok(littlefs_rust_core::lfs_unmount(lfs));
+    assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file));
+    assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
 }

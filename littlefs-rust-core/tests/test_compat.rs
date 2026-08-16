@@ -6,7 +6,7 @@
 
 mod common;
 
-use common::{assert_ok, default_config, init_context, init_logger};
+use common::{default_config, init_context, init_logger};
 use littlefs_rust_core::LfsFile;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
@@ -27,8 +27,8 @@ fn test_compat_major_incompat() {
     let cfg = &env.config;
 
     let mut lfs = unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(&mut lfs, cfg));
-    assert_ok(lfs_mount(&mut lfs, cfg));
+    assert_ok!(lfs_format(&mut lfs, cfg));
+    assert_ok!(lfs_mount(&mut lfs, cfg));
 
     let mut mdir = LfsMdir {
         pair: [0, 0],
@@ -41,7 +41,7 @@ fn test_compat_major_incompat() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(&mut lfs, &mut mdir, root_pair));
+    assert_ok!(lfs_dir_fetch(&mut lfs, &mut mdir, root_pair));
 
     let mut superblock = LfsSuperblock {
         version: LFS_DISK_VERSION + 0x0001_0000,
@@ -60,8 +60,8 @@ fn test_compat_major_incompat() {
         ),
         buffer: superblock.as_bytes(),
     }];
-    assert_ok(lfs_dir_commit(&mut lfs, &mut mdir, &attrs));
-    assert_ok(lfs_unmount(&mut lfs));
+    assert_ok!(lfs_dir_commit(&mut lfs, &mut mdir, &attrs));
+    assert_ok!(lfs_unmount(&mut lfs));
 
     assert_err!(Error::Invalid, lfs_mount(&mut lfs, cfg));
 }
@@ -77,8 +77,8 @@ fn test_compat_minor_incompat() {
     let cfg = &env.config;
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_format(lfs, cfg));
-    assert_ok(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let mut mdir = LfsMdir {
         pair: [0, 0],
@@ -91,7 +91,7 @@ fn test_compat_minor_incompat() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, &mut mdir, root_pair));
+    assert_ok!(lfs_dir_fetch(lfs, &mut mdir, root_pair));
 
     let mut superblock = LfsSuperblock {
         version: LFS_DISK_VERSION + 0x0000_0001,
@@ -110,8 +110,8 @@ fn test_compat_minor_incompat() {
         ),
         buffer: superblock.as_bytes(),
     }];
-    assert_ok(lfs_dir_commit(lfs, &mut mdir, &attrs));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_dir_commit(lfs, &mut mdir, &attrs));
+    assert_ok!(lfs_unmount(lfs));
 
     assert_err!(Error::Invalid, lfs_mount(lfs, cfg));
 }
@@ -132,22 +132,22 @@ fn test_compat_minor_bump() {
     let cfg = &env.config;
 
     let lfs = &mut Lfs::default();
-    assert_ok(lfs_format(lfs, cfg));
-    assert_ok(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_file_open(
         lfs,
         file,
         "test",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
     ));
     assert_eq!(lfs_file_write(lfs, file, b"testtest",), Ok(8));
-    assert_ok(lfs_file_close(lfs, file));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 
     // Write old minor version to superblock
-    assert_ok(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     let mut mdir = LfsMdir {
         pair: [0, 0],
         rev: 0,
@@ -159,7 +159,7 @@ fn test_compat_minor_bump() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok(lfs_dir_fetch(lfs, &mut mdir, root_pair));
+    assert_ok!(lfs_dir_fetch(lfs, &mut mdir, root_pair));
 
     let cfg = unsafe { &*lfs.cfg };
     let mut superblock = LfsSuperblock {
@@ -179,50 +179,50 @@ fn test_compat_minor_bump() {
         ),
         buffer: superblock.as_bytes(),
     }];
-    assert_ok(lfs_dir_commit(lfs, &mut mdir, &attrs));
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_dir_commit(lfs, &mut mdir, &attrs));
+    assert_ok!(lfs_unmount(lfs));
 
     // Mount should work
-    assert_ok(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok(lfs_fs_stat(lfs, fsinfo));
+    assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.disk_version, LFS_DISK_VERSION - 1);
 
-    assert_ok(lfs_file_open(lfs, file, "test", LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, "test", LFS_O_RDONLY));
     let mut buf = [0u8; 8];
     assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(8));
     assert_eq!(&buf, b"testtest");
-    assert_ok(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file));
 
-    assert_ok(lfs_fs_stat(lfs, fsinfo));
+    assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!({ fsinfo.disk_version }, LFS_DISK_VERSION - 1);
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 
     // Write should bump minor version
-    assert_ok(lfs_mount(lfs, cfg));
-    assert_ok(lfs_fs_stat(lfs, fsinfo));
+    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!({ fsinfo.disk_version }, LFS_DISK_VERSION - 1);
 
-    assert_ok(lfs_file_open(lfs, file, "test", LFS_O_WRONLY | LFS_O_TRUNC));
+    assert_ok!(lfs_file_open(lfs, file, "test", LFS_O_WRONLY | LFS_O_TRUNC));
     assert_eq!(lfs_file_write(lfs, file, b"teeeeest"), Ok(8));
-    assert_ok(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file));
 
-    assert_ok(lfs_fs_stat(lfs, fsinfo));
+    assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.disk_version, LFS_DISK_VERSION);
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 
     // Remount, verify version stayed bumped
-    assert_ok(lfs_mount(lfs, cfg));
-    assert_ok(lfs_fs_stat(lfs, fsinfo));
+    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!({ fsinfo.disk_version }, LFS_DISK_VERSION);
 
-    assert_ok(lfs_file_open(lfs, file, "test", LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, "test", LFS_O_RDONLY));
     assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(8));
     assert_eq!(&buf, b"teeeeest");
-    assert_ok(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file));
 
-    assert_ok(lfs_fs_stat(lfs, fsinfo));
+    assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.disk_version, LFS_DISK_VERSION);
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }
