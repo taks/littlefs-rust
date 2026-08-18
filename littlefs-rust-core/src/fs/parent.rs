@@ -207,22 +207,8 @@ pub fn lfs_fs_parent(
         i: 1,
         period: 1,
     };
-    #[cfg(feature = "loop_limits")]
-    const MAX_PARENT_ITER: u32 = 2048;
-    #[cfg(feature = "loop_limits")]
-    let mut iter: u32 = 0;
 
     while !lfs_pair_isnull(&parent.tail) {
-        #[cfg(feature = "loop_limits")]
-        {
-            if iter >= MAX_PARENT_ITER {
-                panic!(
-                    "loop_limits: MAX_PARENT_ITER ({}) exceeded in lfs_fs_parent (parent)",
-                    MAX_PARENT_ITER
-                );
-            }
-            iter += 1;
-        }
         lfs_pass_err!(lfs_tortoise_detectcycles(parent, &mut tortoise))?;
 
         let find_match = LfsFsParentMatch {

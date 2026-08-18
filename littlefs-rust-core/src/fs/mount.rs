@@ -250,20 +250,9 @@ pub fn lfs_mount_(
         };
 
         let mut err_inner = Ok(());
-        #[cfg(feature = "loop_limits")]
-        let mut mount_iter: u32 = 0;
         while !lfs_pair_isnull(&dir.tail) {
             crate::lfs_trace!("mount: loop tail={:?}", dir.tail);
-            #[cfg(feature = "loop_limits")]
-            {
-                if mount_iter >= 64 {
-                    panic!(
-                        "loop_limits: mount iter cap 64 exceeded tail={:?}",
-                        dir.tail
-                    );
-                }
-                mount_iter += 1;
-            }
+
             err_inner = lfs_tortoise_detectcycles(&dir, &mut tortoise);
             if err_inner.is_err() {
                 crate::lfs_trace!("mount: tortoise err={:?}", err_inner);

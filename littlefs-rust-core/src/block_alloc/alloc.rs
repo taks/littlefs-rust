@@ -204,21 +204,7 @@ pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
             return crate::lfs_err!(Err(Error::NoSpace));
         }
 
-        #[cfg(feature = "loop_limits")]
-        const MAX_ALLOC_ITER: u32 = 1024;
-        #[cfg(feature = "loop_limits")]
-        let mut alloc_iter: u32 = 0;
         loop {
-            #[cfg(feature = "loop_limits")]
-            {
-                if alloc_iter >= MAX_ALLOC_ITER {
-                    panic!(
-                        "loop_limits: MAX_ALLOC_ITER ({}) exceeded in lfs_alloc",
-                        MAX_ALLOC_ITER
-                    );
-                }
-                alloc_iter += 1;
-            }
             // scan our lookahead buffer for free blocks
             while lfs.lookahead.next < lfs.lookahead.size {
                 if (*buf.add((lfs.lookahead.next / 8) as usize)) & (1u8 << (lfs.lookahead.next % 8))

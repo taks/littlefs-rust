@@ -270,22 +270,8 @@ pub fn lfs_ctz_traverse(
     let mut index_off = size - 1;
     let mut index = lfs_ctz_index(lfs, &mut index_off) as u32;
     let mut current_head = head;
-    #[cfg(feature = "loop_limits")]
-    let block_count = lfs.block_count;
-    #[cfg(feature = "loop_limits")]
-    let mut iter: u32 = 0;
 
     loop {
-        #[cfg(feature = "loop_limits")]
-        {
-            if iter >= block_count {
-                panic!(
-                    "loop_limits: lfs_ctz_traverse iter ({}) >= block_count ({})",
-                    iter, block_count
-                );
-            }
-            iter += 1;
-        }
         cb(data, current_head)?;
 
         if index == 0 {
