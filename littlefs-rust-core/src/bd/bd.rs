@@ -650,17 +650,12 @@ pub fn lfs_bd_prog(
 /// #endif
 /// ```
 pub fn lfs_bd_erase(lfs: &Lfs, block: lfs_block_t) -> Result<(), Error> {
-    unsafe {
-        crate::lfs_assert!(block < lfs.block_count);
-        let erase = match (*lfs.cfg).erase {
-            Some(f) => f,
-            None => return Err(Error::Corrupt),
-        };
-        crate::lfs_trace!("bd_erase block={}", block);
-        let err = erase(lfs.cfg.as_ref().unwrap(), block);
-        if err.is_err() {
-            crate::lfs_trace!("bd_erase block={} -> CORRUPT", block);
-        }
-        err
+    crate::lfs_assert!(block < lfs.block_count);
+
+    crate::lfs_trace!("bd_erase block={}", block);
+    let err = unsafe { lfs.cfg.as_ref_unchecked().context.as_mut_unchecked() }.erase(block);
+    if err.is_err() {
+        crate::lfs_trace!("bd_erase block={} -> CORRUPT", block);
     }
+    err
 }
