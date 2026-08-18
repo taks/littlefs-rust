@@ -8,18 +8,6 @@ use crate::{
     types::{lfs_block_t, lfs_off_t, lfs_size_t},
 };
 
-/// Read callback: (cfg, block, off, buffer, size) -> 0 or negative error
-pub type lfs_read_t = fn(&LfsConfig, lfs_block_t, lfs_off_t, &mut [u8]) -> Result<(), Error>;
-
-/// Prog callback: (cfg, block, off, buffer, size) -> 0 or negative error
-pub type lfs_prog_t = fn(&LfsConfig, lfs_block_t, lfs_off_t, &[u8]) -> Result<(), Error>;
-
-/// Erase callback: (cfg, block) -> 0 or negative error
-pub type lfs_erase_t = fn(&LfsConfig, lfs_block_t) -> Result<(), Error>;
-
-/// Sync callback: (cfg) -> 0 or negative error
-pub type lfs_sync_t = fn(&LfsConfig) -> Result<(), Error>;
-
 pub trait Storage {
     /// Read `buf.len()` bytes starting at `offset` within `block`.
     fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error>;

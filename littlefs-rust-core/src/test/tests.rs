@@ -8,11 +8,11 @@ fn test_context_smoke() {
     let ctx = TestContext::default_blocks();
     let cfg = ctx.config();
     assert!(!cfg.context.is_null(), "config.context should be set");
-    assert!(cfg.read.is_some());
+    assert!(!cfg.context.is_null());
     assert_eq!(ctx.ram.data.len(), 512 * 128);
     // Direct read through callback
     let mut buf = [0u8; 8];
-    let err = cfg.read.expect("read")(ctx.config(), 0, 0, &mut buf);
+    let err = unsafe { cfg.context.as_mut_unchecked().read(0, 0, &mut buf) };
     assert_eq!(err, Ok(()));
     assert_eq!(buf, [0u8; 8]);
 }

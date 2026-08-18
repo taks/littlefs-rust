@@ -143,107 +143,108 @@ pub fn lfs_bd_read(
     off: lfs_off_t,
     buffer: &mut [u8],
 ) -> Result<(), Error> {
-    unsafe {
-        let cfg = &*lfs.cfg;
-        let read = match cfg.read {
-            Some(f) => f,
-            None => return Err(Error::Corrupt),
-        };
+    let cfg = unsafe { &*lfs.cfg };
 
-        if off + (buffer.len() as u32) > cfg.block_size
-            || (lfs.block_count != 0 && block >= lfs.block_count)
-        {
-            return crate::lfs_err!(Err(Error::Corrupt));
-        }
+    if off + (buffer.len() as u32) > cfg.block_size
+        || (lfs.block_count != 0 && block >= lfs.block_count)
+    {
+        return crate::lfs_err!(Err(Error::Corrupt));
+    }
 
-        let mut data = buffer;
-        let mut off = off;
-        let mut size = data.len() as u32;
+    let mut data = buffer;
+    let mut off = off;
+    let mut size = data.len() as u32;
 
-        while size > 0 {
-            let mut diff = size;
+    while size > 0 {
+        let mut diff = size;
 
-            if let Some(pcache) = pcache {
-                if block == pcache.block && off < pcache.off + pcache.size {
-                    if off >= pcache.off {
-                        diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
-                        if !pcache.buffer.is_null() {
+        if let Some(pcache) = pcache {
+            if block == pcache.block && off < pcache.off + pcache.size {
+                if off >= pcache.off {
+                    diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
+                    if !pcache.buffer.is_null() {
+                        unsafe {
                             core::ptr::copy_nonoverlapping(
                                 pcache.buffer.add((off - pcache.off) as usize),
                                 data.as_mut_ptr(),
                                 diff as usize,
                             );
                         }
-                        data = &mut data[(diff as usize)..];
-                        off += diff;
-                        size -= diff;
-                        continue;
-                    }
-                    diff = diff.min(pcache.off - off);
-                }
-            }
-
-            if block == rcache.block && off < rcache.off + rcache.size {
-                if off >= rcache.off {
-                    diff = lfs_min(diff, rcache.size - (off - rcache.off));
-                    if !rcache.buffer.is_null() {
-                        core::ptr::copy_nonoverlapping(
-                            rcache.buffer.add((off - rcache.off) as usize),
-                            data.as_mut_ptr(),
-                            diff as usize,
-                        );
                     }
                     data = &mut data[(diff as usize)..];
                     off += diff;
                     size -= diff;
                     continue;
                 }
-                diff = lfs_min(diff, rcache.off - off);
+                diff = diff.min(pcache.off - off);
             }
+        }
 
-            if size >= hint && off.is_multiple_of(cfg.read_size) && size >= cfg.read_size {
-                diff = lfs_aligndown(diff, cfg.read_size);
-                crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
-                let data_ = data.split_at_mut(diff as _);
-                lfs_pass_err!(
-                    read(cfg, block, off, data_.0),
-                    "bd_read block={} -> CORRUPT",
-                    block
-                )?;
-
-                data = data_.1;
+        if block == rcache.block && off < rcache.off + rcache.size {
+            if off >= rcache.off {
+                diff = lfs_min(diff, rcache.size - (off - rcache.off));
+                if !rcache.buffer.is_null() {
+                    unsafe {
+                        core::ptr::copy_nonoverlapping(
+                            rcache.buffer.add((off - rcache.off) as usize),
+                            data.as_mut_ptr(),
+                            diff as usize,
+                        );
+                    }
+                }
+                data = &mut data[(diff as usize)..];
                 off += diff;
                 size -= diff;
                 continue;
             }
-
-            crate::lfs_assert!(lfs.block_count == 0 || block < lfs.block_count);
-            rcache.block = block;
-            rcache.off = lfs_aligndown(off, cfg.read_size);
-            rcache.size = lfs_min(
-                lfs_min(lfs_alignup(off + hint, cfg.read_size), cfg.block_size)
-                    .saturating_sub(rcache.off),
-                cfg.cache_size,
-            );
-            crate::lfs_trace!(
-                "bd_read block={} off={} size={}",
-                rcache.block,
-                rcache.off,
-                rcache.size
-            );
-            let data_ = core::slice::from_raw_parts_mut(rcache.buffer, rcache.size as _);
-            let err = read(cfg, rcache.block, rcache.off, data_);
-            if err.is_err() {
-                crate::lfs_trace!("bd_read block={} -> CORRUPT", rcache.block);
-                // Don't leave rcache claiming to have this block when the buffer wasn't filled.
-                // A retry (e.g. after bad-block clear) would otherwise serve stale data.
-                rcache.block = crate::types::LFS_BLOCK_NULL;
-                return crate::lfs_pass_err!(err);
-            }
+            diff = lfs_min(diff, rcache.off - off);
         }
 
-        Ok(())
+        if size >= hint && off.is_multiple_of(cfg.read_size) && size >= cfg.read_size {
+            diff = lfs_aligndown(diff, cfg.read_size);
+            crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
+            let data_ = data.split_at_mut(diff as _);
+            let err = unsafe { lfs.cfg.as_ref().unwrap().context.as_mut_unchecked() }
+                .read(block, off, data_.0);
+
+            lfs_pass_err!(err, "bd_read block={} -> CORRUPT", block)?;
+
+            data = data_.1;
+            off += diff;
+            size -= diff;
+            continue;
+        }
+
+        crate::lfs_assert!(lfs.block_count == 0 || block < lfs.block_count);
+        rcache.block = block;
+        rcache.off = lfs_aligndown(off, cfg.read_size);
+        rcache.size = lfs_min(
+            lfs_min(lfs_alignup(off + hint, cfg.read_size), cfg.block_size)
+                .saturating_sub(rcache.off),
+            cfg.cache_size,
+        );
+        crate::lfs_trace!(
+            "bd_read block={} off={} size={}",
+            rcache.block,
+            rcache.off,
+            rcache.size
+        );
+        let data_ = unsafe { core::slice::from_raw_parts_mut(rcache.buffer, rcache.size as _) };
+        let err = unsafe { lfs.cfg.as_ref().unwrap().context.as_mut_unchecked() }.read(
+            rcache.block,
+            rcache.off,
+            data_,
+        );
+        if err.is_err() {
+            crate::lfs_trace!("bd_read block={} -> CORRUPT", rcache.block);
+            // Don't leave rcache claiming to have this block when the buffer wasn't filled.
+            // A retry (e.g. after bad-block clear) would otherwise serve stale data.
+            rcache.block = crate::types::LFS_BLOCK_NULL;
+            return crate::lfs_pass_err!(err);
+        }
     }
+
+    Ok(())
 }
 
 /// Per lfs.c lfs_bd_cmp (lines 128-154)
@@ -422,51 +423,50 @@ pub fn lfs_bd_flush(
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::lfs_alignup;
 
-    unsafe {
-        let cfg = &*lfs.cfg;
+    let cfg = unsafe { &*lfs.cfg };
 
-        if pcache.block != crate::types::LFS_BLOCK_NULL && pcache.block != LFS_BLOCK_INLINE {
-            crate::lfs_assert!(pcache.block < lfs.block_count);
-            let diff = lfs_alignup(pcache.size, cfg.prog_size);
-            crate::lfs_trace!(
-                "bd_prog block={} off={} size={}",
+    if pcache.block != crate::types::LFS_BLOCK_NULL && pcache.block != LFS_BLOCK_INLINE {
+        crate::lfs_assert!(pcache.block < lfs.block_count);
+        let diff = lfs_alignup(pcache.size, cfg.prog_size);
+        crate::lfs_trace!(
+            "bd_prog block={} off={} size={}",
+            pcache.block,
+            pcache.off,
+            diff
+        );
+        let data_ = unsafe { core::slice::from_raw_parts(pcache.buffer, diff as _) };
+        let err = unsafe { lfs.cfg.as_ref().unwrap().context.as_mut_unchecked() }.write(
+            pcache.block,
+            pcache.off,
+            data_,
+        );
+
+        crate::lfs_pass_err!(err, "bd_prog block={} -> CORRUPT", pcache.block)?;
+
+        if validate {
+            lfs_cache_drop(lfs, rcache);
+            let res = lfs_bd_cmp(
+                lfs,
+                None,
+                rcache,
+                diff,
                 pcache.block,
                 pcache.off,
-                diff
+                pcache.buffer,
+                diff,
             );
-            let prog = match cfg.prog {
-                Some(f) => f,
-                None => return Err(Error::Corrupt),
-            };
-            let data_ = core::slice::from_raw_parts(pcache.buffer, diff as _);
-            let err = prog(cfg, pcache.block, pcache.off, data_);
-            crate::lfs_pass_err!(err, "bd_prog block={} -> CORRUPT", pcache.block)?;
-
-            if validate {
-                lfs_cache_drop(lfs, rcache);
-                let res = lfs_bd_cmp(
-                    lfs,
-                    None,
-                    rcache,
-                    diff,
-                    pcache.block,
-                    pcache.off,
-                    pcache.buffer,
-                    diff,
-                );
-                res?;
-                if let Ok(res) = res
-                    && res != core::cmp::Ordering::Equal
-                {
-                    return crate::lfs_err!(Err(Error::Corrupt));
-                }
+            res?;
+            if let Ok(res) = res
+                && res != core::cmp::Ordering::Equal
+            {
+                return crate::lfs_err!(Err(Error::Corrupt));
             }
-
-            lfs_cache_zero(lfs, pcache);
         }
 
-        Ok(())
+        lfs_cache_zero(lfs, pcache);
     }
+
+    Ok(())
 }
 
 /// Per lfs.c lfs_bd_sync (lines 213-226)
@@ -495,18 +495,11 @@ pub fn lfs_bd_sync(
     rcache: &mut LfsCache,
     validate: bool,
 ) -> Result<(), Error> {
-    unsafe {
-        lfs_cache_drop(lfs, rcache);
+    lfs_cache_drop(lfs, rcache);
 
-        lfs_bd_flush(lfs, pcache, rcache, validate)?;
+    lfs_bd_flush(lfs, pcache, rcache, validate)?;
 
-        let cfg = &*lfs.cfg;
-        let sync = match cfg.sync {
-            Some(f) => f,
-            None => return Err(Error::Corrupt),
-        };
-        sync(cfg)
-    }
+    unsafe { lfs.cfg.as_ref().unwrap().context.as_mut_unchecked() }.sync()
 }
 
 /// Per lfs.c lfs_bd_prog (lines 228-274)
@@ -653,7 +646,7 @@ pub fn lfs_bd_erase(lfs: &Lfs, block: lfs_block_t) -> Result<(), Error> {
     crate::lfs_assert!(block < lfs.block_count);
 
     crate::lfs_trace!("bd_erase block={}", block);
-    let err = unsafe { lfs.cfg.as_ref_unchecked().context.as_mut_unchecked() }.erase(block);
+    let err = unsafe { lfs.cfg.as_ref().unwrap().context.as_mut_unchecked() }.erase(block);
     if err.is_err() {
         crate::lfs_trace!("bd_erase block={} -> CORRUPT", block);
     }
