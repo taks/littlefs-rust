@@ -8,6 +8,7 @@ mod common;
 
 use common::{default_config, init_context, init_logger};
 use littlefs_rust_core::LfsFile;
+use littlefs_rust_core::lfs_type::OpenFlags;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
     LFS_DISK_VERSION, Lfs, LfsFsinfo, LfsMdir, LfsSuperblock, error::Error, lfs_dir_commit,
@@ -121,9 +122,6 @@ fn test_compat_minor_incompat() {
 /// Downgrade minor version in superblock, mount works, write triggers minor bump.
 #[test]
 fn test_compat_minor_bump() {
-    use littlefs_rust_core::lfs_type::lfs_open_flags::{
-        LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY,
-    };
     use littlefs_rust_core::{lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write};
 
     init_logger();
@@ -140,7 +138,7 @@ fn test_compat_minor_bump() {
         lfs,
         file,
         "test",
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+        OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::EXCL,
     ));
     assert_eq!(lfs_file_write(lfs, file, b"testtest",), Ok(8));
     assert_ok!(lfs_file_close(lfs, file));
@@ -189,7 +187,7 @@ fn test_compat_minor_bump() {
     assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.disk_version, LFS_DISK_VERSION - 1);
 
-    assert_ok!(lfs_file_open(lfs, file, "test", LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, "test", OpenFlags::READ));
     let mut buf = [0u8; 8];
     assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(8));
     assert_eq!(&buf, b"testtest");
@@ -204,7 +202,12 @@ fn test_compat_minor_bump() {
     assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!({ fsinfo.disk_version }, LFS_DISK_VERSION - 1);
 
-    assert_ok!(lfs_file_open(lfs, file, "test", LFS_O_WRONLY | LFS_O_TRUNC));
+    assert_ok!(lfs_file_open(
+        lfs,
+        file,
+        "test",
+        OpenFlags::WRITE | OpenFlags::TRUNC
+    ));
     assert_eq!(lfs_file_write(lfs, file, b"teeeeest"), Ok(8));
     assert_ok!(lfs_file_close(lfs, file));
 
@@ -217,7 +220,7 @@ fn test_compat_minor_bump() {
     assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!({ fsinfo.disk_version }, LFS_DISK_VERSION);
 
-    assert_ok!(lfs_file_open(lfs, file, "test", LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, "test", OpenFlags::READ));
     assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(8));
     assert_eq!(&buf, b"teeeeest");
     assert_ok!(lfs_file_close(lfs, file));

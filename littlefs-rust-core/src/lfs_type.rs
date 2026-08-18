@@ -4,6 +4,8 @@
 
 //! File types. Per lfs.h enum lfs_type.
 
+use bitflags::bitflags;
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum LsfType {
@@ -43,20 +45,37 @@ pub mod lfs_type {
     pub const LFS_FROM_USERATTRS: u16 = 0x102;
 }
 
-/// Open flags. Per lfs.h enum lfs_open_flags.
-pub mod lfs_open_flags {
-    pub const LFS_O_RDONLY: i32 = 1;
-    pub const LFS_O_WRONLY: i32 = 2;
-    pub const LFS_O_RDWR: i32 = 3;
-    pub const LFS_O_CREAT: i32 = 0x0100;
-    pub const LFS_O_EXCL: i32 = 0x0200;
-    pub const LFS_O_TRUNC: i32 = 0x0400;
-    pub const LFS_O_APPEND: i32 = 0x0800;
-    pub const LFS_F_DIRTY: i32 = 0x010000;
-    pub const LFS_F_WRITING: i32 = 0x020000;
-    pub const LFS_F_READING: i32 = 0x040000;
-    pub const LFS_F_ERRED: i32 = 0x080000;
-    pub const LFS_F_INLINE: i32 = 0x100000;
+// Open flags. Per lfs.h enum lfs_open_flags.
+bitflags! {
+    /// Flags for opening a file. Combine with `|`.
+    ///
+    /// Common combinations:
+    /// - Read-only: `OpenFlags::READ`
+    /// - Create or overwrite: `OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::TRUNC`
+    /// - Append: `OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::APPEND`
+    /// - Create only (fail if exists): `OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::EXCL`
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub struct OpenFlags: u32 {
+        /// Open file in read only mode.
+        const READ   = 0x1;
+        /// Open file in write only mode.
+        const WRITE  = 0x2;
+        /// Open file for reading and writing.
+        const READ_WRITE = Self::READ.bits() | Self::WRITE.bits();
+        /// Create the file if it does not exist.
+        const CREATE = 0x100;
+        /// Fail if creating a file that already exists.
+        const EXCL   = 0x200;
+        /// Truncate the file if it already exists.
+        const TRUNC  = 0x400;
+        /// Open the file in append only mode.
+        const APPEND = 0x800;
+        const DIRTY = 0x010000;
+        const WRITING = 0x020000;
+        const READING = 0x040000;
+        const ERRED = 0x080000;
+        const INLINE = 0x100000;
+    }
 }
 
 /// Seek whence. Per lfs.h enum lfs_whence_flags.

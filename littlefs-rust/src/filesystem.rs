@@ -5,13 +5,14 @@ use core::cell::RefCell;
 use core::ffi::c_void;
 use core::mem::ManuallyDrop;
 use littlefs_rust_core::error::Error;
+use littlefs_rust_core::lfs_type::OpenFlags;
 
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
 use crate::config::Config;
 use crate::dir::{dir_entry_from_info, ReadDir};
 use crate::file::File;
-use crate::metadata::{DirEntry, Metadata, OpenFlags};
+use crate::metadata::{DirEntry, Metadata};
 use crate::storage::Storage;
 
 pub(crate) struct FsInner<S: Storage> {

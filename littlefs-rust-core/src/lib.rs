@@ -51,6 +51,7 @@ pub use crate::fs::format::{
     test_traverse_format_attrs,
 };
 pub use crate::lfs_info::LfsFsinfo;
+use crate::lfs_type::OpenFlags;
 #[doc(hidden)]
 pub use crate::types::LFS_DISK_VERSION;
 
@@ -160,7 +161,7 @@ pub fn lfs_file_open(
     lfs: &mut Lfs,
     file: &mut LfsFile,
     path: &str,
-    flags: i32,
+    flags: OpenFlags,
 ) -> Result<(), Error> {
     crate::file::ops::lfs_file_open_(lfs, file, path, flags)
 }
@@ -171,7 +172,7 @@ pub fn lfs_file_opencfg<'a>(
     lfs: &mut Lfs,
     file: &mut LfsFile,
     path: &str,
-    flags: i32,
+    flags: OpenFlags,
     config: &mut LfsFileConfig<'a>,
 ) -> Result<(), Error> {
     crate::file::ops::lfs_file_opencfg_(lfs, file, path, flags, config)

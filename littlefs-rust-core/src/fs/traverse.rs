@@ -2,7 +2,7 @@
 
 use zerocopy::IntoBytes;
 
-use crate::error::Error;
+use crate::{error::Error, lfs_type::OpenFlags};
 //
 /// Per lfs.c lfs_fs_traverse_ (lines 4693-4794)
 ///
@@ -213,7 +213,6 @@ pub fn lfs_fs_traverse_(
         // iterate over any open files
         use crate::file::LfsFile;
         use crate::file::ctz::lfs_ctz_traverse;
-        use crate::lfs_type::lfs_open_flags::{LFS_F_DIRTY, LFS_F_INLINE, LFS_F_WRITING};
         use crate::lfs_type::lfs_type::LFS_TYPE_REG;
 
         let mut m = lfs.mlist;
@@ -232,8 +231,8 @@ pub fn lfs_fs_traverse_(
             let f = m as *mut LfsFile;
             let f_ref = &*f;
             if f_ref.type_ == LFS_TYPE_REG {
-                if (f_ref.flags as i32 & LFS_F_DIRTY) != 0
-                    && (f_ref.flags as i32 & LFS_F_INLINE) == 0
+                if f_ref.flags.contains(OpenFlags::DIRTY)
+                    && !f_ref.flags.contains(OpenFlags::INLINE)
                 {
                     lfs_ctz_traverse(
                         lfs,
@@ -245,8 +244,8 @@ pub fn lfs_fs_traverse_(
                         data,
                     )?;
                 }
-                if (f_ref.flags as i32 & LFS_F_WRITING) != 0
-                    && (f_ref.flags as i32 & LFS_F_INLINE) == 0
+                if f_ref.flags.contains(OpenFlags::WRITING)
+                    && !f_ref.flags.contains(OpenFlags::INLINE)
                 {
                     lfs_ctz_traverse(
                         lfs,

@@ -3,10 +3,11 @@ use alloc::vec;
 use alloc::vec::Vec;
 use littlefs_rust_core::error::Error;
 
+use littlefs_rust_core::lfs_type::OpenFlags;
 use littlefs_rust_core::{LfsFile, LfsFileConfig};
 
 use crate::filesystem::Filesystem;
-use crate::metadata::{OpenFlags, SeekFrom};
+use crate::metadata::SeekFrom;
 use crate::storage::Storage;
 
 pub(crate) struct FileAllocation<'a> {
@@ -49,7 +50,7 @@ impl<'a, S: Storage> File<'a, S> {
                 &mut inner.lfs,
                 &mut alloc.file,
                 path,
-                flags.bits() as i32,
+                flags,
                 &mut alloc.file_config,
             )?;
         }

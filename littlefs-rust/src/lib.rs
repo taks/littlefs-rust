@@ -50,8 +50,10 @@ pub use config::Config;
 pub use dir::ReadDir;
 pub use file::File;
 pub use filesystem::Filesystem;
-pub use metadata::{DirEntry, FileType, Metadata, OpenFlags, SeekFrom};
+pub use metadata::{DirEntry, FileType, Metadata, SeekFrom};
 pub use ram::RamStorage;
 pub use storage::Storage;
+
+pub use littlefs_rust_core::lfs_type::OpenFlags;
 
 pub type Error = littlefs_rust_core::error::Error;

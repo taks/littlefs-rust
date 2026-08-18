@@ -9,7 +9,7 @@ pub mod dump;
 pub mod powerloss;
 
 use core::cell::RefCell;
-use littlefs_rust_core::{LfsConfig, error::Error};
+use littlefs_rust_core::{LfsConfig, error::Error, lfs_type::OpenFlags};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
@@ -617,14 +617,13 @@ pub fn dir_entry_names(
     Ok(names)
 }
 
-/// Open flags for lfs_file_open. Per lfs.h LFS_O_*.
-pub const LFS_O_RDONLY: i32 = 1;
-pub const LFS_O_WRONLY: i32 = 2;
-pub const LFS_O_RDWR: i32 = 3;
-pub const LFS_O_CREAT: i32 = 0x0100;
-pub const LFS_O_EXCL: i32 = 0x0200;
-pub const LFS_O_TRUNC: i32 = 0x0400;
-pub const LFS_O_APPEND: i32 = 0x0800;
+pub const LFS_O_RDONLY: OpenFlags = OpenFlags::READ;
+pub const LFS_O_WRONLY: OpenFlags = OpenFlags::WRITE;
+pub const LFS_O_RDWR: OpenFlags = OpenFlags::READ_WRITE;
+pub const LFS_O_CREAT: OpenFlags = OpenFlags::CREATE;
+pub const LFS_O_EXCL: OpenFlags = OpenFlags::EXCL;
+pub const LFS_O_TRUNC: OpenFlags = OpenFlags::TRUNC;
+pub const LFS_O_APPEND: OpenFlags = OpenFlags::APPEND;
 
 /// Seek whence. Per lfs.h enum lfs_whence_flags.
 pub const LFS_SEEK_SET: i32 = 0;
@@ -651,7 +650,7 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
     let path = "hello";
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    let err = lfs_file_open(lfs, file, path, 0x0100 | 2);
+    let err = lfs_file_open(lfs, file, path, OpenFlags::WRITE | OpenFlags::CREATE);
     if let Err(err) = err {
         let _ = lfs_unmount(lfs);
         return Err(err);

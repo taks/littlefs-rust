@@ -2,7 +2,7 @@
 
 use std::mem::MaybeUninit;
 
-use littlefs_rust_core::error::Error;
+use littlefs_rust_core::{error::Error, lfs_type::OpenFlags};
 
 use crate::storage::{prng_verify, test_prng, SharedStorage};
 
@@ -437,7 +437,12 @@ fn mkdir_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<(), Er
 fn create_empty_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<(), Error> {
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let mut file = unsafe { MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed().assume_init() };
-    littlefs_rust_core::lfs_file_open(lfs, &mut file, path, flags)?;
+    littlefs_rust_core::lfs_file_open(
+        lfs,
+        &mut file,
+        path,
+        OpenFlags::from_bits_retain(flags as u32),
+    )?;
     littlefs_rust_core::lfs_file_close(lfs, &mut file)
 }
 
@@ -448,7 +453,12 @@ fn write_file_mounted(
 ) -> Result<(), Error> {
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let file = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed().assume_init() };
-    (littlefs_rust_core::lfs_file_open(lfs, file, path, flags))?;
+    (littlefs_rust_core::lfs_file_open(
+        lfs,
+        file,
+        path,
+        OpenFlags::from_bits_retain(flags as u32),
+    ))?;
     let n = littlefs_rust_core::lfs_file_write(lfs, file, content);
     (littlefs_rust_core::lfs_file_close(lfs, file))?;
     if let Err(err) = n {
@@ -467,7 +477,12 @@ fn write_prng_file_mounted(
 ) -> Result<(), Error> {
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let file = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed().assume_init() };
-    (littlefs_rust_core::lfs_file_open(lfs, file, path, flags))?;
+    (littlefs_rust_core::lfs_file_open(
+        lfs,
+        file,
+        path,
+        OpenFlags::from_bits_retain(flags as u32),
+    ))?;
 
     let mut prng = seed;
     let mut buf = vec![0u8; chunk as usize];
@@ -486,7 +501,7 @@ fn write_prng_file_mounted(
 
 fn read_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<Vec<u8>, Error> {
     let file = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsFile>::zeroed().assume_init() };
-    (littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY))?;
+    (littlefs_rust_core::lfs_file_open(lfs, file, path, OpenFlags::READ))?;
 
     let mut buf = Vec::new();
     let mut chunk = [0u8; 256];

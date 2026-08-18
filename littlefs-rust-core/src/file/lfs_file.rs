@@ -3,7 +3,7 @@
 use crate::bd::LfsCache;
 use crate::dir::{LfsMdir, LfsMlist};
 use crate::lfs_info::LfsFileConfig;
-use crate::lfs_type::LsfType;
+use crate::lfs_type::{LsfType, OpenFlags};
 use crate::types::{lfs_block_t, lfs_off_t};
 
 use super::lfs_ctz::LfsCtz;
@@ -16,7 +16,7 @@ pub struct LfsFile<'a> {
     pub type_: LsfType,
     pub m: LfsMdir,
     pub ctz: LfsCtz,
-    pub flags: u32,
+    pub flags: OpenFlags,
     pub pos: lfs_off_t,
     pub block: lfs_block_t,
     pub off: lfs_off_t,

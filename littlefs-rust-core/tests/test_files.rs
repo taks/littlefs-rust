@@ -14,7 +14,7 @@ use common::{
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_rewind, lfs_file_seek, lfs_file_size, lfs_file_sync, lfs_file_tell, lfs_file_truncate,
-    lfs_file_write, lfs_format, lfs_mount, lfs_unmount,
+    lfs_file_write, lfs_format, lfs_mount, lfs_type::OpenFlags, lfs_unmount,
 };
 use rstest::rstest;
 
@@ -641,13 +641,18 @@ fn test_files_same_session() {
     let path = "hello";
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok!(lfs_file_open(lfs, file, path, 0x0100 | 2));
+    assert_ok!(lfs_file_open(
+        lfs,
+        file,
+        path,
+        OpenFlags::CREATE | OpenFlags::WRITE
+    ));
     let n = lfs_file_write(lfs, file, data);
     assert_eq!(n, Ok(data.len() as u32));
     assert_ok!(lfs_file_close(lfs, file));
 
     let file2 = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok!(lfs_file_open(lfs, file2, path, 1));
+    assert_ok!(lfs_file_open(lfs, file2, path, OpenFlags::READ));
     assert_eq!(lfs_file_size(lfs, file2), 13);
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file2, &mut buf[..32]);
@@ -667,7 +672,7 @@ fn test_files_simple_read() {
 
     let path = "hello";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok!(lfs_file_open(lfs, file, path, 1));
+    assert_ok!(lfs_file_open(lfs, file, path, OpenFlags::READ));
 
     assert_eq!(lfs_file_size(lfs, file), 13);
     assert_eq!(lfs_file_tell(lfs, file), 0);
@@ -695,7 +700,7 @@ fn test_files_seek_tell() {
 
     let path = "hello";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok!(lfs_file_open(lfs, file, path, 1));
+    assert_ok!(lfs_file_open(lfs, file, path, OpenFlags::READ));
 
     let mut buf = [0u8; 4];
     let n = lfs_file_read(lfs, file, &mut buf[..4]);
