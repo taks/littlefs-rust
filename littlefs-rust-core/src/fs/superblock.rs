@@ -401,7 +401,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                                 },
                             ];
                             let state = {
-                                let ret = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
+                                let ret = lfs_dir_orphaningcommit(lfs, (&mut pdir).into(), &attrs);
                                 lfs_pair_fromle32(&mut pair);
                                 ret
                             }?;
@@ -432,7 +432,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                         }];
 
                         let state = {
-                            let ret = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
+                            let ret = lfs_dir_orphaningcommit(lfs, (&mut pdir).into(), &attrs);
                             lfs_pair_fromle32(&mut dir_tail);
                             ret
                         }?;

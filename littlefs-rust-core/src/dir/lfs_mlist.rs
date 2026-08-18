@@ -1,5 +1,7 @@
 //! Open list node. Per lfs.h struct lfs_mlist.
 
+use core::fmt::Debug;
+
 use super::lfs_mdir::LfsMdir;
 
 /// Per lfs.h struct lfs_mlist
@@ -9,6 +11,17 @@ pub struct LfsMlist {
     pub id: u16,
     pub type_: u8,
     pub m: LfsMdir,
+}
+
+impl Debug for LfsMlist {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("LfsMlist")
+            .field("next", &self.next)
+            .field("id", &self.id)
+            .field("type_", &self.type_)
+            .field("m", &self.m)
+            .finish()
+    }
 }
 
 /// Per lfs.c lfs_mlist_isopen (lines 508-518)

@@ -1,6 +1,7 @@
 //! Main filesystem type. Per lfs.h typedef struct lfs.
 
 use core::cell::{RefCell, UnsafeCell};
+use core::fmt::Debug;
 
 use crate::bd::LfsCache;
 use crate::dir::LfsMlist;
@@ -29,4 +30,16 @@ pub struct Lfs {
     pub file_max: u32,
     pub attr_max: u32,
     pub inline_max: u32,
+}
+
+impl Debug for Lfs {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let mut s = f.debug_struct("Lfs");
+        unsafe {
+            if let Some(mlist) = self.mlist.as_ref() {
+                s.field("mlist", mlist);
+            }
+        }
+        s.finish()
+    }
 }

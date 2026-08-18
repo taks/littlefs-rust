@@ -1,6 +1,7 @@
 //! Directory commit. Per lfs.c lfs_dir_commit, lfs_dir_commitattr, lfs_dir_alloc, etc.
 
 use core::cell::UnsafeCell;
+use core::ptr::NonNull;
 
 use zerocopy::{FromBytes, IntoBytes};
 
@@ -2167,200 +2168,192 @@ fn relocatingcommit_fixmlist(
 /// ```
 pub fn lfs_dir_orphaningcommit(
     lfs: &mut crate::fs::Lfs,
-    dir: &mut LfsMdir,
+    mut dir: NonNull<LfsMdir>,
     attrs_slice: &[crate::tag::lfs_mattr],
 ) -> Result<i32, Error> {
     use crate::error::LFS_OK_ORPHANED;
     use crate::util::{lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_tole32};
 
-    unsafe {
-        let lpair = dir.pair;
-        let mut ldir = *dir;
-        let mut pdir = core::mem::zeroed();
+    let dir = unsafe { dir.as_mut() };
 
-        // TODO: It doesn't work when optimized
-        let state = core::hint::black_box(lfs_dir_relocatingcommit(
-            lfs,
-            &mut ldir,
-            &dir.pair,
-            attrs_slice,
-            Some(&mut pdir),
-        )?);
+    let lpair = dir.pair;
+    let mut ldir = *dir;
+    let mut pdir = unsafe { core::mem::zeroed() };
 
-        if lfs_pair_cmp(&dir.pair, &lpair) == 0 {
-            *dir = ldir;
+    // TODO: It doesn't work when optimized
+    let state = lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?;
+
+    if lfs_pair_cmp(&dir.pair, &lpair) == 0 {
+        *dir = ldir;
+    }
+
+    if state == crate::error::LFS_OK_DROPPED {
+        lfs_dir_getgstate(lfs, dir, &mut lfs.gdelta.borrow_mut())?;
+
+        let plpair = [pdir.pair[0], pdir.pair[1]];
+        lfs_pair_tole32(&mut dir.tail);
+        let tail_attrs = [crate::tag::lfs_mattr {
+            tag: crate::tag::lfs_mktag(
+                crate::lfs_type::lfs_type::LFS_TYPE_TAIL + if dir.split { 1 } else { 0 },
+                0x3ff,
+                8,
+            ),
+            buffer: dir.tail.as_bytes(),
+        }];
+        let tail_state = lfs_dir_relocatingcommit(lfs, &mut pdir, &plpair, &tail_attrs, None);
+        lfs_pair_fromle32(&mut dir.tail);
+        tail_state?;
+        ldir = pdir;
+    }
+
+    // C: lfs.c:2472-2594 — relocation handling
+    let mut orphans = false;
+    let mut state = state;
+    let mut lpair = lpair;
+    #[cfg(feature = "loop_limits")]
+    const MAX_RELOCATE_ITER: u32 = 512;
+    #[cfg(feature = "loop_limits")]
+    let mut relocate_iter: u32 = 0;
+    while state == crate::error::LFS_OK_RELOCATED {
+        #[cfg(feature = "loop_limits")]
+        {
+            if relocate_iter >= MAX_RELOCATE_ITER {
+                panic!(
+                    "loop_limits: MAX_RELOCATE_ITER ({}) exceeded",
+                    MAX_RELOCATE_ITER
+                );
+            }
+            relocate_iter += 1;
+        }
+        state = 0;
+
+        // C: lfs.c:2480-2483 — update internal root
+        if lfs_pair_cmp(&lpair, &lfs.root) == 0 {
+            lfs.root[0] = ldir.pair[0];
+            lfs.root[1] = ldir.pair[1];
         }
 
-        if state == crate::error::LFS_OK_DROPPED {
-            lfs_dir_getgstate(lfs, dir, &mut lfs.gdelta.borrow_mut())?;
+        // C: lfs.c:2486-2497 — update internally tracked dirs
+        unsafe {
+            let mut d = lfs.mlist;
+            while !d.is_null() {
+                if lfs_pair_cmp(&lpair, &(*d).m.pair) == 0 {
+                    (*d).m.pair[0] = ldir.pair[0];
+                    (*d).m.pair[1] = ldir.pair[1];
+                }
+                d = (*d).next;
+            }
+        }
 
-            let plpair = [pdir.pair[0], pdir.pair[1]];
-            lfs_pair_tole32(&mut dir.tail);
-            let tail_attrs = [crate::tag::lfs_mattr {
-                tag: crate::tag::lfs_mktag(
-                    crate::lfs_type::lfs_type::LFS_TYPE_TAIL + if dir.split { 1 } else { 0 },
-                    0x3ff,
-                    8,
-                ),
-                buffer: dir.tail.as_bytes(),
-            }];
-            let tail_state = lfs_dir_relocatingcommit(lfs, &mut pdir, &plpair, &tail_attrs, None);
-            lfs_pair_fromle32(&mut dir.tail);
-            tail_state?;
+        // C: lfs.c:2500-2547 — find parent and update
+        let tag = crate::fs::parent::lfs_fs_parent(lfs, &lpair, &mut pdir);
+        if let Err(err) = tag
+            && err != Error::NoEntry
+        {
+            return Err(err);
+        }
+
+        let hasparent = tag != Err(Error::NoEntry);
+        if let Ok(mut tag) = tag {
+            crate::fs::superblock::lfs_fs_preporphans(lfs, 1)?;
+
+            let mut moveid: u16 = 0x3ff;
+            if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
+                moveid = crate::tag::lfs_tag_id(lfs.gstate.tag);
+                crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
+                // C: lfs.c:2523-2525
+                if moveid < crate::tag::lfs_tag_id(tag) {
+                    tag -= crate::tag::lfs_mktag(0, 1, 0);
+                }
+            }
+
+            let ppair = [pdir.pair[0], pdir.pair[1]];
+            lfs_pair_tole32(&mut ldir.pair);
+            let relocate_attrs = [
+                crate::tag::lfs_mattr {
+                    tag: crate::tag::lfs_mktag_if(
+                        moveid != 0x3ff,
+                        crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
+                        moveid.into(),
+                        0,
+                    ),
+                    buffer: &[],
+                },
+                crate::tag::lfs_mattr {
+                    tag: tag as lfs_tag_t,
+                    buffer: ldir.pair.as_bytes(),
+                },
+            ];
+
+            state = {
+                let state = lfs_dir_relocatingcommit(lfs, &mut pdir, &ppair, &relocate_attrs, None);
+                lfs_pair_fromle32(&mut ldir.pair);
+
+                state?
+            };
+
+            if state == crate::error::LFS_OK_RELOCATED {
+                lpair = ppair;
+                ldir = pdir;
+                orphans = true;
+                continue;
+            }
+        }
+
+        // C: lfs.c:2549-2593 — find pred and update tail (INSIDE the while loop)
+        let err = crate::fs::parent::lfs_fs_pred(lfs, &lpair, &mut pdir);
+        if let Err(err) = err
+            && err != Error::NoEntry
+        {
+            return crate::lfs_pass_err!(Err(err));
+        }
+        crate::lfs_assert!(!(hasparent && err == Err(Error::NoEntry)));
+
+        if err != Err(Error::NoEntry) {
+            if crate::lfs_gstate::lfs_gstate_hasorphans(&lfs.gstate) {
+                let deorphan_delta = if hasparent { -1 } else { 0 };
+                crate::fs::superblock::lfs_fs_preporphans(lfs, deorphan_delta)?;
+            }
+
+            let mut moveid: u16 = 0x3ff;
+            if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
+                moveid = crate::tag::lfs_tag_id(lfs.gstate.tag);
+                crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
+            }
+
+            lpair[0] = pdir.pair[0];
+            lpair[1] = pdir.pair[1];
+            lfs_pair_tole32(&mut ldir.pair);
+            let tail_attrs = [
+                crate::tag::lfs_mattr {
+                    tag: crate::tag::lfs_mktag_if(
+                        moveid != 0x3ff,
+                        crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
+                        moveid.into(),
+                        0,
+                    ),
+                    buffer: &[],
+                },
+                crate::tag::lfs_mattr {
+                    tag: crate::tag::lfs_mktag(
+                        crate::lfs_type::lfs_type::LFS_TYPE_TAIL + if pdir.split { 1 } else { 0 },
+                        0x3ff,
+                        8,
+                    ),
+                    buffer: ldir.pair.as_bytes(),
+                },
+            ];
+            state = {
+                let state = lfs_dir_relocatingcommit(lfs, &mut pdir, &lpair, &tail_attrs, None);
+                lfs_pair_fromle32(&mut ldir.pair);
+                state?
+            };
+
             ldir = pdir;
         }
-
-        // C: lfs.c:2472-2594 — relocation handling
-        let mut orphans = false;
-        let mut state = state;
-        let mut lpair = lpair;
-        #[cfg(feature = "loop_limits")]
-        const MAX_RELOCATE_ITER: u32 = 512;
-        #[cfg(feature = "loop_limits")]
-        let mut relocate_iter: u32 = 0;
-        while state == crate::error::LFS_OK_RELOCATED {
-            #[cfg(feature = "loop_limits")]
-            {
-                if relocate_iter >= MAX_RELOCATE_ITER {
-                    panic!(
-                        "loop_limits: MAX_RELOCATE_ITER ({}) exceeded",
-                        MAX_RELOCATE_ITER
-                    );
-                }
-                relocate_iter += 1;
-            }
-            state = 0;
-
-            // C: lfs.c:2480-2483 — update internal root
-            if lfs_pair_cmp(&lpair, &lfs.root) == 0 {
-                lfs.root[0] = ldir.pair[0];
-                lfs.root[1] = ldir.pair[1];
-            }
-
-            // C: lfs.c:2486-2497 — update internally tracked dirs
-            {
-                let mut d = lfs.mlist;
-                while !d.is_null() {
-                    if lfs_pair_cmp(&lpair, &(*d).m.pair) == 0 {
-                        (*d).m.pair[0] = ldir.pair[0];
-                        (*d).m.pair[1] = ldir.pair[1];
-                    }
-                    d = (*d).next;
-                }
-            }
-
-            // C: lfs.c:2500-2547 — find parent and update
-            let tag = crate::fs::parent::lfs_fs_parent(lfs, &lpair, &mut pdir);
-            if let Err(err) = tag
-                && err != Error::NoEntry
-            {
-                return Err(err);
-            }
-
-            let hasparent = tag != Err(Error::NoEntry);
-            if let Ok(mut tag) = tag {
-                crate::fs::superblock::lfs_fs_preporphans(lfs, 1)?;
-
-                let mut moveid: u16 = 0x3ff;
-                if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
-                    moveid = crate::tag::lfs_tag_id(lfs.gstate.tag);
-                    crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
-                    // C: lfs.c:2523-2525
-                    if moveid < crate::tag::lfs_tag_id(tag) {
-                        tag -= crate::tag::lfs_mktag(0, 1, 0);
-                    }
-                }
-
-                let ppair = [pdir.pair[0], pdir.pair[1]];
-                lfs_pair_tole32(&mut ldir.pair);
-                let relocate_attrs = [
-                    crate::tag::lfs_mattr {
-                        tag: crate::tag::lfs_mktag_if(
-                            moveid != 0x3ff,
-                            crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
-                            moveid.into(),
-                            0,
-                        ),
-                        buffer: &[],
-                    },
-                    crate::tag::lfs_mattr {
-                        tag: tag as lfs_tag_t,
-                        buffer: ldir.pair.as_bytes(),
-                    },
-                ];
-
-                state = {
-                    let state =
-                        lfs_dir_relocatingcommit(lfs, &mut pdir, &ppair, &relocate_attrs, None);
-                    lfs_pair_fromle32(&mut ldir.pair);
-
-                    state?
-                };
-
-                if state == crate::error::LFS_OK_RELOCATED {
-                    lpair = ppair;
-                    ldir = pdir;
-                    orphans = true;
-                    continue;
-                }
-            }
-
-            // C: lfs.c:2549-2593 — find pred and update tail (INSIDE the while loop)
-            let err = crate::fs::parent::lfs_fs_pred(lfs, &lpair, &mut pdir);
-            if let Err(err) = err
-                && err != Error::NoEntry
-            {
-                return crate::lfs_pass_err!(Err(err));
-            }
-            crate::lfs_assert!(!(hasparent && err == Err(Error::NoEntry)));
-
-            if err != Err(Error::NoEntry) {
-                if crate::lfs_gstate::lfs_gstate_hasorphans(&lfs.gstate) {
-                    let deorphan_delta = if hasparent { -1 } else { 0 };
-                    crate::fs::superblock::lfs_fs_preporphans(lfs, deorphan_delta)?;
-                }
-
-                let mut moveid: u16 = 0x3ff;
-                if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
-                    moveid = crate::tag::lfs_tag_id(lfs.gstate.tag);
-                    crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
-                }
-
-                lpair[0] = pdir.pair[0];
-                lpair[1] = pdir.pair[1];
-                lfs_pair_tole32(&mut ldir.pair);
-                let tail_attrs = [
-                    crate::tag::lfs_mattr {
-                        tag: crate::tag::lfs_mktag_if(
-                            moveid != 0x3ff,
-                            crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
-                            moveid.into(),
-                            0,
-                        ),
-                        buffer: &[],
-                    },
-                    crate::tag::lfs_mattr {
-                        tag: crate::tag::lfs_mktag(
-                            crate::lfs_type::lfs_type::LFS_TYPE_TAIL
-                                + if pdir.split { 1 } else { 0 },
-                            0x3ff,
-                            8,
-                        ),
-                        buffer: ldir.pair.as_bytes(),
-                    },
-                ];
-                state = {
-                    let state = lfs_dir_relocatingcommit(lfs, &mut pdir, &lpair, &tail_attrs, None);
-                    lfs_pair_fromle32(&mut ldir.pair);
-                    state?
-                };
-
-                ldir = pdir;
-            }
-        }
-
-        if orphans { Ok(LFS_OK_ORPHANED) } else { Ok(0) }
     }
+
+    if orphans { Ok(LFS_OK_ORPHANED) } else { Ok(0) }
 }
 
 /// Per lfs.c lfs_dir_commit (lines 2601-2623)
@@ -2390,7 +2383,7 @@ pub fn lfs_dir_commit(
     use crate::error::LFS_OK_ORPHANED;
     use crate::fs::superblock::lfs_fs_deorphan;
 
-    let orphans = lfs_dir_orphaningcommit(lfs, dir, attrs_slice)?;
+    let orphans = lfs_dir_orphaningcommit(lfs, dir.into(), attrs_slice)?;
 
     if orphans == LFS_OK_ORPHANED {
         lfs_fs_deorphan(lfs, false)?;
