@@ -442,89 +442,92 @@ pub unsafe fn test_format_minimal_superblock(
         return crate::lfs_pass_err!(err);
     }
 
-    unsafe {
-        crate::lfs_assert!(cfg.block_count != 0);
+    crate::lfs_assert!(cfg.block_count != 0);
 
-        if !lfs.lookahead.buffer.is_null() {
-            core::ptr::write_bytes(lfs.lookahead.buffer, 0, cfg.lookahead_size as usize);
-        }
-        lfs.lookahead.start = 0;
-        lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
-        lfs.lookahead.next = 0;
-        lfs_alloc_ckpoint(lfs);
+    if !lfs.lookahead.buffer.is_null() {
+        unsafe { core::ptr::write_bytes(lfs.lookahead.buffer, 0, cfg.lookahead_size as usize) };
+    }
+    lfs.lookahead.start = 0;
+    lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
+    lfs.lookahead.next = 0;
+    lfs_alloc_ckpoint(lfs);
 
-        let mut root = LfsMdir {
-            pair: [0, 0],
-            rev: 0,
-            off: 0,
-            etag: 0,
-            count: 0,
-            erased: false,
-            split: false,
-            tail: [0, 0],
-        };
-        err = lfs_dir_alloc(lfs, &mut root);
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
+    let mut root = LfsMdir {
+        pair: [0, 0],
+        rev: 0,
+        off: 0,
+        etag: 0,
+        count: 0,
+        erased: false,
+        split: false,
+        tail: [0, 0],
+    };
+    err = lfs_dir_alloc(lfs, &mut root);
+    if err.is_err() {
+        let _ = lfs_deinit(lfs);
+        return crate::lfs_pass_err!(err);
+    }
 
-        // Write to block 1 (compact-style), skip traverse. pair is [1,0] or [0,1]
-        // depending on alloc order; use pair[1] which receives the first compact write.
-        let block = root.pair[1];
-        let err = lfs_bd_erase(lfs, block);
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
+    // Write to block 1 (compact-style), skip traverse. pair is [1,0] or [0,1]
+    // depending on alloc order; use pair[1] which receives the first compact write.
+    let block = root.pair[1];
+    let err = lfs_bd_erase(lfs, block);
+    if err.is_err() {
+        let _ = lfs_deinit(lfs);
+        return crate::lfs_pass_err!(err);
+    }
 
-        let end = cfg.block_size - 8;
-        let mut commit = LfsCommit {
-            block,
-            off: 0,
-            ptag: 0xffff_ffff,
-            crc: 0xffff_ffff,
-            begin: 0,
-            end,
-        };
+    let end = cfg.block_size - 8;
+    let mut commit = LfsCommit {
+        block,
+        off: 0,
+        ptag: 0xffff_ffff,
+        crc: 0xffff_ffff,
+        begin: 0,
+        end,
+    };
 
-        let rev = 1u32;
-        let rev_le = lfs_tole32(rev);
-        let err = lfs_dir_commitprog(lfs, &mut commit, rev_le.as_bytes());
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
-        commit.ptag = rev & 0x7fff_ffff;
+    let rev = 1u32;
+    let rev_le = lfs_tole32(rev);
+    let err = lfs_dir_commitprog(lfs, &mut commit, rev_le.as_bytes());
+    if err.is_err() {
+        let _ = lfs_deinit(lfs);
+        return crate::lfs_pass_err!(err);
+    }
+    commit.ptag = rev & 0x7fff_ffff;
 
-        let magic = b"littlefs";
-        let err = lfs_dir_commitattr(lfs, &mut commit, lfs_mktag(LFS_TYPE_CREATE, 0, 0), &[]);
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
-        let err = lfs_dir_commitattr(
-            lfs,
-            &mut commit,
-            lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-            magic,
-        );
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
+    let magic = b"littlefs";
+    let err = lfs_dir_commitattr(lfs, &mut commit, lfs_mktag(LFS_TYPE_CREATE, 0, 0), &[]);
+    if err.is_err() {
+        let _ = lfs_deinit(lfs);
+        return crate::lfs_pass_err!(err);
+    }
+    let err = lfs_dir_commitattr(
+        lfs,
+        &mut commit,
+        lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
+        magic,
+    );
+    if err.is_err() {
+        let _ = lfs_deinit(lfs);
+        return crate::lfs_pass_err!(err);
+    }
 
-        let err = lfs_dir_commitcrc(lfs, &mut commit);
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
+    let err = lfs_dir_commitcrc(lfs, &mut commit);
+    if err.is_err() {
+        let _ = lfs_deinit(lfs);
+        return crate::lfs_pass_err!(err);
+    }
 
-        let err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
+    let err = lfs_bd_sync(
+        lfs,
+        unsafe { &mut *lfs.pcache.get() },
+        unsafe { &mut *lfs.rcache.get() },
+        false,
+    );
+    if err.is_err() {
+        let _ = lfs_deinit(lfs);
+        return crate::lfs_pass_err!(err);
     }
 
     let _ = lfs_deinit(lfs);

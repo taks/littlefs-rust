@@ -1477,73 +1477,75 @@ pub fn lfs_file_truncate_(
 
     crate::lfs_assert!(file.flags.contains(OpenFlags::WRITE));
 
-    unsafe {
-        if size > lfs.file_max {
-            return Err(Error::Invalid);
-        }
+    if size > lfs.file_max {
+        return Err(Error::Invalid);
+    }
 
-        let pos = file.pos;
-        let oldsize = lfs_file_size_(lfs, file) as lfs_off_t;
+    let pos = file.pos;
+    let oldsize = lfs_file_size_(lfs, file) as lfs_off_t;
 
-        if size < oldsize {
-            if size <= lfs.inline_max {
-                // C: lfs.c:3762-3786 — revert to inline
-                let _res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_SET)?;
+    if size < oldsize {
+        if size <= lfs.inline_max {
+            // C: lfs.c:3762-3786 — revert to inline
+            let _res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_SET)?;
 
-                // Read existing data from CTZ blocks into rcache temporarily
-                crate::bd::bd::lfs_cache_drop(lfs, &mut *lfs.rcache.get());
-                let buffer =
-                    core::slice::from_raw_parts_mut(lfs.rcache.get_mut().buffer, size as usize);
-                let _res = lfs_file_flushedread(lfs, file, buffer)?;
+            // Read existing data from CTZ blocks into rcache temporarily
+            crate::bd::bd::lfs_cache_drop(lfs, unsafe { &mut *lfs.rcache.get() });
+            let buffer = unsafe {
+                core::slice::from_raw_parts_mut(lfs.rcache.get_mut().buffer, size as usize)
+            };
+            let _res = lfs_file_flushedread(lfs, file, buffer)?;
 
-                file.ctz.head = LFS_BLOCK_INLINE;
-                file.ctz.size = size;
-                file.flags
-                    .insert(OpenFlags::DIRTY | OpenFlags::READING | OpenFlags::INLINE);
-                file.cache.block = file.ctz.head;
-                file.cache.off = 0;
-                file.cache.size = lfs.cfg.as_ref().expect("cfg").cache_size;
+            file.ctz.head = LFS_BLOCK_INLINE;
+            file.ctz.size = size;
+            file.flags
+                .insert(OpenFlags::DIRTY | OpenFlags::READING | OpenFlags::INLINE);
+            file.cache.block = file.ctz.head;
+            file.cache.off = 0;
+            file.cache.size = unsafe { lfs.cfg.as_ref().expect("cfg").cache_size };
 
-                // Copy data from rcache into file cache
+            // Copy data from rcache into file cache
+            unsafe {
                 core::ptr::copy_nonoverlapping(
                     lfs.rcache.get_mut().buffer,
                     file.cache.buffer,
                     size as usize,
                 );
-            } else {
-                // C: lfs.c:3787-3806 — shrink CTZ
-                lfs_file_flush(lfs, file)?;
-
-                let mut off_zero: lfs_off_t = 0;
-                lfs_ctz_find(
-                    lfs,
-                    None,
-                    &mut file.cache,
-                    file.ctz.head,
-                    file.ctz.size,
-                    size.saturating_sub(1),
-                    &mut file.block,
-                    &mut off_zero,
-                )?;
-
-                file.pos = size;
-                file.ctz.head = file.block;
-                file.ctz.size = size;
-                file.flags.insert(OpenFlags::DIRTY | OpenFlags::READING);
             }
-        } else if size > oldsize {
-            // C: lfs.c:3807-3818 — grow
-            let _res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_END)?;
+        } else {
+            // C: lfs.c:3787-3806 — shrink CTZ
+            lfs_file_flush(lfs, file)?;
 
-            let zero = [0u8];
-            #[allow(clippy::while_immutable_condition)] // file.pos updated by lfs_file_write_
-            while file.pos < size {
-                let _res = lfs_file_write_(lfs, file, &zero)?;
-            }
+            let mut off_zero: lfs_off_t = 0;
+            lfs_ctz_find(
+                lfs,
+                None,
+                &mut file.cache,
+                file.ctz.head,
+                file.ctz.size,
+                size.saturating_sub(1),
+                &mut file.block,
+                &mut off_zero,
+            )?;
+
+            file.pos = size;
+            file.ctz.head = file.block;
+            file.ctz.size = size;
+            file.flags.insert(OpenFlags::DIRTY | OpenFlags::READING);
         }
+    } else if size > oldsize {
+        // C: lfs.c:3807-3818 — grow
+        let _res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_END)?;
 
-        let _res = lfs_file_seek_(lfs, file, pos as i32, LFS_SEEK_SET)?;
+        let zero = [0u8];
+        #[allow(clippy::while_immutable_condition)] // file.pos updated by lfs_file_write_
+        while file.pos < size {
+            let _res = lfs_file_write_(lfs, file, &zero)?;
+        }
     }
+
+    let _res = lfs_file_seek_(lfs, file, pos as i32, LFS_SEEK_SET)?;
+
     Ok(())
 }
 

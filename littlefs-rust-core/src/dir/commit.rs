@@ -496,49 +496,49 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
 /// # Safety
 ///
 /// `lfs` and `dir` must be valid, properly initialized pointers.
-pub unsafe fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), Error> {
+pub fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::block_alloc::alloc::lfs_alloc;
     use crate::types::LFS_BLOCK_NULL;
     use crate::util::{lfs_alignup, lfs_fromle32};
 
-    unsafe {
-        for i in 0..2 {
-            let out_block = &mut dir.pair[(i + 1) % 2];
-            lfs_alloc(lfs, out_block)?;
-        }
-
-        dir.rev = 0;
-
-        let mut rev_buf: u32 = 0;
-        let err = lfs_bd_read(
-            lfs,
-            None,
-            &mut *lfs.rcache.get(),
-            core::mem::size_of::<u32>() as u32,
-            dir.pair[0],
-            0,
-            rev_buf.as_mut_bytes(),
-        );
-        dir.rev = lfs_fromle32(rev_buf);
-        if err.is_err() && err != Err(Error::Corrupt) {
-            return crate::lfs_pass_err!(err);
-        }
-
-        if lfs.cfg.as_ref().is_some_and(|c| c.block_cycles > 0) {
-            let modulus = (lfs.cfg.as_ref().unwrap().block_cycles as u32 + 1) | 1;
-            dir.rev = lfs_alignup(dir.rev, modulus);
-        }
-
-        dir.off = core::mem::size_of::<u32>() as u32;
-        dir.etag = 0xffff_ffff;
-        dir.count = 0;
-        dir.tail = [LFS_BLOCK_NULL, LFS_BLOCK_NULL];
-        dir.erased = false;
-        dir.split = false;
-
-        Ok(())
+    for i in 0..2 {
+        let out_block = &mut dir.pair[(i + 1) % 2];
+        lfs_alloc(lfs, out_block)?;
     }
+
+    dir.rev = 0;
+
+    let mut rev_buf: u32 = 0;
+    let err = lfs_bd_read(
+        lfs,
+        None,
+        unsafe { &mut *lfs.rcache.get() },
+        core::mem::size_of::<u32>() as u32,
+        dir.pair[0],
+        0,
+        rev_buf.as_mut_bytes(),
+    );
+    dir.rev = lfs_fromle32(rev_buf);
+    if err.is_err() && err != Err(Error::Corrupt) {
+        return crate::lfs_pass_err!(err);
+    }
+
+    if let Some(cfg) = unsafe { lfs.cfg.as_ref() }
+        && cfg.block_cycles > 0
+    {
+        let modulus = (cfg.block_cycles as u32 + 1) | 1;
+        dir.rev = lfs_alignup(dir.rev, modulus);
+    }
+
+    dir.off = core::mem::size_of::<u32>() as u32;
+    dir.etag = 0xffff_ffff;
+    dir.count = 0;
+    dir.tail = [LFS_BLOCK_NULL, LFS_BLOCK_NULL];
+    dir.erased = false;
+    dir.split = false;
+
+    Ok(())
 }
 
 /// Per lfs.c lfs_dir_drop (lines 1859-1878)
@@ -636,52 +636,50 @@ pub fn lfs_dir_split(
 ) -> Result<(), Error> {
     use crate::util::lfs_pair_cmp;
 
-    unsafe {
-        let mut tail = LfsMdir {
-            pair: [0, 0],
-            rev: 0,
-            off: 0,
-            etag: 0,
-            count: 0,
-            erased: false,
-            split: false,
-            tail: [0, 0],
-        };
+    let mut tail = LfsMdir {
+        pair: [0, 0],
+        rev: 0,
+        off: 0,
+        etag: 0,
+        count: 0,
+        erased: false,
+        split: false,
+        tail: [0, 0],
+    };
 
-        lfs_dir_alloc(lfs, &mut tail)?;
+    lfs_dir_alloc(lfs, &mut tail)?;
 
-        tail.split = dir.split;
-        tail.tail[0] = dir.tail[0];
-        tail.tail[1] = dir.tail[1];
+    tail.split = dir.split;
+    tail.tail[0] = dir.tail[0];
+    tail.tail[1] = dir.tail[1];
 
-        // note we don't care about LFS_OK_RELOCATED
-        let _res = lfs_dir_compact(lfs, &mut tail, attrs, source, split, end)?;
+    // note we don't care about LFS_OK_RELOCATED
+    let _res = lfs_dir_compact(lfs, &mut tail, attrs, source, split, end)?;
 
-        dir.tail[0] = tail.pair[0];
-        dir.tail[1] = tail.pair[1];
-        dir.split = true;
+    dir.tail[0] = tail.pair[0];
+    dir.tail[1] = tail.pair[1];
+    dir.split = true;
 
-        crate::lfs_trace!(
-            "dir_split: split={} end={} new_tail=[{},{}] dir.pair=[{},{}] dir.tail=[{},{}]",
-            split,
-            end,
-            tail.pair[0],
-            tail.pair[1],
-            dir.pair[0],
-            dir.pair[1],
-            dir.tail[0],
-            dir.tail[1]
-        );
+    crate::lfs_trace!(
+        "dir_split: split={} end={} new_tail=[{},{}] dir.pair=[{},{}] dir.tail=[{},{}]",
+        split,
+        end,
+        tail.pair[0],
+        tail.pair[1],
+        dir.pair[0],
+        dir.pair[1],
+        dir.tail[0],
+        dir.tail[1]
+    );
 
-        // update root if needed
-        let root = &lfs.root;
-        if lfs_pair_cmp(&dir.pair, root) == 0 && split == 0 {
-            lfs.root[0] = tail.pair[0];
-            lfs.root[1] = tail.pair[1];
-        }
-
-        Ok(())
+    // update root if needed
+    let root = &lfs.root;
+    if lfs_pair_cmp(&dir.pair, root) == 0 && split == 0 {
+        lfs.root[0] = tail.pair[0];
+        lfs.root[1] = tail.pair[1];
     }
+
+    Ok(())
 }
 
 /// Per lfs.c lfs_dir_commit_size (lines 1915-1923)

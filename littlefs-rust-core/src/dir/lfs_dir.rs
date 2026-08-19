@@ -18,7 +18,7 @@ pub struct LfsDir {
 }
 
 impl LfsDir {
-    pub(crate) unsafe fn as_mut_lsf_mist(&mut self) -> *mut LfsMlist {
-        unsafe { ::core::mem::transmute::<*mut Self, *mut LfsMlist>(::core::ptr::from_mut(self)) }
+    pub(crate) unsafe fn as_mut_lsf_mist(&mut self) -> &mut LfsMlist {
+        unsafe { ::core::mem::transmute::<&mut Self, &mut LfsMlist>(self) }
     }
 }

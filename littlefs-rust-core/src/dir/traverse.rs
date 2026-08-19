@@ -251,7 +251,7 @@ pub fn lfs_dir_getread(
     }
     let data = buffer as *mut u8;
 
-    unsafe {
+    {
         let cfg = lfs.cfg.as_ref().expect("cfg");
         if off + size > cfg.block_size {
             return crate::lfs_err!(Err(Error::Corrupt));
