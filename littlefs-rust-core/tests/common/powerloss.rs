@@ -10,7 +10,7 @@
 
 use core::cell::Cell;
 
-use littlefs_rust_core::{Lfs, LfsConfig, error::Error};
+use littlefs_rust_core::{Lfs, LfsConfig, Storage, error::Error};
 
 use super::{BLOCK_SIZE, RamStorage};
 
@@ -98,52 +98,46 @@ impl PowerLossCtx {
     }
 }
 
-fn powerloss_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {
-    let ctx = cfg.context as *mut PowerLossCtx;
-    let ctx = unsafe { &mut *ctx };
-    ctx.ram.read(block, off, buffer);
-    Ok(())
-}
+impl Storage for PowerLossCtx {
+    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
+        self.ram.read(block, offset, buf);
+        Ok(())
+    }
 
-fn powerloss_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
-    let ctx = cfg.context as *mut PowerLossCtx;
-    let ctx = unsafe { &mut *ctx };
-    let err = ctx.check_and_count();
-    if let Err(err) = err {
-        if ctx.behavior == PowerLossBehavior::Ooo {
-            ctx.restore_ooo_block();
+    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
+        let err = self.check_and_count();
+        if let Err(err) = err {
+            if self.behavior == PowerLossBehavior::Ooo {
+                self.restore_ooo_block();
+            }
+            return littlefs_rust_core::lfs_pass_err!(Err(err));
         }
-        return littlefs_rust_core::lfs_pass_err!(Err(err));
-    }
-    if ctx.behavior == PowerLossBehavior::Ooo && ctx.ooo_first_block.is_none() {
-        ctx.save_ooo_block(block);
-    }
-    ctx.ram.prog(block, off, buffer);
-    Ok(())
-}
-
-fn powerloss_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
-    let ctx = cfg.context as *mut PowerLossCtx;
-    let ctx = unsafe { &mut *ctx };
-    let err = ctx.check_and_count();
-    if let Err(err) = err {
-        if ctx.behavior == PowerLossBehavior::Ooo {
-            ctx.restore_ooo_block();
+        if self.behavior == PowerLossBehavior::Ooo && self.ooo_first_block.is_none() {
+            self.save_ooo_block(block);
         }
-        return littlefs_rust_core::lfs_pass_err!(Err(err));
+        self.ram.prog(block, offset, data);
+        Ok(())
     }
-    if ctx.behavior == PowerLossBehavior::Ooo && ctx.ooo_first_block.is_none() {
-        ctx.save_ooo_block(block);
-    }
-    ctx.ram.erase(block);
-    Ok(())
-}
 
-fn powerloss_sync(cfg: &LfsConfig) -> Result<(), Error> {
-    let ctx = cfg.context as *mut PowerLossCtx;
-    let ctx = unsafe { &mut *ctx };
-    ctx.clear_ooo_tracking();
-    Ok(())
+    fn erase(&mut self, block: u32) -> Result<(), Error> {
+        let err = self.check_and_count();
+        if let Err(err) = err {
+            if self.behavior == PowerLossBehavior::Ooo {
+                self.restore_ooo_block();
+            }
+            return littlefs_rust_core::lfs_pass_err!(Err(err));
+        }
+        if self.behavior == PowerLossBehavior::Ooo && self.ooo_first_block.is_none() {
+            self.save_ooo_block(block);
+        }
+        self.ram.erase(block);
+        Ok(())
+    }
+
+    fn sync(&mut self) -> Result<(), Error> {
+        self.clear_ooo_tracking();
+        Ok(())
+    }
 }
 
 /// Test environment with power-loss simulation. Owns PowerLossCtx, config, buffers.
@@ -165,11 +159,7 @@ pub fn powerloss_config(block_count: u32) -> PowerLossEnv {
     let lookahead_buf = vec![0u8; block_size as usize];
 
     let config = LfsConfig {
-        context: core::ptr::null_mut(),
-        read: Some(powerloss_read),
-        prog: Some(powerloss_prog),
-        erase: Some(powerloss_erase),
-        sync: Some(powerloss_sync),
+        context: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
         read_size: 16,
         prog_size: 16,
         block_size,
@@ -213,11 +203,7 @@ pub fn powerloss_config_with_behavior(
     let lookahead_buf = vec![0u8; block_size as usize];
 
     let config = LfsConfig {
-        context: core::ptr::null_mut(),
-        read: Some(powerloss_read),
-        prog: Some(powerloss_prog),
-        erase: Some(powerloss_erase),
-        sync: Some(powerloss_sync),
+        context: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
         read_size: 16,
         prog_size: 16,
         block_size,
@@ -251,7 +237,7 @@ pub fn powerloss_config_with_behavior(
 
 /// Call after powerloss_config() to set context. Required for PowerLossEnv.
 pub fn init_powerloss_context(env: &mut PowerLossEnv) {
-    env.config.context = &mut env.ctx as *mut PowerLossCtx as *mut core::ffi::c_void;
+    env.config.context = &mut env.ctx as *mut _;
 }
 
 impl PowerLossEnv {
