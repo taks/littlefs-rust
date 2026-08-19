@@ -69,27 +69,13 @@ pub fn lfs_mlist_isopen(head: *mut LfsMlist, node: *const LfsMlist) -> bool {
 ///     }
 /// }
 /// ```
-pub fn lfs_mlist_remove(lfs: *mut crate::fs::Lfs, mlist: *mut LfsMlist) {
-    if lfs.is_null() || mlist.is_null() {
+pub fn lfs_mlist_remove(lfs: &mut crate::fs::Lfs, mlist: *mut LfsMlist) {
+    if mlist.is_null() {
         return;
     }
     unsafe {
         let mut p = &mut (*lfs).mlist;
-        #[cfg(feature = "loop_limits")]
-        const MAX_MLIST_REMOVE_ITER: u32 = 256;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
         while !(*p).is_null() {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_MLIST_REMOVE_ITER {
-                    panic!(
-                        "loop_limits: MAX_MLIST_REMOVE_ITER ({}) exceeded",
-                        MAX_MLIST_REMOVE_ITER
-                    );
-                }
-                iter += 1;
-            }
             if core::ptr::eq(*p, mlist) {
                 *p = (*mlist).next;
                 break;

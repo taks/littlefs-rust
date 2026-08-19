@@ -6,55 +6,6 @@ use crate::Lfs;
 use crate::error::Error;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 
-#[repr(C)]
-pub struct LfsCtz {
-    pub head: lfs_block_t,
-    pub size: lfs_size_t,
-}
-
-/// Per lfs.c lfs_ctz_fromle32 (lines 475-479)
-///
-/// C:
-/// ```c
-/// static void lfs_ctz_fromle32(struct lfs_ctz *ctz) {
-///     ctz->head = lfs_fromle32(ctz->head);
-///     ctz->size = lfs_fromle32(ctz->size);
-/// }
-/// ```
-#[allow(unused)]
-pub fn lfs_ctz_fromle32(ctz: *mut LfsCtz) {
-    if ctz.is_null() {
-        return;
-    }
-    unsafe {
-        let ctz = &mut *ctz;
-        ctz.head = crate::util::lfs_fromle32(ctz.head);
-        ctz.size = crate::util::lfs_fromle32(ctz.size);
-    }
-}
-
-/// Per lfs.c lfs_ctz_tole32 (lines 481-486)
-///
-/// C:
-/// ```c
-/// static void lfs_ctz_tole32(struct lfs_ctz *ctz) {
-///     ctz->head = lfs_tole32(ctz->head);
-///     ctz->size = lfs_tole32(ctz->size);
-/// }
-/// #endif
-/// ```
-#[allow(unused)]
-pub fn lfs_ctz_tole32(ctz: *mut LfsCtz) {
-    if ctz.is_null() {
-        return;
-    }
-    unsafe {
-        let ctz = &mut *ctz;
-        ctz.head = crate::util::lfs_tole32(ctz.head);
-        ctz.size = crate::util::lfs_tole32(ctz.size);
-    }
-}
-
 /// Per lfs.c lfs_ctz_index (lines 2873-2884)
 ///
 /// C:
@@ -72,24 +23,19 @@ pub fn lfs_ctz_tole32(ctz: *mut LfsCtz) {
 ///     return i;
 /// }
 /// ```
-pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: *mut lfs_off_t) -> i32 {
+pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: &mut lfs_off_t) -> i32 {
     use crate::util::lfs_popc;
 
-    if off.is_null() {
+    let size = *off;
+    let block_size = unsafe { lfs.cfg.as_ref().expect("cfg").block_size };
+    let b = block_size - 8;
+    let mut i = size / b;
+    if i == 0 {
         return 0;
     }
-    unsafe {
-        let size = *off;
-        let block_size = lfs.cfg.as_ref().expect("cfg").block_size;
-        let b = block_size - 8;
-        let mut i = size / b;
-        if i == 0 {
-            return 0;
-        }
-        i = (size - 4 * (lfs_popc(i - 1) + 2)) / b;
-        *off = size - b * i - 4 * lfs_popc(i);
-        i as i32
-    }
+    i = (size - 4 * (lfs_popc(i - 1) + 2)) / b;
+    *off = size - b * i - 4 * lfs_popc(i);
+    i as i32
 }
 
 /// Per lfs.c lfs_ctz_find (lines 2886-2919)
