@@ -5,10 +5,7 @@
 
 use core::ptr::NonNull;
 
-use crate::{
-    error::Error,
-    types::{lfs_block_t, lfs_off_t, lfs_size_t},
-};
+use crate::{error::Error, types::lfs_size_t};
 
 pub trait Storage {
     /// Read `buf.len()` bytes starting at `offset` within `block`.
