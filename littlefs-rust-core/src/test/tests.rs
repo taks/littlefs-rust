@@ -12,7 +12,7 @@ fn test_context_smoke() {
     assert_eq!(ctx.ram.data.len(), 512 * 128);
     // Direct read through callback
     let mut buf = [0u8; 8];
-    let err = unsafe { cfg.context.as_mut_unchecked().read(0, 0, &mut buf) };
+    let err = unsafe { cfg.context.as_mut().unwrap().read(0, 0, &mut buf) };
     assert_eq!(err, Ok(()));
     assert_eq!(buf, [0u8; 8]);
 }
