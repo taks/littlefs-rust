@@ -5,7 +5,7 @@ use littlefs_rust_core::{LfsDir, LfsInfo};
 
 use crate::filesystem::Filesystem;
 use crate::metadata::{DirEntry, FileType};
-use crate::storage::Storage;
+use crate::storage::StorageWithConfig;
 
 pub(crate) struct DirAllocation {
     pub(crate) dir: LfsDir,
@@ -24,13 +24,13 @@ impl DirAllocation {
 /// Obtained from [`Filesystem::read_dir`]. Yields [`DirEntry`] items,
 /// automatically skipping `.` and `..`. Closed on drop, or explicitly
 /// via [`ReadDir::close`].
-pub struct ReadDir<'a, S: Storage> {
+pub struct ReadDir<'a, S: StorageWithConfig> {
     fs: &'a Filesystem<S>,
     alloc: Box<DirAllocation>,
     closed: bool,
 }
 
-impl<'a, S: Storage> ReadDir<'a, S> {
+impl<'a, S: StorageWithConfig> ReadDir<'a, S> {
     pub(crate) fn open(fs: &'a Filesystem<S>, path: &str) -> Result<Self, Error> {
         let mut alloc = Box::new(DirAllocation::new());
         {
@@ -54,7 +54,7 @@ impl<'a, S: Storage> ReadDir<'a, S> {
     }
 }
 
-impl<S: Storage> Iterator for ReadDir<'_, S> {
+impl<S: StorageWithConfig> Iterator for ReadDir<'_, S> {
     type Item = Result<DirEntry, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -80,7 +80,7 @@ impl<S: Storage> Iterator for ReadDir<'_, S> {
     }
 }
 
-impl<S: Storage> Drop for ReadDir<'_, S> {
+impl<S: StorageWithConfig> Drop for ReadDir<'_, S> {
     fn drop(&mut self) {
         if !self.closed {
             if let Ok(mut inner) = self.fs.inner.try_borrow_mut() {

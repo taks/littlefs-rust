@@ -13,9 +13,9 @@ use crate::config::Config;
 use crate::dir::{dir_entry_from_info, ReadDir};
 use crate::file::File;
 use crate::metadata::{DirEntry, Metadata};
-use crate::storage::Storage;
+use crate::storage::StorageWithConfig;
 
-pub(crate) struct FsInner<S: Storage> {
+pub(crate) struct FsInner<S: StorageWithConfig> {
     pub(crate) lfs: Lfs,
     pub(crate) config: LfsConfig,
     pub(crate) storage: S,
@@ -38,45 +38,13 @@ pub(crate) struct FsInner<S: Storage> {
 /// `Filesystem` is `!Send` and `!Sync` (due to interior `RefCell`). This is
 /// appropriate for single-threaded embedded use. If you need cross-thread
 /// access, wrap it in a `Mutex`.
-pub struct Filesystem<S: Storage> {
+pub struct Filesystem<S: StorageWithConfig> {
     pub(crate) inner: RefCell<Box<FsInner<S>>>,
-}
-
-// ── Trampolines ─────────────────────────────────────────────────────────────
-
-fn trampoline_read<S: Storage>(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &mut [u8],
-) -> Result<(), Error> {
-    let storage = unsafe { &mut *(cfg.context as *mut S) };
-    storage.read(block, off, buffer)
-}
-
-fn trampoline_prog<S: Storage>(
-    cfg: &LfsConfig,
-    block: u32,
-    off: u32,
-    buffer: &[u8],
-) -> Result<(), Error> {
-    let storage = unsafe { &mut *(cfg.context as *mut S) };
-    storage.write(block, off, buffer)
-}
-
-fn trampoline_erase<S: Storage>(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
-    let storage = unsafe { &mut *(cfg.context as *mut S) };
-    storage.erase(block)
-}
-
-fn trampoline_sync<S: Storage>(cfg: &LfsConfig) -> Result<(), Error> {
-    let storage = unsafe { &mut *(cfg.context as *mut S) };
-    storage.sync()
 }
 
 // ── FsInner construction ────────────────────────────────────────────────────
 
-fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
+fn build_inner<S: StorageWithConfig>(storage: S, config: &Config) -> FsInner<S> {
     let cache_size = config.resolve_cache_size() as usize;
     let lookahead_size = config.resolve_lookahead_size() as usize;
 
@@ -85,11 +53,7 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
     let mut lookahead_buf = vec![0u8; lookahead_size];
 
     let lfs_config = LfsConfig {
-        context: core::ptr::null_mut(),
-        read: Some(trampoline_read::<S>),
-        prog: Some(trampoline_prog::<S>),
-        erase: Some(trampoline_erase::<S>),
-        sync: Some(trampoline_sync::<S>),
+        context: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
         read_size: S::READ_SIZE as _,
         prog_size: S::WRITE_SIZE as _,
         block_size: S::BLOCK_SIZE as _,
@@ -121,8 +85,10 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
 
 /// Wire `config.context` to point at `inner.storage`. Must be called after
 /// `inner` is at its final address (i.e., inside the `RefCell`).
-fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
-    inner.config.context = &mut inner.storage as *mut S as *mut c_void;
+fn wire_context<S: StorageWithConfig>(inner: &mut FsInner<S>) {
+    inner.config.context = unsafe {
+        core::mem::transmute(&mut inner.storage as *mut S as *mut dyn littlefs_rust_core::Storage)
+    };
     inner.config.read_buffer = inner._read_buf.as_mut_ptr() as *mut c_void;
     inner.config.prog_buffer = inner._prog_buf.as_mut_ptr() as *mut c_void;
     inner.config.lookahead_buffer = inner._lookahead_buf.as_mut_ptr() as *mut c_void;
@@ -130,7 +96,7 @@ fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
 
 // ── Filesystem ──────────────────────────────────────────────────────────────
 
-impl<S: Storage> Filesystem<S> {
+impl<S: StorageWithConfig> Filesystem<S> {
     /// Format `storage` with a fresh LittleFS filesystem.
     ///
     /// This erases any existing data. The storage can be mounted afterwards
@@ -290,7 +256,7 @@ impl<S: Storage> Filesystem<S> {
     }
 }
 
-impl<S: Storage> Drop for Filesystem<S> {
+impl<S: StorageWithConfig> Drop for Filesystem<S> {
     fn drop(&mut self) {
         if let Ok(mut inner) = self.inner.try_borrow_mut() {
             if inner.mounted {
@@ -303,7 +269,7 @@ impl<S: Storage> Drop for Filesystem<S> {
 
 // ── format helper (borrows storage instead of taking ownership) ─────────────
 
-struct BorrowedFsInner<'a, S: Storage> {
+struct BorrowedFsInner<'a, S: StorageWithConfig> {
     lfs: Lfs,
     config: LfsConfig,
     storage: &'a mut S,
@@ -312,7 +278,7 @@ struct BorrowedFsInner<'a, S: Storage> {
     _lookahead_buf: Vec<u8>,
 }
 
-fn build_inner_borrowed<'a, S: Storage>(
+fn build_inner_borrowed<'a, S: StorageWithConfig>(
     storage: &'a mut S,
     config: &Config,
 ) -> BorrowedFsInner<'a, S> {
@@ -324,11 +290,7 @@ fn build_inner_borrowed<'a, S: Storage>(
     let mut lookahead_buf = vec![0u8; lookahead_size];
 
     let lfs_config = LfsConfig {
-        context: core::ptr::null_mut(),
-        read: Some(trampoline_read::<S>),
-        prog: Some(trampoline_prog::<S>),
-        erase: Some(trampoline_erase::<S>),
-        sync: Some(trampoline_sync::<S>),
+        context: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
         read_size: config.read_size,
         prog_size: config.prog_size,
         block_size: config.block_size,
@@ -357,8 +319,10 @@ fn build_inner_borrowed<'a, S: Storage>(
     }
 }
 
-fn wire_context_borrowed<S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
-    inner.config.context = inner.storage as *mut S as *mut c_void;
+fn wire_context_borrowed<S: StorageWithConfig>(inner: &mut BorrowedFsInner<'_, S>) {
+    inner.config.context = unsafe {
+        core::mem::transmute(inner.storage as *mut S as *mut dyn littlefs_rust_core::Storage)
+    };
     inner.config.read_buffer = inner._read_buf.as_mut_ptr() as *mut c_void;
     inner.config.prog_buffer = inner._prog_buf.as_mut_ptr() as *mut c_void;
     inner.config.lookahead_buffer = inner._lookahead_buf.as_mut_ptr() as *mut c_void;
