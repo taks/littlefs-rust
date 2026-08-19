@@ -66,32 +66,14 @@ impl Storage for RamStorage {
     }
 
     fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
-        todo!()
+        self.prog(block, offset, data);
+        Ok(())
     }
 
     fn erase(&mut self, block: u32) -> Result<(), Error> {
-        todo!()
+        self.erase(block);
+        Ok(())
     }
-}
-
-fn ram_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {}
-
-fn ram_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
-    let ctx = cfg.context as *mut RamStorage;
-    let ram = unsafe { &mut *ctx };
-    ram.prog(block, off, buffer);
-    Ok(())
-}
-
-fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
-    let ctx = cfg.context as *mut RamStorage;
-    let ram = unsafe { &mut *ctx };
-    ram.erase(block);
-    Ok(())
-}
-
-fn ram_sync(_cfg: &LfsConfig) -> Result<(), Error> {
-    Ok(())
 }
 
 /// Builds LfsConfig for the given RAM storage. Caller must set context after moving.
