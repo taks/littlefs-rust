@@ -240,81 +240,75 @@ pub fn lfs_dir_getread(
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
     off: lfs_off_t,
-    buffer: *mut core::ffi::c_void,
-    size: lfs_size_t,
+    buffer: &mut [u8],
 ) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
 
-    if buffer.is_null() {
-        return Ok(());
+    let cfg = unsafe { lfs.cfg.as_ref().expect("cfg") };
+
+    let mut off = off;
+    let mut size = buffer.len() as u32;
+    let mut data = buffer;
+
+    if off + size > cfg.block_size {
+        return crate::lfs_err!(Err(Error::Corrupt));
     }
-    let data = buffer as *mut u8;
 
-    {
-        let cfg = lfs.cfg.as_ref().expect("cfg");
-        if off + size > cfg.block_size {
-            return crate::lfs_err!(Err(Error::Corrupt));
-        }
+    while size > 0 {
+        let mut diff = size;
 
-        let mut off = off;
-        let mut size = size;
-        let mut data = data;
-
-        while size > 0 {
-            let mut diff = size;
-
-            if let Some(pcache) = pcache.as_ref() {
-                if pcache.block == LFS_BLOCK_INLINE && off < pcache.off + pcache.size {
-                    if off >= pcache.off {
-                        diff = lfs_min(diff, pcache.size - (off - pcache.off));
-                        if !pcache.buffer.is_null() {
+        if let Some(pcache) = unsafe { pcache.as_ref() } {
+            if pcache.block == LFS_BLOCK_INLINE && off < pcache.off + pcache.size {
+                if off >= pcache.off {
+                    diff = lfs_min(diff, pcache.size - (off - pcache.off));
+                    if !pcache.buffer.is_null() {
+                        unsafe {
                             core::ptr::copy_nonoverlapping(
                                 pcache.buffer.add((off - pcache.off) as usize),
-                                data,
+                                data.as_mut_ptr(),
                                 diff as usize,
-                            );
-                        }
-                        data = data.add(diff as usize);
-                        off += diff;
-                        size -= diff;
-                        continue;
+                            )
+                        };
                     }
-                    diff = lfs_min(diff, pcache.off - off);
+                    data = &mut data[(diff as usize)..];
+                    off += diff;
+                    size -= diff;
+                    continue;
                 }
+                diff = lfs_min(diff, pcache.off - off);
             }
+        }
 
-            if rcache.block == LFS_BLOCK_INLINE
-                && off < rcache.off + rcache.size
-                && off >= rcache.off
-            {
-                diff = lfs_min(diff, rcache.size - (off - rcache.off));
-                if !rcache.buffer.is_null() {
+        if rcache.block == LFS_BLOCK_INLINE && off < rcache.off + rcache.size && off >= rcache.off {
+            diff = lfs_min(diff, rcache.size - (off - rcache.off));
+            if !rcache.buffer.is_null() {
+                unsafe {
                     core::ptr::copy_nonoverlapping(
                         rcache.buffer.add((off - rcache.off) as usize),
-                        data,
+                        data.as_mut_ptr(),
                         diff as usize,
-                    );
-                }
-                data = data.add(diff as usize);
-                off += diff;
-                size -= diff;
-                continue;
+                    )
+                };
             }
-
-            rcache.block = LFS_BLOCK_INLINE;
-            rcache.off = lfs_aligndown(off, cfg.read_size);
-            rcache.size = lfs_min(lfs_alignup(off + hint, cfg.read_size), cfg.cache_size);
-            let _res = lfs_dir_getslice(
-                lfs,
-                dir,
-                gmask,
-                gtag,
-                rcache.off,
-                core::slice::from_raw_parts_mut(rcache.buffer, rcache.size as usize),
-                rcache.size,
-            )?;
+            data = &mut data[(diff as usize)..];
+            off += diff;
+            size -= diff;
+            continue;
         }
+
+        rcache.block = LFS_BLOCK_INLINE;
+        rcache.off = lfs_aligndown(off, cfg.read_size);
+        rcache.size = lfs_min(lfs_alignup(off + hint, cfg.read_size), cfg.cache_size);
+        let _res = lfs_dir_getslice(
+            lfs,
+            dir,
+            gmask,
+            gtag,
+            rcache.off,
+            unsafe { core::slice::from_raw_parts_mut(rcache.buffer, rcache.size as usize) },
+            rcache.size,
+        )?;
     }
     Ok(())
 }
@@ -733,21 +727,7 @@ pub fn lfs_dir_traverse(
 
     let mut phase = TraversePhase::GetNextTag;
 
-    #[cfg(feature = "loop_limits")]
-    const MAX_TRAVERSE_PHASE_ITER: u32 = 65536;
-    #[cfg(feature = "loop_limits")]
-    let mut phase_iter: u32 = 0;
     loop {
-        #[cfg(feature = "loop_limits")]
-        {
-            if phase_iter >= MAX_TRAVERSE_PHASE_ITER {
-                panic!(
-                    "loop_limits: MAX_TRAVERSE_PHASE_ITER ({}) exceeded in lfs_dir_traverse",
-                    MAX_TRAVERSE_PHASE_ITER
-                );
-            }
-            phase_iter += 1;
-        }
         match phase {
             TraversePhase::GetNextTag => {
                 crate::lfs_trace!("traverse GetNextTag: sp={} phase=GetNextTag", sp);

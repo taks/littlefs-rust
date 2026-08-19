@@ -531,84 +531,82 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
 
     'relocate: loop {
-        unsafe {
-            let mut nblock: lfs_block_t = 0;
-            lfs_alloc(lfs, &mut nblock)?;
+        let mut nblock: lfs_block_t = 0;
+        lfs_alloc(lfs, &mut nblock)?;
 
-            let err = lfs_bd_erase(lfs, nblock);
-            if let Err(e) = err {
-                if e == Error::Corrupt {
+        let err = lfs_bd_erase(lfs, nblock);
+        if let Err(e) = err {
+            if e == Error::Corrupt {
+                let _ = lfs_alloc_lookahead(lfs, nblock);
+                lfs_cache_drop(lfs, unsafe { &mut *lfs.pcache.get() });
+                continue 'relocate;
+            }
+            return crate::lfs_pass_err!(err);
+        }
+
+        for i in 0..file.off {
+            let mut data = [0u8];
+            let err = if file.flags.contains(OpenFlags::INLINE) {
+                let gtag = lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0);
+                lfs_dir_getread(
+                    lfs,
+                    &file.m,
+                    core::ptr::null(),
+                    &mut file.cache,
+                    file.off - i,
+                    lfs_mktag(0xfff, 0x1ff, 0),
+                    gtag,
+                    i,
+                    &mut data,
+                )
+            } else {
+                lfs_bd_read(
+                    lfs,
+                    Some(&file.cache),
+                    unsafe { &mut *lfs.rcache.get() },
+                    file.off - i,
+                    file.block,
+                    i,
+                    &mut data,
+                )
+            };
+            crate::lfs_pass_err!(err)?;
+
+            let err = lfs_bd_prog(
+                lfs,
+                unsafe { &mut *lfs.pcache.get() },
+                unsafe { &mut *lfs.rcache.get() },
+                true,
+                nblock,
+                i,
+                &data,
+            );
+            if let Err(err) = err {
+                if err == Error::Corrupt {
                     let _ = lfs_alloc_lookahead(lfs, nblock);
-                    lfs_cache_drop(lfs, &mut *lfs.pcache.get());
+                    lfs_cache_drop(lfs, unsafe { &mut *lfs.pcache.get() });
                     continue 'relocate;
                 }
-                return crate::lfs_pass_err!(err);
+                return crate::lfs_pass_err!(Err(err));
             }
-
-            for i in 0..file.off {
-                let mut data: u8 = 0;
-                let err = if file.flags.contains(OpenFlags::INLINE) {
-                    let gtag = lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0);
-                    lfs_dir_getread(
-                        lfs,
-                        &file.m,
-                        core::ptr::null(),
-                        &mut file.cache,
-                        file.off - i,
-                        lfs_mktag(0xfff, 0x1ff, 0),
-                        gtag,
-                        i,
-                        &mut data as *mut u8 as *mut core::ffi::c_void,
-                        1,
-                    )
-                } else {
-                    lfs_bd_read(
-                        lfs,
-                        Some(&file.cache),
-                        &mut *lfs.rcache.get(),
-                        file.off - i,
-                        file.block,
-                        i,
-                        data.as_mut_bytes(),
-                    )
-                };
-                crate::lfs_pass_err!(err)?;
-
-                let err = lfs_bd_prog(
-                    lfs,
-                    &mut *lfs.pcache.get(),
-                    &mut *lfs.rcache.get(),
-                    true,
-                    nblock,
-                    i,
-                    data.as_bytes(),
-                );
-                if let Err(err) = err {
-                    if err == Error::Corrupt {
-                        let _ = lfs_alloc_lookahead(lfs, nblock);
-                        lfs_cache_drop(lfs, &mut *lfs.pcache.get());
-                        continue 'relocate;
-                    }
-                    return crate::lfs_pass_err!(Err(err));
-                }
-            }
-
-            {
-                let pcache = lfs.pcache.get_mut();
-                let file = &mut *file;
-                if !file.cache.buffer.is_null() && !pcache.buffer.is_null() {
-                    let cache_size = lfs.cfg.as_ref().expect("cfg").cache_size as usize;
-                    core::ptr::copy_nonoverlapping(pcache.buffer, file.cache.buffer, cache_size);
-                }
-                file.cache.block = pcache.block;
-                file.cache.off = pcache.off;
-                file.cache.size = pcache.size;
-                file.block = nblock;
-                file.flags.insert(OpenFlags::WRITING);
-            }
-            lfs_cache_zero(lfs, &mut *lfs.pcache.get());
-            return Ok(());
         }
+
+        {
+            let pcache = lfs.pcache.get_mut();
+            if !file.cache.buffer.is_null() && !pcache.buffer.is_null() {
+                let cache_size = unsafe { lfs.cfg.as_ref().expect("cfg").cache_size as usize };
+                unsafe {
+                    core::ptr::copy_nonoverlapping(pcache.buffer, file.cache.buffer, cache_size)
+                };
+            }
+            file.cache.block = pcache.block;
+            file.cache.off = pcache.off;
+            file.cache.size = pcache.size;
+            file.block = nblock;
+            file.flags.insert(OpenFlags::WRITING);
+        }
+        lfs_cache_zero(lfs, unsafe { &mut *lfs.pcache.get() });
+        return Ok(());
     }
 }
 
@@ -996,8 +994,7 @@ pub fn lfs_file_flushedread(
                     lfs_mktag(0xfff, 0x1ff, 0),
                     gtag,
                     file.off,
-                    data.as_mut_ptr() as *mut _,
-                    diff,
+                    &mut data[..diff as usize],
                 )?;
             } else {
                 lfs_bd_read(

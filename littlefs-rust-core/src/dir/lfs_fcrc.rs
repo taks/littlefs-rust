@@ -1,10 +1,13 @@
 //! Forward-CRC. Per lfs.c struct lfs_fcrc.
 
+use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
+
 use crate::types::lfs_size_t;
 use crate::util::{lfs_fromle32, lfs_tole32};
 
 /// Per lfs.c struct lfs_fcrc
 #[repr(C)]
+#[derive(IntoBytes, Immutable, FromBytes)]
 pub struct LfsFcrc {
     pub size: lfs_size_t,
     pub crc: u32,

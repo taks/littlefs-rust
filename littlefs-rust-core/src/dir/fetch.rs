@@ -542,7 +542,7 @@ pub fn lfs_dir_fetchmatch(
                     temptail[0] = u32::from_le_bytes(tail_buf[0..4].try_into().unwrap());
                     temptail[1] = u32::from_le_bytes(tail_buf[4..8].try_into().unwrap());
                 } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_FCRC {
-                    let mut fcrc_buf = [0u8; mem::size_of::<LfsFcrc>()];
+                    let mut fcrc_buf: LfsFcrc = core::mem::zeroed();
                     let err = lfs_bd_read(
                         lfs,
                         None,
@@ -550,7 +550,7 @@ pub fn lfs_dir_fetchmatch(
                         cfg.block_size,
                         dir.pair[0],
                         off + 4,
-                        &mut fcrc_buf,
+                        fcrc_buf.as_mut_bytes(),
                     );
                     if let Err(err) = err {
                         if err == Error::Corrupt {
@@ -558,11 +558,7 @@ pub fn lfs_dir_fetchmatch(
                         }
                         return Err(err);
                     }
-                    core::ptr::copy_nonoverlapping(
-                        fcrc_buf.as_ptr(),
-                        &mut fcrc as *mut LfsFcrc as *mut u8,
-                        mem::size_of::<LfsFcrc>(),
-                    );
+                    fcrc = fcrc_buf;
                     lfs_fcrc_fromle32(&mut fcrc);
                     hasfcrc = true;
                 }

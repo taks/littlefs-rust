@@ -422,51 +422,49 @@ pub fn lfs_bd_flush(
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::lfs_alignup;
 
-    unsafe {
-        let cfg = &*lfs.cfg;
+    let cfg = unsafe { &*lfs.cfg };
 
-        if pcache.block != crate::types::LFS_BLOCK_NULL && pcache.block != LFS_BLOCK_INLINE {
-            crate::lfs_assert!(pcache.block < lfs.block_count);
-            let diff = lfs_alignup(pcache.size, cfg.prog_size);
-            crate::lfs_trace!(
-                "bd_prog block={} off={} size={}",
+    if pcache.block != crate::types::LFS_BLOCK_NULL && pcache.block != LFS_BLOCK_INLINE {
+        crate::lfs_assert!(pcache.block < lfs.block_count);
+        let diff = lfs_alignup(pcache.size, cfg.prog_size);
+        crate::lfs_trace!(
+            "bd_prog block={} off={} size={}",
+            pcache.block,
+            pcache.off,
+            diff
+        );
+        let prog = match cfg.prog {
+            Some(f) => f,
+            None => return Err(Error::Corrupt),
+        };
+        let data_ = unsafe { core::slice::from_raw_parts(pcache.buffer, diff as _) };
+        let err = prog(cfg, pcache.block, pcache.off, data_);
+        crate::lfs_pass_err!(err, "bd_prog block={} -> CORRUPT", pcache.block)?;
+
+        if validate {
+            lfs_cache_drop(lfs, rcache);
+            let res = lfs_bd_cmp(
+                lfs,
+                None,
+                rcache,
+                diff,
                 pcache.block,
                 pcache.off,
-                diff
+                pcache.buffer,
+                diff,
             );
-            let prog = match cfg.prog {
-                Some(f) => f,
-                None => return Err(Error::Corrupt),
-            };
-            let data_ = core::slice::from_raw_parts(pcache.buffer, diff as _);
-            let err = prog(cfg, pcache.block, pcache.off, data_);
-            crate::lfs_pass_err!(err, "bd_prog block={} -> CORRUPT", pcache.block)?;
-
-            if validate {
-                lfs_cache_drop(lfs, rcache);
-                let res = lfs_bd_cmp(
-                    lfs,
-                    None,
-                    rcache,
-                    diff,
-                    pcache.block,
-                    pcache.off,
-                    pcache.buffer,
-                    diff,
-                );
-                res?;
-                if let Ok(res) = res
-                    && res != core::cmp::Ordering::Equal
-                {
-                    return crate::lfs_err!(Err(Error::Corrupt));
-                }
+            res?;
+            if let Ok(res) = res
+                && res != core::cmp::Ordering::Equal
+            {
+                return crate::lfs_err!(Err(Error::Corrupt));
             }
-
-            lfs_cache_zero(lfs, pcache);
         }
 
-        Ok(())
+        lfs_cache_zero(lfs, pcache);
     }
+
+    Ok(())
 }
 
 /// Per lfs.c lfs_bd_sync (lines 213-226)
@@ -573,67 +571,64 @@ pub fn lfs_bd_prog(
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_aligndown, lfs_max, lfs_min};
 
-    unsafe {
-        let cfg = &*lfs.cfg;
+    let cfg = unsafe { &*lfs.cfg };
 
-        crate::lfs_assert!(block == LFS_BLOCK_INLINE || block < lfs.block_count);
-        crate::lfs_assert!(off + buffer.len() as u32 <= cfg.block_size);
+    crate::lfs_assert!(block == LFS_BLOCK_INLINE || block < lfs.block_count);
+    crate::lfs_assert!(off + buffer.len() as u32 <= cfg.block_size);
 
-        let mut data = buffer;
-        let mut off = off;
-        let mut size = buffer.len() as u32;
+    let mut data = buffer;
+    let mut off = off;
+    let mut size = buffer.len() as u32;
 
-        while size > 0 {
-            if block == pcache.block && off >= pcache.off && off < pcache.off + cfg.cache_size {
-                let diff = lfs_min(size, cfg.cache_size - (off - pcache.off));
-                if !pcache.buffer.is_null() && !data.is_empty() {
-                    // Trace superblock magic region (offset 12-20 in block 0/1)
-                    if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
-                        let magic_start = 12usize.saturating_sub(off as usize);
-                        let magic_len = (8).min(diff as usize - magic_start);
-                        if magic_len > 0 {
-                            crate::lfs_trace!(
-                                "bd_prog superblock block={} off={} size={} magic_region[{}..{}]={:?}",
-                                block,
-                                off,
-                                size,
-                                magic_start,
-                                magic_start + magic_len,
-                                core::slice::from_raw_parts(
-                                    data.as_ptr().add(magic_start),
-                                    magic_len,
-                                )
-                            );
-                        }
+    while size > 0 {
+        if block == pcache.block && off >= pcache.off && off < pcache.off + cfg.cache_size {
+            let diff = lfs_min(size, cfg.cache_size - (off - pcache.off));
+            if !pcache.buffer.is_null() && !data.is_empty() {
+                // Trace superblock magic region (offset 12-20 in block 0/1)
+                if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
+                    let magic_start = 12usize.saturating_sub(off as usize);
+                    let magic_len = (8).min(diff as usize - magic_start);
+                    if magic_len > 0 {
+                        crate::lfs_trace!(
+                            "bd_prog superblock block={} off={} size={} magic_region[{}..{}]={:?}",
+                            block,
+                            off,
+                            size,
+                            magic_start,
+                            magic_start + magic_len,
+                            core::slice::from_raw_parts(data.as_ptr().add(magic_start), magic_len,)
+                        );
                     }
+                }
+                unsafe {
                     core::ptr::copy_nonoverlapping(
                         data.as_ptr(),
                         pcache.buffer.add((off - pcache.off) as usize),
                         diff as usize,
-                    );
-                }
-
-                data = &data[(diff as usize)..];
-                off += diff;
-                size -= diff;
-
-                pcache.size = lfs_max(pcache.size, off - pcache.off);
-                if pcache.size == cfg.cache_size {
-                    lfs_bd_flush(lfs, pcache, rcache, validate)?;
-                }
-
-                continue;
+                    )
+                };
             }
 
-            crate::lfs_assert!(pcache.block == crate::types::LFS_BLOCK_NULL);
+            data = &data[(diff as usize)..];
+            off += diff;
+            size -= diff;
 
-            pcache.block = block;
-            pcache.off = lfs_aligndown(off, cfg.prog_size);
-            pcache.size = 0;
+            pcache.size = lfs_max(pcache.size, off - pcache.off);
+            if pcache.size == cfg.cache_size {
+                lfs_bd_flush(lfs, pcache, rcache, validate)?;
+            }
+
+            continue;
         }
 
-        Ok(())
+        crate::lfs_assert!(pcache.block == crate::types::LFS_BLOCK_NULL);
+
+        pcache.block = block;
+        pcache.off = lfs_aligndown(off, cfg.prog_size);
+        pcache.size = 0;
     }
+
+    Ok(())
 }
 
 /// Per lfs.c lfs_bd_erase (lines 277-282)

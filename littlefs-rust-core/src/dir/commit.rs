@@ -1506,9 +1506,8 @@ pub fn lfs_dir_splittingcompact(
             }
         }
 
-        let dir_ref = &*dir;
         let superblock_pair = [0u32, 1u32];
-        if lfs_dir_needsrelocation(lfs, dir) && lfs_pair_cmp(&dir_ref.pair, &superblock_pair) == 0 {
+        if lfs_dir_needsrelocation(lfs, dir) && lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
             let size = lfs_fs_size_(lfs)?;
             if lfs.block_count as i64 - size as i64 > (lfs.block_count as i64) / 8 {
                 let err = lfs_dir_split(lfs, dir, attrs, source, begin, end_val);
@@ -1887,10 +1886,9 @@ pub fn lfs_dir_relocatingcommit(
     }
 }
 
-#[inline(never)]
 fn relocatingcommit_fixmlist(
     lfs: &mut Lfs,
-    dir: *mut LfsMdir,
+    dir: &mut LfsMdir,
     pair: &[lfs_block_t; 2],
     attrs_slice: &[crate::tag::lfs_mattr],
     state: i32,
@@ -1901,72 +1899,39 @@ fn relocatingcommit_fixmlist(
     use crate::types::LFS_BLOCK_NULL;
     use crate::util::lfs_pair_cmp;
 
-    unsafe {
-        let oldpair = [(*pair)[0], (*pair)[1]];
-        let mut d = lfs.mlist;
-        #[cfg(feature = "loop_limits")]
-        const MAX_MLIST_COMMIT_ITER: u32 = 128;
-        #[cfg(feature = "loop_limits")]
-        let mut mlist_iter: u32 = 0;
-        while !d.is_null() {
-            #[cfg(feature = "loop_limits")]
-            {
-                if mlist_iter >= MAX_MLIST_COMMIT_ITER {
-                    panic!(
-                        "loop_limits: MAX_MLIST_COMMIT_ITER ({}) exceeded",
-                        MAX_MLIST_COMMIT_ITER
-                    );
-                }
-                mlist_iter += 1;
-            }
-            let d_ref = &mut *d;
-            if lfs_pair_cmp(&d_ref.m.pair, &oldpair) == 0 {
-                d_ref.m = *dir;
-                if !core::ptr::eq(&d_ref.m.pair as *const _, pair as *const _) {
-                    for attr in attrs_slice.iter() {
-                        let tag = attr.tag;
-                        if (lfs_tag_type3(tag)) == LFS_TYPE_DELETE
-                            && d_ref.id == lfs_tag_id(tag)
-                            && d_ref.type_ != crate::lfs_type::lfs_type::LFS_TYPE_DIR as u8
-                        {
-                            d_ref.m.pair = [LFS_BLOCK_NULL, LFS_BLOCK_NULL];
-                        } else if (lfs_tag_type3(tag)) == LFS_TYPE_DELETE
-                            && d_ref.id > lfs_tag_id(tag)
-                        {
-                            d_ref.id -= 1;
-                        } else if (lfs_tag_type3(tag)) == LFS_TYPE_CREATE
-                            && d_ref.id >= lfs_tag_id(tag)
-                        {
-                            d_ref.id = d_ref.id.wrapping_add(1);
-                        }
-                    }
-                }
-                #[cfg(feature = "loop_limits")]
-                const MAX_COMMIT_DIR_ADVANCE: u32 = 2048;
-                #[cfg(feature = "loop_limits")]
-                let mut advance_iter: u32 = 0;
-                while d_ref.id >= d_ref.m.count && d_ref.m.split {
-                    #[cfg(feature = "loop_limits")]
+    let oldpair = [(*pair)[0], (*pair)[1]];
+    let mut d = lfs.mlist;
+    while let Some(d_ref) = unsafe { d.as_mut() } {
+        if lfs_pair_cmp(&d_ref.m.pair, &oldpair) == 0 {
+            d_ref.m = *dir;
+            if !core::ptr::eq(&d_ref.m.pair as *const _, pair as *const _) {
+                for attr in attrs_slice.iter() {
+                    let tag = attr.tag;
+                    if (lfs_tag_type3(tag)) == LFS_TYPE_DELETE
+                        && d_ref.id == lfs_tag_id(tag)
+                        && d_ref.type_ != crate::lfs_type::lfs_type::LFS_TYPE_DIR as u8
                     {
-                        if advance_iter >= MAX_COMMIT_DIR_ADVANCE {
-                            panic!(
-                                "loop_limits: MAX_COMMIT_DIR_ADVANCE ({}) exceeded",
-                                MAX_COMMIT_DIR_ADVANCE
-                            );
-                        }
-                        advance_iter += 1;
+                        d_ref.m.pair = [LFS_BLOCK_NULL, LFS_BLOCK_NULL];
+                    } else if (lfs_tag_type3(tag)) == LFS_TYPE_DELETE && d_ref.id > lfs_tag_id(tag)
+                    {
+                        d_ref.id -= 1;
+                    } else if (lfs_tag_type3(tag)) == LFS_TYPE_CREATE && d_ref.id >= lfs_tag_id(tag)
+                    {
+                        d_ref.id = d_ref.id.wrapping_add(1);
                     }
-                    if lfs_pair_cmp(&d_ref.m.tail, &lfs.root) != 0 {
-                        d_ref.id -= d_ref.m.count;
-                    }
-                    let d_ref_m_tail = d_ref.m.tail;
-                    lfs_dir_fetch(lfs, &mut d_ref.m, d_ref_m_tail)?;
                 }
             }
-            d = d_ref.next;
+            while d_ref.id >= d_ref.m.count && d_ref.m.split {
+                if lfs_pair_cmp(&d_ref.m.tail, &lfs.root) != 0 {
+                    d_ref.id -= d_ref.m.count;
+                }
+                let d_ref_m_tail = d_ref.m.tail;
+                lfs_dir_fetch(lfs, &mut d_ref.m, d_ref_m_tail)?;
+            }
         }
-        Ok(state)
+        d = d_ref.next;
     }
+    Ok(state)
 }
 
 /// Per lfs.c lfs_dir_orphaningcommit (lines 2408-2599)
@@ -2178,7 +2143,6 @@ pub fn lfs_dir_orphaningcommit(
     let mut ldir = *dir;
     let mut pdir = unsafe { core::mem::zeroed() };
 
-    // TODO: It doesn't work when optimized
     let state = lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?;
 
     if lfs_pair_cmp(&dir.pair, &lpair) == 0 {
