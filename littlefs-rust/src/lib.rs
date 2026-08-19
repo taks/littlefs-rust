@@ -55,5 +55,6 @@ pub use ram::RamStorage;
 pub use storage::StorageWithConfig;
 
 pub use littlefs_rust_core::lfs_type::OpenFlags;
+pub use littlefs_rust_core::Storage;
 
 pub type Error = littlefs_rust_core::error::Error;
