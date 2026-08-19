@@ -23,8 +23,8 @@ impl SuperblockSnapshot {
         let mut block0 = alloc::vec![0u8; block_size];
         let mut block1 = alloc::vec![0u8; block_size];
 
-        unsafe { config.context.as_mut().unwrap().read(0, 0, &mut block0) }?;
-        unsafe { config.context.as_mut().unwrap().read(1, 0, &mut block1) }?;
+        unsafe { config.context.unwrap().as_mut().read(0, 0, &mut block0) }?;
+        unsafe { config.context.unwrap().as_mut().read(1, 0, &mut block1) }?;
 
         Ok(Self {
             block0,

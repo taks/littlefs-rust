@@ -9,6 +9,7 @@
 //!          block written since last sync is reverted to its pre-write state.
 
 use core::cell::Cell;
+use std::ptr::NonNull;
 
 use littlefs_rust_core::{Lfs, LfsConfig, Storage, error::Error};
 
@@ -237,7 +238,7 @@ pub fn powerloss_config_with_behavior(
 
 /// Call after powerloss_config() to set context. Required for PowerLossEnv.
 pub fn init_powerloss_context(env: &mut PowerLossEnv) {
-    env.config.context = &mut env.ctx as *mut _;
+    env.config.context = Some(NonNull::from_mut(&mut env.ctx));
 }
 
 impl PowerLossEnv {

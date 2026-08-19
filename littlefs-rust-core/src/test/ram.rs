@@ -1,5 +1,7 @@
 //! RAM block device for unit tests. Erase = 0xff; prog = copy; read = copy.
 
+use core::ptr::NonNull;
+
 use crate::{LfsConfig, error::Error, lfs_config::Storage};
 
 /// Magic string "littlefs" in superblock blocks. Per lfs.h.
@@ -80,7 +82,7 @@ impl Storage for RamStorage {
 pub fn make_config(block_count: u32, ram: &mut RamStorage) -> LfsConfig {
     let block_size = BLOCK_SIZE;
     LfsConfig {
-        context: ram as *mut _,
+        context: Some(NonNull::from_mut(ram)),
         read_size: 16,
         prog_size: 16,
         block_size,

@@ -87,19 +87,19 @@ fn test_powerloss_only_rev() {
     let _ = unsafe {
         env.config
             .context
-            .as_mut()
             .unwrap()
+            .as_mut()
             .read(pair[1], 0, &mut block_buf)
     };
 
     block_buf[0..4].copy_from_slice(&(rev + 1).to_le_bytes());
 
-    let _ = unsafe { env.config.context.as_mut().unwrap().erase(pair[1]) };
+    let _ = unsafe { env.config.context.unwrap().as_mut().erase(pair[1]) };
     let _ = unsafe {
         env.config
             .context
-            .as_mut()
             .unwrap()
+            .as_mut()
             .write(pair[1], 0, &block_buf)
     };
 
@@ -421,18 +421,18 @@ fn test_debug_powerloss_after_corrupt_append() {
     let _ = unsafe {
         env.config
             .context
-            .as_mut()
             .unwrap()
+            .as_mut()
             .read(pair[1], 0, &mut block_buf)
     };
 
     block_buf[0..4].copy_from_slice(&(rev + 1).to_le_bytes());
-    let _ = unsafe { env.config.context.as_mut().unwrap().erase(pair[1]) };
+    let _ = unsafe { env.config.context.unwrap().as_mut().erase(pair[1]) };
     let _ = unsafe {
         env.config
             .context
-            .as_mut()
             .unwrap()
+            .as_mut()
             .write(pair[1], 0, &block_buf)
     };
 

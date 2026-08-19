@@ -76,7 +76,7 @@ fn test_badblock_behavior_erase_error() {
     env.badblock_ram.set_bad_block(5);
 
     // Use the erase callback directly
-    let result = unsafe { env.config.context.as_mut().unwrap().erase(5) };
+    let result = unsafe { env.config.context.unwrap().as_mut().erase(5) };
     assert_eq!(
         result,
         Err(Error::Corrupt),
@@ -111,7 +111,7 @@ fn test_badblock_behavior_prog_noop() {
     init_badblock_context(&mut env);
 
     // Erase block 5, then mark it bad
-    let _ = unsafe { env.config.context.as_mut().unwrap().erase(5) };
+    let _ = unsafe { env.config.context.unwrap().as_mut().erase(5) };
     env.badblock_ram.set_bad_block(5);
 
     // Prog should succeed (return 0) but not actually write
@@ -137,7 +137,7 @@ fn test_badblock_behavior_erase_noop() {
     env.badblock_ram.set_bad_block(5);
 
     // Erase should succeed (return 0) but not actually erase
-    let result = unsafe { env.config.context.as_mut().unwrap().erase(5) };
+    let result = unsafe { env.config.context.unwrap().as_mut().erase(5) };
     assert_eq!(result, Ok(()), "EraseNoop should return 0");
 
     // Prog should also noop (C: ERASENOOP makes prog noop too)
@@ -159,7 +159,7 @@ fn test_wear_leveling_bd_exhaustion() {
 
     // Erase block 3 exactly erase_cycles times — should all succeed
     for i in 0..erase_cycles {
-        let result = unsafe { env.config.context.as_mut().unwrap().erase(3) };
+        let result = unsafe { env.config.context.unwrap().as_mut().erase(3) };
         assert_eq!(result, Ok(()), "Erase #{} should succeed", i);
         assert_eq!(env.bd.get_wear(3), i + 1);
     }
@@ -176,7 +176,7 @@ fn test_wear_leveling_bd_exhaustion() {
     // (no increment since worn block path doesn't increment).
     // So with default ProgError, erase on worn block just erases normally
     // (no increment, no error).
-    let result = unsafe { env.config.context.as_mut().unwrap().erase(3) };
+    let result = unsafe { env.config.context.unwrap().as_mut().erase(3) };
     assert_eq!(
         result,
         Ok(()),
@@ -208,13 +208,13 @@ fn test_wear_leveling_bd_erase_error() {
 
     // Erase 3 times (should succeed, incrementing wear each time)
     for _ in 0..erase_cycles {
-        let result = unsafe { env.config.context.as_mut().unwrap().erase(2) };
+        let result = unsafe { env.config.context.unwrap().as_mut().erase(2) };
         assert_eq!(result, Ok(()));
     }
     assert_eq!(env.bd.get_wear(2), erase_cycles);
 
     // Next erase should fail
-    let result = unsafe { env.config.context.as_mut().unwrap().erase(2) };
+    let result = unsafe { env.config.context.unwrap().as_mut().erase(2) };
     assert_eq!(
         result,
         Err(Error::Corrupt),

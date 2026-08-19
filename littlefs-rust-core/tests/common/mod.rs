@@ -10,6 +10,7 @@ pub mod powerloss;
 
 use core::cell::RefCell;
 use littlefs_rust_core::{LfsConfig, Storage, error::Error, lfs_type::OpenFlags};
+use std::ptr::NonNull;
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
@@ -305,7 +306,7 @@ pub fn default_config(block_count: u32) -> TestEnv {
 /// Call after default_config() to set context to ram. Required because context
 /// must point to env.ram at its final address (after the env has been moved).
 pub fn init_context(env: &mut TestEnv) {
-    env.config.context = &mut env.ram as *mut _;
+    env.config.context = Some(NonNull::from_mut(&mut env.ram));
 }
 
 /// A second config that shares the same RAM device but has its own buffers
@@ -415,7 +416,7 @@ pub fn config_badblock_with_behavior(
 
 /// Call after config_badblock() to set context. Required for BadBlockTestEnv.
 pub fn init_badblock_context(env: &mut BadBlockTestEnv) {
-    env.config.context = &mut env.badblock_ram as *mut _;
+    env.config.context = Some(NonNull::from_mut(&mut env.badblock_ram));
 }
 
 /// Run `f` with a process-level timeout. If the closure does not complete within
@@ -475,7 +476,7 @@ macro_rules! assert_err {
 /// Check if block has "littlefs" at offset 8 or 12 (layout varies by commit path).
 fn block_has_magic(config: &LfsConfig, block: u32) -> bool {
     let mut buf = [0u8; 24];
-    let err = unsafe { config.context.as_mut().unwrap().read(block, 0, &mut buf) };
+    let err = unsafe { config.context.unwrap().as_mut().read(block, 0, &mut buf) };
     if err.is_err() {
         return false;
     }
@@ -502,7 +503,7 @@ pub fn read_block_raw(
     off: u32,
     buf: &mut [u8],
 ) -> Result<(), Error> {
-    unsafe { config.context.as_mut().unwrap().read(block, off, buf) }
+    unsafe { config.context.unwrap().as_mut().read(block, off, buf) }
 }
 
 /// Invoke config prog callback for raw block write, bypassing the FS.
@@ -510,7 +511,7 @@ pub fn read_block_raw(
 ///
 /// C: lfs_emubd_prog via cfg->prog callback
 pub fn write_block_raw(config: &LfsConfig, block: u32, off: u32, data: &[u8]) -> Result<(), Error> {
-    unsafe { config.context.as_mut().unwrap().write(block, off, data) }
+    unsafe { config.context.unwrap().as_mut().write(block, off, data) }
 }
 
 /// Invoke config erase callback for raw block erase, bypassing the FS.
@@ -518,7 +519,7 @@ pub fn write_block_raw(config: &LfsConfig, block: u32, off: u32, data: &[u8]) ->
 ///
 /// C: cfg->erase(cfg, block)
 pub fn erase_block_raw(config: &LfsConfig, block: u32) -> Result<(), Error> {
-    unsafe { config.context.as_mut().unwrap().erase(block) }
+    unsafe { config.context.unwrap().as_mut().erase(block) }
 }
 
 /// Pretty-print first `len` bytes of block for inspection. Used when debugging layout.
@@ -961,7 +962,7 @@ pub fn config_with_wear_leveling_full(
 
 /// Call after config_with_wear_leveling() to set context. Required for WearLevelingEnv.
 pub fn init_wear_leveling_context(env: &mut WearLevelingEnv) {
-    env.config.context = &mut env.bd as *mut _;
+    env.config.context = Some(NonNull::from_mut(&mut env.bd));
 }
 
 // ── PRNG and chunked I/O helpers ────────────────────────────────────────────
