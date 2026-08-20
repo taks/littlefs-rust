@@ -1,10 +1,8 @@
 //! mkdir. Per lfs.c mkdir_.
 
-use core::ffi::CStr;
 use zerocopy::IntoBytes;
 
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMlist;
 use crate::dir::commit::{lfs_dir_alloc, lfs_dir_commit};
 use crate::dir::fetch::lfs_dir_fetch;
@@ -12,7 +10,7 @@ use crate::dir::find::lfs_dir_find;
 use crate::error::Error;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_preporphans};
 use crate::lfs_type::lfs_type::{
-    LFS_TYPE_CREATE, LFS_TYPE_DIR, LFS_TYPE_DIRSTRUCT, LFS_TYPE_SOFTTAIL, LFS_TYPE3_DIR,
+    LFS_TYPE_CREATE, LFS_TYPE_DIRSTRUCT, LFS_TYPE_SOFTTAIL, LFS_TYPE3_DIR,
 };
 use crate::tag::{lfs_mattr, lfs_mktag, lfs_mktag_if};
 use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_path_islast, lfs_path_namelen};
@@ -146,7 +144,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
             return crate::lfs_err!(Err(Error::NameTooLong));
         }
 
-        unsafe { lfs_alloc_ckpoint(lfs) };
+        lfs_alloc_ckpoint(lfs);
         let mut dir = core::mem::zeroed();
         lfs_dir_alloc(lfs, &mut dir)?;
 
@@ -167,7 +165,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
                 iter += 1;
             }
 
-            let pred_tail = borrow_unchecked(&pred.tail);
+            let pred_tail = pred.tail;
             lfs_dir_fetch(lfs, &mut pred, pred_tail)?;
         }
 
@@ -223,19 +221,5 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
         let err = lfs_dir_commit(lfs, &mut cwd.m, &attrs3);
         lfs_pair_fromle32(&mut dir.pair);
         err
-    }
-}
-
-/// Helper: slice from pointer until null byte.
-fn slice_until_nul(ptr: *const u8) -> &'static [u8] {
-    if ptr.is_null() {
-        return &[];
-    }
-    unsafe {
-        let mut len = 0;
-        while *ptr.add(len) != 0 {
-            len += 1;
-        }
-        core::slice::from_raw_parts(ptr, len)
     }
 }

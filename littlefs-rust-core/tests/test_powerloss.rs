@@ -29,7 +29,7 @@ fn test_powerloss_only_rev() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
@@ -153,7 +153,7 @@ fn test_powerloss_trigger_first_write() {
     init_powerloss_context(&mut env);
     env.set_fail_after_writes(1);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     let err = lfs_format(lfs, &env.config);
     assert_eq!(
         err,
@@ -170,7 +170,7 @@ fn test_powerloss_runner_smoke() {
     let mut env = powerloss_config(128);
     init_powerloss_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     let snapshot = env.snapshot();
 
@@ -216,7 +216,7 @@ fn test_powerloss_partial_prog() {
             init_context(&mut env);
             let cfg = &env.config;
 
-            let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+            let lfs = &mut Lfs::default();
             assert_ok_at("format", lfs_format(lfs, cfg));
             assert_ok_at("mount", lfs_mount(lfs, cfg));
             let path_a = "a";
@@ -256,7 +256,7 @@ fn test_powerloss_snapshot_restore() {
     let mut env = powerloss_config(128);
     init_powerloss_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     let snapshot = env.snapshot();
 
@@ -284,7 +284,7 @@ fn test_debug_file_root_single_write_sync() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
@@ -309,7 +309,7 @@ fn test_debug_file_root_repeated_write_sync() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
@@ -336,7 +336,7 @@ fn test_debug_file_subdir_which_sync_fails() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
@@ -372,7 +372,7 @@ fn test_debug_powerloss_after_corrupt_append() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
@@ -447,7 +447,7 @@ fn test_powerloss_runner_smoke_log() {
     let mut env = powerloss_config(128);
     init_powerloss_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     let snapshot = env.snapshot();
 
@@ -483,7 +483,7 @@ fn test_powerloss_runner_smoke_exhaustive() {
     let mut env = powerloss_config(128);
     init_powerloss_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     let snapshot = env.snapshot();
 
@@ -520,7 +520,7 @@ fn test_powerloss_ooo_smoke() {
     let mut env = powerloss_config_with_behavior(128, PowerLossBehavior::Ooo);
     init_powerloss_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     let snapshot = env.snapshot();
 
@@ -555,7 +555,7 @@ fn test_debug_file_subdir_single_write_sync() {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     assert_ok_at("format", lfs_format(lfs, &env.config));
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 

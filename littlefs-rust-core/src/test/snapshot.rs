@@ -8,12 +8,14 @@ use crate::error::Error;
 use crate::test::ram::MAGIC_OFFSET;
 
 /// Captured superblock blocks. Use dump() to pretty-print.
+#[allow(unused)]
 pub struct SuperblockSnapshot {
     pub block0: alloc::vec::Vec<u8>,
     pub block1: alloc::vec::Vec<u8>,
     pub root_pair: [u32; 2],
 }
 
+#[allow(unused)]
 impl SuperblockSnapshot {
     /// Read blocks 0 and 1 from config. root_pair from mounted Lfs.
     pub fn capture(config: &LfsConfig, root_pair: [u32; 2]) -> Result<Self, Error> {
@@ -53,6 +55,7 @@ impl SuperblockSnapshot {
     }
 }
 
+#[allow(unused)]
 fn dump_block_hex(block: &[u8]) {
     for (i, chunk) in block.chunks(16).enumerate() {
         let hex: alloc::string::String = chunk

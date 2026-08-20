@@ -296,7 +296,7 @@ where
         env.set_fail_after_writes(n);
         env.reset_write_count();
 
-        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        let lfs = &mut Lfs::default();
         match op(lfs, &env.config) {
             Ok(()) => return Ok(()),
             Err(Error::Io) => {
@@ -329,7 +329,7 @@ where
         env.set_fail_after_writes(n);
         env.reset_write_count();
 
-        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        let lfs = &mut Lfs::default();
         match op(lfs, &env.config) {
             Ok(()) => return Ok(()),
             Err(Error::Io) => {
@@ -379,7 +379,7 @@ where
         env.set_fail_after_writes(n);
         env.reset_write_count();
 
-        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+        let lfs = &mut Lfs::default();
         match op(lfs, &env.config) {
             Ok(()) => return Ok(()),
             Err(Error::Io) => {

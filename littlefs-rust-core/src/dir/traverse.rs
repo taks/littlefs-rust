@@ -1,13 +1,13 @@
 //! Directory traverse. Per lfs.c lfs_dir_traverse, lfs_dir_getslice, lfs_dir_get, lfs_dir_getread.
 
-use zerocopy::{FromBytes, IntoBytes, TryFromBytes};
+use zerocopy::{IntoBytes, TryFromBytes};
 
 use crate::LfsAttr;
 use crate::bd::LfsCache;
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
 use crate::error::Error;
-use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
+use crate::types::{lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
 
 /// Per lfs.c lfs_dir_getslice (lines 719-784)
 ///
@@ -81,7 +81,7 @@ use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
 /// }
 /// ```
 pub fn lfs_dir_getslice(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &crate::fs::Lfs,
     dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
@@ -128,11 +128,10 @@ pub fn lfs_dir_getslice(
             off -= lfs_tag_dsize(ntag);
             let tag = ntag;
             let mut ntag_buf: lfs_tag_t = 0;
-            let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
             lfs_bd_read(
                 lfs,
                 None,
-                lfs_rcache,
+                &mut *lfs.rcache.get(),
                 4,
                 dir.pair[0],
                 off,
@@ -160,12 +159,11 @@ pub fn lfs_dir_getslice(
                     return Err(Error::NoEntry);
                 }
                 let diff = lfs_min(lfs_tag_size(tag), gsize);
-                let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                 let buf = &mut gbuffer[..diff as usize];
                 lfs_bd_read(
                     lfs,
                     None,
-                    lfs_rcache,
+                    &mut *lfs.rcache.get(),
                     diff,
                     dir.pair[0],
                     off + 4 + goff,
@@ -193,7 +191,7 @@ pub fn lfs_dir_getslice(
 /// }
 /// ```
 pub fn lfs_dir_get(
-    lfs: &mut crate::fs::Lfs,
+    lfs: &crate::fs::Lfs,
     dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
@@ -237,88 +235,80 @@ pub fn lfs_dir_getread(
     lfs: &mut crate::fs::Lfs,
     dir: &LfsMdir,
     pcache: *const LfsCache,
-    rcache: *mut LfsCache,
+    rcache: &mut LfsCache,
     hint: lfs_size_t,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
     off: lfs_off_t,
-    buffer: *mut core::ffi::c_void,
-    size: lfs_size_t,
+    buffer: &mut [u8],
 ) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
 
-    if buffer.is_null() {
-        return Ok(());
+    let cfg = unsafe { lfs.cfg.as_ref().expect("cfg") };
+
+    let mut off = off;
+    let mut size = buffer.len() as u32;
+    let mut data = buffer;
+
+    if off + size > cfg.block_size {
+        return crate::lfs_err!(Err(Error::Corrupt));
     }
-    let data = buffer as *mut u8;
 
-    unsafe {
-        let cfg = lfs.cfg.as_ref().expect("cfg");
-        if off + size > cfg.block_size {
-            return crate::lfs_err!(Err(Error::Corrupt));
-        }
+    while size > 0 {
+        let mut diff = size;
 
-        let mut off = off;
-        let mut size = size;
-        let mut data = data;
-
-        while size > 0 {
-            let mut diff = size;
-
-            if !pcache.is_null() {
-                let pcache_ref = &*pcache;
-                if pcache_ref.block == LFS_BLOCK_INLINE && off < pcache_ref.off + pcache_ref.size {
-                    if off >= pcache_ref.off {
-                        diff = lfs_min(diff, pcache_ref.size - (off - pcache_ref.off));
-                        if !pcache_ref.buffer.is_null() {
+        if let Some(pcache) = unsafe { pcache.as_ref() } {
+            if pcache.block == LFS_BLOCK_INLINE && off < pcache.off + pcache.size {
+                if off >= pcache.off {
+                    diff = lfs_min(diff, pcache.size - (off - pcache.off));
+                    if !pcache.buffer.is_null() {
+                        unsafe {
                             core::ptr::copy_nonoverlapping(
-                                pcache_ref.buffer.add((off - pcache_ref.off) as usize),
-                                data,
+                                pcache.buffer.add((off - pcache.off) as usize),
+                                data.as_mut_ptr(),
                                 diff as usize,
-                            );
-                        }
-                        data = data.add(diff as usize);
-                        off += diff;
-                        size -= diff;
-                        continue;
+                            )
+                        };
                     }
-                    diff = lfs_min(diff, pcache_ref.off - off);
+                    data = &mut data[(diff as usize)..];
+                    off += diff;
+                    size -= diff;
+                    continue;
                 }
+                diff = lfs_min(diff, pcache.off - off);
             }
-
-            let rcache_ref = &mut *rcache;
-            if rcache_ref.block == LFS_BLOCK_INLINE
-                && off < rcache_ref.off + rcache_ref.size
-                && off >= rcache_ref.off
-            {
-                diff = lfs_min(diff, rcache_ref.size - (off - rcache_ref.off));
-                if !rcache_ref.buffer.is_null() {
-                    core::ptr::copy_nonoverlapping(
-                        rcache_ref.buffer.add((off - rcache_ref.off) as usize),
-                        data,
-                        diff as usize,
-                    );
-                }
-                data = data.add(diff as usize);
-                off += diff;
-                size -= diff;
-                continue;
-            }
-
-            rcache_ref.block = LFS_BLOCK_INLINE;
-            rcache_ref.off = lfs_aligndown(off, cfg.read_size);
-            rcache_ref.size = lfs_min(lfs_alignup(off + hint, cfg.read_size), cfg.cache_size);
-            let res = lfs_dir_getslice(
-                lfs,
-                dir,
-                gmask,
-                gtag,
-                rcache_ref.off,
-                core::slice::from_raw_parts_mut(rcache_ref.buffer, rcache_ref.size as usize),
-                rcache_ref.size,
-            )?;
         }
+
+        if rcache.block == LFS_BLOCK_INLINE && off < rcache.off + rcache.size && off >= rcache.off {
+            diff = lfs_min(diff, rcache.size - (off - rcache.off));
+            if !rcache.buffer.is_null() {
+                unsafe {
+                    core::ptr::copy_nonoverlapping(
+                        rcache.buffer.add((off - rcache.off) as usize),
+                        data.as_mut_ptr(),
+                        diff as usize,
+                    )
+                };
+            }
+            data = &mut data[(diff as usize)..];
+            off += diff;
+            size -= diff;
+            continue;
+        }
+
+        rcache.block = LFS_BLOCK_INLINE;
+        rcache.off = lfs_aligndown(off, cfg.read_size);
+        rcache.size = lfs_min(lfs_alignup(off + hint, cfg.read_size), cfg.cache_size);
+        let _res = lfs_dir_getslice(
+            lfs,
+            dir,
+            gmask,
+            gtag,
+            rcache.off,
+            unsafe { core::slice::from_raw_parts_mut(rcache.buffer, rcache.size as usize) },
+            rcache.size,
+        )?;
     }
     Ok(())
 }
@@ -457,7 +447,7 @@ const EMPTY_ATTRS: &[crate::tag::lfs_mattr] = &[];
 /// When the filter marks redundant (returns 1, sets tag=NOOP), we store the tag we were
 /// processing so it still gets committed when we pop.
 struct LfsDirTraverseStack<'a> {
-    dir: *const LfsMdir,
+    dir: &'a LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
     attr_i: usize,
@@ -689,13 +679,13 @@ fn dispatch_tag(
 ) -> Result<i32, Error> {
     use crate::tag::lfs_mktag;
     let out_tag = tag.wrapping_add(lfs_mktag(0, diff as u32, 0));
-    unsafe { cb(data, out_tag, buffer) }
+    cb(data, out_tag, buffer)
 }
 
 #[allow(clippy::type_complexity)]
 pub fn lfs_dir_traverse(
-    lfs: &mut crate::fs::Lfs,
-    dir: *const LfsMdir,
+    lfs: &crate::fs::Lfs,
+    dir: &LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
     attrs_slice: &[crate::tag::lfs_mattr],
@@ -709,7 +699,7 @@ pub fn lfs_dir_traverse(
 ) -> Result<i32, Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::lfs_type::lfs_type::LFS_FROM_NOOP;
-    use crate::tag::{lfs_mktag, lfs_tag_dsize, lfs_tag_id, lfs_tag_type3};
+    use crate::tag::{lfs_mktag, lfs_tag_dsize, lfs_tag_type3};
     use crate::types::lfs_tag_t;
     use crate::util::lfs_frombe32;
 
@@ -737,52 +727,35 @@ pub fn lfs_dir_traverse(
 
     let mut phase = TraversePhase::GetNextTag;
 
-    #[cfg(feature = "loop_limits")]
-    const MAX_TRAVERSE_PHASE_ITER: u32 = 65536;
-    #[cfg(feature = "loop_limits")]
-    let mut phase_iter: u32 = 0;
     loop {
-        #[cfg(feature = "loop_limits")]
-        {
-            if phase_iter >= MAX_TRAVERSE_PHASE_ITER {
-                panic!(
-                    "loop_limits: MAX_TRAVERSE_PHASE_ITER ({}) exceeded in lfs_dir_traverse",
-                    MAX_TRAVERSE_PHASE_ITER
-                );
-            }
-            phase_iter += 1;
-        }
         match phase {
             TraversePhase::GetNextTag => {
                 crate::lfs_trace!("traverse GetNextTag: sp={} phase=GetNextTag", sp);
                 // Per C: get next tag from disk or attrs. Never pop here.
                 // Pop only happens in PopAndProcess (after exhaust or callback res!=0).
                 let (tag, buffer) = {
-                    let dir_ref = unsafe { &*dir };
-
-                    if off + lfs_tag_dsize(ptag) < dir_ref.off {
+                    if off + lfs_tag_dsize(ptag) < dir.off {
                         crate::lfs_trace!(
                             "traverse GetNextTag: reading from disk dir.pair[0]={} off={}",
-                            dir_ref.pair[0],
+                            dir.pair[0],
                             off
                         );
                         // Per C: advance off first to skip previous tag's data, then read
                         off += lfs_tag_dsize(ptag);
                         let mut tag_raw: lfs_tag_t = 0;
-                        let lfs_rcache = unsafe { borrow_unchecked(&mut lfs.rcache) };
                         lfs_bd_read(
                             lfs,
                             None,
-                            lfs_rcache,
+                            unsafe { &mut *lfs.rcache.get() },
                             core::mem::size_of::<lfs_tag_t>() as u32,
-                            dir_ref.pair[0],
+                            dir.pair[0],
                             off,
                             tag_raw.as_mut_bytes(),
                         )?;
 
                         let tag_val = (lfs_frombe32(tag_raw) ^ ptag) | 0x8000_0000;
                         disk = crate::tag::lfs_diskoff {
-                            block: dir_ref.pair[0],
+                            block: dir.pair[0],
                             off: off + 4,
                         };
                         ptag = tag_val;
@@ -830,28 +803,28 @@ pub fn lfs_dir_traverse(
                         attr_i
                     );
                     crate::lfs_assert!(sp < LFS_DIR_TRAVERSE_DEPTH);
-                    unsafe {
-                        let frame = LfsDirTraverseStack {
-                            dir,
-                            off,
-                            ptag,
-                            attr_i,
-                            use_empty_attrs,
-                            tmask,
-                            ttag,
-                            begin,
-                            end,
-                            diff,
-                            cb,
-                            data,
-                            tag,
-                            buffer,
-                            disk,
-                            redundant_tag: 0xffff_ffff,
-                            redundant_buffer: core::ptr::null(),
-                        };
-                        stack[sp].write(frame);
-                    }
+
+                    let frame = LfsDirTraverseStack {
+                        dir,
+                        off,
+                        ptag,
+                        attr_i,
+                        use_empty_attrs,
+                        tmask,
+                        ttag,
+                        begin,
+                        end,
+                        diff,
+                        cb,
+                        data,
+                        tag,
+                        buffer,
+                        disk,
+                        redundant_tag: 0xffff_ffff,
+                        redundant_buffer: core::ptr::null(),
+                    };
+                    stack[sp].write(frame);
+
                     sp += 1;
                     tmask = 0;
                     ttag = 0;
@@ -901,30 +874,30 @@ pub fn lfs_dir_traverse(
                             let toid = crate::tag::lfs_tag_id(tag);
                             let new_diff = (toid as i16) - (fromid as i16) + diff;
                             crate::lfs_assert!(sp < LFS_DIR_TRAVERSE_DEPTH);
-                            unsafe {
-                                let noop_tag =
-                                    lfs_mktag(crate::lfs_type::lfs_type::LFS_FROM_NOOP, 0, 0);
-                                let frame = LfsDirTraverseStack {
-                                    dir,
-                                    off,
-                                    ptag,
-                                    attr_i,
-                                    use_empty_attrs,
-                                    tmask,
-                                    ttag,
-                                    begin,
-                                    end,
-                                    diff,
-                                    cb,
-                                    data,
-                                    tag: noop_tag,
-                                    buffer: &[],
-                                    disk,
-                                    redundant_tag: 0xffff_ffff,
-                                    redundant_buffer: core::ptr::null(),
-                                };
-                                stack[sp].write(frame);
-                            }
+
+                            let noop_tag =
+                                lfs_mktag(crate::lfs_type::lfs_type::LFS_FROM_NOOP, 0, 0);
+                            let frame = LfsDirTraverseStack {
+                                dir,
+                                off,
+                                ptag,
+                                attr_i,
+                                use_empty_attrs,
+                                tmask,
+                                ttag,
+                                begin,
+                                end,
+                                diff,
+                                cb,
+                                data,
+                                tag: noop_tag,
+                                buffer: &[],
+                                disk,
+                                redundant_tag: 0xffff_ffff,
+                                redundant_buffer: core::ptr::null(),
+                            };
+                            stack[sp].write(frame);
+
                             sp += 1;
                             dir = LfsMdir::try_ref_from_bytes(buffer).unwrap();
                             off = 0;

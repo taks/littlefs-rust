@@ -17,6 +17,7 @@ pub struct TestContext {
     _lookahead_buf: alloc::vec::Vec<u8>,
 }
 
+#[allow(unused)]
 impl TestContext {
     /// Fresh env with block_count blocks. Ready for format.
     pub fn new(block_count: u32) -> Self {

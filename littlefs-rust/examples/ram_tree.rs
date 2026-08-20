@@ -6,10 +6,9 @@ fn main() {
     let mut storage = RamStorage::<512, 128>::new();
     let config = Config::new(512, 128);
 
-    Filesystem::format(&mut storage, &config).expect("format failed");
-    let fs = Filesystem::mount(storage, config)
-        .map_err(|(e, _)| e)
-        .expect("mount failed");
+    let alloc = Allocation::new();
+    Filesystem::format(&mut storage, &mut alloc).expect("format failed");
+    let fs = Filesystem::mount(&mut storage, &mut alloc).expect("mount failed");
 
     // Build a small directory tree with some files.
     fs.mkdir("/docs").expect("mkdir docs");

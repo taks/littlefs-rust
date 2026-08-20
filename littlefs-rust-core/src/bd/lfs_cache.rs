@@ -4,6 +4,7 @@ use crate::types::lfs_block_t;
 
 /// Per lfs.h typedef struct lfs_cache
 #[repr(C)]
+#[derive(Default)]
 pub struct LfsCache {
     pub block: lfs_block_t,
     pub off: u32,

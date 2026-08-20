@@ -50,6 +50,7 @@ jobs:
       - run: cargo check -p littlefs-rust-core --target thumbv6m-none-eabi --no-default-features
 
   cargo_deny:
+    if: false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

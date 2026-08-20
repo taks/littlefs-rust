@@ -1,12 +1,10 @@
 //! Stat. Per lfs.c lfs_stat_, lfs_fs_stat_, lfs_fs_size_.
 
-use core::ffi::CStr;
 use zerocopy::IntoBytes;
 
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::fs::traverse::lfs_fs_traverse_;
-use crate::types::{lfs_block_t, lfs_size_t};
+use crate::types::lfs_size_t;
 
 /// Per lfs.c lfs_stat_ (lines 3863-3878)
 ///
@@ -108,50 +106,48 @@ pub fn lfs_fs_stat_(
     use crate::tag::lfs_mktag;
     use crate::types::LFS_DISK_VERSION;
 
-    unsafe {
-        if !lfs_gstate_needssuperblock(&lfs.gstate) {
-            fsinfo.disk_version = LFS_DISK_VERSION;
-        } else {
-            let mut dir = crate::dir::LfsMdir {
-                pair: [0, 0],
-                rev: 0,
-                off: 0,
-                etag: 0,
-                count: 0,
-                erased: false,
-                split: false,
-                tail: [0, 0],
-            };
-            let lfs_root = borrow_unchecked(&lfs.root);
-            lfs_dir_fetch(lfs, &mut dir, lfs_root)?;
+    if !lfs_gstate_needssuperblock(&lfs.gstate) {
+        fsinfo.disk_version = LFS_DISK_VERSION;
+    } else {
+        let mut dir = crate::dir::LfsMdir {
+            pair: [0, 0],
+            rev: 0,
+            off: 0,
+            etag: 0,
+            count: 0,
+            erased: false,
+            split: false,
+            tail: [0, 0],
+        };
+        lfs_dir_fetch(lfs, &mut dir, lfs.root)?;
 
-            let mut superblock = core::mem::zeroed::<LfsSuperblock>();
-            let tag = lfs_dir_get(
-                lfs,
-                &dir,
-                lfs_mktag(0x7ff, 0x3ff, 0),
-                lfs_mktag(
-                    LFS_TYPE_INLINESTRUCT,
-                    0,
-                    core::mem::size_of::<LfsSuperblock>() as u32,
-                ),
-                superblock.as_mut_bytes(),
-            )?;
+        let mut superblock = unsafe { core::mem::zeroed::<LfsSuperblock>() };
+        let _tag = lfs_dir_get(
+            lfs,
+            &dir,
+            lfs_mktag(0x7ff, 0x3ff, 0),
+            lfs_mktag(
+                LFS_TYPE_INLINESTRUCT,
+                0,
+                core::mem::size_of::<LfsSuperblock>() as u32,
+            ),
+            superblock.as_mut_bytes(),
+        )?;
 
-            lfs_superblock_fromle32(&mut superblock);
-            fsinfo.disk_version = superblock.version;
-        }
-
-        fsinfo.block_size = (*lfs.cfg).block_size;
-        fsinfo.block_count = lfs.block_count;
-        fsinfo.name_max = lfs.name_max;
-        fsinfo.file_max = lfs.file_max;
-        fsinfo.attr_max = lfs.attr_max;
+        lfs_superblock_fromle32(&mut superblock);
+        fsinfo.disk_version = superblock.version;
     }
+
+    fsinfo.block_size = unsafe { (*lfs.cfg).block_size };
+    fsinfo.block_count = lfs.block_count;
+    fsinfo.name_max = lfs.name_max;
+    fsinfo.file_max = lfs.file_max;
+    fsinfo.attr_max = lfs.attr_max;
+
     Ok(())
 }
 
-/// Per lfs.c lfs_fs_size_count (lines 5172-5177)
+/// Per lfs.c lfs_fs_size_ (lines 5179-5188)
 ///
 /// C:
 /// ```c
@@ -161,20 +157,7 @@ pub fn lfs_fs_stat_(
 ///     *size += 1;
 ///     return 0;
 /// }
-/// ```
-pub fn lfs_fs_size_count(p: *mut core::ffi::c_void, _block: lfs_block_t) -> Result<(), Error> {
-    if p.is_null() {
-        return Ok(());
-    }
-    let size = p as *mut lfs_size_t;
-    unsafe { *size = (*size).saturating_add(1) };
-    Ok(())
-}
-
-/// Per lfs.c lfs_fs_size_ (lines 5179-5188)
 ///
-/// C:
-/// ```c
 /// static lfs_ssize_t lfs_fs_size_(lfs_t *lfs) {
 ///     lfs_size_t size = 0;
 ///     int err = lfs_fs_traverse_(lfs, lfs_fs_size_count, &size, false);
@@ -189,8 +172,10 @@ pub fn lfs_fs_size_(lfs: &mut super::lfs::Lfs) -> Result<lfs_size_t, Error> {
     let mut size: lfs_size_t = 0;
     lfs_fs_traverse_(
         lfs,
-        lfs_fs_size_count,
-        &mut size as *mut _ as *mut core::ffi::c_void,
+        &mut |_| {
+            size = size.saturating_add(1);
+            Ok(())
+        },
         false,
     )?;
 

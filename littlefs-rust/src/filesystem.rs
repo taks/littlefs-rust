@@ -1,6 +1,7 @@
 use core::cell::{RefCell, UnsafeCell};
 use core::ffi::c_void;
 use littlefs_rust_core::error::Error;
+use littlefs_rust_core::lfs_type::OpenFlags;
 use typenum::Unsigned;
 
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
@@ -8,7 +9,7 @@ use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 use crate::config::{self, Config};
 use crate::dir::{dir_entry_from_info, ReadDir};
 use crate::file::File;
-use crate::metadata::{DirEntry, Metadata, OpenFlags};
+use crate::metadata::{DirEntry, Metadata};
 use crate::storage::Storage;
 
 pub(crate) type Bytes<SIZE> = hybrid_array::Array<u8, SIZE>;
@@ -156,9 +157,8 @@ impl<'a, S: Storage> Filesystem<'a, S> {
     ///
     /// This erases any existing data. The storage can be mounted afterwards
     /// with [`Filesystem::mount`].
-    pub fn format(storage: &mut S) -> Result<(), Error> {
-        let alloc = Allocation::new();
-        let fs = Self::new(storage, &mut alloc);
+    pub fn format(storage: &'a mut S, alloc: &'a mut Allocation<S>) -> Result<(), Error> {
+        let fs = Self::new(storage, alloc);
 
         let mut alloc = fs.alloc.borrow_mut();
         let config = alloc.config.get();

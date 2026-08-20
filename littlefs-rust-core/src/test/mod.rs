@@ -10,7 +10,10 @@ mod ram;
 mod snapshot;
 mod tests;
 
+#[allow(unused)]
 pub use assert::{assert_block_has_magic, assert_blocks_0_and_1_have_magic};
 pub use context::TestContext;
+#[allow(unused)]
 pub use ram::{MAGIC, MAGIC_OFFSET};
+#[allow(unused)]
 pub use snapshot::SuperblockSnapshot;

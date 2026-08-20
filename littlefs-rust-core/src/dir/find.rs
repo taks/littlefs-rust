@@ -1,6 +1,5 @@
 //! Directory find. Per lfs.c lfs_dir_find, lfs_dir_find_match.
 
-use core::ffi::CStr;
 use zerocopy::IntoBytes;
 
 use crate::bd::bd::lfs_bd_cmp;
@@ -10,14 +9,11 @@ use crate::dir::fetch::lfs_dir_fetchmatch;
 use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::fs::Lfs;
-use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
+use crate::lfs_type::lfs_type::{LFS_TYPE_GLOBALS, LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
 use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
 use crate::types::{lfs_size_t, lfs_tag_t};
 use crate::util::{lfs_min, lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 
-const LFS_CMP_EQ: core::cmp::Ordering = core::cmp::Ordering::Equal;
-const LFS_CMP_LT: core::cmp::Ordering = core::cmp::Ordering::Less;
-const LFS_CMP_GT: core::cmp::Ordering = core::cmp::Ordering::Greater;
 /// Per lfs.c struct lfs_dir_find_match (lines 1447-1475)
 #[repr(C)]
 pub struct LfsDirFindMatch<'a> {
@@ -62,41 +58,34 @@ pub struct LfsDirFindMatch<'a> {
 ///
 /// ```
 pub fn lfs_dir_find_match(
-    data: *mut core::ffi::c_void,
+    name: &LfsDirFindMatch,
     tag: lfs_tag_t,
-    buffer: &lfs_diskoff,
+    disk: &lfs_diskoff,
 ) -> Result<core::cmp::Ordering, Error> {
-    if data.is_null() {
-        return Ok(core::cmp::Ordering::Less);
-    }
-    unsafe {
-        let name = &*(data as *const LfsDirFindMatch);
-        let disk = &*(buffer as *const lfs_diskoff);
-        let lfs = &mut *name.lfs;
+    let lfs = unsafe { &mut *name.lfs };
 
-        let diff = lfs_min(name.size, lfs_tag_size(tag));
-        let res = lfs_bd_cmp(
-            name.lfs.as_mut().unwrap(),
-            None,
-            &mut lfs.rcache,
-            diff,
-            disk.block,
-            disk.off,
-            name.name.as_ptr(),
-            diff,
-        );
-        if res != Ok(core::cmp::Ordering::Equal) {
-            return res;
-        }
-        if name.size != lfs_tag_size(tag) {
-            return if name.size < lfs_tag_size(tag) {
-                Ok(core::cmp::Ordering::Less)
-            } else {
-                Ok(core::cmp::Ordering::Greater)
-            };
-        }
-        Ok(LFS_CMP_EQ)
+    let diff = lfs_min(name.size, lfs_tag_size(tag));
+    let res = lfs_bd_cmp(
+        lfs,
+        None,
+        unsafe { &mut *lfs.rcache.get() },
+        diff,
+        disk.block,
+        disk.off,
+        name.name.as_ptr(),
+        diff,
+    );
+    if res != Ok(core::cmp::Ordering::Equal) {
+        return res;
     }
+    if name.size != lfs_tag_size(tag) {
+        return if name.size < lfs_tag_size(tag) {
+            Ok(core::cmp::Ordering::Less)
+        } else {
+            Ok(core::cmp::Ordering::Greater)
+        };
+    }
+    Ok(core::cmp::Ordering::Equal)
 }
 
 /// Per lfs.c lfs_dir_find (lines 1483-1590)
@@ -310,7 +299,7 @@ pub fn lfs_dir_find(
                 let res = lfs_dir_get(
                     lfs,
                     dir,
-                    lfs_mktag(0x700, 0x3ff, 0),
+                    lfs_mktag(LFS_TYPE_GLOBALS, 0x3ff, 0),
                     lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
                     dir_tail.as_mut_bytes(),
                 );
@@ -319,46 +308,20 @@ pub fn lfs_dir_find(
             }
 
             // C: lfs.c:1567-1584 - find entry matching name
-            #[cfg(feature = "loop_limits")]
-            const MAX_FIND_ITER: u32 = 256;
-            #[cfg(feature = "loop_limits")]
-            let mut find_iter: u32 = 0;
             loop {
-                #[cfg(feature = "loop_limits")]
-                {
-                    find_iter += 1;
-                    if find_iter > MAX_FIND_ITER {
-                        panic!(
-                            "loop_limits: MAX_FIND_ITER ({}) exceeded name_len={} tail={:?}",
-                            MAX_FIND_ITER, namelen, dir.tail
-                        );
-                    }
-                }
-                #[cfg(feature = "loop_limits")]
-                crate::lfs_trace!(
-                    "dir_find: iter={} tag={} split={} tail=[{},{}] namelen={}",
-                    find_iter,
-                    tag,
-                    dir.split,
-                    dir.tail[0],
-                    dir.tail[1],
-                    namelen
-                );
-                let mut match_data = LfsDirFindMatch {
+                let match_data = LfsDirFindMatch {
                     lfs,
                     name,
                     size: namelen as u32,
                 };
-                let dir_tail = borrow_unchecked(&dir.tail);
                 tag = lfs_dir_fetchmatch(
                     lfs,
                     dir,
-                    dir_tail,
+                    dir.tail,
                     lfs_mktag(0x780, 0, 0),
                     lfs_mktag(LFS_TYPE_NAME, 0, namelen as u32),
                     id,
-                    Some(lfs_dir_find_match),
-                    &mut match_data as *mut _ as *mut core::ffi::c_void,
+                    Some(&|tag, disk| lfs_dir_find_match(&match_data, tag, disk)),
                 )?;
 
                 if tag != 0 {

@@ -1,15 +1,13 @@
 //! Directory open/read. Per lfs.c lfs_dir_open_, lfs_dir_close_, lfs_dir_read_, etc.
 
-use core::ffi::CStr;
 use zerocopy::IntoBytes;
 
-use crate::borrow_unchecked::borrow_unchecked;
+use crate::dir::LfsDir;
 use crate::dir::fetch::{lfs_dir_fetch, lfs_dir_getinfo};
 use crate::dir::find::lfs_dir_find;
 use crate::dir::lfs_mlist::lfs_mlist_append;
 use crate::dir::lfs_mlist::lfs_mlist_remove;
 use crate::dir::traverse::lfs_dir_get;
-use crate::dir::{LfsDir, LfsMlist};
 use crate::error::Error;
 use crate::lfs_info::LfsInfo;
 use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE3_DIR};
@@ -66,46 +64,44 @@ use crate::util::{lfs_min, lfs_pair_cmp, lfs_pair_fromle32};
 /// }
 /// ```
 pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &str) -> Result<(), Error> {
-    unsafe {
-        let mut path_ptr = path;
+    let mut path_ptr = path;
 
-        let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None)?;
+    let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None)?;
 
-        if (lfs_tag_type3(tag)) != LFS_TYPE3_DIR {
-            return Err(Error::NotDir);
-        }
-
-        let mut pair = [0u32; 2];
-        if lfs_tag_id(tag) == 0x3ff {
-            pair[0] = lfs.root[0];
-            pair[1] = lfs.root[1];
-        } else {
-            let res = lfs_dir_get(
-                lfs,
-                &dir.m,
-                lfs_mktag(0x700, 0x3ff, 0),
-                lfs_mktag(
-                    crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
-                    lfs_tag_id(tag) as u32,
-                    8,
-                ),
-                pair.as_mut_bytes(),
-            )?;
-
-            lfs_pair_fromle32(&mut pair);
-        }
-
-        lfs_dir_fetch(lfs, &mut dir.m, &pair)?;
-
-        dir.head[0] = dir.m.pair[0];
-        dir.head[1] = dir.m.pair[1];
-        dir.id = 0;
-        dir.pos = 0;
-        dir.type_ = LFS_TYPE_DIR as u8;
-        lfs_mlist_append(lfs, dir as *mut LfsDir as *mut LfsMlist);
-
-        Ok(())
+    if (lfs_tag_type3(tag)) != LFS_TYPE3_DIR {
+        return Err(Error::NotDir);
     }
+
+    let mut pair = [0u32; 2];
+    if lfs_tag_id(tag) == 0x3ff {
+        pair[0] = lfs.root[0];
+        pair[1] = lfs.root[1];
+    } else {
+        let _res = lfs_dir_get(
+            lfs,
+            &dir.m,
+            lfs_mktag(0x700, 0x3ff, 0),
+            lfs_mktag(
+                crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
+                lfs_tag_id(tag) as u32,
+                8,
+            ),
+            pair.as_mut_bytes(),
+        )?;
+
+        lfs_pair_fromle32(&mut pair);
+    }
+
+    lfs_dir_fetch(lfs, &mut dir.m, pair)?;
+
+    dir.head[0] = dir.m.pair[0];
+    dir.head[1] = dir.m.pair[1];
+    dir.id = 0;
+    dir.pos = 0;
+    dir.type_ = LFS_TYPE_DIR as u8;
+    lfs_mlist_append(lfs, unsafe { dir.as_mut_lsf_mist() });
+
+    Ok(())
 }
 
 /// Per lfs.c lfs_dir_close_ (lines 2765-2770)
@@ -119,13 +115,9 @@ pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &str) -> 
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_close_(lfs: *mut crate::fs::Lfs, dir: *mut LfsDir) -> Result<(), Error> {
-    if lfs.is_null() || dir.is_null() {
-        return Err(Error::Invalid);
-    }
-    unsafe {
-        lfs_mlist_remove(lfs, dir as *mut crate::dir::lfs_mlist::LfsMlist);
-    }
+pub fn lfs_dir_close_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir) -> Result<(), Error> {
+    lfs_mlist_remove(lfs, unsafe { dir.as_mut_lsf_mist() });
+
     Ok(())
 }
 
@@ -223,7 +215,7 @@ pub fn lfs_dir_read_(
                 if !dir.m.split {
                     return Ok(0);
                 }
-                let dir_m_tail = unsafe { borrow_unchecked(&dir.m.tail) };
+                let dir_m_tail = dir.m.tail;
                 lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
 
                 dir.id = 0;
@@ -292,36 +284,34 @@ pub fn lfs_dir_seek_(
     dir: &mut LfsDir,
     off: lfs_off_t,
 ) -> Result<(), Error> {
-    unsafe {
-        lfs_dir_rewind_(lfs, dir)?;
+    lfs_dir_rewind_(lfs, dir)?;
 
-        dir.pos = lfs_min(2, off);
-        let mut off = off - dir.pos;
+    dir.pos = lfs_min(2, off);
+    let mut off = off - dir.pos;
 
-        // skip superblock entry
-        dir.id = if off > 0 && lfs_pair_cmp(&dir.head, &lfs.root) == 0 {
-            1
-        } else {
-            0
-        };
+    // skip superblock entry
+    dir.id = if off > 0 && lfs_pair_cmp(&dir.head, &lfs.root) == 0 {
+        1
+    } else {
+        0
+    };
 
-        while off > 0 {
-            if dir.id == dir.m.count {
-                if !dir.m.split {
-                    return Err(Error::Invalid);
-                }
-                let dir_m_tail = borrow_unchecked(&dir.m.tail);
-                lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
-                dir.id = 0;
+    while off > 0 {
+        if dir.id == dir.m.count {
+            if !dir.m.split {
+                return Err(Error::Invalid);
             }
-            let diff = lfs_min((dir.m.count - dir.id) as u32, off);
-            dir.id += diff as u16;
-            dir.pos += diff;
-            off -= diff;
+            let dir_m_tail = dir.m.tail;
+            lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
+            dir.id = 0;
         }
-
-        Ok(())
+        let diff = lfs_min((dir.m.count - dir.id) as u32, off);
+        dir.id += diff as u16;
+        dir.pos += diff;
+        off -= diff;
     }
+
+    Ok(())
 }
 
 /// Per lfs.c lfs_dir_tell_ (lines 2854-2857)
@@ -354,7 +344,7 @@ pub fn lfs_dir_tell_(_lfs: *mut crate::fs::Lfs, dir: *const LfsDir) -> crate::ty
 /// }
 /// ```
 pub fn lfs_dir_rewind_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir) -> Result<(), Error> {
-    lfs_dir_fetch(lfs, &mut dir.m, &dir.head)?;
+    lfs_dir_fetch(lfs, &mut dir.m, dir.head)?;
     dir.id = 0;
     dir.pos = 0;
     Ok(())

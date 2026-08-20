@@ -5,7 +5,6 @@
 
 #![no_std]
 #![allow(clippy::too_many_arguments)]
-#![allow(dead_code, unused)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -34,9 +33,6 @@ mod tag;
 mod types;
 mod util;
 
-use core::ffi::{CStr, c_void};
-use core::future::Ready;
-
 pub use crate::dir::LfsDir;
 use crate::error::Error;
 pub use crate::file::LfsFile;
@@ -53,6 +49,7 @@ pub use crate::fs::format::{
     test_traverse_format_attrs,
 };
 pub use crate::lfs_info::LfsFsinfo;
+use crate::lfs_type::OpenFlags;
 #[doc(hidden)]
 pub use crate::types::LFS_DISK_VERSION;
 
@@ -162,7 +159,7 @@ pub fn lfs_file_open(
     lfs: &mut Lfs,
     file: &mut LfsFile,
     path: &str,
-    flags: i32,
+    flags: OpenFlags,
 ) -> Result<(), Error> {
     crate::file::ops::lfs_file_open_(lfs, file, path, flags)
 }
@@ -173,7 +170,7 @@ pub fn lfs_file_opencfg<'a>(
     lfs: &mut Lfs,
     file: &mut LfsFile,
     path: &str,
-    flags: i32,
+    flags: OpenFlags,
     config: &mut LfsFileConfig<'a>,
 ) -> Result<(), Error> {
     crate::file::ops::lfs_file_opencfg_(lfs, file, path, flags, config)
@@ -301,12 +298,12 @@ pub fn lfs_fs_size(lfs: &mut Lfs) -> Result<lfs_size_t, Error> {
 }
 
 /// Callback type for lfs_fs_traverse. Per lfs.h int (*cb)(void*, lfs_block_t).
-pub type LfsTraverseCb = fn(data: *mut c_void, block: lfs_block_t) -> Result<(), Error>;
+pub type LfsTraverseCb = dyn FnMut(lfs_block_t) -> Result<(), Error>;
 
 /// Traverse through all blocks in use by the filesystem. Per lfs.h lfs_fs_traverse.
 #[inline]
-pub fn lfs_fs_traverse(lfs: &mut Lfs, cb: LfsTraverseCb, data: *mut c_void) -> Result<(), Error> {
-    crate::fs::traverse::lfs_fs_traverse_(lfs, cb, data, false)
+pub fn lfs_fs_traverse(lfs: &mut Lfs, cb: &mut LfsTraverseCb) -> Result<(), Error> {
+    crate::fs::traverse::lfs_fs_traverse_(lfs, cb, false)
 }
 
 /// Attempt to make the filesystem consistent. Per lfs.h lfs_fs_mkconsistent (lfs.c:6479-6483).

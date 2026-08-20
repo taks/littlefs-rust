@@ -1,7 +1,5 @@
 //! Utility functions. Per lfs_util.h static inline and lfs.c small type-level utils.
 
-use core::ffi::CStr;
-
 use crate::types::{lfs_block_t, lfs_size_t};
 
 /// Per lfs_util.h lfs_max (lines 129-131)
@@ -196,21 +194,6 @@ pub fn lfs_strcspn(p: &[u8], c: u8) -> usize {
     p.iter().position(|q| *q == c).unwrap_or(p.len())
 }
 
-/// Per C: slice from NUL-terminated string. Max 256 bytes.
-#[inline(always)]
-pub fn lfs_path_slice_from_cstr(p: *const u8) -> &'static [u8] {
-    if p.is_null() {
-        return &[];
-    }
-    unsafe {
-        let mut len = 0;
-        while len < 256 && *p.add(len) != 0 {
-            len += 1;
-        }
-        core::slice::from_raw_parts(p, len)
-    }
-}
-
 /// Per lfs.c lfs_path_namelen (lines 289-291)
 ///
 /// C:
@@ -237,8 +220,7 @@ pub fn lfs_path_namelen(path: &[u8]) -> u32 {
 pub fn lfs_path_islast(path: &[u8]) -> bool {
     let namelen = lfs_path_namelen(path) as usize;
     let rest = path.get(namelen..).unwrap_or(&[]);
-    let skip = rest.iter().take_while(|&&b| b == b'/').count();
-    path.get(namelen + skip).is_none_or(|&b| b == 0)
+    rest.iter().all(|&b| b == b'/')
 }
 
 /// Per lfs.c lfs_path_isdir (lines 298-300)
@@ -344,9 +326,4 @@ pub fn lfs_pair_cmp(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> i32 {
 #[inline(always)]
 pub fn lfs_pair_issync(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> bool {
     (paira[0] == pairb[0] && paira[1] == pairb[1]) || (paira[0] == pairb[1] && paira[1] == pairb[0])
-}
-
-#[inline]
-pub(crate) unsafe fn as_void_ptr<T>(r: &mut T) -> *mut ::core::ffi::c_void {
-    (r as *mut T).cast()
 }

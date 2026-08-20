@@ -1,15 +1,12 @@
 //! attr. Per lfs.c attr_.
 
-use core::ffi::CStr;
-
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
 use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
-use crate::fs::{Lfs, lfs};
+use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::LFS_TYPE_USERATTR;
 use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_size};
 use crate::types::lfs_size_t;
@@ -60,40 +57,36 @@ pub fn lfs_getattr_(
     r#type: u8,
     buffer: &mut [u8],
 ) -> Result<lfs_size_t, Error> {
-    unsafe {
-        let mut cwd = LfsMdir {
-            pair: [0, 0],
-            rev: 0,
-            off: 0,
-            etag: 0,
-            count: 0,
-            erased: false,
-            split: false,
-            tail: [lfs.root[0], lfs.root[1]],
-        };
+    let mut cwd = LfsMdir {
+        pair: [0, 0],
+        rev: 0,
+        off: 0,
+        etag: 0,
+        count: 0,
+        erased: false,
+        split: false,
+        tail: [lfs.root[0], lfs.root[1]],
+    };
 
-        let mut path_ptr = path;
-        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
+    let mut path_ptr = path;
+    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
-        let mut id = lfs_tag_id(tag);
-        if id == 0x3ff {
-            id = 0;
-            let lfs_root = borrow_unchecked(&lfs.root);
-            lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
-        }
-        let size = lfs_min(buffer.len() as u32, lfs.attr_max);
-        let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size);
-        let tag =
-            lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer).map_err(|err| {
-                if err == Error::NoEntry {
-                    crate::lfs_err!(Error::NoAttribute)
-                } else {
-                    err
-                }
-            })?;
-
-        Ok(lfs_tag_size(tag))
+    let mut id = lfs_tag_id(tag);
+    if id == 0x3ff {
+        id = 0;
+        lfs_dir_fetch(lfs, &mut cwd, lfs.root)?;
     }
+    let size = lfs_min(buffer.len() as u32, lfs.attr_max);
+    let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size);
+    let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer).map_err(|err| {
+        if err == Error::NoEntry {
+            crate::lfs_err!(Error::NoAttribute)
+        } else {
+            err
+        }
+    })?;
+
+    Ok(lfs_tag_size(tag))
 }
 
 /// Per lfs.c lfs_commitattr (lines 4141-4163)
@@ -132,36 +125,32 @@ pub fn lfs_commitattr(
     buffer: &[u8],
     size: lfs_size_t,
 ) -> Result<(), Error> {
-    unsafe {
-        let lfs = &mut *lfs;
+    let mut cwd = LfsMdir {
+        pair: [0, 0],
+        rev: 0,
+        off: 0,
+        etag: 0,
+        count: 0,
+        erased: false,
+        split: false,
+        tail: [lfs.root[0], lfs.root[1]],
+    };
 
-        let mut cwd = LfsMdir {
-            pair: [0, 0],
-            rev: 0,
-            off: 0,
-            etag: 0,
-            count: 0,
-            erased: false,
-            split: false,
-            tail: [lfs.root[0], lfs.root[1]],
-        };
+    let mut path_ptr = path;
+    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
 
-        let mut path_ptr = path;
-        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
-
-        let mut id = lfs_tag_id(tag);
-        if id == 0x3ff {
-            id = 0;
-            let lfs_root = borrow_unchecked(&lfs.root);
-            lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
-        }
-
-        let attrs = [lfs_mattr {
-            tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size),
-            buffer,
-        }];
-        lfs_dir_commit(lfs, &mut cwd, &attrs)
+    let mut id = lfs_tag_id(tag);
+    if id == 0x3ff {
+        id = 0;
+        let lfs_root = lfs.root;
+        lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
     }
+
+    let attrs = [lfs_mattr {
+        tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size),
+        buffer,
+    }];
+    lfs_dir_commit(lfs, &mut cwd, &attrs)
 }
 
 /// Per lfs.c lfs_setattr_ (lines 4165-4174)

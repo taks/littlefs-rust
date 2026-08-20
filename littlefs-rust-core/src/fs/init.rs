@@ -1,9 +1,8 @@
 //! Initialization. Per lfs.c lfs_init, lfs_deinit.
 
+use crate::Lfs;
 use crate::bd::bd::lfs_cache_zero;
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
-use crate::fs::lfs;
 use crate::types::{LFS_ATTR_MAX, LFS_BLOCK_NULL, LFS_FILE_MAX, LFS_NAME_MAX};
 use crate::util::{lfs_min, lfs_npw2};
 
@@ -185,10 +184,7 @@ use crate::util::{lfs_min, lfs_npw2};
 /// }
 /// ```
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn lfs_init(
-    lfs: &mut super::lfs::Lfs,
-    cfg: &crate::lfs_config::LfsConfig,
-) -> Result<(), Error> {
+pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(), Error> {
     unsafe {
         // check that bool is a truthy-preserving type (C: (bool)0x80000000)
         crate::lfs_assert!(0x8000_0000u32 != 0);
@@ -233,13 +229,11 @@ pub fn lfs_init(
         lfs.cfg = cfg;
         lfs.block_count = cfg.block_count;
 
-        lfs.rcache.buffer = cfg.read_buffer as *mut u8;
-        lfs.pcache.buffer = cfg.prog_buffer as *mut u8;
+        lfs.rcache.get_mut().buffer = cfg.read_buffer as *mut u8;
+        lfs.pcache.get_mut().buffer = cfg.prog_buffer as *mut u8;
 
-        let lfs_rchache = borrow_unchecked(&mut lfs.rcache);
-        let lfs_pcache = borrow_unchecked(&mut lfs.pcache);
-        lfs_cache_zero(lfs, lfs_rchache);
-        lfs_cache_zero(lfs, lfs_pcache);
+        lfs_cache_zero(lfs, &mut *lfs.rcache.get());
+        lfs_cache_zero(lfs, &mut *lfs.pcache.get());
 
         crate::lfs_assert!(cfg.lookahead_size > 0);
         lfs.lookahead.buffer = cfg.lookahead_buffer as *mut u8;
@@ -291,7 +285,7 @@ pub fn lfs_init(
             tag: 0,
             pair: [0, 0],
         };
-        lfs.gdelta = crate::lfs_gstate::LfsGstate {
+        *lfs.gdelta.get_mut() = crate::lfs_gstate::LfsGstate {
             tag: 0,
             pair: [0, 0],
         };

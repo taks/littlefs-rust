@@ -1,12 +1,12 @@
 //! Metadata directory. Per lfs.h lfs_mdir_t.
 
-use zerocopy_derive::{FromBytes, Immutable, IntoBytes, KnownLayout, TryFromBytes};
+use zerocopy_derive::{Immutable, IntoBytes, KnownLayout, TryFromBytes};
 
 use crate::types::lfs_block_t;
 
 /// Per lfs.h typedef struct lfs_mdir
 #[repr(C)]
-#[derive(Clone, Copy, Immutable, IntoBytes, TryFromBytes, KnownLayout)]
+#[derive(Clone, Copy, Immutable, IntoBytes, Debug, TryFromBytes, KnownLayout)]
 pub struct LfsMdir {
     pub pair: [lfs_block_t; 2],
     pub rev: u32,

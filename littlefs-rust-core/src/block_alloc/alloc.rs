@@ -1,12 +1,10 @@
 //! Block allocator. Per lfs.c lfs_alloc, lfs_alloc_scan, lfs_alloc_lookahead, etc.
 
-use core::f32::consts::E;
+use core::cell::UnsafeCell;
 
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::types::lfs_block_t;
-use crate::util::as_void_ptr;
 
 /// Per lfs.c lfs_alloc_ckpoint (lines 614-616)
 ///
@@ -58,10 +56,6 @@ pub fn lfs_alloc_drop(lfs: &mut Lfs) {
 /// #endif
 /// ```
 /// Callback wrapper for lfs_fs_traverse_: C expects (void* data, block), we pass lfs as data.
-fn lfs_alloc_lookahead_cb(data: *mut core::ffi::c_void, block: lfs_block_t) -> Result<(), Error> {
-    lfs_alloc_lookahead(unsafe { &mut *(data as *mut Lfs) }, block)
-}
-
 pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Error> {
     unsafe {
         // off = ((block - start) + block_count) % block_count
@@ -132,8 +126,14 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
         // find mask of free blocks from tree
         core::ptr::write_bytes(buf, 0, cfg.lookahead_size as usize);
 
-        let lfs_ptr = lfs as *mut _ as *mut core::ffi::c_void;
-        let err = lfs_fs_traverse_(lfs, lfs_alloc_lookahead_cb, lfs_ptr, true);
+        let err = {
+            let lfs = UnsafeCell::new(&mut *lfs);
+            lfs_fs_traverse_(
+                *lfs.get(),
+                &mut |block| lfs_alloc_lookahead(*lfs.get(), block),
+                true,
+            )
+        };
         if err.is_err() {
             crate::lfs_trace!("alloc_scan: traverse err={:?}", err);
             lfs_alloc_drop(lfs);
@@ -208,21 +208,7 @@ pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
             return crate::lfs_err!(Err(Error::NoSpace));
         }
 
-        #[cfg(feature = "loop_limits")]
-        const MAX_ALLOC_ITER: u32 = 1024;
-        #[cfg(feature = "loop_limits")]
-        let mut alloc_iter: u32 = 0;
         loop {
-            #[cfg(feature = "loop_limits")]
-            {
-                if alloc_iter >= MAX_ALLOC_ITER {
-                    panic!(
-                        "loop_limits: MAX_ALLOC_ITER ({}) exceeded in lfs_alloc",
-                        MAX_ALLOC_ITER
-                    );
-                }
-                alloc_iter += 1;
-            }
             // scan our lookahead buffer for free blocks
             while lfs.lookahead.next < lfs.lookahead.size {
                 if (*buf.add((lfs.lookahead.next / 8) as usize)) & (1u8 << (lfs.lookahead.next % 8))

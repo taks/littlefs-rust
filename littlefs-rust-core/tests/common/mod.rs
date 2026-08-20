@@ -9,7 +9,7 @@ pub mod dump;
 pub mod powerloss;
 
 use core::cell::RefCell;
-use littlefs_rust_core::{LfsConfig, error::Error};
+use littlefs_rust_core::{LfsConfig, error::Error, lfs_type::OpenFlags};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
@@ -475,10 +475,12 @@ where
 }
 
 /// Panic if result is not 0.
-pub fn assert_ok(result: Result<(), Error>) {
-    if result.is_err() {
-        panic!("expected 0, got {:?}", result);
-    }
+#[macro_export]
+macro_rules! assert_ok {
+    ($result:expr) => {{
+        let result = $result;
+        assert!(result.is_ok(), "expected ok, got {:?}", result);
+    }};
 }
 
 /// Panic if result is not 0, with step name for debugging.
@@ -489,13 +491,17 @@ pub fn assert_ok_at(step: &str, result: Result<(), Error>) {
 }
 
 /// Panic if actual is not expected error code.
-pub fn assert_err<T>(expected: Error, actual: Result<T, Error>)
-where
-    T: core::fmt::Debug + Copy,
-{
-    if actual.is_ok() || actual.unwrap_err() != expected {
-        panic!("expected error {:?}, got {:?}", expected, actual);
-    }
+#[macro_export]
+macro_rules! assert_err {
+    ($expected:expr, $actual:expr$ (,)?) => {{
+        let actual = $actual;
+        assert!(
+            actual == Err($expected),
+            "expected error {:?}, got {:?}",
+            $expected,
+            actual
+        );
+    }};
 }
 
 /// Check if block has "littlefs" at offset 8 or 12 (layout varies by commit path).
@@ -611,14 +617,13 @@ pub fn dir_entry_names(
     Ok(names)
 }
 
-/// Open flags for lfs_file_open. Per lfs.h LFS_O_*.
-pub const LFS_O_RDONLY: i32 = 1;
-pub const LFS_O_WRONLY: i32 = 2;
-pub const LFS_O_RDWR: i32 = 3;
-pub const LFS_O_CREAT: i32 = 0x0100;
-pub const LFS_O_EXCL: i32 = 0x0200;
-pub const LFS_O_TRUNC: i32 = 0x0400;
-pub const LFS_O_APPEND: i32 = 0x0800;
+pub const LFS_O_RDONLY: OpenFlags = OpenFlags::READ;
+pub const LFS_O_WRONLY: OpenFlags = OpenFlags::WRITE;
+pub const LFS_O_RDWR: OpenFlags = OpenFlags::READ_WRITE;
+pub const LFS_O_CREAT: OpenFlags = OpenFlags::CREATE;
+pub const LFS_O_EXCL: OpenFlags = OpenFlags::EXCL;
+pub const LFS_O_TRUNC: OpenFlags = OpenFlags::TRUNC;
+pub const LFS_O_APPEND: OpenFlags = OpenFlags::APPEND;
 
 /// Seek whence. Per lfs.h enum lfs_whence_flags.
 pub const LFS_SEEK_SET: i32 = 0;
@@ -637,7 +642,7 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
     };
 
     init_context(env);
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     lfs_format(lfs, &env.config as &LfsConfig)?;
 
     lfs_mount(lfs, &env.config as &LfsConfig)?;
@@ -645,7 +650,7 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
     let path = "hello";
     let data = b"Hello World!\0";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    let err = lfs_file_open(lfs, file, path, 0x0100 | 2);
+    let err = lfs_file_open(lfs, file, path, OpenFlags::WRITE | OpenFlags::CREATE);
     if let Err(err) = err {
         let _ = lfs_unmount(lfs);
         return Err(err);
@@ -678,9 +683,9 @@ pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
     use littlefs_rust_core::{LfsDir, lfs_dir_close, lfs_dir_open};
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, dir_path));
+    assert_ok!(lfs_dir_open(lfs, dir, dir_path));
     let pair = (dir).m.pair;
-    assert_ok(lfs_dir_close(lfs, dir));
+    assert_ok!(lfs_dir_close(lfs, dir));
     [pair[0], pair[1]]
 }
 
@@ -730,7 +735,7 @@ pub fn config_with_inline_max(block_count: u32, inline_max: i32) -> TestEnv {
 pub fn format_and_read_superblock_blocks(env: &mut TestEnv) -> Result<(Vec<u8>, Vec<u8>), Error> {
     use littlefs_rust_core::{Lfs, lfs_format};
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     lfs_format(lfs, &env.config as &LfsConfig)?;
 
     let block_size = env.config.block_size as usize;

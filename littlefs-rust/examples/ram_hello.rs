@@ -1,6 +1,6 @@
 //! Write and read a file on a RAM-backed littlefs filesystem.
 
-use littlefs_rust::{Config, Filesystem, RamStorage};
+use littlefs_rust::{Allocation, Config, Filesystem, RamStorage};
 
 fn main() {
     // RamStorage is an in-memory block device — useful for tests and examples.
@@ -10,11 +10,11 @@ fn main() {
     let mut storage = RamStorage::<BLOCK_SIZE, BLOCK_COUNT>::new();
     let config = Config::new(BLOCK_SIZE, BLOCK_COUNT);
 
+    let alloc = Allocation::new();
+
     // Format lays down the superblock; mount opens the filesystem for use.
-    Filesystem::format(&mut storage, &config).expect("format failed");
-    let fs = Filesystem::mount(storage, config)
-        .map_err(|(e, _)| e)
-        .expect("mount failed");
+    Filesystem::format(&mut storage, &mut alloc).expect("format failed");
+    let fs = Filesystem::mount(&mut storage, &mut alloc).expect("mount failed");
 
     // write_file / read_to_vec are convenience wrappers that handle
     // open, write/read, and close in one call.

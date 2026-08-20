@@ -1,5 +1,7 @@
 //! Open list node. Per lfs.h struct lfs_mlist.
 
+use core::fmt::Debug;
+
 use super::lfs_mdir::LfsMdir;
 
 /// Per lfs.h struct lfs_mlist
@@ -9,6 +11,17 @@ pub struct LfsMlist {
     pub id: u16,
     pub type_: u8,
     pub m: LfsMdir,
+}
+
+impl Debug for LfsMlist {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("LfsMlist")
+            .field("next", &self.next)
+            .field("id", &self.id)
+            .field("type_", &self.type_)
+            .field("m", &self.m)
+            .finish()
+    }
 }
 
 /// Per lfs.c lfs_mlist_isopen (lines 508-518)
@@ -26,6 +39,7 @@ pub struct LfsMlist {
 ///     return false;
 /// }
 /// ```
+#[allow(unused)]
 pub fn lfs_mlist_isopen(head: *mut LfsMlist, node: *const LfsMlist) -> bool {
     if head.is_null() || node.is_null() {
         return false;
@@ -55,29 +69,12 @@ pub fn lfs_mlist_isopen(head: *mut LfsMlist, node: *const LfsMlist) -> bool {
 ///     }
 /// }
 /// ```
-pub fn lfs_mlist_remove(lfs: *mut crate::fs::Lfs, mlist: *mut LfsMlist) {
-    if lfs.is_null() || mlist.is_null() {
-        return;
-    }
+pub fn lfs_mlist_remove(lfs: &mut crate::fs::Lfs, mlist: &mut LfsMlist) {
     unsafe {
-        let mut p = &mut (*lfs).mlist;
-        #[cfg(feature = "loop_limits")]
-        const MAX_MLIST_REMOVE_ITER: u32 = 256;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
+        let mut p = &mut lfs.mlist;
         while !(*p).is_null() {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_MLIST_REMOVE_ITER {
-                    panic!(
-                        "loop_limits: MAX_MLIST_REMOVE_ITER ({}) exceeded",
-                        MAX_MLIST_REMOVE_ITER
-                    );
-                }
-                iter += 1;
-            }
             if core::ptr::eq(*p, mlist) {
-                *p = (*mlist).next;
+                *p = mlist.next;
                 break;
             }
             p = &mut (*(*p)).next;
@@ -94,13 +91,8 @@ pub fn lfs_mlist_remove(lfs: *mut crate::fs::Lfs, mlist: *mut LfsMlist) {
 ///     lfs->mlist = mlist;
 /// }
 /// ```
-pub fn lfs_mlist_append(lfs: &mut crate::fs::Lfs, mlist: *mut LfsMlist) {
-    if mlist.is_null() {
-        return;
-    }
-    unsafe {
-        let head = lfs.mlist;
-        (*mlist).next = head;
-        lfs.mlist = mlist;
-    }
+pub fn lfs_mlist_append(lfs: &mut crate::fs::Lfs, mlist: &mut LfsMlist) {
+    let head = lfs.mlist;
+    mlist.next = head;
+    lfs.mlist = mlist;
 }

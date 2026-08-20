@@ -6,13 +6,13 @@ use super::*;
 #[test]
 fn test_context_smoke() {
     let ctx = TestContext::default_blocks();
-    let cfg = unsafe { ctx.config() };
+    let cfg = ctx.config();
     assert!(!cfg.context.is_null(), "config.context should be set");
     assert!(cfg.read.is_some());
     assert_eq!(ctx.ram.data.len(), 512 * 128);
     // Direct read through callback
     let mut buf = [0u8; 8];
-    let err = unsafe { cfg.read.expect("read")(ctx.config(), 0, 0, &mut buf) };
+    let err = cfg.read.expect("read")(ctx.config(), 0, 0, &mut buf);
     assert_eq!(err, Ok(()));
     assert_eq!(buf, [0u8; 8]);
 }
@@ -20,7 +20,7 @@ fn test_context_smoke() {
 /// Call lfs_init only. Isolates init from full format.
 #[test]
 fn test_context_lfs_init() {
-    let mut ctx = TestContext::default_blocks();
+    let ctx = TestContext::default_blocks();
     let mut lfs = unsafe { core::mem::MaybeUninit::<crate::Lfs>::zeroed().assume_init() };
     let err = crate::fs::lfs_init(&mut lfs, ctx.config());
     assert_eq!(err, Ok(()));
@@ -30,10 +30,9 @@ fn test_context_lfs_init() {
 #[test]
 fn test_context_format_to_alloc() {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
-    use crate::dir::commit::lfs_dir_alloc;
     use crate::util::lfs_min;
 
-    let mut ctx = TestContext::default_blocks();
+    let ctx = TestContext::default_blocks();
     let mut lfs = unsafe { core::mem::MaybeUninit::<crate::Lfs>::zeroed().assume_init() };
     let err = crate::fs::lfs_init(&mut lfs, ctx.config());
     assert_eq!(err, Ok(()));
@@ -47,9 +46,10 @@ fn test_context_format_to_alloc() {
     lfs.lookahead.start = 0;
     lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
     lfs.lookahead.next = 0;
-    unsafe { lfs_alloc_ckpoint(&mut lfs) };
+    lfs_alloc_ckpoint(&mut lfs);
 
-    let mut root = crate::dir::LfsMdir {
+    #[allow(unused)]
+    let root = crate::dir::LfsMdir {
         pair: [0, 0],
         rev: 0,
         off: 0,
@@ -67,7 +67,7 @@ fn test_context_format_to_alloc() {
 #[test]
 fn test_context_buffers_writable() {
     let ctx = TestContext::default_blocks();
-    let cfg = unsafe { ctx.config() };
+    let cfg = ctx.config();
     // Manually write to each buffer - simulate what lfs_cache_zero and format do
     let block_size = ctx.ram.block_size as usize;
     if !cfg.read_buffer.is_null() {

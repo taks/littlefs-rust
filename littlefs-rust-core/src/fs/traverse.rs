@@ -2,7 +2,7 @@
 
 use zerocopy::IntoBytes;
 
-use crate::{borrow_unchecked::borrow_unchecked, error::Error, tag};
+use crate::{error::Error, lfs_type::OpenFlags};
 //
 /// Per lfs.c lfs_fs_traverse_ (lines 4693-4794)
 ///
@@ -118,13 +118,11 @@ use crate::{borrow_unchecked::borrow_unchecked, error::Error, tag};
 /// C: lfs.c:4693-4794
 pub fn lfs_fs_traverse_(
     lfs: &mut super::lfs::Lfs,
-    cb: fn(*mut core::ffi::c_void, crate::types::lfs_block_t) -> Result<(), Error>,
-    data: *mut core::ffi::c_void,
+    cb: &mut dyn FnMut(crate::types::lfs_block_t) -> Result<(), Error>,
     includeorphans: bool,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::dir::traverse::lfs_dir_get;
-    use crate::file::ctz::lfs_ctz_traverse;
     use crate::fs::mount::{LfsTortoise, lfs_tortoise_detectcycles};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CTZSTRUCT, LFS_TYPE_DIRSTRUCT};
     use crate::tag::{lfs_mktag, lfs_tag_type3};
@@ -174,12 +172,12 @@ pub fn lfs_fs_traverse_(
             }
 
             for i in 0..2 {
-                cb(data, dir.tail[i])?;
+                cb(dir.tail[i])?;
             }
 
             // iterate through ids in directory
             crate::lfs_trace!("fs_traverse: fetch tail={:?} count={}", dir.tail, dir.count);
-            let dir_tail = borrow_unchecked(&dir.tail);
+            let dir_tail = dir.tail;
             lfs_dir_fetch(lfs, &mut dir, dir_tail)?;
 
             for id in 0..dir.count {
@@ -201,22 +199,19 @@ pub fn lfs_fs_traverse_(
 
                 let tag = tag.unwrap();
                 if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
-                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
-                    lfs_ctz_traverse(lfs, None, lfs_rcache, raw[0], raw[1], Some(cb), data)?;
+                    lfs_ctz_traverse(lfs, None, &mut *lfs.rcache.get(), raw[0], raw[1], cb)?;
                 } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
                     #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
                     for i in 0..2 {
-                        cb(data, raw[i])?;
+                        cb(raw[i])?;
                     }
                 }
             }
         }
 
         // iterate over any open files
-        use crate::dir::LfsMlist;
         use crate::file::LfsFile;
         use crate::file::ctz::lfs_ctz_traverse;
-        use crate::lfs_type::lfs_open_flags::{LFS_F_DIRTY, LFS_F_INLINE, LFS_F_WRITING};
         use crate::lfs_type::lfs_type::LFS_TYPE_REG;
 
         let mut m = lfs.mlist;
@@ -235,32 +230,28 @@ pub fn lfs_fs_traverse_(
             let f = m as *mut LfsFile;
             let f_ref = &*f;
             if f_ref.type_ == LFS_TYPE_REG {
-                if (f_ref.flags as i32 & LFS_F_DIRTY) != 0
-                    && (f_ref.flags as i32 & LFS_F_INLINE) == 0
+                if f_ref.flags.contains(OpenFlags::DIRTY)
+                    && !f_ref.flags.contains(OpenFlags::INLINE)
                 {
-                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     lfs_ctz_traverse(
                         lfs,
                         Some(&(*f).cache),
-                        lfs_rcache,
+                        &mut *lfs.rcache.get(),
                         f_ref.ctz.head,
                         f_ref.ctz.size,
-                        Some(cb),
-                        data,
+                        cb,
                     )?;
                 }
-                if (f_ref.flags as i32 & LFS_F_WRITING) != 0
-                    && (f_ref.flags as i32 & LFS_F_INLINE) == 0
+                if f_ref.flags.contains(OpenFlags::WRITING)
+                    && !f_ref.flags.contains(OpenFlags::INLINE)
                 {
-                    let lfs_rcache = borrow_unchecked(&mut lfs.rcache);
                     lfs_ctz_traverse(
                         lfs,
                         Some(&(*f).cache),
-                        lfs_rcache,
+                        &mut *lfs.rcache.get(),
                         f_ref.block,
                         f_ref.pos,
-                        Some(cb),
-                        data,
+                        cb,
                     )?;
                 }
             }

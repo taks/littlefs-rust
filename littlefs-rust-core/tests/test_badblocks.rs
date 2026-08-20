@@ -8,8 +8,8 @@
 mod common;
 
 use common::{
-    BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok,
-    config_with_wear_leveling_full, init_wear_leveling_context,
+    BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, config_with_wear_leveling_full,
+    init_wear_leveling_context,
 };
 use littlefs_rust_core::{
     Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
@@ -56,10 +56,10 @@ fn test_badblocks_single(
         // C: lfs_emubd_setwear(cfg, badblock, 0xffffffff)
         env.bd.set_wear(badblock, 0xffffffff);
 
-        let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-        assert_ok(lfs_format(lfs, &env.config));
+        let lfs = &mut Lfs::default();
+        assert_ok!(lfs_format(lfs, &env.config));
 
-        assert_ok(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, &env.config));
 
         for i in 1..10 {
             let mut buffer = [0u8; 1024];
@@ -69,7 +69,7 @@ fn test_badblocks_single(
             buffer[NAMEMULT] = 0;
 
             // mkdir
-            assert_ok(lfs_mkdir(lfs, unsafe {
+            assert_ok!(lfs_mkdir(lfs, unsafe {
                 str::from_utf8_unchecked(&buffer[..NAMEMULT])
             }));
 
@@ -81,7 +81,7 @@ fn test_badblocks_single(
             buffer[2 * NAMEMULT + 1] = 0;
 
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
+            assert_ok!(lfs_file_open(
                 lfs,
                 file,
                 unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
@@ -94,12 +94,12 @@ fn test_badblocks_single(
                 assert_eq!(n, Ok(size));
             }
 
-            assert_ok(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file));
         }
-        assert_ok(lfs_unmount(lfs));
+        assert_ok!(lfs_unmount(lfs));
 
         // Remount and verify
-        assert_ok(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, &env.config));
 
         for i in 1..10 {
             let mut buffer = [0u8; 1024];
@@ -108,7 +108,7 @@ fn test_badblocks_single(
             }
 
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-            assert_ok(lfs_stat(
+            assert_ok!(lfs_stat(
                 lfs,
                 unsafe { str::from_utf8_unchecked(&buffer[..NAMEMULT]) },
                 info,
@@ -122,7 +122,7 @@ fn test_badblocks_single(
             buffer[2 * NAMEMULT + 1] = 0;
 
             let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-            assert_ok(lfs_file_open(
+            assert_ok!(lfs_file_open(
                 lfs,
                 file,
                 unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
@@ -137,9 +137,9 @@ fn test_badblocks_single(
                 assert_eq!(&rbuffer[..size as usize], &buffer[..size as usize]);
             }
 
-            assert_ok(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file));
         }
-        assert_ok(lfs_unmount(lfs));
+        assert_ok!(lfs_unmount(lfs));
     }
 }
 
@@ -176,16 +176,16 @@ fn test_badblocks_region_corruption(
         env.bd.set_wear(i + 2, 0xffffffff);
     }
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(lfs, &env.config));
+    let lfs = &mut Lfs::default();
+    assert_ok!(lfs_format(lfs, &env.config));
 
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
     badblocks_create_dirs_and_files(lfs);
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
     badblocks_verify_dirs_and_files(lfs);
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_badblocks_alternating_corruption]
@@ -221,16 +221,16 @@ fn test_badblocks_alternating_corruption(
         env.bd.set_wear((2 * i) + 2, 0xffffffff);
     }
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(lfs, &env.config));
+    let lfs = &mut Lfs::default();
+    assert_ok!(lfs_format(lfs, &env.config));
 
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
     badblocks_create_dirs_and_files(lfs);
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
     badblocks_verify_dirs_and_files(lfs);
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_badblocks_superblocks]
@@ -263,7 +263,7 @@ fn test_badblocks_superblocks(
     env.bd.set_wear(0, 0xffffffff);
     env.bd.set_wear(1, 0xffffffff);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
     let err = lfs_format(lfs, &env.config);
     assert_eq!(
         err,
@@ -289,7 +289,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         }
         buffer[NAMEMULT] = 0;
 
-        assert_ok(lfs_mkdir(lfs, unsafe {
+        assert_ok!(lfs_mkdir(lfs, unsafe {
             str::from_utf8_unchecked(&buffer[..NAMEMULT])
         }));
 
@@ -300,7 +300,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         buffer[2 * NAMEMULT + 1] = 0;
 
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(
+        assert_ok!(lfs_file_open(
             lfs,
             file,
             unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
@@ -313,7 +313,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
             assert_eq!(n, Ok(size));
         }
 
-        assert_ok(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file));
     }
 }
 
@@ -326,7 +326,7 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         buffer[NAMEMULT] = 0;
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok(lfs_stat(
+        assert_ok!(lfs_stat(
             lfs,
             unsafe { str::from_utf8_unchecked(&buffer[..(NAMEMULT)]) },
             info,
@@ -340,7 +340,7 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         buffer[2 * NAMEMULT + 1] = 0;
 
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(
+        assert_ok!(lfs_file_open(
             lfs,
             file,
             unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
@@ -355,6 +355,6 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
             assert_eq!(&rbuffer[..size as usize], &buffer[..size as usize]);
         }
 
-        assert_ok(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file));
     }
 }

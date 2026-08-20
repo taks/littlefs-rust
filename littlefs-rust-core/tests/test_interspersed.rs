@@ -8,9 +8,7 @@ mod common;
 
 #[cfg(feature = "slow_tests")]
 use common::LFS_O_APPEND;
-use common::{
-    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_ok, default_config, init_context,
-};
+use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, default_config, init_context};
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_file_size;
 use littlefs_rust_core::{
@@ -36,9 +34,9 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(lfs, &env.config));
-    assert_ok(lfs_mount(lfs, &env.config));
+    let lfs = &mut Lfs::default();
+    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
 
     let mut file_handles: Vec<LfsFile> = (0..files)
         .map(|_| unsafe { core::mem::MaybeUninit::zeroed().assume_init() })
@@ -46,7 +44,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
-        assert_ok(lfs_file_open(
+        assert_ok!(lfs_file_open(
             lfs,
             &mut file_handles[j],
             path,
@@ -63,13 +61,13 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     }
 
     for j in 0..files {
-        assert_ok(lfs_file_close(lfs, &mut file_handles[j]));
+        assert_ok!(lfs_file_close(lfs, &mut file_handles[j]));
     }
 
     // Verify directory listing
     let root = "/";
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, root));
+    assert_ok!(lfs_dir_open(lfs, dir, root));
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
@@ -92,7 +90,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     }
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
-    assert_ok(lfs_dir_close(lfs, dir));
+    assert_ok!(lfs_dir_close(lfs, dir));
 
     // Re-open for reading and verify first 10 bytes
     let mut file_handles: Vec<LfsFile> = (0..files)
@@ -101,7 +99,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
-        assert_ok(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY));
     }
 
     for _i in 0..10 {
@@ -114,10 +112,10 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     }
 
     for j in 0..files {
-        assert_ok(lfs_file_close(lfs, &mut file_handles[j]));
+        assert_ok!(lfs_file_close(lfs, &mut file_handles[j]));
     }
 
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_interspersed_remove_files]
@@ -135,15 +133,15 @@ fn test_interspersed_remove_files(
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(lfs, &env.config));
-    assert_ok(lfs_mount(lfs, &env.config));
+    let lfs = &mut Lfs::default();
+    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
 
     // Create FILES files with SIZE bytes each
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
         let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-        assert_ok(lfs_file_open(
+        assert_ok!(lfs_file_open(
             lfs,
             file,
             path,
@@ -154,15 +152,15 @@ fn test_interspersed_remove_files(
             let n = lfs_file_write(lfs, file, &byte);
             assert_eq!(n, Ok(1));
         }
-        assert_ok(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file));
     }
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 
     // Remount, open "zzz", interleave writes+syncs with removes
-    assert_ok(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
     let zzz_path = "zzz";
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_file_open(
         lfs,
         file,
         zzz_path,
@@ -173,17 +171,17 @@ fn test_interspersed_remove_files(
         let tilde = b"~";
         let n = lfs_file_write(lfs, file, tilde);
         assert_eq!(n, Ok(1));
-        assert_ok(lfs_file_sync(lfs, file));
+        assert_ok!(lfs_file_sync(lfs, file));
 
         let path = &String::from(ALPHAS[j] as char);
-        assert_ok(lfs_remove(lfs, path));
+        assert_ok!(lfs_remove(lfs, path));
     }
-    assert_ok(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file));
 
     // Verify directory: only "zzz" left
     let root = "/";
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, root));
+    assert_ok!(lfs_dir_open(lfs, dir, root));
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
@@ -203,20 +201,20 @@ fn test_interspersed_remove_files(
     assert_eq!(info.size, files as u32);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
-    assert_ok(lfs_dir_close(lfs, dir));
+    assert_ok!(lfs_dir_close(lfs, dir));
 
     // Verify "zzz" content
     let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    assert_ok(lfs_file_open(lfs, file, zzz_path, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, zzz_path, LFS_O_RDONLY));
     for _i in 0..files {
         let mut buffer = [0u8; 1];
         let n = lfs_file_read(lfs, file, &mut buffer);
         assert_eq!(n, Ok(1));
         assert_eq!(buffer[0], b'~');
     }
-    assert_ok(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file));
 
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_interspersed_remove_inconveniently]
@@ -231,9 +229,9 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
-    assert_ok(lfs_format(lfs, &env.config));
-    assert_ok(lfs_mount(lfs, &env.config));
+    let lfs = &mut Lfs::default();
+    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
 
     let mut files: [LfsFile; 3] = [
         unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
@@ -245,19 +243,19 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
     let path_f = "f";
     let path_g = "g";
 
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_file_open(
         lfs,
         &mut files[0],
         path_e,
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_file_open(
         lfs,
         &mut files[1],
         path_f,
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    assert_ok(lfs_file_open(
+    assert_ok!(lfs_file_open(
         lfs,
         &mut files[2],
         path_g,
@@ -272,7 +270,7 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
     }
 
     // Remove "f" while it's still open
-    assert_ok(lfs_remove(lfs, path_f));
+    assert_ok!(lfs_remove(lfs, path_f));
 
     // Write another SIZE/2 bytes to all three
     for _i in 0..(size / 2) {
@@ -281,14 +279,14 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
         assert_eq!(lfs_file_write(lfs, &mut files[2], b"g"), Ok(1));
     }
 
-    assert_ok(lfs_file_close(lfs, &mut files[0]));
-    assert_ok(lfs_file_close(lfs, &mut files[1]));
-    assert_ok(lfs_file_close(lfs, &mut files[2]));
+    assert_ok!(lfs_file_close(lfs, &mut files[0]));
+    assert_ok!(lfs_file_close(lfs, &mut files[1]));
+    assert_ok!(lfs_file_close(lfs, &mut files[2]));
 
     // Verify directory: "e" and "g" present, "f" absent
     let root = "/";
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, root));
+    assert_ok!(lfs_dir_open(lfs, dir, root));
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
@@ -313,15 +311,15 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
     assert_eq!(info.size, size as u32);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
-    assert_ok(lfs_dir_close(lfs, dir));
+    assert_ok!(lfs_dir_close(lfs, dir));
 
     // Read "e" and "g", verify SIZE bytes
     let mut files_r: [LfsFile; 2] = [
         unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
         unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
     ];
-    assert_ok(lfs_file_open(lfs, &mut files_r[0], path_e, LFS_O_RDONLY));
-    assert_ok(lfs_file_open(lfs, &mut files_r[1], path_g, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, &mut files_r[0], path_e, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, &mut files_r[1], path_g, LFS_O_RDONLY));
 
     for _i in 0..size {
         let mut buffer = [0u8; 1];
@@ -330,10 +328,10 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
         assert_eq!(lfs_file_read(lfs, &mut files_r[1], &mut buffer), Ok(1));
         assert_eq!(buffer[0], b'g');
     }
-    assert_ok(lfs_file_close(lfs, &mut files_r[0]));
-    assert_ok(lfs_file_close(lfs, &mut files_r[1]));
+    assert_ok!(lfs_file_close(lfs, &mut files_r[0]));
+    assert_ok!(lfs_file_close(lfs, &mut files_r[1]));
 
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_interspersed_reentrant_files]
@@ -354,13 +352,13 @@ fn test_interspersed_reentrant_files(
     let mut env = default_config(128);
     init_context(&mut env);
 
-    let lfs = &mut unsafe { core::mem::MaybeUninit::<Lfs>::zeroed().assume_init() };
+    let lfs = &mut Lfs::default();
 
     // Mount-or-format
     let err = lfs_mount(lfs, &env.config);
     if err.is_err() {
-        assert_ok(lfs_format(lfs, &env.config));
-        assert_ok(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, &env.config));
     }
 
     let mut file_handles: Vec<LfsFile> = (0..files)
@@ -369,7 +367,7 @@ fn test_interspersed_reentrant_files(
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
-        assert_ok(lfs_file_open(
+        assert_ok!(lfs_file_open(
             lfs,
             &mut file_handles[j],
             path,
@@ -385,19 +383,19 @@ fn test_interspersed_reentrant_files(
                 let byte = [ALPHAS[j]];
                 let n = lfs_file_write(lfs, &mut file_handles[j], &byte);
                 assert_eq!(n, Ok(1));
-                assert_ok(lfs_file_sync(lfs, &mut file_handles[j]));
+                assert_ok!(lfs_file_sync(lfs, &mut file_handles[j]));
             }
         }
     }
 
     for j in 0..files {
-        assert_ok(lfs_file_close(lfs, &mut file_handles[j]));
+        assert_ok!(lfs_file_close(lfs, &mut file_handles[j]));
     }
 
     // Verify directory
     let root = "/";
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok(lfs_dir_open(lfs, dir, root));
+    assert_ok!(lfs_dir_open(lfs, dir, root));
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
@@ -419,7 +417,7 @@ fn test_interspersed_reentrant_files(
         assert_eq!(info.size, size as u32);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
-    assert_ok(lfs_dir_close(lfs, dir));
+    assert_ok!(lfs_dir_close(lfs, dir));
 
     // Read first 10 bytes from each
     let mut file_handles: Vec<LfsFile> = (0..files)
@@ -428,7 +426,7 @@ fn test_interspersed_reentrant_files(
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
-        assert_ok(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY));
     }
 
     for _i in 0..10 {
@@ -441,8 +439,8 @@ fn test_interspersed_reentrant_files(
     }
 
     for j in 0..files {
-        assert_ok(lfs_file_close(lfs, &mut file_handles[j]));
+        assert_ok!(lfs_file_close(lfs, &mut file_handles[j]));
     }
 
-    assert_ok(lfs_unmount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }

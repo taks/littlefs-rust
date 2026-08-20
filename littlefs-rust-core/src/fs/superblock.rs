@@ -2,10 +2,9 @@
 
 use zerocopy::IntoBytes;
 
-use crate::borrow_unchecked::borrow_unchecked;
 use crate::error::Error;
-use crate::lfs_pass_err;
 use crate::types::lfs_block_t;
+use crate::{lfs_debug, lfs_pass_err};
 
 /// Per lfs.c lfs_fs_prepsuperblock (lines 4888-4892)
 ///
@@ -29,15 +28,13 @@ pub fn lfs_fs_preporphans(lfs: &mut super::lfs::Lfs, orphans: i8) -> Result<(), 
     use crate::lfs_gstate::lfs_gstate_hasorphans;
     use crate::tag::{lfs_mktag, lfs_tag_size};
 
-    unsafe {
-        let tag_size = lfs_tag_size(lfs.gstate.tag);
-        crate::lfs_assert!(tag_size > 0x000 || orphans >= 0);
-        crate::lfs_assert!(tag_size < 0x1ff || orphans <= 0);
-        lfs.gstate.tag = lfs.gstate.tag.wrapping_add(orphans as u32);
-        lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0x800, 0, 0))
-            | ((lfs_gstate_hasorphans(&lfs.gstate) as u32) << 31);
-        Ok(())
-    }
+    let tag_size = lfs_tag_size(lfs.gstate.tag);
+    crate::lfs_assert!(tag_size > 0x000 || orphans >= 0);
+    crate::lfs_assert!(tag_size < 0x1ff || orphans <= 0);
+    lfs.gstate.tag = lfs.gstate.tag.wrapping_add(orphans as u32);
+    lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0x800, 0, 0))
+        | ((lfs_gstate_hasorphans(&lfs.gstate) as u32) << 31);
+    Ok(())
 }
 
 /// Translation docs: Record a pending move (or clear it when id=0x3ff) in gstate.
@@ -87,8 +84,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         crate::lfs_trace!("desuperblock: need superblock, fetching root");
 
         let mut root = core::mem::zeroed();
-        let lfs_root = borrow_unchecked(&mut lfs.root);
-        lfs_dir_fetch(lfs, &mut root, lfs_root)?;
+        lfs_dir_fetch(lfs, &mut root, lfs.root)?;
 
         // write a new superblock
         let mut superblock = LfsSuperblock {
@@ -163,28 +159,25 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     use crate::lfs_type::lfs_type::LFS_TYPE_DELETE;
     use crate::tag::{lfs_mktag, lfs_tag_id, lfs_tag_type3};
 
-    unsafe {
-        if !lfs_gstate_hasmove(&lfs.gdisk) {
-            crate::lfs_trace!("demove: no move, return 0");
-            return Ok(());
-        }
-        crate::lfs_trace!("demove: has move, fixing");
-
-        crate::lfs_assert!((lfs_tag_type3(lfs.gdisk.tag)) == LFS_TYPE_DELETE);
-
-        let mut movedir = core::mem::zeroed();
-        let lfs_gdisk = borrow_unchecked(&lfs.gdisk);
-        lfs_dir_fetch(lfs, &mut movedir, &lfs_gdisk.pair)?;
-
-        let moveid = lfs_tag_id(lfs.gdisk.tag);
-        lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
-
-        let attrs = [crate::tag::lfs_mattr {
-            tag: lfs_mktag(LFS_TYPE_DELETE, moveid as u32, 0),
-            buffer: &[],
-        }];
-        lfs_dir_commit(lfs, &mut movedir, &attrs)
+    if !lfs_gstate_hasmove(&lfs.gdisk) {
+        crate::lfs_trace!("demove: no move, return 0");
+        return Ok(());
     }
+    crate::lfs_trace!("demove: has move, fixing");
+
+    crate::lfs_assert!((lfs_tag_type3(lfs.gdisk.tag)) == LFS_TYPE_DELETE);
+
+    let mut movedir = unsafe { core::mem::zeroed() };
+    lfs_dir_fetch(lfs, &mut movedir, lfs.gdisk.pair)?;
+
+    let moveid = lfs_tag_id(lfs.gdisk.tag);
+    lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
+
+    let attrs = [crate::tag::lfs_mattr {
+        tag: lfs_mktag(LFS_TYPE_DELETE, moveid as u32, 0),
+        buffer: &[],
+    }];
+    lfs_dir_commit(lfs, &mut movedir, &attrs)
 }
 
 /// Per lfs.c lfs_fs_deorphan (lines 4991-5120)
@@ -328,7 +321,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(), Error> {
     crate::lfs_trace!("deorphan: start powerloss={}", powerloss);
     use crate::dir::LfsMdir;
-    use crate::dir::commit::{lfs_dir_commit, lfs_dir_orphaningcommit};
+    use crate::dir::commit::lfs_dir_orphaningcommit;
     use crate::dir::fetch::lfs_dir_fetch;
     use crate::dir::traverse::lfs_dir_get;
     use crate::error::LFS_OK_ORPHANED;
@@ -336,127 +329,79 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
     use crate::lfs_gstate::{lfs_gstate_getorphans, lfs_gstate_hasmovehere};
     use crate::lfs_type::lfs_type::{LFS_TYPE_SOFTTAIL, LFS_TYPE_TAIL};
     use crate::tag::{lfs_mktag, lfs_mktag_if, lfs_tag_id};
-    use crate::types::LFS_BLOCK_NULL;
     use crate::util::{lfs_pair_fromle32, lfs_pair_issync, lfs_pair_tole32};
 
-    unsafe {
-        if !crate::lfs_gstate::lfs_gstate_hasorphans(&lfs.gstate) {
-            return Ok(());
-        }
+    if !crate::lfs_gstate::lfs_gstate_hasorphans(&lfs.gstate) {
+        return Ok(());
+    }
 
-        let mut pass: i32 = 0;
-        while pass < 2 {
-            let mut pdir = LfsMdir {
-                pair: [0, 0],
-                rev: 0,
-                off: 0,
-                etag: 0,
-                count: 0,
-                erased: false,
-                split: true,
-                tail: [0, 1],
-            };
-            let mut dir = core::mem::zeroed::<LfsMdir>();
-            let mut moreorphans = false;
-            #[cfg(feature = "loop_limits")]
-            let mut iter: u32 = 0;
-            #[cfg(feature = "loop_limits")]
-            const MAX_DEORPHAN_ITER: u32 = 512;
+    let mut pass: i32 = 0;
+    while pass < 2 {
+        let mut pdir = LfsMdir {
+            pair: [0, 0],
+            rev: 0,
+            off: 0,
+            etag: 0,
+            count: 0,
+            erased: false,
+            split: true,
+            tail: [0, 1],
+        };
+        let mut dir = unsafe { core::mem::zeroed::<LfsMdir>() };
+        let mut moreorphans = false;
 
-            while !crate::util::lfs_pair_isnull(&pdir.tail) {
-                #[cfg(feature = "loop_limits")]
+        while !crate::util::lfs_pair_isnull(&pdir.tail) {
+            lfs_dir_fetch(lfs, &mut dir, pdir.tail)?;
+
+            if !pdir.split {
+                let mut parent = unsafe { core::mem::zeroed() };
+                let tag = lfs_fs_parent(lfs, &pdir.tail, &mut parent);
+                if let Err(err) = tag
+                    && err != Error::NoEntry
                 {
-                    if iter >= MAX_DEORPHAN_ITER {
-                        panic!(
-                            "loop_limits: MAX_DEORPHAN_ITER ({}) exceeded",
-                            MAX_DEORPHAN_ITER
-                        );
-                    }
-                    if iter > 0 && iter.is_multiple_of(20) {
-                        crate::lfs_trace!(
-                            "deorphan: pass={} iter={} tail={:?}",
-                            pass,
-                            iter,
-                            pdir.tail
-                        );
-                    }
-                    iter += 1;
+                    return Err(err);
                 }
-                lfs_dir_fetch(lfs, &mut dir, &pdir.tail)?;
 
-                if !pdir.split {
-                    let mut parent = core::mem::zeroed();
-                    let tag = lfs_fs_parent(lfs, &pdir.tail, &mut parent);
-                    if let Err(err) = tag
-                        && err != Error::NoEntry
-                    {
-                        return Err(err);
-                    }
+                if pass == 0 && tag != Err(Error::NoEntry) {
+                    let mut pair: [crate::types::lfs_block_t; 2] = [0, 0];
+                    let _state = lfs_dir_get(
+                        lfs,
+                        &parent,
+                        lfs_mktag(0x7ff, 0x3ff, 0),
+                        tag.unwrap(),
+                        pair.as_mut_bytes(),
+                    )?;
 
-                    if pass == 0 && tag != Err(Error::NoEntry) {
-                        let mut pair: [crate::types::lfs_block_t; 2] = [0, 0];
-                        let state = lfs_dir_get(
-                            lfs,
-                            &parent,
-                            lfs_mktag(0x7ff, 0x3ff, 0),
-                            tag.unwrap(),
-                            pair.as_mut_bytes(),
-                        )?;
+                    lfs_pair_fromle32(&mut pair);
 
-                        lfs_pair_fromle32(&mut pair);
-
-                        if !lfs_pair_issync(&pair, &pdir.tail) {
-                            let mut moveid: u16 = 0x3ff;
-                            if lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
-                                moveid = lfs_tag_id(lfs.gstate.tag);
-                                lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
-                            }
-
-                            lfs_pair_tole32(&mut pair);
-                            let attrs = [
-                                crate::tag::lfs_mattr {
-                                    tag: lfs_mktag_if(
-                                        moveid != 0x3ff,
-                                        crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
-                                        moveid as u32,
-                                        0,
-                                    ),
-                                    buffer: &[],
-                                },
-                                crate::tag::lfs_mattr {
-                                    tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
-                                    buffer: pair.as_bytes(),
-                                },
-                            ];
-                            let state = {
-                                let ret = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
-                                lfs_pair_fromle32(&mut pair);
-                                ret
-                            }?;
-                            if state == LFS_OK_ORPHANED {
-                                moreorphans = true;
-                            }
-                            continue;
+                    if !lfs_pair_issync(&pair, &pdir.tail) {
+                        let mut moveid: u16 = 0x3ff;
+                        if lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
+                            moveid = lfs_tag_id(lfs.gstate.tag);
+                            lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
                         }
-                    }
 
-                    if pass == 1 && tag == Err(Error::NoEntry) && powerloss {
-                        let lfs_gdelta = borrow_unchecked(&mut lfs.gdelta);
-                        lfs_pass_err!(crate::dir::fetch::lfs_dir_getgstate(lfs, &dir, lfs_gdelta))?;
-
-                        let mut dir_tail = dir.tail;
-                        lfs_pair_tole32(&mut dir_tail);
-                        let attrs = [crate::tag::lfs_mattr {
-                            tag: lfs_mktag(LFS_TYPE_TAIL + if dir.split { 1 } else { 0 }, 0x3ff, 8),
-                            buffer: dir_tail.as_bytes(),
-                        }];
-
+                        lfs_pair_tole32(&mut pair);
+                        let attrs = [
+                            crate::tag::lfs_mattr {
+                                tag: lfs_mktag_if(
+                                    moveid != 0x3ff,
+                                    crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
+                                    moveid as u32,
+                                    0,
+                                ),
+                                buffer: &[],
+                            },
+                            crate::tag::lfs_mattr {
+                                tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
+                                buffer: pair.as_bytes(),
+                            },
+                        ];
                         let state = {
-                            let ret = lfs_dir_orphaningcommit(lfs, &mut pdir, &attrs);
-                            lfs_pair_fromle32(&mut dir_tail);
+                            let ret = lfs_dir_orphaningcommit(lfs, (&mut pdir).into(), &attrs);
+                            lfs_pair_fromle32(&mut pair);
                             ret
                         }?;
-
                         if state == LFS_OK_ORPHANED {
                             moreorphans = true;
                         }
@@ -464,15 +409,46 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                     }
                 }
 
-                pdir = dir;
+                // note we only check for full orphans if we may have had a
+                // power-loss, otherwise orphans are created intentionally
+                // during operations such as lfs_mkdir
+                if pass == 1 && tag == Err(Error::NoEntry) && powerloss {
+                    lfs_debug!("Fixing orphan 0x{:x}, 0x{:x}", pdir.tail[0], pdir.tail[1]);
+
+                    lfs_pass_err!(crate::dir::fetch::lfs_dir_getgstate(
+                        lfs,
+                        &dir,
+                        &mut lfs.gdelta.borrow_mut()
+                    ))?;
+
+                    let mut dir_tail = dir.tail;
+                    lfs_pair_tole32(&mut dir_tail);
+                    let attrs = [crate::tag::lfs_mattr {
+                        tag: lfs_mktag(LFS_TYPE_TAIL + if dir.split { 1 } else { 0 }, 0x3ff, 8),
+                        buffer: dir_tail.as_bytes(),
+                    }];
+
+                    let state = {
+                        let ret = lfs_dir_orphaningcommit(lfs, (&mut pdir).into(), &attrs);
+                        lfs_pair_fromle32(&mut dir_tail);
+                        ret
+                    }?;
+
+                    if state == LFS_OK_ORPHANED {
+                        moreorphans = true;
+                    }
+                    continue;
+                }
             }
 
-            pass = if moreorphans { 0 } else { pass + 1 };
+            pdir = dir;
         }
 
-        let orphans = lfs_gstate_getorphans(&lfs.gstate);
-        lfs_fs_preporphans(lfs, -(orphans as i8))
+        pass = if moreorphans { 0 } else { pass + 1 };
     }
+
+    let orphans = lfs_gstate_getorphans(&lfs.gstate);
+    lfs_fs_preporphans(lfs, -(orphans as i8))
 }
 
 /// Translation docs: Ensure filesystem consistency before mutations. Calls desuperblock,

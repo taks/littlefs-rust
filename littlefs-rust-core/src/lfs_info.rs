@@ -1,9 +1,8 @@
 //! File and filesystem info. Per lfs.h struct lfs_info, lfs_fsinfo, lfs_attr, lfs_file_config.
 
-use zerocopy_derive::{FromBytes, Immutable, IntoBytes, KnownLayout, TryFromBytes};
+use zerocopy_derive::{Immutable, KnownLayout, TryFromBytes};
 
 use crate::types::lfs_size_t;
-use core::ffi::c_void;
 
 /// Per lfs.h struct lfs_info
 #[repr(C)]
@@ -33,47 +32,7 @@ pub struct LfsAttr<'a> {
 }
 
 unsafe impl<'a> zerocopy::IntoBytes for LfsAttr<'a> {
-    fn as_bytes(&self) -> &[u8]
-    where
-        Self: zerocopy::Immutable,
-    {
-        todo!()
-    }
-
-    fn as_mut_bytes(&mut self) -> &mut [u8]
-    where
-        Self: zerocopy::FromBytes,
-    {
-        todo!()
-    }
-
-    fn write_to(&self, dst: &mut [u8]) -> Result<(), zerocopy::SizeError<&Self, &mut [u8]>>
-    where
-        Self: zerocopy::Immutable,
-    {
-        todo!()
-    }
-
-    fn write_to_prefix(&self, dst: &mut [u8]) -> Result<(), zerocopy::SizeError<&Self, &mut [u8]>>
-    where
-        Self: zerocopy::Immutable,
-    {
-        todo!()
-    }
-
-    fn write_to_suffix(&self, dst: &mut [u8]) -> Result<(), zerocopy::SizeError<&Self, &mut [u8]>>
-    where
-        Self: zerocopy::Immutable,
-    {
-        todo!()
-    }
-
-    fn only_derive_is_allowed_to_implement_this_trait()
-    where
-        Self: Sized,
-    {
-        todo!()
-    }
+    fn only_derive_is_allowed_to_implement_this_trait() {}
 }
 
 /// Per lfs.h struct lfs_file_config

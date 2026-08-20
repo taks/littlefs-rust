@@ -1,5 +1,8 @@
 //! Main filesystem type. Per lfs.h typedef struct lfs.
 
+use core::cell::{RefCell, UnsafeCell};
+use core::fmt::Debug;
+
 use crate::bd::LfsCache;
 use crate::dir::LfsMlist;
 use crate::lfs_config::LfsConfig;
@@ -10,15 +13,16 @@ use super::lfs_lookahead::LfsLookahead;
 
 /// Per lfs.h typedef struct lfs
 #[repr(C)]
+#[derive(Default)]
 pub struct Lfs {
-    pub rcache: LfsCache,
-    pub pcache: LfsCache,
+    pub rcache: UnsafeCell<LfsCache>,
+    pub pcache: UnsafeCell<LfsCache>,
     pub root: [lfs_block_t; 2],
     pub mlist: *mut LfsMlist,
     pub seed: u32,
     pub gstate: LfsGstate,
     pub gdisk: LfsGstate,
-    pub gdelta: LfsGstate,
+    pub gdelta: RefCell<LfsGstate>,
     pub lookahead: LfsLookahead,
     pub cfg: *const LfsConfig,
     pub block_count: u32,
@@ -26,4 +30,16 @@ pub struct Lfs {
     pub file_max: u32,
     pub attr_max: u32,
     pub inline_max: u32,
+}
+
+impl Debug for Lfs {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let mut s = f.debug_struct("Lfs");
+        unsafe {
+            if let Some(mlist) = self.mlist.as_ref() {
+                s.field("mlist", mlist);
+            }
+        }
+        s.finish()
+    }
 }
