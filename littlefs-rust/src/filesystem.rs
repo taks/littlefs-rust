@@ -139,13 +139,10 @@ impl<S: Storage> Allocation<S> {
 
 impl<'a, S: Storage> Filesystem<'a, S> {
     fn new(storage: &'a mut S, alloc: &'a mut Allocation<S>) -> Self {
-        {
-            let config = alloc.config.get_mut();
-            config.context = storage as *mut _ as *mut c_void;
-            config.read_buffer = alloc.cache.read.as_mut_ptr() as *mut c_void;
-            config.prog_buffer = alloc.cache.write.as_mut_ptr() as *mut c_void;
-            config.lookahead_buffer = alloc.cache.lookahead.as_mut_ptr() as *mut c_void;
-        }
+        alloc.config.context = storage as *mut _ as *mut c_void;
+        alloc.config.read_buffer = alloc.cache.read.as_mut_ptr() as *mut c_void;
+        alloc.config.prog_buffer = alloc.cache.write.as_mut_ptr() as *mut c_void;
+        alloc.config.lookahead_buffer = alloc.cache.lookahead.as_mut_ptr() as *mut c_void;
 
         Self {
             alloc: RefCell::new(alloc),
