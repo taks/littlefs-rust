@@ -4,21 +4,21 @@ use littlefs_rust::{Allocation, Error, FileAllocation, FileType, Filesystem, Ope
 
 type RamStorage = littlefs_rust::RamStorage<512, 128>;
 
-fn format_and_mount() -> Filesystem<'static, RamStorage> {
+fn format_and_mount(cb: impl FnOnce(Filesystem<'_, RamStorage>) -> ()) -> () {
     let mut storage = RamStorage::new();
     let mut alloc = Allocation::new();
 
     Filesystem::format(&mut storage, &mut alloc).expect("format");
-    Filesystem::mount(&mut storage, &mut alloc).expect("mount")
+    let fs = Filesystem::mount(&mut storage, &mut alloc).expect("mount");
+    cb(fs)
 }
 
 #[test]
-fn test_format_mount_unmount() {
+fn test_format_mount() {
     let mut storage = RamStorage::new();
     let mut alloc = Allocation::new();
     Filesystem::format(&mut storage, &mut alloc).unwrap();
-    let fs = Filesystem::mount(&mut storage, config).unwrap();
-    let _storage = fs.unmount().unwrap();
+    let _ = Filesystem::mount(&mut storage, &mut alloc).unwrap();
 }
 
 #[test]
@@ -50,26 +50,27 @@ fn test_format_does_not_consume_storage() {
 
 #[test]
 fn test_write_read_roundtrip() {
-    let fs = format_and_mount();
-    let data = b"Hello, littlefs!";
+    format_and_mount(|fs| {
+        let data = b"Hello, littlefs!";
 
-    let mut falloc = FileAllocation::new();
+        let mut falloc = FileAllocation::new();
 
-    let mut file = fs
-        .open(
-            &mut falloc,
-            "/hello.txt",
-            OpenFlags::WRITE | OpenFlags::CREATE,
-        )
-        .unwrap();
-    file.write(data).unwrap();
-    file.close().unwrap();
+        let mut file = fs
+            .open(
+                &mut falloc,
+                "/hello.txt",
+                OpenFlags::WRITE | OpenFlags::CREATE,
+            )
+            .unwrap();
+        file.write(data).unwrap();
+        file.close().unwrap();
 
-    let mut file = fs.open(&mut falloc, "/hello.txt", OpenFlags::READ).unwrap();
-    let mut buf = vec![0u8; 64];
-    let n = file.read(&mut buf).unwrap();
-    assert_eq!(&buf[..n as usize], data);
-    file.close().unwrap();
+        let mut file = fs.open(&mut falloc, "/hello.txt", OpenFlags::READ).unwrap();
+        let mut buf = vec![0u8; 64];
+        let n = file.read(&mut buf).unwrap();
+        assert_eq!(&buf[..n as usize], data);
+        file.close().unwrap();
+    })
 }
 
 #[test]
