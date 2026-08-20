@@ -29,15 +29,15 @@ impl<S: Storage> FileAllocation<'_, S> {
 ///
 /// Obtained from [`Filesystem::open`]. Automatically closed on drop; call
 /// [`File::close`] explicitly to check for errors.
-pub struct File<'a, 'b, S: Storage> {
+pub struct File<'a, 'b, 'c, S: Storage> {
     fs: &'b Filesystem<'a, S>,
-    alloc: RefCell<*mut FileAllocation<'a, S>>,
+    alloc: RefCell<&'b mut FileAllocation<'c, S>>,
 }
 
-impl<'a, 'b, S: Storage> File<'a, 'b, S> {
+impl<'a, 'b, 'c, S: Storage> File<'a, 'b, 'c, S> {
     pub(crate) fn open(
         fs: &'b Filesystem<'a, S>,
-        alloc: &'b mut FileAllocation<S>,
+        alloc: &'b mut FileAllocation<'c, S>,
         path: &str,
         flags: OpenFlags,
     ) -> Result<Self, Error> {
@@ -61,17 +61,15 @@ impl<'a, 'b, S: Storage> File<'a, 'b, S> {
     /// Returns the number of bytes actually read.
     pub fn read(&mut self, buf: &mut [u8]) -> Result<u32, Error> {
         let mut inner = self.fs.alloc.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_read(&mut inner.lfs, &mut self.alloc.file, buf);
-        drop(inner);
-        rc
+        let file = &mut self.alloc.borrow_mut().file;
+        littlefs_rust_core::lfs_file_read(&mut inner.lfs, file, buf)
     }
 
     /// Write `data` at the current position. Returns the number of bytes written.
     pub fn write(&mut self, data: &[u8]) -> Result<u32, Error> {
         let mut inner = self.fs.alloc.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_write(&mut inner.lfs, &mut self.alloc.file, data);
-        drop(inner);
-        rc
+        let file = &mut self.alloc.borrow_mut().file;
+        littlefs_rust_core::lfs_file_write(&mut inner.lfs, file, data)
     }
 
     /// Seek to a position. Returns the new absolute offset.
