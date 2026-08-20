@@ -32,12 +32,15 @@ impl<const BLOCK_SIZE: usize, const BLOCK_COUNT: usize> Storage
     type LOOKAHEAD_SIZE = hybrid_array::sizes::U1;
 
     fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
-        buf.copy_from_slice(&self.data[block as usize][(offset as usize)..(offset as usize + buf.len())]);
+        buf.copy_from_slice(
+            &self.data[block as usize][(offset as usize)..(offset as usize + buf.len())],
+        );
         Ok(())
     }
 
     fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
-        self.data[block as usize][(offset as usize)..(offset as usize + data.len())].copy_from_slice(data);
+        self.data[block as usize][(offset as usize)..(offset as usize + data.len())]
+            .copy_from_slice(data);
         Ok(())
     }
 

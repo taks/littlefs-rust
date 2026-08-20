@@ -9,8 +9,7 @@ fn format_and_mount() -> Filesystem<'static, RamStorage> {
     let mut alloc = Allocation::new();
 
     Filesystem::format(&mut storage, &mut alloc).expect("format");
-    Filesystem::mount(&mut storage, &mut alloc)
-        .expect("mount")
+    Filesystem::mount(&mut storage, &mut alloc).expect("mount")
 }
 
 #[test]
@@ -18,8 +17,7 @@ fn test_format_mount_unmount() {
     let mut storage = RamStorage::new();
     let mut alloc = Allocation::new();
     Filesystem::format(&mut storage, &mut alloc).unwrap();
-    let fs = Filesystem::mount(&mut storage, config)
-        .unwrap();
+    let fs = Filesystem::mount(&mut storage, config).unwrap();
     let _storage = fs.unmount().unwrap();
 }
 
@@ -38,8 +36,7 @@ fn test_drop_unmounts() {
     let mut alloc = Allocation::new();
     Filesystem::format(&mut storage, &mut alloc).unwrap();
     {
-        let _fs = Filesystem::mount(&mut storage, &mut alloc)
-            .unwrap();
+        let _fs = Filesystem::mount(&mut storage, &mut alloc).unwrap();
     }
     // No panic — Drop ran unmount
 }
@@ -59,7 +56,11 @@ fn test_write_read_roundtrip() {
     let mut falloc = FileAllocation::new();
 
     let mut file = fs
-        .open(&mut falloc, "/hello.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+        .open(
+            &mut falloc,
+            "/hello.txt",
+            OpenFlags::WRITE | OpenFlags::CREATE,
+        )
         .unwrap();
     file.write(data).unwrap();
     file.close().unwrap();
@@ -106,7 +107,11 @@ fn test_seek_tell_size() {
     let falloc = FileAllocation::new();
 
     let mut file = fs
-        .open(&mut falloc, "/data.bin", OpenFlags::WRITE | OpenFlags::CREATE)
+        .open(
+            &mut falloc,
+            "/data.bin",
+            OpenFlags::WRITE | OpenFlags::CREATE,
+        )
         .unwrap();
     file.write(b"0123456789").unwrap();
     file.close().unwrap();

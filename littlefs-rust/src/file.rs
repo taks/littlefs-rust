@@ -112,12 +112,10 @@ impl<'a, 'b, 'c, S: Storage> File<'a, 'b, 'c, S> {
     }
 
     /// Flush cached writes to storage.
-    pub fn sync(&mut self) -> Result<(), Error> {
+    pub fn flush(&mut self) -> Result<(), Error> {
         let mut inner = self.fs.alloc.borrow_mut();
         let file = &mut self.alloc.borrow_mut().file;
-        let rc = littlefs_rust_core::lfs_file_sync(&mut inner.lfs, file);
-        drop(inner);
-        rc
+        littlefs_rust_core::lfs_file_sync(&mut inner.lfs, file)
     }
 
     /// Truncate or extend the file to `size` bytes.
@@ -143,5 +141,28 @@ impl<S: Storage> Drop for File<'_, '_, '_, S> {
             let file = &mut self.alloc.borrow_mut().file;
             let _ = littlefs_rust_core::lfs_file_close(&mut inner.lfs, file);
         }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<S: Storage> std::io::Read for File<'_, '_, '_, S> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        self.read(buf)
+            .map(|len| len as usize)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e)))
+    }
+}
+
+#[cfg(feature = "std")]
+impl<S: Storage> std::io::Write for File<'_, '_, '_, S> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.write(buf)
+            .map(|len| len as usize)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e)))
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.flush()
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("{:?}", e)))
     }
 }
