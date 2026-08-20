@@ -267,8 +267,7 @@ pub fn lfs_mount_(
                 lfs_mktag(0x7ff, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
                 &mut None,
-                Some(lfs_dir_find_match),
-                &find_match as *const _ as *mut core::ffi::c_void,
+                Some(&|tag, disk| lfs_dir_find_match(&find_match, tag, disk)),
             );
 
             if let Err(err) = tag {

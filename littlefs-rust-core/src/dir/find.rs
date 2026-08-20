@@ -58,16 +58,10 @@ pub struct LfsDirFindMatch<'a> {
 ///
 /// ```
 pub fn lfs_dir_find_match(
-    data: *mut core::ffi::c_void,
+    name: &LfsDirFindMatch,
     tag: lfs_tag_t,
-    buffer: &lfs_diskoff,
+    disk: &lfs_diskoff,
 ) -> Result<core::cmp::Ordering, Error> {
-    if data.is_null() {
-        return Ok(core::cmp::Ordering::Less);
-    }
-
-    let name = unsafe { &*(data as *const LfsDirFindMatch) };
-    let disk = unsafe { &*(buffer as *const lfs_diskoff) };
     let lfs = unsafe { &mut *name.lfs };
 
     let diff = lfs_min(name.size, lfs_tag_size(tag));
@@ -315,7 +309,7 @@ pub fn lfs_dir_find(
 
             // C: lfs.c:1567-1584 - find entry matching name
             loop {
-                let mut match_data = LfsDirFindMatch {
+                let match_data = LfsDirFindMatch {
                     lfs,
                     name,
                     size: namelen as u32,
@@ -327,8 +321,7 @@ pub fn lfs_dir_find(
                     lfs_mktag(0x780, 0, 0),
                     lfs_mktag(LFS_TYPE_NAME, 0, namelen as u32),
                     id,
-                    Some(lfs_dir_find_match),
-                    &mut match_data as *mut _ as *mut core::ffi::c_void,
+                    Some(&|tag, disk| lfs_dir_find_match(&match_data, tag, disk)),
                 )?;
 
                 if tag != 0 {

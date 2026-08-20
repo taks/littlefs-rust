@@ -318,10 +318,7 @@ pub fn lfs_dir_fetchmatch(
     fmask: lfs_tag_t,
     ftag: lfs_tag_t,
     id: &mut Option<&mut u16>,
-    cb: Option<
-        fn(*mut core::ffi::c_void, lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>,
-    >,
-    data: *mut core::ffi::c_void,
+    cb: Option<&dyn Fn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
 ) -> Result<lfs_tag_t, Error> {
     unsafe {
         let cfg = &*lfs.cfg;
@@ -569,7 +566,7 @@ pub fn lfs_dir_fetchmatch(
                             block: dir.pair[0],
                             off: off + 4,
                         };
-                        let res = match cb(data, tag, &diskoff) {
+                        let res = match cb(tag, &diskoff) {
                             Ok(res) => res,
                             Err(err) => {
                                 if err == Error::Corrupt {
@@ -694,16 +691,7 @@ pub fn lfs_dir_fetch(
     dir: &mut LfsMdir,
     pair: [lfs_block_t; 2],
 ) -> Result<(), Error> {
-    let res = lfs_dir_fetchmatch(
-        lfs,
-        dir,
-        pair,
-        0xffff_ffff,
-        0xffff_ffff,
-        &mut None,
-        None,
-        core::ptr::null_mut(),
-    );
+    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, &mut None, None);
     if let Err(e) = res { Err(e) } else { Ok(()) }
 }
 

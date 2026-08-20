@@ -121,17 +121,11 @@ pub struct LfsFsParentMatch {
 /// }
 /// ```
 pub fn lfs_fs_parent_match(
-    data: *mut core::ffi::c_void,
-    _tag: crate::types::lfs_tag_t,
+    find: &LfsFsParentMatch,
     disk: &crate::tag::lfs_diskoff,
 ) -> Result<core::cmp::Ordering, Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::util::{lfs_pair_cmp, lfs_pair_fromle32};
-
-    if data.is_null() {
-        return Ok(core::cmp::Ordering::Less);
-    }
-    let find = unsafe { &*(data as *const LfsFsParentMatch) };
 
     let mut child: [crate::types::lfs_block_t; 2] = [0, 0];
     let lfs = unsafe { find.lfs.as_ref().unwrap() };
@@ -222,8 +216,7 @@ pub fn lfs_fs_parent(
             lfs_mktag(0x7ff, 0, 0x3ff),
             lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
             &mut None,
-            Some(lfs_fs_parent_match),
-            &find_match as *const _ as *mut core::ffi::c_void,
+            Some(&|_, disk| lfs_fs_parent_match(&find_match, disk)),
         );
 
         if tag != Ok(0) && tag != Err(Error::NoEntry) {
