@@ -8,7 +8,6 @@ use typenum::Unsigned;
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
 use crate::config::Config;
-use crate::dir::{dir_entry_from_info, ReadDir};
 use crate::file::{File, FileAllocation};
 use crate::storage::Storage;
 
