@@ -1,25 +1,24 @@
 use std::string::String;
 
-use littlefs_rust::{Config, Error, FileType, Filesystem, OpenFlags, SeekFrom};
+use littlefs_rust::{Allocation, Config, Error, FileAllocation, FileType, Filesystem, OpenFlags, SeekFrom};
 
 type RamStorage = littlefs_rust::RamStorage<512, 128>;
 
 fn format_and_mount() -> Filesystem<RamStorage> {
-    let mut storage = RamStorage::new();
-    let config = Config::new(512, 128);
-    Filesystem::format(&mut storage, &config).expect("format");
-    Filesystem::mount(storage, config)
-        .map_err(|(e, _)| e)
+    let storage = RamStorage::new();
+    let alloc = Allocation::new();
+
+    Filesystem::format(&mut storage, &mut alloc).expect("format");
+    Filesystem::mount(&mut storage, &mut alloc)
         .expect("mount")
 }
 
 #[test]
 fn test_format_mount_unmount() {
     let mut storage = RamStorage::new();
-    let config = Config::new(512, 128);
-    Filesystem::format(&mut storage, &config).unwrap();
-    let fs = Filesystem::mount(storage, config)
-        .map_err(|(e, _)| e)
+    let alloc = Allocation::new();
+    Filesystem::format(&mut storage, &mut alloc).unwrap();
+    let fs = Filesystem::mount(&mut storage, config)
         .unwrap();
     let _storage = fs.unmount().unwrap();
 }
@@ -27,21 +26,19 @@ fn test_format_mount_unmount() {
 #[test]
 fn test_mount_unformatted_fails() {
     let storage = RamStorage::new();
-    let config = Config::new(512, 128);
-    let result = Filesystem::mount(storage, config);
-    let (err, recovered) = result.err().expect("mount should fail");
+    let alloc = Allocation::new();
+    let result = Filesystem::mount(&mut storage, &mut alloc);
+    let err = result.err().expect("mount should fail");
     assert_eq!(err, Error::Corrupt);
-    assert_eq!(recovered.block_size(), 512);
 }
 
 #[test]
 fn test_drop_unmounts() {
-    let mut storage = RamStorage::new();
-    let config = Config::new(512, 128);
-    Filesystem::format(&mut storage, &config).unwrap();
+    let storage = RamStorage::new();
+    let alloc = Allocation::new();
+    Filesystem::format(&mut storage, &mut alloc).unwrap();
     {
-        let _fs = Filesystem::mount(storage, config)
-            .map_err(|(e, _)| e)
+        let _fs = Filesystem::mount(&mut storage, &mut config)
             .unwrap();
     }
     // No panic — Drop ran unmount
@@ -49,9 +46,9 @@ fn test_drop_unmounts() {
 
 #[test]
 fn test_format_does_not_consume_storage() {
-    let mut storage = RamStorage::new();
-    let config = Config::new(512, 128);
-    Filesystem::format(&mut storage, &config).unwrap();
+    let storage = RamStorage::new();
+    let alloc = Allocation::new();
+    Filesystem::format(&mut storage, &mut alloc).unwrap();
     assert_eq!(storage.block_size(), 512);
 }
 
@@ -60,13 +57,15 @@ fn test_write_read_roundtrip() {
     let fs = format_and_mount();
     let data = b"Hello, littlefs!";
 
+    let falloc = FileAllocation::new();
+
     let mut file = fs
-        .open("/hello.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+        .open(&mut falloc, "/hello.txt", OpenFlags::WRITE | OpenFlags::CREATE)
         .unwrap();
     file.write(data).unwrap();
     file.close().unwrap();
 
-    let mut file = fs.open("/hello.txt", OpenFlags::READ).unwrap();
+    let mut file = fs.open(&mut falloc, "/hello.txt", OpenFlags::READ).unwrap();
     let mut buf = vec![0u8; 64];
     let n = file.read(&mut buf).unwrap();
     assert_eq!(&buf[..n as usize], data);
@@ -77,11 +76,13 @@ fn test_write_read_roundtrip() {
 fn test_multiple_open_files() {
     let fs = format_and_mount();
 
+    let falloc = FileAllocation::new();
+
     let mut f1 = fs
-        .open("/a.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+        .open(&mut falloc, "/a.txt", OpenFlags::WRITE | OpenFlags::CREATE)
         .unwrap();
     let mut f2 = fs
-        .open("/b.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+        .open(&mut falloc, "/b.txt", OpenFlags::WRITE | OpenFlags::CREATE)
         .unwrap();
 
     f1.write(b"aaa").unwrap();
@@ -102,8 +103,10 @@ fn test_multiple_open_files() {
 fn test_seek_tell_size() {
     let fs = format_and_mount();
 
+    let falloc = FileAllocation::new();
+
     let mut file = fs
-        .open("/data.bin", OpenFlags::WRITE | OpenFlags::CREATE)
+        .open(&mut falloc, "/data.bin", OpenFlags::WRITE | OpenFlags::CREATE)
         .unwrap();
     file.write(b"0123456789").unwrap();
     file.close().unwrap();

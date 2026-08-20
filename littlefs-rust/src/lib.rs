@@ -39,7 +39,6 @@
 extern crate alloc;
 
 mod config;
-mod dir;
 mod file;
 mod filesystem;
 mod metadata;
@@ -47,8 +46,7 @@ mod ram;
 mod storage;
 
 pub use config::Config;
-pub use dir::ReadDir;
-pub use file::File;
+pub use file::{File, FileAllocation};
 pub use filesystem::{Allocation, Filesystem};
 pub use metadata::{FileType, SeekFrom};
 pub use ram::RamStorage;
