@@ -1425,105 +1425,102 @@ pub fn lfs_dir_splittingcompact(
     use crate::types::lfs_size_t;
     use crate::util::{lfs_alignup, lfs_min, lfs_pair_cmp};
 
-    unsafe {
-        let mut split = begin;
-        let mut end_val = end;
+    let mut split = begin;
+    let mut end_val = end;
 
-        loop {
-            while end_val - split > 1 {
-                let mut size: lfs_size_t = 0;
-                let mut size_ptr = size;
-                lfs_dir_traverse(
-                    lfs,
-                    source,
-                    0,
-                    0xffff_ffff,
-                    attrs,
-                    lfs_mktag(0x400, 0x3ff, 0),
-                    lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_NAME, 0, 0),
-                    split,
-                    end_val,
-                    -(split as i16),
-                    lfs_dir_commit_size_raw,
-                    &mut size_ptr as *mut _ as *mut core::ffi::c_void,
-                )?;
+    loop {
+        while end_val - split > 1 {
+            let mut size: lfs_size_t = 0;
+            let mut size_ptr = size;
+            lfs_dir_traverse(
+                lfs,
+                source,
+                0,
+                0xffff_ffff,
+                attrs,
+                lfs_mktag(0x400, 0x3ff, 0),
+                lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_NAME, 0, 0),
+                split,
+                end_val,
+                -(split as i16),
+                lfs_dir_commit_size_raw,
+                &mut size_ptr as *mut _ as *mut core::ffi::c_void,
+            )?;
 
-                size = size_ptr;
+            size = size_ptr;
 
-                let metadata_max = lfs.cfg.as_ref().map_or(0, |c| c.metadata_max);
-                let block_size = lfs.cfg.as_ref().unwrap().block_size;
-                let prog_size = lfs.cfg.as_ref().unwrap().prog_size;
-                let effective_max = if metadata_max != 0 {
-                    metadata_max
-                } else {
-                    block_size
-                };
-                let max_space = effective_max - 40;
-                let half_block = lfs_alignup(effective_max / 2, prog_size);
-                crate::lfs_trace!(
-                    "splittingcompact: split={} end_val={} size={} max_space={} half_block={} break={}",
-                    split,
-                    end_val,
-                    size,
-                    max_space,
-                    half_block,
-                    end_val - split < 0xff && size <= lfs_min(max_space, half_block)
-                );
-                if end_val - split < 0xff && size <= lfs_min(max_space, half_block) {
-                    break;
-                }
-                split = split + ((end_val - split) / 2);
-            }
+            let cfg = unsafe { &*lfs.cfg };
 
-            if split == begin {
-                crate::lfs_trace!("splittingcompact: no split needed split==begin");
-                break;
-            }
-            if end_val <= split {
-                crate::lfs_trace!(
-                    "splittingcompact: skip empty range split={} end_val={}",
-                    split,
-                    end_val
-                );
-                break;
-            }
-
+            let effective_max = if cfg.metadata_max != 0 {
+                cfg.metadata_max
+            } else {
+                cfg.block_size
+            };
+            let max_space = effective_max - 40;
+            let half_block = lfs_alignup(effective_max / 2, cfg.prog_size);
             crate::lfs_trace!(
-                "splittingcompact: calling dir_split split={} end_val={}",
+                "splittingcompact: split={} end_val={} size={} max_space={} half_block={} break={}",
+                split,
+                end_val,
+                size,
+                max_space,
+                half_block,
+                end_val - split < 0xff && size <= lfs_min(max_space, half_block)
+            );
+            if end_val - split < 0xff && size <= lfs_min(max_space, half_block) {
+                break;
+            }
+            split = split + ((end_val - split) / 2);
+        }
+
+        if split == begin {
+            crate::lfs_trace!("splittingcompact: no split needed split==begin");
+            break;
+        }
+        if end_val <= split {
+            crate::lfs_trace!(
+                "splittingcompact: skip empty range split={} end_val={}",
                 split,
                 end_val
             );
-            let err = lfs_dir_split(lfs, dir, attrs, source, split, end_val);
+            break;
+        }
+
+        crate::lfs_trace!(
+            "splittingcompact: calling dir_split split={} end_val={}",
+            split,
+            end_val
+        );
+        let err = lfs_dir_split(lfs, dir, attrs, source, split, end_val);
+        if let Err(err) = err
+            && err != Error::NoSpace
+        {
+            return crate::lfs_pass_err!(Err(err));
+        }
+        if err.is_err() {
+            break;
+        } else {
+            end_val = split;
+        }
+    }
+
+    let superblock_pair = [0u32, 1u32];
+    if lfs_dir_needsrelocation(lfs, dir) && lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
+        let size = lfs_fs_size_(lfs)?;
+        if lfs.block_count as i64 - size as i64 > (lfs.block_count as i64) / 8 {
+            let err = lfs_dir_split(lfs, dir, attrs, source, begin, end_val);
             if let Err(err) = err
                 && err != Error::NoSpace
             {
                 return crate::lfs_pass_err!(Err(err));
             }
-            if err.is_err() {
-                break;
-            } else {
-                end_val = split;
+            if err.is_ok() {
+                end_val = 1;
             }
         }
-
-        let superblock_pair = [0u32, 1u32];
-        if lfs_dir_needsrelocation(lfs, dir) && lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
-            let size = lfs_fs_size_(lfs)?;
-            if lfs.block_count as i64 - size as i64 > (lfs.block_count as i64) / 8 {
-                let err = lfs_dir_split(lfs, dir, attrs, source, begin, end_val);
-                if let Err(err) = err
-                    && err != Error::NoSpace
-                {
-                    return crate::lfs_pass_err!(Err(err));
-                }
-                if err.is_ok() {
-                    end_val = 1;
-                }
-            }
-        }
-
-        lfs_dir_compact(lfs, dir, attrs, source, begin, end_val)
     }
+
+    lfs_dir_compact(lfs, dir, attrs, source, begin, end_val)
 }
 
 fn lfs_dir_commit_size_raw(
