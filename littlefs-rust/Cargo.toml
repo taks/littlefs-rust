@@ -15,7 +15,7 @@ name = "littlefs_rust"
 path = "src/lib.rs"
 
 [dependencies]
-littlefs-rust-core = { version = "0.1", path = "../littlefs-rust-core" }
+littlefs-rust-core = { version = "0.1", path = "../littlefs-rust-core", default-features = false}
 bitflags = "2"
 hybrid-array = "0.4"
 typenum = "1.20"

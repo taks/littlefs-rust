@@ -52,6 +52,6 @@ pub use metadata::{FileType, SeekFrom};
 pub use ram::RamStorage;
 pub use storage::Storage;
 
+pub use hybrid_array::sizes;
+pub use littlefs_rust_core::error::Error;
 pub use littlefs_rust_core::lfs_type::OpenFlags;
-
-pub type Error = littlefs_rust_core::error::Error;
