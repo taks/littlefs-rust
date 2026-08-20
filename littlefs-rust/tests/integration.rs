@@ -1,4 +1,4 @@
-use std::string::String;
+use std::{io::Read, string::String};
 
 use littlefs_rust::{Allocation, Error, FileAllocation, FileType, Filesystem, OpenFlags, SeekFrom};
 
@@ -76,13 +76,13 @@ fn test_write_read_roundtrip() {
 #[test]
 fn test_multiple_open_files() {
     format_and_mount(|fs| {
-        let mut falloc = FileAllocation::new();
+        let mut falloc1 = FileAllocation::new();
         let mut f1 = fs
-            .open(&mut falloc, "/a.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+            .open(&mut falloc1, "/a.txt", OpenFlags::WRITE | OpenFlags::CREATE)
             .unwrap();
-        let mut falloc = FileAllocation::new();
+        let mut falloc2 = FileAllocation::new();
         let mut f2 = fs
-            .open(&mut falloc, "/b.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+            .open(&mut falloc2, "/b.txt", OpenFlags::WRITE | OpenFlags::CREATE)
             .unwrap();
 
         f1.write(b"aaa").unwrap();
@@ -91,11 +91,19 @@ fn test_multiple_open_files() {
         f1.close().unwrap();
         f2.close().unwrap();
 
-        // TODO:
-        // let data_a = fs.read_to_vec("/a.txt").unwrap();
-        // let data_b = fs.read_to_vec("/b.txt").unwrap();
-        // assert_eq!(data_a, b"aaa");
-        // assert_eq!(data_b, b"bbb");
+        let mut f1 = fs
+            .open(&mut falloc1, "/a.txt", OpenFlags::READ)
+            .unwrap();
+        let mut f2 = fs
+            .open(&mut falloc2, "/b.txt", OpenFlags::READ)
+            .unwrap();
+
+        let mut data_a = Vec::new();
+        f1.read_to_end(&mut data_a).unwrap();
+        let mut data_b = Vec::new();
+        f2.read_to_end(&mut data_b).unwrap();
+        assert_eq!(data_a, b"aaa");
+        assert_eq!(data_b, b"bbb");
     });
 }
 

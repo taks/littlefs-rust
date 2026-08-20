@@ -1,6 +1,6 @@
 //! Directory operations: mkdir, list, rename, stat, and remove.
 
-use littlefs_rust::{Config, Filesystem, RamStorage};
+use littlefs_rust::{Allocation, Config, Filesystem, RamStorage};
 
 fn main() {
     let mut storage = RamStorage::<512, 128>::new();
