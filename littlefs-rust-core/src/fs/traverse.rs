@@ -118,8 +118,7 @@ use crate::{error::Error, lfs_type::OpenFlags};
 /// C: lfs.c:4693-4794
 pub fn lfs_fs_traverse_(
     lfs: &mut super::lfs::Lfs,
-    cb: fn(*mut core::ffi::c_void, crate::types::lfs_block_t) -> Result<(), Error>,
-    data: *mut core::ffi::c_void,
+    cb: &mut dyn FnMut(crate::types::lfs_block_t) -> Result<(), Error>,
     includeorphans: bool,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
@@ -173,7 +172,7 @@ pub fn lfs_fs_traverse_(
             }
 
             for i in 0..2 {
-                cb(data, dir.tail[i])?;
+                cb(dir.tail[i])?;
             }
 
             // iterate through ids in directory
@@ -200,11 +199,11 @@ pub fn lfs_fs_traverse_(
 
                 let tag = tag.unwrap();
                 if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
-                    lfs_ctz_traverse(lfs, None, &mut *lfs.rcache.get(), raw[0], raw[1], cb, data)?;
+                    lfs_ctz_traverse(lfs, None, &mut *lfs.rcache.get(), raw[0], raw[1], cb)?;
                 } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
                     #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
                     for i in 0..2 {
-                        cb(data, raw[i])?;
+                        cb(raw[i])?;
                     }
                 }
             }
@@ -241,7 +240,6 @@ pub fn lfs_fs_traverse_(
                         f_ref.ctz.head,
                         f_ref.ctz.size,
                         cb,
-                        data,
                     )?;
                 }
                 if f_ref.flags.contains(OpenFlags::WRITING)
@@ -254,7 +252,6 @@ pub fn lfs_fs_traverse_(
                         f_ref.block,
                         f_ref.pos,
                         cb,
-                        data,
                     )?;
                 }
             }

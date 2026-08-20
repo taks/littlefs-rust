@@ -203,8 +203,7 @@ pub fn lfs_ctz_traverse(
     rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
     size: lfs_size_t,
-    cb: fn(*mut core::ffi::c_void, lfs_block_t) -> Result<(), Error>,
-    data: *mut core::ffi::c_void,
+    cb: &mut dyn FnMut(crate::types::lfs_block_t) -> Result<(), Error>,
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::util::lfs_fromle32;
@@ -218,7 +217,7 @@ pub fn lfs_ctz_traverse(
     let mut current_head = head;
 
     loop {
-        cb(data, current_head)?;
+        cb(current_head)?;
 
         if index == 0 {
             return Ok(());
@@ -243,7 +242,7 @@ pub fn lfs_ctz_traverse(
 
         #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
         for i in 0..count - 1 {
-            cb(data, heads[i])?;
+            cb(heads[i])?;
         }
 
         current_head = heads[count - 1];

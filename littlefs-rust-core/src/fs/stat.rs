@@ -147,7 +147,7 @@ pub fn lfs_fs_stat_(
     Ok(())
 }
 
-/// Per lfs.c lfs_fs_size_count (lines 5172-5177)
+/// Per lfs.c lfs_fs_size_ (lines 5179-5188)
 ///
 /// C:
 /// ```c
@@ -157,20 +157,7 @@ pub fn lfs_fs_stat_(
 ///     *size += 1;
 ///     return 0;
 /// }
-/// ```
-pub fn lfs_fs_size_count(p: *mut core::ffi::c_void, _block: lfs_block_t) -> Result<(), Error> {
-    if p.is_null() {
-        return Ok(());
-    }
-    let size = p as *mut lfs_size_t;
-    unsafe { *size = (*size).saturating_add(1) };
-    Ok(())
-}
-
-/// Per lfs.c lfs_fs_size_ (lines 5179-5188)
 ///
-/// C:
-/// ```c
 /// static lfs_ssize_t lfs_fs_size_(lfs_t *lfs) {
 ///     lfs_size_t size = 0;
 ///     int err = lfs_fs_traverse_(lfs, lfs_fs_size_count, &size, false);
@@ -185,8 +172,10 @@ pub fn lfs_fs_size_(lfs: &mut super::lfs::Lfs) -> Result<lfs_size_t, Error> {
     let mut size: lfs_size_t = 0;
     lfs_fs_traverse_(
         lfs,
-        lfs_fs_size_count,
-        &mut size as *mut _ as *mut core::ffi::c_void,
+        &mut |_| {
+            size = size.saturating_add(1);
+            Ok(())
+        },
         false,
     )?;
 
