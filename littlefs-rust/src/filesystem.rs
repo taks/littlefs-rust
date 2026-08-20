@@ -9,7 +9,7 @@ use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
 use crate::config::Config;
 use crate::dir::{dir_entry_from_info, ReadDir};
-use crate::file::File;
+use crate::file::{File, FileAllocation};
 use crate::storage::Storage;
 
 pub(crate) type Bytes<SIZE> = hybrid_array::Array<u8, SIZE>;
@@ -32,7 +32,7 @@ impl<S: Storage> Default for Cache<S> {
 
 pub struct Allocation<S: Storage> {
     pub(crate) lfs: Lfs,
-    pub(crate) config: LfsConfig,
+    pub(crate) config: UnsafeCell<LfsConfig>,
     cache: Cache<S>,
 }
 
@@ -129,7 +129,7 @@ impl<S: Storage> Allocation<S> {
 
         Allocation {
             lfs: unsafe { mem::MaybeUninit::zeroed().assume_init() },
-            config: lfs_config,
+            config: UnsafeCell::new(lfs_config),
             cache,
         }
     }
@@ -139,10 +139,10 @@ impl<S: Storage> Allocation<S> {
 
 impl<'a, S: Storage> Filesystem<'a, S> {
     fn new(storage: &'a mut S, alloc: &'a mut Allocation<S>) -> Self {
-        alloc.config.context = storage as *mut _ as *mut c_void;
-        alloc.config.read_buffer = alloc.cache.read.as_mut_ptr() as *mut c_void;
-        alloc.config.prog_buffer = alloc.cache.write.as_mut_ptr() as *mut c_void;
-        alloc.config.lookahead_buffer = alloc.cache.lookahead.as_mut_ptr() as *mut c_void;
+        alloc.config.get_mut().context = storage as *mut _ as *mut c_void;
+        alloc.config.get_mut().read_buffer = alloc.cache.read.as_mut_ptr() as *mut c_void;
+        alloc.config.get_mut().prog_buffer = alloc.cache.write.as_mut_ptr() as *mut c_void;
+        alloc.config.get_mut().lookahead_buffer = alloc.cache.lookahead.as_mut_ptr() as *mut c_void;
 
         Self {
             alloc: RefCell::new(alloc),
@@ -188,8 +188,13 @@ impl<'a, S: Storage> Filesystem<'a, S> {
     ///
     /// Common combinations: `READ`, `WRITE | CREATE | TRUNC`,
     /// `WRITE | CREATE | APPEND`.
-    pub fn open(&self, path: &str, flags: OpenFlags) -> Result<File<'_, S>, Error> {
-        File::open(self, path, flags)
+    pub fn open(
+        &self,
+        alloc: &mut FileAllocation<'_, S>,
+        path: &str,
+        flags: OpenFlags,
+    ) -> Result<File<'_, '_, S>, Error> {
+        File::open(self, alloc, path, flags)
     }
 
     // ── Path operations ─────────────────────────────────────────────────
