@@ -4,7 +4,7 @@ use zerocopy::IntoBytes;
 
 use crate::error::Error;
 use crate::fs::traverse::lfs_fs_traverse_;
-use crate::types::{lfs_block_t, lfs_size_t};
+use crate::types::lfs_size_t;
 
 /// Per lfs.c lfs_stat_ (lines 3863-3878)
 ///

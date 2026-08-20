@@ -12,7 +12,7 @@ use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
 ///     (((lfs_tag_t)(type) << 20) | ((lfs_tag_t)(id) << 10) | (lfs_tag_t)(size))
 /// ```
 #[inline(always)]
-pub fn lfs_mktag(type_: u16, id: u32, size: u32) -> lfs_tag_t {
+pub const fn lfs_mktag(type_: u16, id: u32, size: u32) -> lfs_tag_t {
     ((type_ as lfs_tag_t) << 20) | ((id as lfs_tag_t) << 10) | (size as lfs_tag_t)
 }
 
