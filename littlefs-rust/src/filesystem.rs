@@ -1,5 +1,6 @@
 use core::cell::{RefCell, UnsafeCell};
 use core::ffi::c_void;
+use core::mem;
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::OpenFlags;
 use typenum::Unsigned;
@@ -31,7 +32,7 @@ impl<S: Storage> Default for Cache<S> {
 
 pub struct Allocation<S: Storage> {
     pub(crate) lfs: Lfs,
-    pub(crate) config: UnsafeCell<LfsConfig>,
+    pub(crate) config: LfsConfig,
     cache: Cache<S>,
 }
 
@@ -127,8 +128,8 @@ impl<S: Storage> Allocation<S> {
         };
 
         Allocation {
-            lfs: unsafe { core::mem::zeroed() },
-            config: RefCell::new(lfs_config),
+            lfs: unsafe { mem::MaybeUninit::zeroed().assume_init() },
+            config: lfs_config,
             cache,
         }
     }
@@ -214,19 +215,6 @@ impl<'a, S: Storage> Filesystem<'a, S> {
         littlefs_rust_core::lfs_rename(&mut alloc.lfs, from, to)
     }
 
-    /// Returns `true` if `path` exists.
-    pub fn exists(&self, path: &str) -> bool {
-        self.stat(path).is_ok()
-    }
-
-    // ── Directory listing ───────────────────────────────────────────────
-
-    /// Open a directory for iteration. The returned [`ReadDir`] is an
-    /// [`Iterator`] that skips `.` and `..` entries.
-    pub fn read_dir(&self, path: &str) -> Result<ReadDir<'_, S>, Error> {
-        ReadDir::open(self, path)
-    }
-
     // ── FS-level ────────────────────────────────────────────────────────
 
     /// Return the number of allocated blocks.
@@ -248,67 +236,4 @@ impl<'a, S: Storage> Drop for Filesystem<'a, S> {
             let _ = littlefs_rust_core::lfs_unmount(&mut inner.lfs);
         }
     }
-}
-
-// ── format helper (borrows storage instead of taking ownership) ─────────────
-
-struct BorrowedFsInner<'a, S: Storage> {
-    lfs: Lfs,
-    config: LfsConfig,
-    storage: &'a mut S,
-    _read_buf: Vec<u8>,
-    _prog_buf: Vec<u8>,
-    _lookahead_buf: Vec<u8>,
-}
-
-fn build_inner_borrowed<'a, S: Storage>(
-    storage: &'a mut S,
-    config: &Config,
-) -> BorrowedFsInner<'a, S> {
-    let cache_size = config.resolve_cache_size() as usize;
-    let lookahead_size = config.resolve_lookahead_size() as usize;
-
-    let mut read_buf = vec![0u8; cache_size];
-    let mut prog_buf = vec![0u8; cache_size];
-    let mut lookahead_buf = vec![0u8; lookahead_size];
-
-    let lfs_config = LfsConfig {
-        context: core::ptr::null_mut(),
-        read: Some(trampoline_read::<S>),
-        prog: Some(trampoline_prog::<S>),
-        erase: Some(trampoline_erase::<S>),
-        sync: Some(trampoline_sync::<S>),
-        read_size: config.read_size,
-        prog_size: config.prog_size,
-        block_size: config.block_size,
-        block_count: config.block_count,
-        block_cycles: config.block_cycles,
-        cache_size: config.resolve_cache_size(),
-        lookahead_size: config.resolve_lookahead_size(),
-        compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_mut_ptr() as *mut c_void,
-        prog_buffer: prog_buf.as_mut_ptr() as *mut c_void,
-        lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut c_void,
-        name_max: config.name_max,
-        file_max: config.file_max,
-        attr_max: config.attr_max,
-        metadata_max: 0,
-        inline_max: 0,
-    };
-
-    BorrowedFsInner {
-        lfs: unsafe { core::mem::zeroed() },
-        config: lfs_config,
-        storage,
-        _read_buf: read_buf,
-        _prog_buf: prog_buf,
-        _lookahead_buf: lookahead_buf,
-    }
-}
-
-fn wire_context_borrowed<S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
-    inner.config.context = inner.storage as *mut S as *mut c_void;
-    inner.config.read_buffer = inner._read_buf.as_mut_ptr() as *mut c_void;
-    inner.config.prog_buffer = inner._prog_buf.as_mut_ptr() as *mut c_void;
-    inner.config.lookahead_buffer = inner._lookahead_buf.as_mut_ptr() as *mut c_void;
 }
