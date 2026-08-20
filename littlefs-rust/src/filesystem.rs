@@ -188,12 +188,12 @@ impl<'a, S: Storage> Filesystem<'a, S> {
     ///
     /// Common combinations: `READ`, `WRITE | CREATE | TRUNC`,
     /// `WRITE | CREATE | APPEND`.
-    pub fn open(
-        &self,
-        alloc: &mut FileAllocation<'_, S>,
+    pub fn open<'b, 'c>(
+        &'b self,
+        alloc: &'b mut FileAllocation<'c, S>,
         path: &str,
         flags: OpenFlags,
-    ) -> Result<File<'_, '_, S>, Error> {
+    ) -> Result<File<'a, 'b, 'c, S>, Error> {
         File::open(self, alloc, path, flags)
     }
 

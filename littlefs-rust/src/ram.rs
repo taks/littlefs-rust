@@ -1,5 +1,3 @@
-use alloc::vec;
-use alloc::vec::Vec;
 use littlefs_rust_core::error::Error;
 
 use crate::storage::Storage;

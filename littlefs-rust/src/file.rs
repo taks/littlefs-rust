@@ -89,13 +89,15 @@ impl<'a, 'b, 'c, S: Storage> File<'a, 'b, 'c, S> {
             ),
         };
         let mut inner = self.fs.alloc.borrow_mut();
-        littlefs_rust_core::lfs_file_seek(&mut inner.lfs, &mut self.alloc.file, off, whence)
+        let file = &mut self.alloc.borrow_mut().file;
+        littlefs_rust_core::lfs_file_seek(&mut inner.lfs, file, off, whence)
     }
 
     /// Return the current read/write position.
     pub fn tell(&self) -> u32 {
         let mut inner = self.fs.alloc.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_tell(&mut inner.lfs, &self.alloc.file);
+        let file = &mut self.alloc.borrow_mut().file;
+        let rc = littlefs_rust_core::lfs_file_tell(&mut inner.lfs, file);
         drop(inner);
         rc as u32
     }
@@ -103,7 +105,8 @@ impl<'a, 'b, 'c, S: Storage> File<'a, 'b, 'c, S> {
     /// Return the file size in bytes.
     pub fn size(&self) -> u32 {
         let mut inner = self.fs.alloc.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_size(&mut inner.lfs, &self.alloc.file);
+        let file = &mut self.alloc.borrow_mut().file;
+        let rc = littlefs_rust_core::lfs_file_size(&mut inner.lfs, file);
         drop(inner);
         rc as u32
     }
@@ -111,7 +114,8 @@ impl<'a, 'b, 'c, S: Storage> File<'a, 'b, 'c, S> {
     /// Flush cached writes to storage.
     pub fn sync(&mut self) -> Result<(), Error> {
         let mut inner = self.fs.alloc.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_sync(&mut inner.lfs, &mut self.alloc.file);
+        let file = &mut self.alloc.borrow_mut().file;
+        let rc = littlefs_rust_core::lfs_file_sync(&mut inner.lfs, file);
         drop(inner);
         rc
     }
@@ -119,27 +123,25 @@ impl<'a, 'b, 'c, S: Storage> File<'a, 'b, 'c, S> {
     /// Truncate or extend the file to `size` bytes.
     pub fn truncate(&mut self, size: u32) -> Result<(), Error> {
         let mut inner = self.fs.alloc.borrow_mut();
-        let rc = littlefs_rust_core::lfs_file_truncate(&mut inner.lfs, &mut self.alloc.file, size);
-        drop(inner);
-        rc
+        let file = &mut self.alloc.borrow_mut().file;
+        littlefs_rust_core::lfs_file_truncate(&mut inner.lfs, file, size)
     }
 
     /// Close the file, flushing any pending writes. Consumes `self`.
     ///
     /// Dropping a [`File`] also closes it, but errors are silently ignored.
     pub fn close(mut self) -> Result<(), Error> {
-        self.closed = true;
         let mut inner = self.fs.alloc.borrow_mut();
-        littlefs_rust_core::lfs_file_close(&mut inner.lfs, &mut self.alloc.file)
+        let file = &mut self.alloc.borrow_mut().file;
+        littlefs_rust_core::lfs_file_close(&mut inner.lfs, file)
     }
 }
 
-impl<S: Storage> Drop for File<'_, S> {
+impl<S: Storage> Drop for File<'_, '_, '_, S> {
     fn drop(&mut self) {
-        if !self.closed {
-            if let Ok(mut inner) = self.fs.alloc.try_borrow_mut() {
-                let _ = littlefs_rust_core::lfs_file_close(&mut inner.lfs, &mut self.alloc.file);
-            }
+        if let Ok(mut inner) = self.fs.alloc.try_borrow_mut() {
+            let file = &mut self.alloc.borrow_mut().file;
+            let _ = littlefs_rust_core::lfs_file_close(&mut inner.lfs, file);
         }
     }
 }
