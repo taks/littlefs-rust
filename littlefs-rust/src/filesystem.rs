@@ -6,10 +6,9 @@ use typenum::Unsigned;
 
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
-use crate::config::{self, Config};
+use crate::config::Config;
 use crate::dir::{dir_entry_from_info, ReadDir};
 use crate::file::File;
-use crate::metadata::{DirEntry, Metadata};
 use crate::storage::Storage;
 
 pub(crate) type Bytes<SIZE> = hybrid_array::Array<u8, SIZE>;
@@ -182,7 +181,7 @@ impl<'a, S: Storage> Filesystem<'a, S> {
     }
 
     pub(crate) fn cache_size(&self) -> u32 {
-        self.alloc.borrow().config.cache_size
+        unsafe { (*self.alloc.borrow().config.get()).cache_size }
     }
 
     // ── File access ─────────────────────────────────────────────────────
@@ -193,34 +192,6 @@ impl<'a, S: Storage> Filesystem<'a, S> {
     /// `WRITE | CREATE | APPEND`.
     pub fn open(&self, path: &str, flags: OpenFlags) -> Result<File<'_, S>, Error> {
         File::open(self, path, flags)
-    }
-
-    // ── Convenience file I/O ────────────────────────────────────────────
-
-    /// Read an entire file into a `Vec<u8>`.
-    pub fn read_to_vec(&self, path: &str) -> Result<Vec<u8>, Error> {
-        let mut file = self.open(path, OpenFlags::READ)?;
-        let size = file.size() as usize;
-        let mut buf = vec![0u8; size];
-        if size > 0 {
-            let n = file.read(&mut buf)?;
-            buf.truncate(n as usize);
-        }
-        Ok(buf)
-    }
-
-    /// Write `data` to a file, creating or truncating it.
-    pub fn write_file(&self, path: &str, data: &[u8]) -> Result<(), Error> {
-        let mut file = self.open(
-            path,
-            OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::TRUNC,
-        )?;
-        let mut offset = 0;
-        while offset < data.len() {
-            let n = file.write(&data[offset..])? as usize;
-            offset += n;
-        }
-        Ok(())
     }
 
     // ── Path operations ─────────────────────────────────────────────────
@@ -241,21 +212,6 @@ impl<'a, S: Storage> Filesystem<'a, S> {
     pub fn rename(&self, from: &str, to: &str) -> Result<(), Error> {
         let mut alloc = self.alloc.borrow_mut();
         littlefs_rust_core::lfs_rename(&mut alloc.lfs, from, to)
-    }
-
-    /// Get metadata for a file or directory.
-    pub fn stat(&self, path: &str) -> Result<Metadata, Error> {
-        let mut info = unsafe { core::mem::zeroed::<LfsInfo>() };
-        {
-            let mut alloc = self.alloc.borrow_mut();
-            littlefs_rust_core::lfs_stat(&mut alloc.lfs, path, &mut info)?;
-        }
-        let entry = dir_entry_from_info(&info);
-        Ok(Metadata {
-            name: entry.name,
-            file_type: entry.file_type,
-            size: entry.size,
-        })
     }
 
     /// Returns `true` if `path` exists.

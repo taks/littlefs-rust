@@ -1,6 +1,5 @@
 use core::mem::MaybeUninit;
 
-use alloc::boxed::Box;
 use littlefs_rust_core::error::Error;
 
 use littlefs_rust_core::{LfsDir, LfsInfo};

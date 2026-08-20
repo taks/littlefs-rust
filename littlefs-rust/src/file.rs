@@ -1,4 +1,4 @@
-use core::cell::UnsafeCell;
+use core::cell::{RefCell, UnsafeCell};
 
 use littlefs_rust_core::error::Error;
 
@@ -15,8 +15,8 @@ pub struct FileAllocation<'a, S: Storage> {
     pub(crate) file_config: LfsFileConfig<'a>,
 }
 
-impl<S: Storage> Default for FileAllocation<'_, S> {
-    fn default() -> Self {
+impl<S: Storage> FileAllocation<'_, S> {
+    pub fn new() -> Self {
         Self {
             file: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
             cache: Default::default(),
@@ -25,52 +25,35 @@ impl<S: Storage> Default for FileAllocation<'_, S> {
     }
 }
 
-impl<S: Storage> FileAllocation<'_, S> {
-    pub(crate) fn new() -> Self {
-        let mut cache = vec![0u8; cache_size as usize];
-        let file_config = LfsFileConfig {
-            buffer: unsafe { core::mem::transmute::<&mut [u8], &mut [u8]>(cache.as_mut_slice()) },
-            attrs: &mut [],
-        };
-        Self {
-            file: unsafe { core::mem::zeroed() },
-            _cache: cache,
-            file_config,
-        }
-    }
-}
-
 /// An open file handle.
 ///
 /// Obtained from [`Filesystem::open`]. Automatically closed on drop; call
 /// [`File::close`] explicitly to check for errors.
-pub struct File<'a, S: Storage> {
-    fs: &'a Filesystem<'a, S>,
-    alloc: Box<FileAllocation<'a>>,
-    closed: bool,
+pub struct File<'a, 'b, S: Storage> {
+    fs: &'b Filesystem<'a, S>,
+    alloc: RefCell<*mut FileAllocation<'a, S>>,
 }
 
-impl<'a, S: Storage> File<'a, S> {
+impl<'a, 'b, S: Storage> File<'a, 'b, S> {
     pub(crate) fn open(
-        fs: &'a Filesystem<'a, S>,
+        fs: &'b Filesystem<'a, S>,
+        alloc: &'b mut FileAllocation<S>,
         path: &str,
         flags: OpenFlags,
     ) -> Result<Self, Error> {
-        let mut alloc = Box::new(FileAllocation::new(fs.cache_size()));
-        {
-            let mut inner = fs.alloc.borrow_mut();
-            littlefs_rust_core::lfs_file_opencfg(
-                &mut inner.lfs,
-                &mut alloc.file,
-                path,
-                flags,
-                &mut alloc.file_config,
-            )?;
-        }
+        alloc.file_config.buffer = unsafe { alloc.cache.get().as_mut_unchecked().as_mut_slice() };
+
+        littlefs_rust_core::lfs_file_opencfg(
+            &mut fs.alloc.borrow_mut().lfs,
+            &mut alloc.file,
+            path,
+            flags,
+            &mut alloc.file_config,
+        )?;
+
         Ok(File {
             fs,
-            alloc,
-            closed: false,
+            alloc: RefCell::new(alloc),
         })
     }
 

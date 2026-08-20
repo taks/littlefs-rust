@@ -50,7 +50,7 @@ pub use config::Config;
 pub use dir::ReadDir;
 pub use file::File;
 pub use filesystem::{Allocation, Filesystem};
-pub use metadata::{DirEntry, FileType, Metadata, SeekFrom};
+pub use metadata::{FileType, SeekFrom};
 pub use ram::RamStorage;
 pub use storage::Storage;
 
