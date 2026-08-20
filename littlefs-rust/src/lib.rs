@@ -7,10 +7,10 @@
 //! # Quick start
 //!
 //! ```rust
-//! use littlefs_rust::{Config, Filesystem, RamStorage};
+//! use littlefs_rust::{Allocation, Filesystem, RamStorage};
 //!
 //! let mut storage = RamStorage::<512, 128>::new();
-//! let config = Config::new(512, 128);
+//! let mut alloc = Allocation::new();
 //!
 //! Filesystem::format(&mut storage, &config).unwrap();
 //! let fs = Filesystem::mount(storage, config).map_err(|(e, _)| e).unwrap();

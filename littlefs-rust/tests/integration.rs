@@ -75,30 +75,28 @@ fn test_write_read_roundtrip() {
 
 #[test]
 fn test_multiple_open_files() {
-    let fs = format_and_mount();
+    format_and_mount(|fs| {
+        let mut falloc = FileAllocation::new();
+        let mut f1 = fs
+            .open(&mut falloc, "/a.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+            .unwrap();
+        let mut falloc = FileAllocation::new();
+        let mut f2 = fs
+            .open(&mut falloc, "/b.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+            .unwrap();
 
-    let falloc = FileAllocation::new();
+        f1.write(b"aaa").unwrap();
+        f2.write(b"bbb").unwrap();
 
-    let mut f1 = fs
-        .open(&mut falloc, "/a.txt", OpenFlags::WRITE | OpenFlags::CREATE)
-        .unwrap();
-    let mut f2 = fs
-        .open(&mut falloc, "/b.txt", OpenFlags::WRITE | OpenFlags::CREATE)
-        .unwrap();
+        f1.close().unwrap();
+        f2.close().unwrap();
 
-    f1.write(b"aaa").unwrap();
-    f2.write(b"bbb").unwrap();
-
-    f1.close().unwrap();
-    f2.close().unwrap();
-
-    // TODO:
-    // let data_a = fs.read_to_vec("/a.txt").unwrap();
-    // let data_b = fs.read_to_vec("/b.txt").unwrap();
-    // assert_eq!(data_a, b"aaa");
-    // assert_eq!(data_b, b"bbb");
-
-    fs.unmount().unwrap();
+        // TODO:
+        // let data_a = fs.read_to_vec("/a.txt").unwrap();
+        // let data_b = fs.read_to_vec("/b.txt").unwrap();
+        // assert_eq!(data_a, b"aaa");
+        // assert_eq!(data_b, b"bbb");
+    });
 }
 
 #[test]
