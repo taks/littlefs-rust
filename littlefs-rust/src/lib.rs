@@ -39,6 +39,7 @@
 extern crate alloc;
 
 mod config;
+mod dir;
 mod file;
 mod filesystem;
 mod metadata;
