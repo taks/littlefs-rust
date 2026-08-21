@@ -31,7 +31,7 @@ impl TestContext {
         let mut config = make_config(block_count, &ram);
         config.read_buffer = Some(NonNull::from_ref(&read_buf));
         config.prog_buffer = Some(NonNull::from_ref(&prog_buf));
-        config.lookahead_buffer = lookahead_buf.as_ptr() as *mut core::ffi::c_void;
+        config.lookahead_buffer = Some(NonNull::from_ref(&lookahead_buf));
 
         let mut ctx = Self {
             ram,
@@ -42,7 +42,6 @@ impl TestContext {
             _lookahead_buf: lookahead_buf,
         };
         ctx.config.context = &mut ctx.ram as *mut RamStorage as *mut core::ffi::c_void;
-        ctx.config.lookahead_buffer = ctx._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
         ctx
     }
 

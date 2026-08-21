@@ -258,7 +258,7 @@ pub fn config_with_geometry(block_size: u32, block_count: u32) -> TestEnv {
         compact_thresh: u32::MAX,
         read_buffer: Some(NonNull::from_ref(&read_buf)),
         prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -273,7 +273,6 @@ pub fn config_with_geometry(block_size: u32, block_count: u32) -> TestEnv {
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
 
@@ -301,7 +300,7 @@ pub fn default_config(block_count: u32) -> TestEnv {
         compact_thresh: u32::MAX, // -1 in C
         read_buffer: Some(NonNull::from_ref(&read_buf)),
         prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -319,7 +318,6 @@ pub fn default_config(block_count: u32) -> TestEnv {
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
 
@@ -364,7 +362,7 @@ pub fn clone_config_with_block_count(env: &TestEnv, block_count: u32) -> ClonedC
         compact_thresh: env.config.compact_thresh,
         read_buffer: Some(NonNull::from_ref(&read_buf)),
         prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void,
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: env.config.name_max,
         file_max: env.config.file_max,
         attr_max: env.config.attr_max,
@@ -421,7 +419,7 @@ pub fn config_badblock_with_behavior(
         compact_thresh: u32::MAX,
         read_buffer: Some(NonNull::from_ref(&read_buf)),
         prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -436,7 +434,6 @@ pub fn config_badblock_with_behavior(
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
 
@@ -937,7 +934,7 @@ pub fn config_with_wear_leveling_behavior(
         compact_thresh: u32::MAX,
         read_buffer: Some(NonNull::from_ref(&read_buf)),
         prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -952,7 +949,6 @@ pub fn config_with_wear_leveling_behavior(
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
 
@@ -985,7 +981,7 @@ pub fn config_with_wear_leveling_full(
         compact_thresh: u32::MAX,
         read_buffer: Some(NonNull::from_ref(&read_buf)),
         prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -1000,7 +996,6 @@ pub fn config_with_wear_leveling_full(
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
 

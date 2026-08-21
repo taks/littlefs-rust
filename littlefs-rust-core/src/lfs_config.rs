@@ -41,7 +41,7 @@ pub struct LfsConfig {
     pub compact_thresh: lfs_size_t,
     pub read_buffer: Option<NonNull<[u8]>>,
     pub prog_buffer: Option<NonNull<[u8]>>,
-    pub lookahead_buffer: *mut core::ffi::c_void,
+    pub lookahead_buffer: Option<NonNull<[u8]>>,
     pub name_max: lfs_size_t,
     pub file_max: lfs_size_t,
     pub attr_max: lfs_size_t,

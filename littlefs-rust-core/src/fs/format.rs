@@ -108,9 +108,7 @@ pub fn lfs_format_(
         crate::lfs_assert!(cfg.block_count != 0);
 
         // create free lookahead
-        if !lfs.lookahead.buffer.is_null() {
-            core::ptr::write_bytes(lfs.lookahead.buffer, 0, cfg.lookahead_size as usize);
-        }
+        lfs.lookahead.buffer.as_mut().fill(0);
         lfs.lookahead.start = 0;
         lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
         lfs.lookahead.next = 0;
@@ -231,9 +229,7 @@ pub unsafe fn test_traverse_format_attrs(
     }
 
     unsafe {
-        if !lfs.lookahead.buffer.is_null() {
-            core::ptr::write_bytes(lfs.lookahead.buffer, 0, cfg.lookahead_size as usize);
-        }
+        lfs.lookahead.buffer.as_mut().fill(0);
         lfs.lookahead.start = 0;
         lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
         lfs.lookahead.next = 0;
@@ -337,9 +333,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
     }
 
     unsafe {
-        if !lfs.lookahead.buffer.is_null() {
-            core::ptr::write_bytes(lfs.lookahead.buffer, 0, cfg.lookahead_size as usize);
-        }
+        lfs.lookahead.buffer.as_mut().fill(0);
         lfs.lookahead.start = 0;
         lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
         lfs.lookahead.next = 0;
@@ -444,9 +438,7 @@ pub unsafe fn test_format_minimal_superblock(
 
     crate::lfs_assert!(cfg.block_count != 0);
 
-    if !lfs.lookahead.buffer.is_null() {
-        unsafe { core::ptr::write_bytes(lfs.lookahead.buffer, 0, cfg.lookahead_size as usize) };
-    }
+    unsafe { lfs.lookahead.buffer.as_mut().fill(0) };
     lfs.lookahead.start = 0;
     lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
     lfs.lookahead.next = 0;

@@ -38,10 +38,8 @@ fn test_context_format_to_alloc() {
     assert_eq!(err, Ok(()));
 
     let cfg = unsafe { &*lfs.cfg };
-    if !lfs.lookahead.buffer.is_null() {
-        unsafe {
-            core::ptr::write_bytes(lfs.lookahead.buffer, 0, cfg.lookahead_size as usize);
-        }
+    unsafe {
+        lfs.lookahead.buffer.as_mut().fill(0);
     }
     lfs.lookahead.start = 0;
     lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
@@ -75,7 +73,7 @@ fn test_context_buffers_writable() {
     if let Some(mut buf) = ctx.config.prog_buffer {
         unsafe { buf.as_mut().fill(0xff) };
     }
-    if !ctx.config.lookahead_buffer.is_null() {
-        unsafe { core::ptr::write_bytes(ctx.config.lookahead_buffer as *mut u8, 0, block_size) };
+    if let Some(mut buf) = ctx.config.lookahead_buffer {
+        unsafe { buf.as_mut().fill(0) };
     }
 }

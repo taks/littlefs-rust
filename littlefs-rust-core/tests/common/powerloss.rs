@@ -181,7 +181,7 @@ pub fn powerloss_config(block_count: u32) -> PowerLossEnv {
         compact_thresh: u32::MAX,
         read_buffer: Some(NonNull::from_ref(&read_buf)),
         prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -196,7 +196,6 @@ pub fn powerloss_config(block_count: u32) -> PowerLossEnv {
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
 
@@ -227,7 +226,7 @@ pub fn powerloss_config_with_behavior(
         compact_thresh: u32::MAX,
         read_buffer: Some(NonNull::from_ref(&read_buf)),
         prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -242,7 +241,6 @@ pub fn powerloss_config_with_behavior(
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
 

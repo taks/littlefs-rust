@@ -104,7 +104,7 @@ pub fn make_config(block_count: u32, _ram: &RamStorage) -> LfsConfig {
         compact_thresh: u32::MAX,
         read_buffer: None,
         prog_buffer: None,
-        lookahead_buffer: core::ptr::null_mut(),
+        lookahead_buffer: None,
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,

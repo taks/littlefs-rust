@@ -306,7 +306,6 @@ pub fn lfs_bd_cmp(
         }
         i += diff as lfs_off_t;
         buffer = &buffer[diff..];
-
     }
     Ok(core::cmp::Ordering::Equal)
 }
