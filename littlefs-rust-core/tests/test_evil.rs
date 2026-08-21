@@ -140,7 +140,7 @@ fn evil_invalid_dir_pointer(invalset: u32) {
     let child_dir = "dir_here/dir_here";
     assert_err!(Error::Corrupt, lfs_dir_open(lfs, dir, child_dir));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_err!(
         Error::Corrupt,
         lfs_file_open(lfs, file, child_file, LFS_O_RDONLY),
@@ -177,7 +177,7 @@ fn evil_invalid_file_pointer(size: u32) {
     assert_ok!(lfs_mount(lfs, cfg));
 
     let file_name = "file_here";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -266,7 +266,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     assert_ok!(lfs_mount(lfs, cfg));
 
     let file_name = "file_here";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,

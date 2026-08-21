@@ -644,7 +644,7 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
 
     let path = "hello";
     let data = b"Hello World!\0";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     let err = lfs_file_open(lfs, file, path, OpenFlags::WRITE | OpenFlags::CREATE);
     if let Err(err) = err {
         let _ = lfs_unmount(lfs);

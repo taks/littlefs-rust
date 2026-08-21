@@ -21,7 +21,7 @@ fn test_context_smoke() {
 #[test]
 fn test_context_lfs_init() {
     let ctx = TestContext::default_blocks();
-    let mut lfs = unsafe { core::mem::MaybeUninit::<crate::Lfs>::zeroed().assume_init() };
+    let mut lfs = crate::Lfs::default();
     let err = crate::fs::lfs_init(&mut lfs, ctx.config());
     assert_eq!(err, Ok(()));
 }
@@ -33,7 +33,7 @@ fn test_context_format_to_alloc() {
     use crate::util::lfs_min;
 
     let ctx = TestContext::default_blocks();
-    let mut lfs = unsafe { core::mem::MaybeUninit::<crate::Lfs>::zeroed().assume_init() };
+    let mut lfs = crate::Lfs::default();
     let err = crate::fs::lfs_init(&mut lfs, ctx.config());
     assert_eq!(err, Ok(()));
 

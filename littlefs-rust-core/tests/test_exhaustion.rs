@@ -42,7 +42,7 @@ fn run_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) -
             let mut prng = cycle.wrapping_mul(i);
             let size = 1u32 << ((test_prng(&mut prng) % 10) + 2);
 
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(
                 lfs,
                 file,
@@ -81,7 +81,7 @@ fn run_exhaustion(lfs: &mut Lfs, config: &LfsConfig, prefix: &str, files: u32) -
             let mut prng = cycle.wrapping_mul(i);
             let size = 1u32 << ((test_prng(&mut prng) % 10) + 2);
 
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(lfs, file, path, common::LFS_O_RDONLY));
 
             for _ in 0..size {
@@ -190,7 +190,7 @@ fn run_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) -> u32 {
             let mut prng = cycle.wrapping_mul(i);
             let size = 1u32 << ((test_prng(&mut prng) % 10) + 2);
 
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(
                 lfs,
                 file,
@@ -223,7 +223,7 @@ fn run_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) -> u32 {
             let mut prng = cycle.wrapping_mul(i);
             let size = 1u32 << ((test_prng(&mut prng) % 10) + 2);
 
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(lfs, file, path, common::LFS_O_RDONLY));
 
             for _ in 0..size {
@@ -399,7 +399,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
             // C: lfs_size_t size = 1 << 4;
             let size: u32 = 1 << 4;
 
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(
                 lfs,
                 file,
@@ -432,7 +432,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
             let mut prng = cycle.wrapping_mul(i);
             let size: u32 = 1 << 4;
 
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(lfs, file, path, common::LFS_O_RDONLY));
 
             for _ in 0..size {

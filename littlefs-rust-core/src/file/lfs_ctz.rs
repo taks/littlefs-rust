@@ -7,7 +7,7 @@ use crate::util::{lfs_fromle32, lfs_tole32};
 
 /// Per lfs.h struct lfs_ctz (in lfs_file_t)
 #[repr(C)]
-#[derive(Clone, Copy, FromBytes, IntoBytes, Immutable)]
+#[derive(Clone, Copy, Default, FromBytes, IntoBytes, Immutable)]
 pub struct LfsCtz {
     pub head: lfs_block_t,
     pub size: lfs_size_t,

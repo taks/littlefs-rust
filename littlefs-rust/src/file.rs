@@ -24,7 +24,7 @@ impl FileAllocation<'_> {
             attrs: &mut [],
         };
         Self {
-            file: unsafe { core::mem::zeroed() },
+            file: LfsFile::default(),
             _cache: cache,
             file_config,
         }

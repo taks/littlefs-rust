@@ -75,7 +75,7 @@ fn test_move_file() {
     assert_ok!(lfs_mkdir(lfs, "d"));
 
     let a_hello = "a/hello";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -112,7 +112,7 @@ fn test_move_file() {
     let err_b = lfs_stat(lfs, "b/hello", info_dummy);
     assert_err!(Error::NoEntry, err_b);
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
@@ -122,7 +122,7 @@ fn test_move_file() {
     assert_eq!(&buf[13..19], b"ohayo\n");
     assert_ok!(lfs_file_close(lfs, file));
 
-    let file_dummy = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file_dummy = &mut LfsFile::default();
     let err_d = lfs_file_open(lfs, file_dummy, "d/hello", LFS_O_RDONLY);
     assert_err!(Error::NoEntry, err_d);
     assert_ok!(lfs_unmount(lfs));
@@ -179,7 +179,7 @@ fn test_move_state_stealing() {
     assert_ok!(lfs_mkdir(lfs, "c"));
     assert_ok!(lfs_mkdir(lfs, "d"));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -213,7 +213,7 @@ fn test_move_state_stealing() {
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, &env.config));
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
@@ -236,34 +236,34 @@ fn test_move_create_delete_same() {
     assert_ok!(lfs_mount(lfs, &env.config));
 
     let f1 = "1.move_me";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, f1, LFS_O_WRONLY | LFS_O_CREAT));
     assert_ok!(lfs_file_close(lfs, file));
 
     let f0 = "0.before";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, f0, LFS_O_WRONLY | LFS_O_CREAT));
     let n = lfs_file_write(lfs, file, b"test.1");
     assert_eq!(n, Ok(6));
     assert_ok!(lfs_file_close(lfs, file));
 
     let f2 = "2.in_between";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, f2, LFS_O_WRONLY | LFS_O_CREAT));
     let n = lfs_file_write(lfs, file, b"test.2");
     assert_eq!(n, Ok(6));
     assert_ok!(lfs_file_close(lfs, file));
 
     let f4 = "4.after";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, f4, LFS_O_WRONLY | LFS_O_CREAT));
     let n = lfs_file_write(lfs, file, b"test.3");
     assert_eq!(n, Ok(6));
     assert_ok!(lfs_file_close(lfs, file));
 
-    let fa = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    let fb = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    let fc = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let fa = &mut LfsFile::default();
+    let fb = &mut LfsFile::default();
+    let fc = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, fa, f0, LFS_O_WRONLY | LFS_O_TRUNC));
     assert_ok!(lfs_file_open(lfs, fb, f2, LFS_O_WRONLY | LFS_O_TRUNC));
     assert_ok!(lfs_file_open(lfs, fc, f4, LFS_O_WRONLY | LFS_O_TRUNC));
@@ -283,7 +283,7 @@ fn test_move_create_delete_same() {
     assert!(names.contains(&"3.move_me".to_string()));
     assert!(names.contains(&"4.after".to_string()));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, "0.before", LFS_O_RDONLY));
     let mut buf = [0u8; 16];
     let n = lfs_file_read(lfs, file, &mut buf);
@@ -305,7 +305,7 @@ fn test_move_create_delete_delete_same() {
     assert_ok!(lfs_format(lfs, &env.config));
     assert_ok!(lfs_mount(lfs, &env.config));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -314,7 +314,7 @@ fn test_move_create_delete_delete_same() {
     ));
     assert_ok!(lfs_file_close(lfs, file));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -325,7 +325,7 @@ fn test_move_create_delete_delete_same() {
     assert_eq!(n, Ok(9));
     assert_ok!(lfs_file_close(lfs, file));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -336,7 +336,7 @@ fn test_move_create_delete_delete_same() {
     assert_eq!(n, Ok(6));
     assert_ok!(lfs_file_close(lfs, file));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -347,7 +347,7 @@ fn test_move_create_delete_delete_same() {
     assert_eq!(n, Ok(6));
     assert_ok!(lfs_file_close(lfs, file));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -358,9 +358,9 @@ fn test_move_create_delete_delete_same() {
     assert_eq!(n, Ok(6));
     assert_ok!(lfs_file_close(lfs, file));
 
-    let fa = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    let fb = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
-    let fc = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let fa = &mut LfsFile::default();
+    let fb = &mut LfsFile::default();
+    let fc = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         fa,
@@ -411,7 +411,7 @@ fn test_move_create_delete_different() {
     assert_ok!(lfs_mkdir(lfs, "dir.1"));
     assert_ok!(lfs_mkdir(lfs, "dir.2"));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -420,7 +420,7 @@ fn test_move_create_delete_different() {
     ));
     assert_ok!(lfs_file_close(lfs, file));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -456,7 +456,7 @@ fn test_move_file_corrupt_source() {
     assert_ok!(lfs_mkdir(lfs, "c"));
     assert_ok!(lfs_mkdir(lfs, "d"));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -490,7 +490,7 @@ fn test_move_file_corrupt_source() {
     assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hello", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
@@ -523,7 +523,7 @@ fn test_move_file_corrupt_source_dest() {
     assert_ok!(lfs_mkdir(lfs, "c"));
     assert_ok!(lfs_mkdir(lfs, "d"));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -559,7 +559,7 @@ fn test_move_file_corrupt_source_dest() {
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "c/hello", info));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, "a/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
@@ -592,7 +592,7 @@ fn test_move_file_after_corrupt() {
     assert_ok!(lfs_mkdir(lfs, "c"));
     assert_ok!(lfs_mkdir(lfs, "d"));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -632,7 +632,7 @@ fn test_move_file_after_corrupt() {
     assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hello", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
     let n = lfs_file_read(lfs, file, &mut buf);
@@ -662,7 +662,7 @@ fn test_move_reentrant_file() {
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_mkdir(lfs, "dir.1"));
     assert_ok!(lfs_mkdir(lfs, "dir.2"));
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -928,7 +928,7 @@ fn test_move_fix_relocation() {
         assert_ok!(lfs_mkdir(lfs, "parent"));
         assert_ok!(lfs_mkdir(lfs, "parent/child"));
 
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
             lfs,
             file,
@@ -949,14 +949,12 @@ fn test_move_fix_relocation() {
             assert_ok!(lfs_file_close(lfs, file));
         }
 
-        let mut files = unsafe {
-            [
-                core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init(),
-                core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init(),
-                core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init(),
-                core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init(),
-            ]
-        };
+        let mut files = [
+            LfsFile::default(),
+            LfsFile::default(),
+            LfsFile::default(),
+            LfsFile::default(),
+        ];
         let paths = [
             "parent/0.before",
             "parent/2.after",
@@ -1083,7 +1081,7 @@ fn test_move_fix_relocation_predecessor() {
         assert_ok!(lfs_mkdir(lfs, "parent/child"));
         assert_ok!(lfs_mkdir(lfs, "parent/sibling"));
 
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
             lfs,
             file,
@@ -1104,14 +1102,7 @@ fn test_move_fix_relocation_predecessor() {
             assert_ok!(lfs_file_close(lfs, file));
         }
 
-        let mut files = unsafe {
-            [
-                core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init(),
-                core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init(),
-                core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init(),
-                core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init(),
-            ]
-        };
+        let mut files: [LfsFile; 4] = Default::default();
         let paths = [
             "parent/sibling/0.before",
             "parent/sibling/2.after",

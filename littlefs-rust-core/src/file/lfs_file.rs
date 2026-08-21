@@ -10,6 +10,7 @@ use super::lfs_ctz::LfsCtz;
 
 /// Per lfs.h typedef struct lfs_file
 #[repr(C)]
+#[derive(Default)]
 pub struct LfsFile<'a> {
     pub next: *mut LfsFile<'a>,
     pub id: u16,

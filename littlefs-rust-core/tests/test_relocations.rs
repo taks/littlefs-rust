@@ -42,7 +42,7 @@ fn test_relocations_dangling_split_dir(#[values(8, 1)] block_cycles: i32) {
     assert_ok!(lfs_mkdir(lfs, "d0"));
     for i in 0..COUNT {
         let path = &format!("d0/f{i}");
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
         let n = lfs_file_write(lfs, file, b"x");
         assert_eq!(n, Ok(1));
@@ -85,7 +85,7 @@ fn test_relocations_outdated_head(#[values(8, 1)] block_cycles: i32) {
     assert_ok!(lfs_mkdir(lfs, "d0/sub"));
     for i in 0..COUNT {
         let path = &format!("d0/sub/f{i}");
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
         let n = lfs_file_write(lfs, file, b"x");
         assert_eq!(n, Ok(1));
@@ -173,7 +173,7 @@ fn test_relocations_nonreentrant_renames(
     assert_ok!(lfs_mount(lfs, &env.config));
 
     for path in ["x", "y"] {
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
         assert_ok!(lfs_file_close(lfs, file));
     }
@@ -288,7 +288,7 @@ fn test_relocations_reentrant_renames(
     assert_ok!(lfs_mount(lfs, &env.config));
     for name in ["x", "y"] {
         let path = name;
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
         assert_ok!(lfs_file_close(lfs, file));
     }

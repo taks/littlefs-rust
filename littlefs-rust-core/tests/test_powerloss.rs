@@ -37,7 +37,7 @@ fn test_powerloss_only_rev() {
     let path_paper = "notebook/paper";
     assert_ok_at("mkdir notebook", lfs_mkdir(lfs, path_nb));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open paper create",
         lfs_file_open(
@@ -58,7 +58,7 @@ fn test_powerloss_only_rev() {
     }
     assert_ok_at("file_close", lfs_file_close(lfs, file));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open paper read",
         lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY),
@@ -97,7 +97,7 @@ fn test_powerloss_only_rev() {
 
     assert_ok_at("mount after corrupt", lfs_mount(lfs, &env.config));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open paper read after corrupt",
         lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY),
@@ -109,7 +109,7 @@ fn test_powerloss_only_rev() {
     }
     assert_ok_at("file_close", lfs_file_close(lfs, file));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open paper append",
         lfs_file_open(lfs, file, path_paper, LFS_O_WRONLY | LFS_O_APPEND),
@@ -125,7 +125,7 @@ fn test_powerloss_only_rev() {
     }
     assert_ok_at("file_close", lfs_file_close(lfs, file));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open paper read final",
         lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY),
@@ -289,7 +289,7 @@ fn test_debug_file_root_single_write_sync() {
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
     let path = "paper";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open create",
         lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND),
@@ -314,7 +314,7 @@ fn test_debug_file_root_repeated_write_sync() {
     assert_ok_at("mount", lfs_mount(lfs, &env.config));
 
     let path = "paper";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open create",
         lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND),
@@ -344,7 +344,7 @@ fn test_debug_file_subdir_which_sync_fails() {
     let path_paper = "notebook/paper";
     assert_ok_at("mkdir notebook", lfs_mkdir(lfs, path_nb));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open paper create",
         lfs_file_open(
@@ -380,7 +380,7 @@ fn test_debug_powerloss_after_corrupt_append() {
     let path_paper = "notebook/paper";
     assert_ok_at("mkdir notebook", lfs_mkdir(lfs, path_nb));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open paper create",
         lfs_file_open(
@@ -421,7 +421,7 @@ fn test_debug_powerloss_after_corrupt_append() {
     let _ = prog_fn(&env.config, pair[1], 0, &block_buf);
 
     assert_ok_at("mount after corrupt", lfs_mount(lfs, &env.config));
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open paper append",
         lfs_file_open(lfs, file, path_paper, LFS_O_WRONLY | LFS_O_APPEND),
@@ -561,7 +561,7 @@ fn test_debug_file_subdir_single_write_sync() {
 
     assert_ok_at("mkdir notebook", lfs_mkdir(lfs, "notebook"));
 
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok_at(
         "file_open paper create",
         lfs_file_open(

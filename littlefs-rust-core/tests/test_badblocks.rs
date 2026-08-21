@@ -80,7 +80,7 @@ fn test_badblocks_single(
             }
             buffer[2 * NAMEMULT + 1] = 0;
 
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(
                 lfs,
                 file,
@@ -121,7 +121,7 @@ fn test_badblocks_single(
             }
             buffer[2 * NAMEMULT + 1] = 0;
 
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(
                 lfs,
                 file,
@@ -299,7 +299,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         }
         buffer[2 * NAMEMULT + 1] = 0;
 
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
             lfs,
             file,
@@ -339,7 +339,7 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         }
         buffer[2 * NAMEMULT + 1] = 0;
 
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
             lfs,
             file,

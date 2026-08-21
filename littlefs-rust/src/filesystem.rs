@@ -110,7 +110,7 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
     };
 
     FsInner {
-        lfs: unsafe { core::mem::zeroed() },
+        lfs: Lfs::default(),
         config: lfs_config,
         storage,
         _read_buf: read_buf,
@@ -349,7 +349,7 @@ fn build_inner_borrowed<'a, S: Storage>(
     };
 
     BorrowedFsInner {
-        lfs: unsafe { core::mem::zeroed() },
+        lfs: Lfs::default(),
         config: lfs_config,
         storage,
         _read_buf: read_buf,
