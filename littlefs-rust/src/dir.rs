@@ -17,3 +17,11 @@ impl<'a, 'b, S: Storage> ReadDir<'a, 'b, S> {
         }
     }
 }
+
+impl<S: Storage> Iterator for ReadDir<'_, '_, S> {
+    type Item = Result<(), Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
