@@ -1,13 +1,19 @@
 use core::fmt::Error;
 
+use littlefs_rust_core::LfsDir;
+
 use crate::{Filesystem, Storage};
 
 pub struct ReadDir<'a, 'b, S: Storage> {
     fs: &'b Filesystem<'a, S>,
+    dir: LfsDir,
 }
 
 impl<'a, 'b, S: Storage> ReadDir<'a, 'b, S> {
-    pub(crate) fn new(fs: &'b Filesystem<'a, S>) -> Result<Self, Error> {
-        Ok(Self { fs })
+    pub(crate) fn new(fs: &'b Filesystem<'a, S>) -> Self {
+        Self {
+            fs,
+            dir: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
+        }
     }
 }
