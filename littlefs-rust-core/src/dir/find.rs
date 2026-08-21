@@ -72,7 +72,7 @@ pub fn lfs_dir_find_match(
         diff,
         disk.block,
         disk.off,
-        name.name.as_ptr(),
+        name.name,
         diff,
     );
     if res != Ok(core::cmp::Ordering::Equal) {

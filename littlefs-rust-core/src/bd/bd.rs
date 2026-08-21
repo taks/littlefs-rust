@@ -39,8 +39,8 @@ pub fn lfs_cache_zero(lfs: &Lfs, pcache: &mut LfsCache) {
         let cfg = lfs.cfg;
         let cache_size = (*cfg).cache_size as usize;
         let buf = pcache.buffer;
-        if !buf.is_null() {
-            core::ptr::write_bytes(buf, 0xff, cache_size);
+        if let Some(mut buf) = buf {
+            buf.as_mut()[..cache_size].fill(0xff);
         }
         pcache.block = crate::types::LFS_BLOCK_NULL;
     }
@@ -167,9 +167,9 @@ pub fn lfs_bd_read(
                 if block == pcache.block && off < pcache.off + pcache.size {
                     if off >= pcache.off {
                         diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
-                        if !pcache.buffer.is_null() {
+                        if let Some(buf) = pcache.buffer {
                             core::ptr::copy_nonoverlapping(
-                                pcache.buffer.add((off - pcache.off) as usize),
+                                buf.as_ref().as_ptr().add((off - pcache.off) as usize),
                                 data.as_mut_ptr(),
                                 diff as usize,
                             );
@@ -186,9 +186,9 @@ pub fn lfs_bd_read(
             if block == rcache.block && off < rcache.off + rcache.size {
                 if off >= rcache.off {
                     diff = lfs_min(diff, rcache.size - (off - rcache.off));
-                    if !rcache.buffer.is_null() {
+                    if let Some(buf) = rcache.buffer {
                         core::ptr::copy_nonoverlapping(
-                            rcache.buffer.add((off - rcache.off) as usize),
+                            buf.as_ref().as_ptr().add((off - rcache.off) as usize),
                             data.as_mut_ptr(),
                             diff as usize,
                         );
@@ -231,7 +231,7 @@ pub fn lfs_bd_read(
                 rcache.off,
                 rcache.size
             );
-            let data_ = core::slice::from_raw_parts_mut(rcache.buffer, rcache.size as _);
+            let data_ = &mut rcache.buffer.unwrap().as_mut()[..rcache.size as usize];
             let err = read(cfg, rcache.block, rcache.off, data_);
             if err.is_err() {
                 crate::lfs_trace!("bd_read block={} -> CORRUPT", rcache.block);
@@ -284,7 +284,7 @@ pub fn lfs_bd_cmp(
     hint: lfs_size_t,
     block: lfs_block_t,
     off: lfs_off_t,
-    buffer: *const u8,
+    buffer: &[u8],
     size: lfs_size_t,
 ) -> Result<core::cmp::Ordering, Error> {
     let mut i: lfs_off_t = 0;
@@ -301,9 +301,9 @@ pub fn lfs_bd_cmp(
             &mut dat[..diff],
         )?;
 
-        let res = unsafe {
+        let res = {
             let disk = &dat[..diff];
-            let expected = core::slice::from_raw_parts(buffer.add(i as usize), diff);
+            let expected = &buffer[(i as usize)..(i as usize + diff)];
             disk.cmp(expected)
         };
         match res {
@@ -437,7 +437,7 @@ pub fn lfs_bd_flush(
             Some(f) => f,
             None => return Err(Error::Corrupt),
         };
-        let data_ = unsafe { core::slice::from_raw_parts(pcache.buffer, diff as _) };
+        let data_ = unsafe { &pcache.buffer.unwrap().as_ref()[..diff as usize] };
         let err = prog(cfg, pcache.block, pcache.off, data_);
         crate::lfs_pass_err!(err, "bd_prog block={} -> CORRUPT", pcache.block)?;
 
@@ -450,7 +450,7 @@ pub fn lfs_bd_flush(
                 diff,
                 pcache.block,
                 pcache.off,
-                pcache.buffer,
+                unsafe { pcache.buffer.unwrap().as_ref() },
                 diff,
             );
             res?;
@@ -583,7 +583,7 @@ pub fn lfs_bd_prog(
     while size > 0 {
         if block == pcache.block && off >= pcache.off && off < pcache.off + cfg.cache_size {
             let diff = lfs_min(size, cfg.cache_size - (off - pcache.off));
-            if !pcache.buffer.is_null() && !data.is_empty() {
+            if !pcache.buffer.is_none() && !data.is_empty() {
                 // Trace superblock magic region (offset 12-20 in block 0/1)
                 if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
                     let magic_start = 12usize.saturating_sub(off as usize);
@@ -608,7 +608,7 @@ pub fn lfs_bd_prog(
                 unsafe {
                     core::ptr::copy_nonoverlapping(
                         data.as_ptr(),
-                        pcache.buffer.add((off - pcache.off) as usize),
+                        pcache.buffer.unwrap().as_mut().as_mut_ptr().add((off - pcache.off) as usize),
                         diff as usize,
                     )
                 };

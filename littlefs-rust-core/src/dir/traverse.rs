@@ -262,10 +262,10 @@ pub fn lfs_dir_getread(
             if pcache.block == LFS_BLOCK_INLINE && off < pcache.off + pcache.size {
                 if off >= pcache.off {
                     diff = lfs_min(diff, pcache.size - (off - pcache.off));
-                    if !pcache.buffer.is_null() {
+                    if let Some(buf) = pcache.buffer {
                         unsafe {
                             core::ptr::copy_nonoverlapping(
-                                pcache.buffer.add((off - pcache.off) as usize),
+                                buf.as_ref().as_ptr().add((off - pcache.off) as usize),
                                 data.as_mut_ptr(),
                                 diff as usize,
                             )
@@ -282,10 +282,10 @@ pub fn lfs_dir_getread(
 
         if rcache.block == LFS_BLOCK_INLINE && off < rcache.off + rcache.size && off >= rcache.off {
             diff = lfs_min(diff, rcache.size - (off - rcache.off));
-            if !rcache.buffer.is_null() {
+            if let Some(buffer) = rcache.buffer {
                 unsafe {
                     core::ptr::copy_nonoverlapping(
-                        rcache.buffer.add((off - rcache.off) as usize),
+                        buffer.as_ref().as_ptr().add((off - rcache.off) as usize),
                         data.as_mut_ptr(),
                         diff as usize,
                     )
@@ -306,7 +306,7 @@ pub fn lfs_dir_getread(
             gmask,
             gtag,
             rcache.off,
-            unsafe { core::slice::from_raw_parts_mut(rcache.buffer, rcache.size as usize) },
+            unsafe { &mut rcache.buffer.unwrap().as_mut()[..rcache.size as usize] },
             rcache.size,
         )?;
     }

@@ -67,16 +67,15 @@ fn test_context_format_to_alloc() {
 #[test]
 fn test_context_buffers_writable() {
     let ctx = TestContext::default_blocks();
-    let cfg = ctx.config();
     // Manually write to each buffer - simulate what lfs_cache_zero and format do
     let block_size = ctx.ram.block_size as usize;
-    if !cfg.read_buffer.is_null() {
-        unsafe { core::ptr::write_bytes(cfg.read_buffer as *mut u8, 0xff, block_size) };
+    if let Some(mut buf) = ctx.config.read_buffer {
+        unsafe { buf.as_mut().fill(0xff) };
     }
-    if !cfg.prog_buffer.is_null() {
-        unsafe { core::ptr::write_bytes(cfg.prog_buffer as *mut u8, 0xff, block_size) };
+    if let Some(mut buf) = ctx.config.prog_buffer {
+        unsafe { buf.as_mut().fill(0xff) };
     }
-    if !cfg.lookahead_buffer.is_null() {
-        unsafe { core::ptr::write_bytes(cfg.lookahead_buffer as *mut u8, 0, block_size) };
+    if !ctx.config.lookahead_buffer.is_null() {
+        unsafe { core::ptr::write_bytes(ctx.config.lookahead_buffer as *mut u8, 0, block_size) };
     }
 }

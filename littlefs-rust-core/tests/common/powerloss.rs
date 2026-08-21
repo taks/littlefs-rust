@@ -9,6 +9,7 @@
 //!          block written since last sync is reverted to its pre-write state.
 
 use core::cell::Cell;
+use std::ptr::NonNull;
 
 use littlefs_rust_core::{Lfs, LfsConfig, error::Error};
 
@@ -178,8 +179,8 @@ pub fn powerloss_config(block_count: u32) -> PowerLossEnv {
         cache_size: block_size,
         lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
         lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
         name_max: 255,
         file_max: 2_147_483_647,
@@ -195,8 +196,6 @@ pub fn powerloss_config(block_count: u32) -> PowerLossEnv {
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
@@ -226,8 +225,8 @@ pub fn powerloss_config_with_behavior(
         cache_size: block_size,
         lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
         lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
         name_max: 255,
         file_max: 2_147_483_647,
@@ -243,8 +242,6 @@ pub fn powerloss_config_with_behavior(
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }

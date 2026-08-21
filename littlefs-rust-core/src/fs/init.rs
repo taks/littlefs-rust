@@ -229,8 +229,8 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
         lfs.cfg = cfg;
         lfs.block_count = cfg.block_count;
 
-        lfs.rcache.get_mut().buffer = cfg.read_buffer as *mut u8;
-        lfs.pcache.get_mut().buffer = cfg.prog_buffer as *mut u8;
+        lfs.rcache.get_mut().buffer = cfg.read_buffer;
+        lfs.pcache.get_mut().buffer = cfg.prog_buffer;
 
         lfs_cache_zero(lfs, &mut *lfs.rcache.get());
         lfs_cache_zero(lfs, &mut *lfs.pcache.get());

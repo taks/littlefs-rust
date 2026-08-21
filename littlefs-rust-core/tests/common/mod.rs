@@ -9,6 +9,7 @@ pub mod dump;
 pub mod powerloss;
 
 use core::cell::RefCell;
+use std::ptr::NonNull;
 use littlefs_rust_core::{LfsConfig, error::Error, lfs_type::OpenFlags};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
@@ -255,8 +256,8 @@ pub fn config_with_geometry(block_size: u32, block_count: u32) -> TestEnv {
         cache_size: block_size,
         lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
         lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
         name_max: 255,
         file_max: 2_147_483_647,
@@ -272,8 +273,6 @@ pub fn config_with_geometry(block_size: u32, block_count: u32) -> TestEnv {
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
@@ -300,8 +299,8 @@ pub fn default_config(block_count: u32) -> TestEnv {
         cache_size: block_size,
         lookahead_size: block_size,
         compact_thresh: u32::MAX, // -1 in C
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
         lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
         name_max: 255,
         file_max: 2_147_483_647,
@@ -320,8 +319,6 @@ pub fn default_config(block_count: u32) -> TestEnv {
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
@@ -348,8 +345,8 @@ pub struct ClonedConfig {
 /// RAM context pointer. Caller must ensure the original TestEnv outlives this.
 pub fn clone_config_with_block_count(env: &TestEnv, block_count: u32) -> ClonedConfig {
     let bs = env.config.block_size as usize;
-    let mut read_buf = vec![0u8; bs];
-    let mut prog_buf = vec![0u8; bs];
+    let read_buf = vec![0u8; bs];
+    let prog_buf = vec![0u8; bs];
     let mut lookahead_buf = vec![0u8; bs];
     let config = LfsConfig {
         context: env.config.context,
@@ -365,8 +362,8 @@ pub fn clone_config_with_block_count(env: &TestEnv, block_count: u32) -> ClonedC
         cache_size: env.config.cache_size,
         lookahead_size: env.config.lookahead_size,
         compact_thresh: env.config.compact_thresh,
-        read_buffer: read_buf.as_mut_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_mut_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
         lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void,
         name_max: env.config.name_max,
         file_max: env.config.file_max,
@@ -422,8 +419,8 @@ pub fn config_badblock_with_behavior(
         cache_size: block_size,
         lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
         lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
         name_max: 255,
         file_max: 2_147_483_647,
@@ -439,8 +436,6 @@ pub fn config_badblock_with_behavior(
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
@@ -940,8 +935,8 @@ pub fn config_with_wear_leveling_behavior(
         cache_size: block_size,
         lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
         lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
         name_max: 255,
         file_max: 2_147_483_647,
@@ -957,8 +952,6 @@ pub fn config_with_wear_leveling_behavior(
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }
@@ -990,8 +983,8 @@ pub fn config_with_wear_leveling_full(
         cache_size: block_size,
         lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
         lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
         name_max: 255,
         file_max: 2_147_483_647,
@@ -1007,8 +1000,6 @@ pub fn config_with_wear_leveling_full(
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
     env
 }

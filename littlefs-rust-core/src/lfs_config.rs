@@ -3,6 +3,8 @@
 
 #![allow(non_camel_case_types)]
 
+use core::ptr::NonNull;
+
 use crate::{
     error::Error,
     types::{lfs_block_t, lfs_off_t, lfs_size_t},
@@ -37,8 +39,8 @@ pub struct LfsConfig {
     pub cache_size: lfs_size_t,
     pub lookahead_size: lfs_size_t,
     pub compact_thresh: lfs_size_t,
-    pub read_buffer: *mut core::ffi::c_void,
-    pub prog_buffer: *mut core::ffi::c_void,
+    pub read_buffer: Option<NonNull<[u8]>>,
+    pub prog_buffer: Option<NonNull<[u8]>>,
     pub lookahead_buffer: *mut core::ffi::c_void,
     pub name_max: lfs_size_t,
     pub file_max: lfs_size_t,
