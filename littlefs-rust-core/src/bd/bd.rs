@@ -608,7 +608,12 @@ pub fn lfs_bd_prog(
                 unsafe {
                     core::ptr::copy_nonoverlapping(
                         data.as_ptr(),
-                        pcache.buffer.unwrap().as_mut().as_mut_ptr().add((off - pcache.off) as usize),
+                        pcache
+                            .buffer
+                            .unwrap()
+                            .as_mut()
+                            .as_mut_ptr()
+                            .add((off - pcache.off) as usize),
                         diff as usize,
                     )
                 };

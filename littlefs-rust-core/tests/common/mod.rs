@@ -9,8 +9,8 @@ pub mod dump;
 pub mod powerloss;
 
 use core::cell::RefCell;
-use std::ptr::NonNull;
 use littlefs_rust_core::{LfsConfig, error::Error, lfs_type::OpenFlags};
+use std::ptr::NonNull;
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
