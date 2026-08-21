@@ -38,9 +38,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     assert_ok!(lfs_format(lfs, &env.config));
     assert_ok!(lfs_mount(lfs, &env.config));
 
-    let mut file_handles: Vec<LfsFile> = (0..files)
-        .map(|_| LfsFile::default())
-        .collect();
+    let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
@@ -93,9 +91,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     assert_ok!(lfs_dir_close(lfs, dir));
 
     // Re-open for reading and verify first 10 bytes
-    let mut file_handles: Vec<LfsFile> = (0..files)
-        .map(|_| LfsFile::default())
-        .collect();
+    let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
@@ -354,9 +350,7 @@ fn test_interspersed_reentrant_files(
         assert_ok!(lfs_mount(lfs, &env.config));
     }
 
-    let mut file_handles: Vec<LfsFile> = (0..files)
-        .map(|_| unsafe { core::mem::MaybeUninit::zeroed().assume_init() })
-        .collect();
+    let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
@@ -413,9 +407,7 @@ fn test_interspersed_reentrant_files(
     assert_ok!(lfs_dir_close(lfs, dir));
 
     // Read first 10 bytes from each
-    let mut file_handles: Vec<LfsFile> = (0..files)
-        .map(|_| unsafe { core::mem::MaybeUninit::zeroed().assume_init() })
-        .collect();
+    let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);

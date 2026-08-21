@@ -2,7 +2,7 @@
 
 use std::mem::MaybeUninit;
 
-use littlefs_rust_core::{LfsFile, error::Error, lfs_type::OpenFlags};
+use littlefs_rust_core::{error::Error, lfs_type::OpenFlags, LfsFile};
 
 use crate::storage::{prng_verify, test_prng, SharedStorage};
 
