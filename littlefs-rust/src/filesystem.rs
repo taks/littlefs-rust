@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::ffi::c_void;
 use core::mem::ManuallyDrop;
+use core::ptr::NonNull;
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::OpenFlags;
 
@@ -98,8 +99,8 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
         cache_size: config.resolve_cache_size(),
         lookahead_size: config.resolve_lookahead_size(),
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_mut_ptr() as *mut c_void,
-        prog_buffer: prog_buf.as_mut_ptr() as *mut c_void,
+        read_buffer: Some(NonNull::from_mut(&mut read_buf)),
+        prog_buffer: Some(NonNull::from_mut(&mut prog_buf)),
         lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut c_void,
         name_max: config.name_max,
         file_max: config.file_max,
@@ -123,8 +124,8 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
 /// `inner` is at its final address (i.e., inside the `RefCell`).
 fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
     inner.config.context = &mut inner.storage as *mut S as *mut c_void;
-    inner.config.read_buffer = inner._read_buf.as_mut_ptr() as *mut c_void;
-    inner.config.prog_buffer = inner._prog_buf.as_mut_ptr() as *mut c_void;
+    inner.config.read_buffer = Some(NonNull::from_mut(&mut inner._read_buf));
+    inner.config.prog_buffer = Some(NonNull::from_mut(&mut inner._prog_buf));
     inner.config.lookahead_buffer = inner._lookahead_buf.as_mut_ptr() as *mut c_void;
 }
 
@@ -337,8 +338,8 @@ fn build_inner_borrowed<'a, S: Storage>(
         cache_size: config.resolve_cache_size(),
         lookahead_size: config.resolve_lookahead_size(),
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_mut_ptr() as *mut c_void,
-        prog_buffer: prog_buf.as_mut_ptr() as *mut c_void,
+        read_buffer: Some(NonNull::from_mut(&mut read_buf)),
+        prog_buffer: Some(NonNull::from_mut(&mut prog_buf)),
         lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut c_void,
         name_max: config.name_max,
         file_max: config.file_max,
@@ -359,7 +360,7 @@ fn build_inner_borrowed<'a, S: Storage>(
 
 fn wire_context_borrowed<S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
     inner.config.context = inner.storage as *mut S as *mut c_void;
-    inner.config.read_buffer = inner._read_buf.as_mut_ptr() as *mut c_void;
-    inner.config.prog_buffer = inner._prog_buf.as_mut_ptr() as *mut c_void;
+    inner.config.read_buffer = Some(NonNull::from_ref(&inner._read_buf));
+    inner.config.prog_buffer = Some(NonNull::from_ref(&inner._prog_buf));
     inner.config.lookahead_buffer = inner._lookahead_buf.as_mut_ptr() as *mut c_void;
 }
