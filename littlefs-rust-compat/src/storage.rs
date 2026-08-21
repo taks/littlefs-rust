@@ -221,7 +221,7 @@ impl SharedStorage {
             compact_thresh: u32::MAX,
             read_buffer: Some(NonNull::from_mut(&mut read_buf)),
             prog_buffer: Some(NonNull::from_mut(&mut prog_buf)),
-            lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut c_void,
+            lookahead_buffer: Some(NonNull::from_mut(&mut lookahead_buf)),
             name_max: 255,
             file_max: 2_147_483_647,
             attr_max: 1022,

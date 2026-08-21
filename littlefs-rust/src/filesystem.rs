@@ -101,7 +101,7 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
         compact_thresh: u32::MAX,
         read_buffer: Some(NonNull::from_mut(&mut read_buf)),
         prog_buffer: Some(NonNull::from_mut(&mut prog_buf)),
-        lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut c_void,
+        lookahead_buffer: Some(NonNull::from_mut(&mut lookahead_buf)),
         name_max: config.name_max,
         file_max: config.file_max,
         attr_max: config.attr_max,
@@ -126,7 +126,7 @@ fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
     inner.config.context = &mut inner.storage as *mut S as *mut c_void;
     inner.config.read_buffer = Some(NonNull::from_mut(&mut inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_mut(&mut inner._prog_buf));
-    inner.config.lookahead_buffer = inner._lookahead_buf.as_mut_ptr() as *mut c_void;
+    inner.config.lookahead_buffer = Some(NonNull::from_mut(&mut inner._lookahead_buf));
 }
 
 // ── Filesystem ──────────────────────────────────────────────────────────────
@@ -340,7 +340,7 @@ fn build_inner_borrowed<'a, S: Storage>(
         compact_thresh: u32::MAX,
         read_buffer: Some(NonNull::from_mut(&mut read_buf)),
         prog_buffer: Some(NonNull::from_mut(&mut prog_buf)),
-        lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut c_void,
+        lookahead_buffer: Some(NonNull::from_mut(&mut lookahead_buf)),
         name_max: config.name_max,
         file_max: config.file_max,
         attr_max: config.attr_max,
@@ -362,5 +362,5 @@ fn wire_context_borrowed<S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
     inner.config.context = inner.storage as *mut S as *mut c_void;
     inner.config.read_buffer = Some(NonNull::from_ref(&inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_ref(&inner._prog_buf));
-    inner.config.lookahead_buffer = inner._lookahead_buf.as_mut_ptr() as *mut c_void;
+    inner.config.lookahead_buffer = Some(NonNull::from_ref(&inner._lookahead_buf));
 }
