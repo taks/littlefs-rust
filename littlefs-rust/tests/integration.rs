@@ -1,16 +1,26 @@
 use std::{io::Read, string::String};
 
 use littlefs_rust::{Allocation, Error, FileAllocation, FileType, Filesystem, OpenFlags, SeekFrom};
+use test_context::{test_context, TestContext};
 
 type RamStorage = littlefs_rust::RamStorage<512, 128>;
 
-fn format_and_mount(cb: impl FnOnce(Filesystem<'_, RamStorage>) -> ()) -> () {
-    let mut storage = RamStorage::new();
-    let mut alloc = Allocation::new();
+struct Context {
+    storage: Box<RamStorage>,
+    alloc: Box<Allocation<RamStorage>>,
+    fs: Filesystem<'static, RamStorage>,
+}
 
-    Filesystem::format(&mut storage, &mut alloc).expect("format");
-    let fs = Filesystem::mount(&mut storage, &mut alloc).expect("mount");
-    cb(fs)
+impl TestContext for Context {
+    fn setup() -> Self {
+        let mut storage = Box::new(RamStorage::new());
+        let mut alloc = Box::new(Allocation::<RamStorage>::new());
+
+        Filesystem::format(storage.as_mut(), alloc.as_mut()).expect("format");
+        let fs = Filesystem::mount(storage.as_mut(), alloc.as_mut()).expect("mount");
+
+        Self { storage, alloc, fs }
+    }
 }
 
 #[test]
@@ -91,12 +101,8 @@ fn test_multiple_open_files() {
         f1.close().unwrap();
         f2.close().unwrap();
 
-        let mut f1 = fs
-            .open(&mut falloc1, "/a.txt", OpenFlags::READ)
-            .unwrap();
-        let mut f2 = fs
-            .open(&mut falloc2, "/b.txt", OpenFlags::READ)
-            .unwrap();
+        let mut f1 = fs.open(&mut falloc1, "/a.txt", OpenFlags::READ).unwrap();
+        let mut f2 = fs.open(&mut falloc2, "/b.txt", OpenFlags::READ).unwrap();
 
         let mut data_a = Vec::new();
         f1.read_to_end(&mut data_a).unwrap();
