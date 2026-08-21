@@ -435,18 +435,20 @@ pub fn lfs_file_open_(
 pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
     use crate::dir::lfs_mlist::lfs_mlist_remove;
 
-    let err = lfs_file_sync_(lfs, file);
+    let mut err = Ok(());
+    if !file.flags.contains(OpenFlags::ERRED) {
+        err = lfs_file_sync_(lfs, file);
+    }
 
+    unsafe { lfs_mlist_remove(lfs, file.as_mut_lsf_mist()) };
+
+    #[cfg(feature = "alloc")]
     unsafe {
-        lfs_mlist_remove(lfs, file.as_mut_lsf_mist());
-
-        let cfg = file.cfg;
-        #[allow(clippy::needless_borrow)]
-        if !cfg.is_null() && (&(*cfg).buffer).is_empty() {
-            #[cfg(feature = "alloc")]
-            {
+        let cfg = file.cfg.as_ref().unwrap();
+        if (cfg.buffer).is_empty() {
+            if let Some(mut buf) = file.cache.buffer {
                 crate::lfs_alloc_module::lfs_free(
-                    file.cache.buffer.unwrap().as_mut().as_mut_ptr(),
+                    buf.as_mut().as_mut_ptr(),
                     lfs.cfg.as_ref().expect("cfg").cache_size,
                 );
             }
