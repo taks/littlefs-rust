@@ -8,6 +8,7 @@ use typenum::Unsigned;
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
 use crate::config::Config;
+use crate::dir::ReadDir;
 use crate::file::{File, FileAllocation};
 use crate::storage::Storage;
 
@@ -225,6 +226,14 @@ impl<'a, S: Storage> Filesystem<'a, S> {
     pub fn rename(&self, from: &str, to: &str) -> Result<(), Error> {
         let mut alloc = self.alloc.borrow_mut();
         littlefs_rust_core::lfs_rename(&mut alloc.lfs, from, to)
+    }
+
+    // ── Directory listing ───────────────────────────────────────────────
+
+    /// Open a directory for iteration. The returned [`ReadDir`] is an
+    /// [`Iterator`] that skips `.` and `..` entries.
+    pub fn read_dir(&self, path: &str) -> Result<ReadDir<'_, '_, S>, Error> {
+        ReadDir::new(self, path)
     }
 
     // ── FS-level ────────────────────────────────────────────────────────
