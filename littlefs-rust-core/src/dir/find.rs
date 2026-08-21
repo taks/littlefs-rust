@@ -64,16 +64,15 @@ pub fn lfs_dir_find_match(
 ) -> Result<core::cmp::Ordering, Error> {
     let lfs = unsafe { &mut *name.lfs };
 
-    let diff = lfs_min(name.size, lfs_tag_size(tag));
+    let diff = lfs_min(name.size, lfs_tag_size(tag)) as usize;
     let res = lfs_bd_cmp(
         lfs,
         None,
         unsafe { &mut *lfs.rcache.get() },
-        diff,
+        diff as u32,
         disk.block,
         disk.off,
-        name.name,
-        diff,
+        &name.name[..diff],
     );
     if res != Ok(core::cmp::Ordering::Equal) {
         return res;

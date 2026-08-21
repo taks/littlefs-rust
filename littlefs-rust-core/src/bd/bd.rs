@@ -164,14 +164,9 @@ pub fn lfs_bd_read(
                 if block == pcache.block && off < pcache.off + pcache.size {
                     if off >= pcache.off {
                         diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
-                        core::ptr::copy_nonoverlapping(
-                            pcache
-                                .buffer
-                                .as_ref()
-                                .as_ptr()
-                                .add((off - pcache.off) as usize),
-                            data.as_mut_ptr(),
-                            diff as usize,
+                        data[..diff as usize].copy_from_slice(
+                            &pcache.buffer.as_ref()[((off - pcache.off) as usize)
+                                ..((off - pcache.off + diff) as usize)],
                         );
 
                         data = &mut data[(diff as usize)..];
@@ -186,14 +181,9 @@ pub fn lfs_bd_read(
             if block == rcache.block && off < rcache.off + rcache.size {
                 if off >= rcache.off {
                     diff = lfs_min(diff, rcache.size - (off - rcache.off));
-                    core::ptr::copy_nonoverlapping(
-                        rcache
-                            .buffer
-                            .as_ref()
-                            .as_ptr()
-                            .add((off - rcache.off) as usize),
-                        data.as_mut_ptr(),
-                        diff as usize,
+                    data[..diff as usize].copy_from_slice(
+                        &rcache.buffer.as_ref()
+                            [((off - rcache.off) as usize)..((off - rcache.off + diff) as usize)],
                     );
 
                     data = &mut data[(diff as usize)..];
@@ -287,18 +277,18 @@ pub fn lfs_bd_cmp(
     hint: lfs_size_t,
     block: lfs_block_t,
     off: lfs_off_t,
-    buffer: &[u8],
-    size: lfs_size_t,
+    mut buffer: &[u8],
 ) -> Result<core::cmp::Ordering, Error> {
     let mut i: lfs_off_t = 0;
-    while i < size {
+
+    while !buffer.is_empty() {
         let mut dat = [0u8; 8];
-        let diff = lfs_min(size - i, 8) as usize;
+        let diff = core::cmp::min(buffer.len(), 8);
         lfs_bd_read(
             lfs,
             pcache,
             rcache,
-            hint.saturating_sub(i),
+            hint - i,
             block,
             off + i,
             &mut dat[..diff],
@@ -306,7 +296,7 @@ pub fn lfs_bd_cmp(
 
         let res = {
             let disk = &dat[..diff];
-            let expected = &buffer[(i as usize)..(i as usize + diff)];
+            let expected = &buffer[..diff];
             disk.cmp(expected)
         };
         match res {
@@ -315,6 +305,8 @@ pub fn lfs_bd_cmp(
             core::cmp::Ordering::Greater => return Ok(core::cmp::Ordering::Greater),
         }
         i += diff as lfs_off_t;
+        buffer = &buffer[diff..];
+
     }
     Ok(core::cmp::Ordering::Equal)
 }
@@ -429,7 +421,7 @@ pub fn lfs_bd_flush(
 
     if pcache.block != crate::types::LFS_BLOCK_NULL && pcache.block != LFS_BLOCK_INLINE {
         crate::lfs_assert!(pcache.block < lfs.block_count);
-        let diff = lfs_alignup(pcache.size, cfg.prog_size);
+        let diff = lfs_alignup(pcache.size, cfg.prog_size) as usize;
         crate::lfs_trace!(
             "bd_prog block={} off={} size={}",
             pcache.block,
@@ -440,7 +432,7 @@ pub fn lfs_bd_flush(
             Some(f) => f,
             None => return Err(Error::Corrupt),
         };
-        let data_ = unsafe { &pcache.buffer.as_ref()[..diff as usize] };
+        let data_ = unsafe { &pcache.buffer.as_ref()[..diff] };
         let err = prog(cfg, pcache.block, pcache.off, data_);
         crate::lfs_pass_err!(err, "bd_prog block={} -> CORRUPT", pcache.block)?;
 
@@ -450,11 +442,10 @@ pub fn lfs_bd_flush(
                 lfs,
                 None,
                 rcache,
-                diff,
+                diff as u32,
                 pcache.block,
                 pcache.off,
-                unsafe { pcache.buffer.as_ref() },
-                diff,
+                data_,
             );
             res?;
             if let Ok(res) = res
