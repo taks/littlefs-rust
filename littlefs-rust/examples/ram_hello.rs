@@ -18,12 +18,20 @@ fn main() {
     let mut falloc = FileAllocation::new();
 
     {
-        let mut f = fs.open(&mut falloc, "/hello.txt", OpenFlags::WRITE | OpenFlags::CREATE).expect("file open failed");
+        let mut f = fs
+            .open(
+                &mut falloc,
+                "/hello.txt",
+                OpenFlags::WRITE | OpenFlags::CREATE,
+            )
+            .expect("file open failed");
         f.write(b"Hello, littlefs!").expect("write failed");
     }
 
     {
-        let mut f = fs.open(&mut falloc, "/hello.txt", OpenFlags::READ).expect("file open failed");
+        let mut f = fs
+            .open(&mut falloc, "/hello.txt", OpenFlags::READ)
+            .expect("file open failed");
         let mut data = [0u8; 100];
         let n = f.read(&mut data).expect("read failed");
         println!("{}", core::str::from_utf8(&data[..n as usize]).unwrap());

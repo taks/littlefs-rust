@@ -1,25 +1,34 @@
-use std::{io::Read, string::String};
+use std::{io::Read, mem::MaybeUninit, string::String};
 
 use littlefs_rust::{Allocation, Error, FileAllocation, FileType, Filesystem, OpenFlags, SeekFrom};
 use test_context::{test_context, TestContext};
 
 type RamStorage = littlefs_rust::RamStorage<512, 128>;
 
-struct Context {
+struct MyContext {
     storage: Box<RamStorage>,
     alloc: Box<Allocation<RamStorage>>,
     fs: Filesystem<'static, RamStorage>,
 }
 
-impl TestContext for Context {
+impl TestContext for MyContext {
     fn setup() -> Self {
         let mut storage = Box::new(RamStorage::new());
         let mut alloc = Box::new(Allocation::<RamStorage>::new());
 
+        let mut ret = MaybeUninit::<Self>::uninit();
+
         Filesystem::format(storage.as_mut(), alloc.as_mut()).expect("format");
         let fs = Filesystem::mount(storage.as_mut(), alloc.as_mut()).expect("mount");
 
-        Self { storage, alloc, fs }
+        let ptr = ret.as_mut_ptr();
+        unsafe {
+            (&raw mut (*ptr).storage).write(storage);
+            (&raw mut (*ptr).alloc).write(alloc);
+            (&raw mut (*ptr).fs).write(fs);
+
+            ret.assume_init()
+        }
     }
 }
 
@@ -58,29 +67,32 @@ fn test_format_does_not_consume_storage() {
     Filesystem::format(&mut storage, &mut alloc).unwrap();
 }
 
+#[test_context(MyContext)]
 #[test]
-fn test_write_read_roundtrip() {
-    format_and_mount(|fs| {
-        let data = b"Hello, littlefs!";
+fn test_write_read_roundtrip(ctx: &mut MyContext) {
+    let data = b"Hello, littlefs!";
 
-        let mut falloc = FileAllocation::new();
+    let mut falloc = FileAllocation::new();
 
-        let mut file = fs
-            .open(
-                &mut falloc,
-                "/hello.txt",
-                OpenFlags::WRITE | OpenFlags::CREATE,
-            )
-            .unwrap();
-        file.write(data).unwrap();
-        file.close().unwrap();
+    let mut file = ctx
+        .fs
+        .open(
+            &mut falloc,
+            "/hello.txt",
+            OpenFlags::WRITE | OpenFlags::CREATE,
+        )
+        .unwrap();
+    file.write(data).unwrap();
+    file.close().unwrap();
 
-        let mut file = fs.open(&mut falloc, "/hello.txt", OpenFlags::READ).unwrap();
-        let mut buf = vec![0u8; 64];
-        let n = file.read(&mut buf).unwrap();
-        assert_eq!(&buf[..n as usize], data);
-        file.close().unwrap();
-    })
+    let mut file = ctx
+        .fs
+        .open(&mut falloc, "/hello.txt", OpenFlags::READ)
+        .unwrap();
+    let mut buf = vec![0u8; 64];
+    let n = file.read(&mut buf).unwrap();
+    assert_eq!(&buf[..n as usize], data);
+    file.close().unwrap();
 }
 
 #[test]
