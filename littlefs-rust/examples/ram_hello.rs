@@ -15,17 +15,16 @@ fn main() {
     Filesystem::format(&mut storage, &mut alloc).expect("format failed");
     let fs = Filesystem::mount(&mut storage, &mut alloc).expect("mount failed");
 
-    let mut falloc = FileAllocation::new();
-
-    {
-        let mut f = fs.open(&mut falloc, "/hello.txt", OpenFlags::WRITE | OpenFlags::CREATE).expect("file open failed");
+    fs.open_with("/hello.txt", OpenFlags::WRITE | OpenFlags::CREATE, |f| {
         f.write(b"Hello, littlefs!").expect("write failed");
-    }
+    })
+    .expect("file open failed");
 
-    {
-        let mut f = fs.open(&mut falloc, "/hello.txt", OpenFlags::READ).expect("file open failed");
+    fs.open_with("/hello.txt", OpenFlags::READ, |f| {
         let mut data = [0u8; 100];
         let n = f.read(&mut data).expect("read failed");
+
         println!("{}", core::str::from_utf8(&data[..n as usize]).unwrap());
-    }
+    })
+    .expect("file open failed");
 }

@@ -91,12 +91,8 @@ fn test_multiple_open_files() {
         f1.close().unwrap();
         f2.close().unwrap();
 
-        let mut f1 = fs
-            .open(&mut falloc1, "/a.txt", OpenFlags::READ)
-            .unwrap();
-        let mut f2 = fs
-            .open(&mut falloc2, "/b.txt", OpenFlags::READ)
-            .unwrap();
+        let mut f1 = fs.open(&mut falloc1, "/a.txt", OpenFlags::READ).unwrap();
+        let mut f2 = fs.open(&mut falloc2, "/b.txt", OpenFlags::READ).unwrap();
 
         let mut data_a = Vec::new();
         f1.read_to_end(&mut data_a).unwrap();
@@ -109,58 +105,50 @@ fn test_multiple_open_files() {
 
 #[test]
 fn test_seek_tell_size() {
-    let fs = format_and_mount();
-
-    let falloc = FileAllocation::new();
-
-    let mut file = fs
-        .open(
-            &mut falloc,
-            "/data.bin",
-            OpenFlags::WRITE | OpenFlags::CREATE,
-        )
+    format_and_mount(|fs| {
+        fs.open_with("/data.bin", OpenFlags::WRITE | OpenFlags::CREATE, |file| {
+            file.write(b"0123456789").unwrap();
+        })
         .unwrap();
-    file.write(b"0123456789").unwrap();
-    file.close().unwrap();
 
-    let mut file = fs.open("/data.bin", OpenFlags::READ).unwrap();
-    assert_eq!(file.size(), 10);
-    assert_eq!(file.tell(), 0);
+        fs.open_with("/data.bin", OpenFlags::READ, |file| {
+            assert_eq!(file.size(), 10);
+            assert_eq!(file.tell(), 0);
 
-    file.seek(SeekFrom::Start(5)).unwrap();
-    assert_eq!(file.tell(), 5);
+            file.seek(SeekFrom::Start(5)).unwrap();
+            assert_eq!(file.tell(), 5);
 
-    let mut buf = [0u8; 5];
-    let n = file.read(&mut buf).unwrap();
-    assert_eq!(n, 5);
-    assert_eq!(&buf, b"56789");
+            let mut buf = [0u8; 5];
+            let n = file.read(&mut buf).unwrap();
+            assert_eq!(n, 5);
+            assert_eq!(&buf, b"56789");
 
-    file.seek(SeekFrom::End(-3)).unwrap();
-    assert_eq!(file.tell(), 7);
-
-    file.close().unwrap();
-    fs.unmount().unwrap();
+            file.seek(SeekFrom::End(-3)).unwrap();
+            assert_eq!(file.tell(), 7);
+        })
+        .unwrap();
+    });
 }
 
 #[test]
 fn test_truncate() {
-    let fs = format_and_mount();
+    format_and_mount(|fs| {
+        let mut file = fs
+            .open("/trunc.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+            .unwrap();
+        file.write(b"hello world").unwrap();
+        file.close().unwrap();
 
-    let mut file = fs
-        .open("/trunc.txt", OpenFlags::WRITE | OpenFlags::CREATE)
-        .unwrap();
-    file.write(b"hello world").unwrap();
-    file.close().unwrap();
+        let mut file = fs.open("/trunc.txt", OpenFlags::WRITE).unwrap();
+        file.truncate(5).unwrap();
+        assert_eq!(file.size(), 5);
+        file.close().unwrap();
 
-    let mut file = fs.open("/trunc.txt", OpenFlags::WRITE).unwrap();
-    file.truncate(5).unwrap();
-    assert_eq!(file.size(), 5);
-    file.close().unwrap();
+        let data = fs.read_to_vec("/trunc.txt").unwrap();
+        assert_eq!(data, b"hello");
 
-    let data = fs.read_to_vec("/trunc.txt").unwrap();
-    assert_eq!(data, b"hello");
-
-    fs.unmount().unwrap();
+        fs.unmount().unwrap();
+    });
 }
 
 #[test]

@@ -196,6 +196,17 @@ impl<'a, S: Storage> Filesystem<'a, S> {
         File::open(self, alloc, path, flags)
     }
 
+    pub fn open_with<T>(
+        &'_ self,
+        path: &str,
+        flags: OpenFlags,
+        cb: impl FnOnce(&mut File<'_, '_, '_, S>) -> T,
+    ) -> Result<T, Error> {
+        let mut alloc = FileAllocation::new();
+        let mut f = File::open(self, &mut alloc, path, flags)?;
+        Ok(cb(&mut f))
+    }
+
     // ── Path operations ─────────────────────────────────────────────────
 
     /// Create a directory. Fails if it already exists.

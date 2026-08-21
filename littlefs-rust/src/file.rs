@@ -128,7 +128,7 @@ impl<'a, 'b, 'c, S: Storage> File<'a, 'b, 'c, S> {
     /// Close the file, flushing any pending writes. Consumes `self`.
     ///
     /// Dropping a [`File`] also closes it, but errors are silently ignored.
-    pub fn close(mut self) -> Result<(), Error> {
+    pub fn close(self) -> Result<(), Error> {
         let mut inner = self.fs.alloc.borrow_mut();
         let file = &mut self.alloc.borrow_mut().file;
         littlefs_rust_core::lfs_file_close(&mut inner.lfs, file)

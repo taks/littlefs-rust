@@ -1,6 +1,6 @@
 //! Directory operations: mkdir, list, rename, stat, and remove.
 
-use littlefs_rust::{Allocation, Config, Filesystem, RamStorage};
+use littlefs_rust::{Allocation, Config, Filesystem, OpenFlags, RamStorage};
 
 fn main() {
     let mut storage = RamStorage::<512, 128>::new();
@@ -13,10 +13,23 @@ fn main() {
     // Build a small directory tree with some files.
     fs.mkdir("/docs").expect("mkdir docs");
     fs.mkdir("/docs/drafts").expect("mkdir drafts");
-    fs.write_file("/docs/readme.txt", b"Read me")
-        .expect("write readme");
-    fs.write_file("/docs/drafts/notes.txt", b"Draft notes")
-        .expect("write notes");
+    fs.open_with(
+        "/docs/readme.txt",
+        OpenFlags::WRITE | OpenFlags::CREATE,
+        |f| {
+            f.write(b"Read me").expect("write failed");
+        },
+    )
+    .expect("file open failed");
+
+    fs.open_with(
+        "/docs/drafts/notes.txt",
+        OpenFlags::WRITE | OpenFlags::CREATE,
+        |f| {
+            f.write(b"Draft notes").expect("write failed");
+        },
+    )
+    .expect("file open failed");
 
     // list_dir returns an iterator of DirEntry with name, type, and size.
     println!("/ contents:");
