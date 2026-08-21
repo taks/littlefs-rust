@@ -989,14 +989,13 @@ pub fn config_with_wear_leveling_full(
         inline_max: 0,
     };
 
-    let mut env = WearLevelingEnv {
+    WearLevelingEnv {
         bd,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env
+    }
 }
 
 /// Call after config_with_wear_leveling() to set context. Required for WearLevelingEnv.
