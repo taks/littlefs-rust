@@ -262,15 +262,18 @@ pub fn lfs_dir_getread(
             if pcache.block == LFS_BLOCK_INLINE && off < pcache.off + pcache.size {
                 if off >= pcache.off {
                     diff = lfs_min(diff, pcache.size - (off - pcache.off));
-                    if let Some(buf) = pcache.buffer {
-                        unsafe {
-                            core::ptr::copy_nonoverlapping(
-                                buf.as_ref().as_ptr().add((off - pcache.off) as usize),
-                                data.as_mut_ptr(),
-                                diff as usize,
-                            )
-                        };
-                    }
+                    unsafe {
+                        core::ptr::copy_nonoverlapping(
+                            pcache
+                                .buffer
+                                .as_ref()
+                                .as_ptr()
+                                .add((off - pcache.off) as usize),
+                            data.as_mut_ptr(),
+                            diff as usize,
+                        )
+                    };
+
                     data = &mut data[(diff as usize)..];
                     off += diff;
                     size -= diff;
@@ -282,15 +285,18 @@ pub fn lfs_dir_getread(
 
         if rcache.block == LFS_BLOCK_INLINE && off < rcache.off + rcache.size && off >= rcache.off {
             diff = lfs_min(diff, rcache.size - (off - rcache.off));
-            if let Some(buffer) = rcache.buffer {
-                unsafe {
-                    core::ptr::copy_nonoverlapping(
-                        buffer.as_ref().as_ptr().add((off - rcache.off) as usize),
-                        data.as_mut_ptr(),
-                        diff as usize,
-                    )
-                };
-            }
+            unsafe {
+                core::ptr::copy_nonoverlapping(
+                    rcache
+                        .buffer
+                        .as_ref()
+                        .as_ptr()
+                        .add((off - rcache.off) as usize),
+                    data.as_mut_ptr(),
+                    diff as usize,
+                )
+            };
+
             data = &mut data[(diff as usize)..];
             off += diff;
             size -= diff;
@@ -306,7 +312,7 @@ pub fn lfs_dir_getread(
             gmask,
             gtag,
             rcache.off,
-            unsafe { &mut rcache.buffer.unwrap().as_mut()[..rcache.size as usize] },
+            unsafe { &mut rcache.buffer.as_mut()[..rcache.size as usize] },
             rcache.size,
         )?;
     }
