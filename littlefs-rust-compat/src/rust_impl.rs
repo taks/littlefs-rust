@@ -6,6 +6,7 @@ use littlefs_rust_core::{error::Error, lfs_type::OpenFlags};
 
 use crate::storage::{prng_verify, test_prng, SharedStorage};
 
+#[allow(unused)]
 const LFS_O_RDONLY: i32 = 1;
 const LFS_O_WRONLY: i32 = 2;
 const LFS_O_CREAT: i32 = 0x0100;
