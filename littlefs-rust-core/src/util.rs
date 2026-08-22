@@ -140,19 +140,6 @@ pub fn lfs_frombe32(a: u32) -> u32 {
     u32::from_be(a)
 }
 
-/// Per lfs_util.h lfs_tobe32 (lines 228-230)
-///
-/// C:
-/// ```c
-/// static inline uint32_t lfs_tobe32(uint32_t a) {
-///     return lfs_frombe32(a);
-/// }
-/// ```
-#[inline(always)]
-pub fn lfs_tobe32(a: u32) -> u32 {
-    a.to_be()
-}
-
 // --- lfs.c path operations ---
 
 /// Per C strspn: count leading bytes equal to `c`, stop at first unequal or null.

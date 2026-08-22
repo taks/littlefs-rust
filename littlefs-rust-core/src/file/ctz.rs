@@ -367,7 +367,7 @@ pub fn lfs_ctz_extend(
 ) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_prog, lfs_bd_read, lfs_cache_drop};
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
-    use crate::util::{lfs_ctz};
+    use crate::util::lfs_ctz;
 
     'relocate: loop {
         unsafe {

@@ -1,6 +1,7 @@
 //! Directory commit. Per lfs.c lfs_dir_commit, lfs_dir_commitattr, lfs_dir_alloc, etc.
 
 use core::cell::UnsafeCell;
+use core::cmp;
 use core::ptr::NonNull;
 
 use zerocopy::{FromBytes, IntoBytes};
@@ -111,7 +112,6 @@ pub fn lfs_dir_commitattr(
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::tag::{lfs_tag_dsize, lfs_tag_isvalid};
-    use crate::util::lfs_tobe32;
 
     unsafe {
         let dsize = lfs_tag_dsize(tag);
@@ -127,7 +127,7 @@ pub fn lfs_dir_commitattr(
             return crate::lfs_err!(Err(Error::NoSpace));
         }
 
-        let ntag = lfs_tobe32((tag & 0x7fff_ffff) ^ commit.ptag);
+        let ntag = ((tag & 0x7fff_ffff) ^ commit.ptag).to_be();
         lfs_dir_commitprog(lfs, commit, ntag.as_bytes())?;
 
         if (crate::tag::lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK {
@@ -332,21 +332,21 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
     use crate::bd::bd::{lfs_bd_crc, lfs_bd_prog, lfs_bd_sync};
     use crate::crc::lfs_crc;
     use crate::tag::lfs_mktag;
-    use crate::util::{lfs_alignup, lfs_min, lfs_tobe32};
+    use crate::util::lfs_alignup;
 
     let cfg = unsafe { lfs.cfg.as_ref() };
     let block_size = cfg.block_size;
     let prog_size = cfg.prog_size;
 
-    let end = lfs_alignup(lfs_min(commit.off + 20, block_size), prog_size);
+    let end = lfs_alignup(cmp::min(commit.off + 20, block_size), prog_size);
 
     let mut off1: lfs_off_t = 0;
     let mut crc1: u32 = 0;
 
     while commit.off < end {
-        let noff = lfs_min(end - (commit.off + 4), 0x3fe) + (commit.off + 4);
+        let noff = cmp::min(end - (commit.off + 4), 0x3fe) + (commit.off + 4);
         let noff = if noff < end {
-            lfs_min(noff, end - 20)
+            cmp::min(noff, end - 20)
         } else {
             noff
         };
@@ -375,7 +375,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             noff - (commit.off + 4),
         );
 
-        let xor_tag = lfs_tobe32(ntag ^ commit.ptag);
+        let xor_tag = (ntag ^ commit.ptag).to_be();
         commit.crc = lfs_crc(commit.crc, xor_tag.as_bytes());
         let crc_le = commit.crc.to_le();
 

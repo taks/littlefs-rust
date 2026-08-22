@@ -1,5 +1,7 @@
 //! Unit tests using TestContext.
 
+use core::cmp;
+
 use super::*;
 
 /// Minimal: construct TestContext and verify config/ram. No lfs calls.
@@ -30,7 +32,6 @@ fn test_context_lfs_init() {
 #[test]
 fn test_context_format_to_alloc() {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
-    use crate::util::lfs_min;
 
     let ctx = TestContext::default_blocks();
     let mut lfs = crate::Lfs::default();
@@ -42,7 +43,7 @@ fn test_context_format_to_alloc() {
         lfs.lookahead.buffer.as_mut().fill(0);
     }
     lfs.lookahead.start = 0;
-    lfs.lookahead.size = lfs_min(
+    lfs.lookahead.size = cmp::min(
         8 * cfg.lookahead_buffer.unwrap().len() as u32,
         lfs.block_count,
     );

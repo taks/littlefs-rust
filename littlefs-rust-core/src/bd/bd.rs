@@ -1,11 +1,13 @@
 //! Block device operations. Per lfs.c lfs_bd_read, lfs_bd_prog, lfs_bd_crc, etc.
 
+use core::cmp;
+
 use crate::bd::LfsCache;
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::lfs_pass_err;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
-use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
+use crate::util::{lfs_aligndown, lfs_alignup};
 
 /// Per lfs.c lfs_cache_drop (lines 31-36)
 ///
@@ -179,7 +181,7 @@ pub fn lfs_bd_read(
 
             if block == rcache.block && off < rcache.off + rcache.size {
                 if off >= rcache.off {
-                    diff = lfs_min(diff, rcache.size - (off - rcache.off));
+                    diff = cmp::min(diff, rcache.size - (off - rcache.off));
                     data[..diff as usize].copy_from_slice(
                         &rcache.buffer.as_ref()
                             [((off - rcache.off) as usize)..((off - rcache.off + diff) as usize)],
@@ -190,7 +192,7 @@ pub fn lfs_bd_read(
                     size -= diff;
                     continue;
                 }
-                diff = lfs_min(diff, rcache.off - off);
+                diff = cmp::min(diff, rcache.off - off);
             }
 
             if size >= hint && off.is_multiple_of(cfg.read_size) && size >= cfg.read_size {
@@ -212,8 +214,8 @@ pub fn lfs_bd_read(
             crate::lfs_assert!(lfs.block_count == 0 || block < lfs.block_count);
             rcache.block = block;
             rcache.off = lfs_aligndown(off, cfg.read_size);
-            rcache.size = lfs_min(
-                lfs_min(lfs_alignup(off + hint, cfg.read_size), cfg.block_size)
+            rcache.size = cmp::min(
+                cmp::min(lfs_alignup(off + hint, cfg.read_size), cfg.block_size)
                     .saturating_sub(rcache.off),
                 rcache.buffer.len() as u32,
             );

@@ -1,5 +1,7 @@
 //! Format. Per lfs.c lfs_format_.
 
+use core::cmp;
+
 use zerocopy::IntoBytes;
 
 use crate::bd::bd::lfs_bd_sync;
@@ -15,7 +17,6 @@ use crate::lfs_superblock::lfs_superblock_tole32;
 use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK};
 use crate::tag::lfs_mktag;
 use crate::types::LFS_DISK_VERSION;
-use crate::util::lfs_min;
 
 /// Per lfs.c lfs_format_ (lines 4391-4462)
 ///
@@ -110,7 +111,7 @@ pub fn lfs_format_(
         // create free lookahead
         lfs.lookahead.buffer.as_mut().fill(0);
         lfs.lookahead.start = 0;
-        lfs.lookahead.size = lfs_min(
+        lfs.lookahead.size = cmp::min(
             8 * cfg.lookahead_buffer.unwrap().len() as u32,
             lfs.block_count,
         );
@@ -437,7 +438,7 @@ pub unsafe fn test_format_minimal_superblock(
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_SUPERBLOCK};
     use crate::tag::lfs_mktag;
-    use crate::util::{lfs_min};
+    use crate::util::lfs_min;
 
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {

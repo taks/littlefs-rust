@@ -1,5 +1,6 @@
 //! File operations. Per lfs.c lfs_file_opencfg_, lfs_file_close_, lfs_file_sync_, etc.
 
+use core::cmp;
 use core::ptr::NonNull;
 
 use zerocopy::IntoBytes;
@@ -961,7 +962,7 @@ pub fn lfs_file_flushedread(
             return Ok(0);
         }
 
-        let size = lfs_min(buffer.len() as u32, file.ctz.size - file.pos);
+        let size = cmp::min(buffer.len() as u32, file.ctz.size - file.pos);
         let mut nsize = size;
 
         let mut data = buffer;
@@ -985,7 +986,7 @@ pub fn lfs_file_flushedread(
                 file.flags.insert(OpenFlags::READING);
             }
 
-            let diff = lfs_min(nsize, block_size - file.off);
+            let diff = cmp::min(nsize, block_size - file.off);
             if file.flags.contains(OpenFlags::INLINE) {
                 let gtag = lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0);
                 lfs_dir_getread(
