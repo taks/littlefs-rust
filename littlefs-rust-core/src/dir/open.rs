@@ -1,5 +1,7 @@
 //! Directory open/read. Per lfs.c lfs_dir_open_, lfs_dir_close_, lfs_dir_read_, etc.
 
+use core::cmp;
+
 use zerocopy::IntoBytes;
 
 use crate::dir::LfsDir;
@@ -286,7 +288,7 @@ pub fn lfs_dir_seek_(
 ) -> Result<(), Error> {
     lfs_dir_rewind_(lfs, dir)?;
 
-    dir.pos = lfs_min(2, off);
+    dir.pos = cmp::min(2, off);
     let mut off = off - dir.pos;
 
     // skip superblock entry

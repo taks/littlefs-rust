@@ -563,7 +563,7 @@ pub fn lfs_bd_prog(
     buffer: &[u8],
 ) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
-    use crate::util::{lfs_aligndown, lfs_max, lfs_min};
+    use crate::util::{lfs_aligndown, lfs_min};
 
     let cfg = unsafe { lfs.cfg.as_ref() };
 
@@ -608,7 +608,7 @@ pub fn lfs_bd_prog(
             off += diff;
             size -= diff;
 
-            pcache.size = lfs_max(pcache.size, off - pcache.off);
+            pcache.size = cmp::max(pcache.size, off - pcache.off);
             if pcache.size == pcache.buffer.len() as u32 {
                 lfs_bd_flush(lfs, pcache, rcache, validate)?;
             }

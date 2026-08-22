@@ -6,7 +6,7 @@ use crate::Lfs;
 use crate::bd::bd::lfs_cache_zero;
 use crate::error::Error;
 use crate::types::{LFS_ATTR_MAX, LFS_BLOCK_NULL, LFS_FILE_MAX, LFS_NAME_MAX};
-use crate::util::{lfs_min, lfs_npw2};
+use crate::util::{lfs_npw2};
 
 /// Per lfs.c lfs_init (lines 4198-4369)
 ///
@@ -281,7 +281,7 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
         lfs.inline_max = if cfg.inline_max == u32::MAX {
             0
         } else if cfg.inline_max == 0 {
-            lfs_min(cfg.cache_size, lfs_min(lfs.attr_max, metadata_max / 8))
+            cfg.cache_size.min(lfs.attr_max).min(metadata_max / 8)
         } else {
             cfg.inline_max
         };

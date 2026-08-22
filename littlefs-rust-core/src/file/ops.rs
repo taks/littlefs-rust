@@ -734,7 +734,6 @@ pub fn lfs_file_outline(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<
 /// ```
 pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_flush;
-    use crate::util::lfs_max;
 
     unsafe {
         if file.flags.contains(OpenFlags::READING) {
@@ -747,7 +746,7 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
         if file.flags.contains(OpenFlags::WRITING) {
             let pos = file.pos;
             if file.flags.contains(OpenFlags::INLINE) {
-                file.pos = lfs_max(pos, file.ctz.size);
+                file.pos = cmp::max(pos, file.ctz.size);
             } else {
                 let mut orig = LfsFile {
                     next: core::ptr::null_mut(),
@@ -1147,7 +1146,7 @@ pub fn lfs_file_flushedwrite(
         let mut nsize = buffer.len() as u32;
 
         if file.flags.contains(OpenFlags::INLINE)
-            && crate::util::lfs_max(file.pos + nsize, file.ctz.size) > lfs.inline_max
+            && cmp::max(file.pos + nsize, file.ctz.size) > lfs.inline_max
         {
             let err = lfs_file_outline(lfs, file);
             if let Err(err) = err {
@@ -1587,7 +1586,7 @@ pub fn lfs_file_rewind_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<
 /// ```
 pub fn lfs_file_size_(_lfs: &Lfs, file: &LfsFile) -> crate::types::lfs_soff_t {
     if file.flags.contains(OpenFlags::WRITING) {
-        return crate::util::lfs_max(file.pos, file.ctz.size) as crate::types::lfs_soff_t;
+        return cmp::max(file.pos, file.ctz.size) as crate::types::lfs_soff_t;
     }
     file.ctz.size as crate::types::lfs_soff_t
 }

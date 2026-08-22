@@ -1,5 +1,7 @@
 //! Directory find. Per lfs.c lfs_dir_find, lfs_dir_find_match.
 
+use core::cmp;
+
 use zerocopy::IntoBytes;
 
 use crate::bd::bd::lfs_bd_cmp;
@@ -12,7 +14,7 @@ use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::{LFS_TYPE_GLOBALS, LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
 use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
 use crate::types::{lfs_size_t, lfs_tag_t};
-use crate::util::{lfs_min, lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
+use crate::util::{lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 
 /// Per lfs.c struct lfs_dir_find_match (lines 1447-1475)
 #[repr(C)]
@@ -61,10 +63,10 @@ pub fn lfs_dir_find_match(
     name: &LfsDirFindMatch,
     tag: lfs_tag_t,
     disk: &lfs_diskoff,
-) -> Result<core::cmp::Ordering, Error> {
+) -> Result<cmp::Ordering, Error> {
     let lfs = unsafe { &mut *name.lfs };
 
-    let diff = lfs_min(name.size, lfs_tag_size(tag)) as usize;
+    let diff = cmp::min(name.size, lfs_tag_size(tag)) as usize;
     let res = lfs_bd_cmp(
         lfs,
         None,

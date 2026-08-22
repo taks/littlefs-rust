@@ -224,7 +224,6 @@ pub unsafe fn test_traverse_format_attrs(
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK};
     use crate::tag::lfs_mktag;
-    use crate::util::lfs_min;
 
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
@@ -235,7 +234,7 @@ pub unsafe fn test_traverse_format_attrs(
     unsafe {
         lfs.lookahead.buffer.as_mut().fill(0);
         lfs.lookahead.start = 0;
-        lfs.lookahead.size = lfs_min(
+        lfs.lookahead.size = cmp::min(
             8 * cfg.lookahead_buffer.unwrap().len() as u32,
             lfs.block_count,
         );
@@ -331,7 +330,6 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
         LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_NAME, LFS_TYPE_SUPERBLOCK,
     };
     use crate::tag::lfs_mktag;
-    use crate::util::lfs_min;
 
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
@@ -342,7 +340,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
     unsafe {
         lfs.lookahead.buffer.as_mut().fill(0);
         lfs.lookahead.start = 0;
-        lfs.lookahead.size = lfs_min(
+        lfs.lookahead.size = cmp::min(
             8 * cfg.lookahead_buffer.unwrap().len() as u32,
             lfs.block_count,
         );
@@ -438,7 +436,6 @@ pub unsafe fn test_format_minimal_superblock(
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_SUPERBLOCK};
     use crate::tag::lfs_mktag;
-    use crate::util::lfs_min;
 
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
@@ -450,7 +447,7 @@ pub unsafe fn test_format_minimal_superblock(
 
     unsafe { lfs.lookahead.buffer.as_mut().fill(0) };
     lfs.lookahead.start = 0;
-    lfs.lookahead.size = lfs_min(
+    lfs.lookahead.size = cmp::min(
         8 * cfg.lookahead_buffer.unwrap().len() as u32,
         lfs.block_count,
     );

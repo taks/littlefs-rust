@@ -1,5 +1,7 @@
 //! Consistency. Per lfs.c lfs_fs_mkconsistent_, lfs_fs_gc_.
 
+use core::cmp;
+
 use crate::Lfs;
 use crate::dir::LfsMdir;
 use crate::dir::fetch::lfs_dir_fetch;
@@ -124,7 +126,7 @@ pub fn lfs_fs_mkconsistent_(lfs: &mut Lfs) -> Result<(), Error> {
 pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_scan;
     use crate::dir::commit::lfs_dir_commit;
-    use crate::util::{lfs_min, lfs_pair_isnull};
+    use crate::util::{lfs_pair_isnull};
 
     crate::lfs_trace!("lfs_fs_gc: start");
     let err = super::superblock::lfs_fs_forceconsistency(lfs);
@@ -172,7 +174,7 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         let lfs_ref = &*lfs;
         let lookahead_size = cfg.lookahead_buffer.unwrap().len() as u32;
         let block_count = lfs_ref.block_count;
-        if lfs_ref.lookahead.size < lfs_min(8 * lookahead_size, block_count) {
+        if lfs_ref.lookahead.size < cmp::min(8 * lookahead_size, block_count) {
             crate::lfs_trace!("lfs_fs_gc: alloc_scan start");
             let err = lfs_alloc_scan(lfs);
             crate::lfs_trace!("lfs_fs_gc: alloc_scan done err={:?}", err);
