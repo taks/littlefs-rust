@@ -272,9 +272,5 @@ pub fn prng_verify(buf: &[u8], seed: u32) {
 }
 
 pub fn check(err: i32) -> Result<(), i32> {
-    if err != 0 {
-        Err(err)
-    } else {
-        Ok(())
-    }
+    if err != 0 { Err(err) } else { Ok(()) }
 }

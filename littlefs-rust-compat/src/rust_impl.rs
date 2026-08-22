@@ -2,9 +2,9 @@
 
 use std::mem::MaybeUninit;
 
-use littlefs_rust_core::{error::Error, lfs_type::OpenFlags, LfsFile};
+use littlefs_rust_core::{LfsFile, error::Error, lfs_type::OpenFlags};
 
-use crate::storage::{prng_verify, test_prng, SharedStorage};
+use crate::storage::{SharedStorage, prng_verify, test_prng};
 
 #[allow(unused)]
 const LFS_O_RDONLY: i32 = 1;
