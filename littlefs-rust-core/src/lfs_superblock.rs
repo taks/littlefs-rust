@@ -3,7 +3,7 @@
 use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
 
 use crate::types::lfs_size_t;
-use crate::util::{lfs_tole32};
+use crate::util::lfs_tole32;
 
 /// Per lfs.h typedef struct lfs_superblock
 #[repr(C)]

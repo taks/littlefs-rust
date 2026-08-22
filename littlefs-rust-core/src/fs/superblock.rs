@@ -89,7 +89,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         // write a new superblock
         let mut superblock = LfsSuperblock {
             version: LFS_DISK_VERSION,
-            block_size: lfs.cfg.as_ref().expect("cfg").block_size,
+            block_size: lfs.cfg.as_ref().block_size,
             block_count: lfs.block_count,
             name_max: lfs.name_max,
             file_max: lfs.file_max,

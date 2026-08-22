@@ -108,7 +108,7 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
 
     crate::lfs_trace!("alloc_scan: start");
     unsafe {
-        let cfg = lfs.cfg.as_ref().expect("cfg");
+        let cfg = lfs.cfg.as_ref();
 
         // move lookahead buffer to the first unused block
         lfs.lookahead.start = (lfs.lookahead.start + lfs.lookahead.next) % lfs.block_count;

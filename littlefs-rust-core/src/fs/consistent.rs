@@ -132,7 +132,7 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     crate::lfs_pass_err!(err)?;
 
     unsafe {
-        let cfg = lfs.cfg.as_ref().expect("cfg");
+        let cfg = lfs.cfg.as_ref();
         let block_size = cfg.block_size;
         let prog_size = cfg.prog_size;
         let compact_thresh = cfg.compact_thresh;

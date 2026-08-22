@@ -341,7 +341,7 @@ pub fn lfs_file_opencfg_(
         #[cfg(feature = "alloc")]
         {
             unsafe {
-                let size = lfs.cfg.as_ref().expect("cfg").cache_size;
+                let size = lfs.cfg.as_ref().cache_size;
                 let data = crate::lfs_alloc_module::lfs_malloc(size);
                 file.cache.buffer =
                     NonNull::from_mut(core::slice::from_raw_parts_mut(data, size as usize));
@@ -376,7 +376,7 @@ pub fn lfs_file_opencfg_(
         file.flags.insert(OpenFlags::INLINE);
         file.cache.block = file.ctz.head;
         file.cache.off = 0;
-        file.cache.size = unsafe { lfs.cfg.as_ref().expect("cfg").cache_size };
+        file.cache.size = unsafe { lfs.cfg.as_ref().cache_size };
         if file.ctz.size > 0 {
             let res = lfs_dir_get(
                 lfs,
@@ -446,7 +446,7 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
         if (cfg.buffer).is_empty() && !file.cache.buffer.is_empty() {
             crate::lfs_alloc_module::lfs_free(
                 file.cache.buffer.as_mut().as_mut_ptr(),
-                lfs.cfg.as_ref().expect("cfg").cache_size,
+                lfs.cfg.as_ref().cache_size,
             );
         }
     }
@@ -954,7 +954,7 @@ pub fn lfs_file_flushedread(
     }
 
     unsafe {
-        let cfg = lfs.cfg.as_ref().expect("cfg");
+        let cfg = lfs.cfg.as_ref();
         let block_size = cfg.block_size;
 
         if file.pos >= file.ctz.size {
@@ -1145,7 +1145,7 @@ pub fn lfs_file_flushedwrite(
     }
 
     unsafe {
-        let cfg = lfs.cfg.as_ref().expect("cfg");
+        let cfg = lfs.cfg.as_ref();
         let block_size = cfg.block_size;
         let mut nsize = buffer.len() as u32;
 
@@ -1337,7 +1337,7 @@ pub fn lfs_file_seek_(
 
     unsafe {
         let file_max = lfs.file_max;
-        let block_size = lfs.cfg.as_ref().expect("cfg").block_size;
+        let block_size = lfs.cfg.as_ref().block_size;
 
         let mut npos = file.pos;
         if whence == LFS_SEEK_SET {
@@ -1500,7 +1500,7 @@ pub fn lfs_file_truncate_(
                 .insert(OpenFlags::DIRTY | OpenFlags::READING | OpenFlags::INLINE);
             file.cache.block = file.ctz.head;
             file.cache.off = 0;
-            file.cache.size = unsafe { lfs.cfg.as_ref().expect("cfg").cache_size };
+            file.cache.size = unsafe { lfs.cfg.as_ref().cache_size };
 
             // Copy data from rcache into file cache
             unsafe {

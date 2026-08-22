@@ -139,7 +139,7 @@ pub fn lfs_bd_read(
     buffer: &mut [u8],
 ) -> Result<(), Error> {
     unsafe {
-        let cfg = &*lfs.cfg;
+        let cfg = lfs.cfg.as_ref();
         let read = match cfg.read {
             Some(f) => f,
             None => return Err(Error::Corrupt),
@@ -415,7 +415,7 @@ pub fn lfs_bd_flush(
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::lfs_alignup;
 
-    let cfg = unsafe { &*lfs.cfg };
+    let cfg = unsafe { lfs.cfg.as_ref() };
 
     if pcache.block != crate::types::LFS_BLOCK_NULL && pcache.block != LFS_BLOCK_INLINE {
         crate::lfs_assert!(pcache.block < lfs.block_count);
@@ -490,7 +490,7 @@ pub fn lfs_bd_sync(
 
         lfs_bd_flush(lfs, pcache, rcache, validate)?;
 
-        let cfg = &*lfs.cfg;
+        let cfg = lfs.cfg.as_ref();
         let sync = match cfg.sync {
             Some(f) => f,
             None => return Err(Error::Corrupt),
@@ -563,7 +563,7 @@ pub fn lfs_bd_prog(
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_aligndown, lfs_max, lfs_min};
 
-    let cfg = unsafe { &*lfs.cfg };
+    let cfg = unsafe { lfs.cfg.as_ref() };
 
     crate::lfs_assert!(block == LFS_BLOCK_INLINE || block < lfs.block_count);
     crate::lfs_assert!(off + buffer.len() as u32 <= cfg.block_size);
@@ -646,12 +646,12 @@ pub fn lfs_bd_prog(
 pub fn lfs_bd_erase(lfs: &Lfs, block: lfs_block_t) -> Result<(), Error> {
     unsafe {
         crate::lfs_assert!(block < lfs.block_count);
-        let erase = match (*lfs.cfg).erase {
+        let erase = match (lfs.cfg.as_ref()).erase {
             Some(f) => f,
             None => return Err(Error::Corrupt),
         };
         crate::lfs_trace!("bd_erase block={}", block);
-        let err = erase(lfs.cfg.as_ref().unwrap(), block);
+        let err = erase(lfs.cfg.as_ref(), block);
         if err.is_err() {
             crate::lfs_trace!("bd_erase block={} -> CORRUPT", block);
         }

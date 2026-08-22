@@ -321,7 +321,7 @@ pub fn lfs_dir_fetchmatch(
     cb: Option<&dyn Fn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
 ) -> Result<lfs_tag_t, Error> {
     unsafe {
-        let cfg = &*lfs.cfg;
+        let cfg = lfs.cfg.as_ref();
 
         let mut besttag: lfs_stag_t = -1;
         crate::lfs_trace!("fetchmatch: start pair={:?}", pair);

@@ -5,7 +5,7 @@ use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
 use crate::tag::{lfs_tag_size, lfs_tag_type1};
 use crate::types::lfs_block_t;
 use crate::util::lfs_pair_cmp;
-use crate::util::{lfs_tole32};
+use crate::util::lfs_tole32;
 
 /// Per lfs.h typedef struct lfs_gstate (lines 429-432)
 ///

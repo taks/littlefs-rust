@@ -243,7 +243,7 @@ pub fn lfs_dir_getread(
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_aligndown, lfs_alignup};
 
-    let cfg = unsafe { lfs.cfg.as_ref().expect("cfg") };
+    let cfg = unsafe { lfs.cfg.as_ref() };
 
     let mut off = off;
     let mut size = buffer.len() as u32;

@@ -27,7 +27,7 @@ pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: &mut lfs_off_t) -> i32 {
     use crate::util::lfs_popc;
 
     let size = *off;
-    let block_size = unsafe { lfs.cfg.as_ref().expect("cfg").block_size };
+    let block_size = unsafe { lfs.cfg.as_ref().block_size };
     let b = block_size - 8;
     let mut i = size / b;
     if i == 0 {
@@ -371,7 +371,7 @@ pub fn lfs_ctz_extend(
 
     'relocate: loop {
         unsafe {
-            let block_size = lfs.cfg.as_ref().expect("cfg").block_size;
+            let block_size = lfs.cfg.as_ref().block_size;
 
             let mut nblock: lfs_block_t = 0;
             lfs_alloc(lfs, &mut nblock)?;

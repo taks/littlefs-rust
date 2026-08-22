@@ -1,5 +1,7 @@
 //! Initialization. Per lfs.c lfs_init, lfs_deinit.
 
+use core::ptr::NonNull;
+
 use crate::Lfs;
 use crate::bd::bd::lfs_cache_zero;
 use crate::error::Error;
@@ -228,7 +230,7 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
             cfg.metadata_max == 0 || cfg.block_size.is_multiple_of(cfg.metadata_max)
         );
 
-        lfs.cfg = cfg;
+        lfs.cfg = NonNull::from_ref(cfg);
         lfs.block_count = cfg.block_count;
 
         lfs.rcache.get_mut().buffer = if let Some(buf) = cfg.read_buffer {

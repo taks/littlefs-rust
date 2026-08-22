@@ -334,7 +334,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
     use crate::tag::lfs_mktag;
     use crate::util::{lfs_alignup, lfs_min, lfs_tobe32, lfs_tole32};
 
-    let cfg = unsafe { lfs.cfg.as_ref().unwrap() };
+    let cfg = unsafe { lfs.cfg.as_ref() };
     let block_size = cfg.block_size;
     let prog_size = cfg.prog_size;
 
@@ -496,7 +496,7 @@ pub fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), 
     use crate::bd::bd::lfs_bd_read;
     use crate::block_alloc::alloc::lfs_alloc;
     use crate::types::LFS_BLOCK_NULL;
-    use crate::util::{lfs_alignup};
+    use crate::util::lfs_alignup;
 
     for i in 0..2 {
         let out_block = &mut dir.pair[(i + 1) % 2];
@@ -520,9 +520,9 @@ pub fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), 
         return crate::lfs_pass_err!(err);
     }
 
-    if let Some(cfg) = unsafe { lfs.cfg.as_ref() }
-        && cfg.block_cycles > 0
-    {
+    let cfg = unsafe { lfs.cfg.as_ref() };
+
+    if cfg.block_cycles > 0 {
         let modulus = (cfg.block_cycles as u32 + 1) | 1;
         dir.rev = lfs_alignup(dir.rev, modulus);
     }
@@ -759,7 +759,7 @@ fn lfs_dir_commit_commit(
 /// }
 /// ```
 pub fn lfs_dir_needsrelocation(lfs: &Lfs, dir: &LfsMdir) -> bool {
-    let cfg = unsafe { lfs.cfg.as_ref().unwrap() };
+    let cfg = unsafe { lfs.cfg.as_ref() };
 
     cfg.block_cycles > 0 && (dir.rev + 1).is_multiple_of(((cfg.block_cycles as u32) + 1) | 1)
 }
@@ -953,8 +953,8 @@ pub fn lfs_dir_compact(
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_tole32, lfs_gstate_xor};
     use crate::tag::lfs_mktag;
     use crate::util::{
-        lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_isnull, lfs_pair_swap,
-        lfs_pair_tole32, lfs_tole32,
+        lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_isnull, lfs_pair_swap, lfs_pair_tole32,
+        lfs_tole32,
     };
 
     let mut relocated = false;
@@ -983,8 +983,8 @@ pub fn lfs_dir_compact(
     }
 
     loop {
-        let metadata_max = unsafe { lfs.cfg.as_ref().map_or(0, |c| c.metadata_max) };
-        let block_size = unsafe { lfs.cfg.as_ref().unwrap().block_size };
+        let metadata_max = unsafe { lfs.cfg.as_ref().metadata_max };
+        let block_size = unsafe { lfs.cfg.as_ref().block_size };
         let end_off = if metadata_max != 0 {
             metadata_max
         } else {
@@ -1274,7 +1274,7 @@ pub fn lfs_dir_compact(
         crate::lfs_assert!(
             commit
                 .off
-                .is_multiple_of(unsafe { lfs.cfg.as_ref().unwrap().prog_size })
+                .is_multiple_of(unsafe { lfs.cfg.as_ref().prog_size })
         );
         lfs_pair_swap(&mut dir.pair);
         dir.count = end - begin;
@@ -1445,7 +1445,7 @@ pub fn lfs_dir_splittingcompact(
 
             size = size_ptr;
 
-            let cfg = unsafe { &*lfs.cfg };
+            let cfg = unsafe { lfs.cfg.as_ref() };
 
             let effective_max = if cfg.metadata_max != 0 {
                 cfg.metadata_max
@@ -1762,8 +1762,8 @@ pub fn lfs_dir_relocatingcommit(
 
         let mut do_compact = true;
         if dir.erased && dir.count < 0xff {
-            let metadata_max = lfs.cfg.as_ref().map_or(0, |c| c.metadata_max);
-            let block_size = lfs.cfg.as_ref().unwrap().block_size;
+            let metadata_max = lfs.cfg.as_ref().metadata_max;
+            let block_size = lfs.cfg.as_ref().block_size;
             let end = if metadata_max != 0 {
                 metadata_max
             } else {
