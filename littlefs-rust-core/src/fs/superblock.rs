@@ -40,26 +40,24 @@ pub fn lfs_fs_preporphans(lfs: &mut super::lfs::Lfs, orphans: i8) -> Result<(), 
 /// Translation docs: Record a pending move (or clear it when id=0x3ff) in gstate.
 ///
 /// C: lfs.c:4906-4914
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn lfs_fs_prepmove(lfs: *mut super::lfs::Lfs, id: u16, pair: *const [lfs_block_t; 2]) {
+pub fn lfs_fs_prepmove(lfs: &mut super::lfs::Lfs, id: u16, pair: Option<&[lfs_block_t; 2]>) {
     use crate::lfs_type::lfs_type::LFS_TYPE_DELETE;
     use crate::tag::lfs_mktag;
 
-    unsafe {
-        let lfs = &mut *lfs;
-        lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0x7ff, 0x3ff, 0))
-            | if id != 0x3ff {
-                lfs_mktag(LFS_TYPE_DELETE, id as u32, 0)
-            } else {
-                0
-            };
-        if id != 0x3ff && !pair.is_null() {
-            lfs.gstate.pair[0] = (*pair)[0];
-            lfs.gstate.pair[1] = (*pair)[1];
+    lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0x7ff, 0x3ff, 0))
+        | if id != 0x3ff {
+            lfs_mktag(LFS_TYPE_DELETE, id as u32, 0)
         } else {
-            lfs.gstate.pair[0] = 0;
-            lfs.gstate.pair[1] = 0;
-        }
+            0
+        };
+    if id != 0x3ff
+        && let Some(pair) = pair
+    {
+        lfs.gstate.pair[0] = pair[0];
+        lfs.gstate.pair[1] = pair[1];
+    } else {
+        lfs.gstate.pair[0] = 0;
+        lfs.gstate.pair[1] = 0;
     }
 }
 
@@ -171,7 +169,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     lfs_dir_fetch(lfs, &mut movedir, lfs.gdisk.pair)?;
 
     let moveid = lfs_tag_id(lfs.gdisk.tag);
-    lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
+    lfs_fs_prepmove(lfs, 0x3ff, None);
 
     let attrs = [crate::tag::lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_DELETE, moveid as u32, 0),
@@ -378,7 +376,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                         let mut moveid: u16 = 0x3ff;
                         if lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
                             moveid = lfs_tag_id(lfs.gstate.tag);
-                            lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
+                            lfs_fs_prepmove(lfs, 0x3ff, None);
                         }
 
                         lfs_pair_tole32(&mut pair);

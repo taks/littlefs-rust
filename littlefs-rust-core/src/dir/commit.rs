@@ -2215,7 +2215,7 @@ pub fn lfs_dir_orphaningcommit(
             let mut moveid: u16 = 0x3ff;
             if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
                 moveid = crate::tag::lfs_tag_id(lfs.gstate.tag);
-                crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
+                crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, None);
                 // C: lfs.c:2523-2525
                 if moveid < crate::tag::lfs_tag_id(tag) {
                     tag -= crate::tag::lfs_mktag(0, 1, 0);
@@ -2273,7 +2273,7 @@ pub fn lfs_dir_orphaningcommit(
             let mut moveid: u16 = 0x3ff;
             if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
                 moveid = crate::tag::lfs_tag_id(lfs.gstate.tag);
-                crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
+                crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, None);
             }
 
             lpair[0] = pdir.pair[0];

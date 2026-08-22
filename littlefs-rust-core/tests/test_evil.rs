@@ -379,7 +379,7 @@ unsafe fn evil_invalid_gstate_pointer(invalset: u32) {
         if invalset & 0x1 != 0 { 0xcccccccc } else { 0 },
         if invalset & 0x2 != 0 { 0xcccccccc } else { 0 },
     ];
-    lfs_fs_prepmove(lfs, 1, &invalid_pair);
+    lfs_fs_prepmove(lfs, 1, Some(&invalid_pair));
     assert_ok!(lfs_dir_commit(lfs, mdir, &[]));
     assert_ok!(lfs_deinit(lfs));
 
