@@ -217,7 +217,9 @@ pub fn lfs_file_opencfg_(
         lfs_fs_forceconsistency(lfs)?;
     }
 
-    file.cfg = unsafe { core::mem::transmute(&mut *cfg) };
+    file.cfg = unsafe {
+        NonNull::from(core::mem::transmute::<&mut LfsFileConfig, &mut LfsFileConfig>(cfg))
+    };
     file.flags = flags;
     file.pos = 0;
     file.off = 0;
