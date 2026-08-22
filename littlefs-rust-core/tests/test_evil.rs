@@ -17,7 +17,7 @@ use littlefs_rust_core::{
     Lfs, LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMdir, lfs_ctz_fromle32, lfs_deinit, lfs_dir_commit,
     lfs_dir_fetch, lfs_dir_get, lfs_dir_open, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_write, lfs_format, lfs_fs_prepmove, lfs_init, lfs_mkdir, lfs_mktag, lfs_mount,
-    lfs_pair_fromle32, lfs_stat, lfs_tole32, lfs_unmount,
+    lfs_pair_fromle32, lfs_stat, lfs_unmount,
 };
 use zerocopy::IntoBytes;
 
@@ -208,7 +208,7 @@ fn evil_invalid_file_pointer(size: u32) {
     // Forge a CTZSTRUCT with invalid head and faked size
     let fake_ctz = LfsCtz {
         head: 0xcccccccc,
-        size: lfs_tole32(size),
+        size: size.to_le(),
     };
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>() as u32),
@@ -317,7 +317,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     // Rewrite ctz.head block with bad pointers at offsets 0 and 4
     let mut bbuffer = vec![0u8; BLOCK_SIZE as usize];
     assert_ok!(read_block_raw(cfg, ctz.head, 0, &mut bbuffer));
-    let bad: u32 = lfs_tole32(0xcccccccc);
+    let bad = (0xcccccccc as u32).to_le();
     bbuffer[0..4].copy_from_slice(&bad.to_ne_bytes());
     bbuffer[4..8].copy_from_slice(&bad.to_ne_bytes());
     assert_ok!(erase_block_raw(cfg, ctz.head));
