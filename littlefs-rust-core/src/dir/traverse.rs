@@ -254,14 +254,15 @@ pub fn lfs_dir_getread(
     }
 
     while size > 0 {
-        let mut diff = size;
+        let mut diff = size as usize;
 
+        // TODO: check
         if let Some(pcache) = unsafe { pcache.as_ref() }
             && pcache.block == LFS_BLOCK_INLINE
             && off < pcache.off + pcache.size
         {
             if off >= pcache.off {
-                diff = lfs_min(diff, pcache.size - (off - pcache.off));
+                diff = core::cmp::min(diff, (pcache.size - (off - pcache.off)) as usize);
                 unsafe {
                     core::ptr::copy_nonoverlapping(
                         pcache
@@ -274,31 +275,35 @@ pub fn lfs_dir_getread(
                     )
                 };
 
-                data = &mut data[(diff as usize)..];
-                off += diff;
-                size -= diff;
+                data = &mut data[diff..];
+                off += diff as u32;
+                size -= diff as u32;
                 continue;
             }
-            diff = lfs_min(diff, pcache.off - off);
+            diff = core::cmp::min(diff, (pcache.off - off) as usize);
         }
 
         if rcache.block == LFS_BLOCK_INLINE && off < rcache.off + rcache.size && off >= rcache.off {
-            diff = lfs_min(diff, rcache.size - (off - rcache.off));
+            diff = core::cmp::min(diff, (rcache.size - (off - rcache.off)) as usize);
             unsafe {
-                core::ptr::copy_nonoverlapping(
-                    rcache
-                        .buffer
-                        .as_ref()
-                        .as_ptr()
-                        .add((off - rcache.off) as usize),
-                    data.as_mut_ptr(),
-                    diff as usize,
-                )
+                data.as_mut()[..diff].copy_from_slice(
+                    &rcache.buffer.as_ref()
+                        [((off - rcache.off) as usize)..((off - rcache.off) as usize + diff)],
+                );
+                // core::ptr::copy_nonoverlapping(
+                //     rcache
+                //         .buffer
+                //         .as_ref()
+                //         .as_ptr()
+                //         .add((off - rcache.off) as usize),
+                //     data.as_mut_ptr(),
+                //     diff as usize,
+                // )
             };
 
-            data = &mut data[(diff as usize)..];
-            off += diff;
-            size -= diff;
+            data = &mut data[diff..];
+            off += diff as u32;
+            size -= diff as u32;
             continue;
         }
 
