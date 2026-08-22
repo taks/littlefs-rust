@@ -100,7 +100,6 @@ pub fn make_config(block_count: u32, _ram: &RamStorage) -> LfsConfig {
         block_count,
         block_cycles: -1,
         cache_size: block_size,
-        lookahead_size: block_size,
         compact_thresh: u32::MAX,
         read_buffer: None,
         prog_buffer: None,

@@ -110,7 +110,10 @@ pub fn lfs_format_(
         // create free lookahead
         lfs.lookahead.buffer.as_mut().fill(0);
         lfs.lookahead.start = 0;
-        lfs.lookahead.size = lfs_min(8 * cfg.lookahead_buffer.unwrap().len() as u32, lfs.block_count);
+        lfs.lookahead.size = lfs_min(
+            8 * cfg.lookahead_buffer.unwrap().len() as u32,
+            lfs.block_count,
+        );
         lfs.lookahead.next = 0;
         lfs_alloc_ckpoint(lfs);
 
@@ -231,7 +234,10 @@ pub unsafe fn test_traverse_format_attrs(
     unsafe {
         lfs.lookahead.buffer.as_mut().fill(0);
         lfs.lookahead.start = 0;
-        lfs.lookahead.size = lfs_min(8 * cfg.lookahead_buffer.unwrap().len() as u32, lfs.block_count);
+        lfs.lookahead.size = lfs_min(
+            8 * cfg.lookahead_buffer.unwrap().len() as u32,
+            lfs.block_count,
+        );
         lfs.lookahead.next = 0;
         lfs_alloc_ckpoint(lfs);
 
@@ -335,7 +341,10 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
     unsafe {
         lfs.lookahead.buffer.as_mut().fill(0);
         lfs.lookahead.start = 0;
-        lfs.lookahead.size = lfs_min(8 * cfg.lookahead_buffer.unwrap().len() as u32, lfs.block_count);
+        lfs.lookahead.size = lfs_min(
+            8 * cfg.lookahead_buffer.unwrap().len() as u32,
+            lfs.block_count,
+        );
         lfs.lookahead.next = 0;
         lfs_alloc_ckpoint(lfs);
 
@@ -440,7 +449,10 @@ pub unsafe fn test_format_minimal_superblock(
 
     unsafe { lfs.lookahead.buffer.as_mut().fill(0) };
     lfs.lookahead.start = 0;
-    lfs.lookahead.size = lfs_min(8 * cfg.lookahead_buffer.unwrap().len() as u32, lfs.block_count);
+    lfs.lookahead.size = lfs_min(
+        8 * cfg.lookahead_buffer.unwrap().len() as u32,
+        lfs.block_count,
+    );
     lfs.lookahead.next = 0;
     lfs_alloc_ckpoint(lfs);
 

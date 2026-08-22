@@ -306,7 +306,10 @@ pub fn lfs_dir_getread(
 
         rcache.block = LFS_BLOCK_INLINE;
         rcache.off = lfs_aligndown(off, cfg.read_size);
-        rcache.size = lfs_min(lfs_alignup(off + hint, cfg.read_size), cfg.cache_size);
+        rcache.size = core::cmp::min(
+            lfs_alignup(off + hint, cfg.read_size),
+            rcache.buffer.len() as u32,
+        );
         let _res = lfs_dir_getslice(
             lfs,
             dir,

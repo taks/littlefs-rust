@@ -115,7 +115,10 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
         lfs.lookahead.next = 0;
         // note we limit the lookahead buffer to at most the amount of blocks
         // checkpointed, this prevents the math in lfs_alloc from underflowing
-        lfs.lookahead.size = lfs_min(8 * cfg.lookahead_buffer.unwrap().len() as u32, lfs.lookahead.ckpoint);
+        lfs.lookahead.size = lfs_min(
+            8 * cfg.lookahead_buffer.unwrap().len() as u32,
+            lfs.lookahead.ckpoint,
+        );
 
         // find mask of free blocks from tree
         lfs.lookahead.buffer.as_mut().fill(0);

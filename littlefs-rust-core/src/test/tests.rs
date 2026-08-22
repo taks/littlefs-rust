@@ -42,7 +42,10 @@ fn test_context_format_to_alloc() {
         lfs.lookahead.buffer.as_mut().fill(0);
     }
     lfs.lookahead.start = 0;
-    lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
+    lfs.lookahead.size = lfs_min(
+        8 * cfg.lookahead_buffer.unwrap().len() as u32,
+        lfs.block_count,
+    );
     lfs.lookahead.next = 0;
     lfs_alloc_ckpoint(&mut lfs);
 
@@ -66,7 +69,6 @@ fn test_context_format_to_alloc() {
 fn test_context_buffers_writable() {
     let ctx = TestContext::default_blocks();
     // Manually write to each buffer - simulate what lfs_cache_zero and format do
-    let block_size = ctx.ram.block_size as usize;
     if let Some(mut buf) = ctx.config.read_buffer {
         unsafe { buf.as_mut().fill(0xff) };
     }

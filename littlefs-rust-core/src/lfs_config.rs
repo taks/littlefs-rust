@@ -37,7 +37,7 @@ pub struct LfsConfig {
     pub block_count: lfs_size_t,
     pub block_cycles: i32,
     pub cache_size: lfs_size_t,
-    pub lookahead_size: lfs_size_t,
+    // pub lookahead_size: lfs_size_t,
     pub compact_thresh: lfs_size_t,
     pub read_buffer: Option<NonNull<[u8]>>,
     pub prog_buffer: Option<NonNull<[u8]>>,
