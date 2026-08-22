@@ -159,7 +159,7 @@ fn test_compat_minor_bump() {
     let root_pair: [u32; 2] = [0, 1];
     assert_ok!(lfs_dir_fetch(lfs, &mut mdir, root_pair));
 
-    let cfg = unsafe { &*lfs.cfg };
+    let cfg = unsafe { lfs.cfg.as_ref() };
     let mut superblock = LfsSuperblock {
         version: LFS_DISK_VERSION - 1,
         block_size: cfg.block_size,

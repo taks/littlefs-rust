@@ -37,7 +37,7 @@ fn test_context_format_to_alloc() {
     let err = crate::fs::lfs_init(&mut lfs, ctx.config());
     assert_eq!(err, Ok(()));
 
-    let cfg = unsafe { &*lfs.cfg };
+    let cfg = unsafe { lfs.cfg.as_ref() };
     unsafe {
         lfs.lookahead.buffer.as_mut().fill(0);
     }

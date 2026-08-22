@@ -446,19 +446,19 @@ struct LfsDirTraverseStack<'a> {
     ptag: lfs_tag_t,
     attr_i: usize,
     use_empty_attrs: bool,
+
     tmask: lfs_tag_t,
     ttag: lfs_tag_t,
     begin: u16,
     end: u16,
     diff: i16,
+
     cb: fn(*mut core::ffi::c_void, lfs_tag_t, &[u8]) -> Result<i32, Error>,
     data: *mut core::ffi::c_void,
+
     tag: lfs_tag_t,
     buffer: &'a [u8],
     disk: crate::tag::lfs_diskoff,
-    /// Tag we were processing when filter returned 1; use when popping with NOOP.
-    redundant_tag: lfs_tag_t,
-    redundant_buffer: *const core::ffi::c_void,
 }
 
 /// Per lfs.c lfs_dir_traverse (lines 912-1105)
@@ -814,8 +814,6 @@ pub fn lfs_dir_traverse(
                         tag,
                         buffer,
                         disk,
-                        redundant_tag: 0xffff_ffff,
-                        redundant_buffer: core::ptr::null(),
                     };
                     stack[sp].write(frame);
 
@@ -887,8 +885,6 @@ pub fn lfs_dir_traverse(
                                 tag: noop_tag,
                                 buffer: &[],
                                 disk,
-                                redundant_tag: 0xffff_ffff,
-                                redundant_buffer: core::ptr::null(),
                             };
                             stack[sp].write(frame);
 
@@ -938,11 +934,6 @@ pub fn lfs_dir_traverse(
                                 "traverse LFS_FROM_USERATTRS: res=1 storing redundant tag=0x{:08x}",
                                 tag
                             );
-                            unsafe {
-                                (*stack[sp - 1].as_mut_ptr()).redundant_tag = tag;
-                                (*stack[sp - 1].as_mut_ptr()).redundant_buffer =
-                                    buffer.as_ptr() as *const _;
-                            }
                             phase = TraversePhase::PopAndProcess;
                         } else {
                             return Ok(res);
@@ -960,11 +951,6 @@ pub fn lfs_dir_traverse(
                                     tag,
                                     buffer
                                 );
-                                unsafe {
-                                    (*stack[sp - 1].as_mut_ptr()).redundant_tag = tag;
-                                    (*stack[sp - 1].as_mut_ptr()).redundant_buffer =
-                                        buffer.as_ptr() as *const _;
-                                }
                                 phase = TraversePhase::PopAndProcess;
                             } else {
                                 return Ok(res);
