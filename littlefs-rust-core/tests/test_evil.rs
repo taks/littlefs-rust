@@ -317,7 +317,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     // Rewrite ctz.head block with bad pointers at offsets 0 and 4
     let mut bbuffer = vec![0u8; BLOCK_SIZE as usize];
     assert_ok!(read_block_raw(cfg, ctz.head, 0, &mut bbuffer));
-    let bad = (0xcccccccc as u32).to_le();
+    let bad = 0xcccccccc_u32.to_le();
     bbuffer[0..4].copy_from_slice(&bad.to_ne_bytes());
     bbuffer[4..8].copy_from_slice(&bad.to_ne_bytes());
     assert_ok!(erase_block_raw(cfg, ctz.head));
