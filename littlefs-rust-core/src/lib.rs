@@ -166,9 +166,9 @@ pub fn lfs_file_open(
 
 /// Open a file with extra configuration. Per lfs.h lfs_file_opencfg (lfs.c:6193-6197).
 #[inline]
-pub fn lfs_file_opencfg<'a>(
+pub fn lfs_file_opencfg<'a: 'b, 'b>(
     lfs: &mut Lfs,
-    file: &mut LfsFile,
+    file: &mut LfsFile<'b>,
     path: &str,
     flags: OpenFlags,
     config: &mut LfsFileConfig<'a>,

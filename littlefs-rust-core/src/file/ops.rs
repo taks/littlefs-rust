@@ -195,12 +195,12 @@ use crate::{Lfs, LfsAttr};
 ///     return err;
 /// }
 /// ```
-pub fn lfs_file_opencfg_(
+pub fn lfs_file_opencfg_<'a: 'b, 'b>(
     lfs: &mut crate::fs::Lfs,
-    file: &mut LfsFile,
+    file: &mut LfsFile<'b>,
     path: &str,
     flags: OpenFlags,
-    cfg: &mut LfsFileConfig,
+    cfg: &mut LfsFileConfig<'a>,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
     use crate::dir::find::lfs_dir_find;
