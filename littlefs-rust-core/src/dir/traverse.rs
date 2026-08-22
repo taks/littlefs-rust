@@ -256,7 +256,6 @@ pub fn lfs_dir_getread(
     while size > 0 {
         let mut diff = size as usize;
 
-        // TODO: check
         if let Some(pcache) = pcache
             && pcache.block == LFS_BLOCK_INLINE
             && off < pcache.off + pcache.size
@@ -264,15 +263,10 @@ pub fn lfs_dir_getread(
             if off >= pcache.off {
                 diff = core::cmp::min(diff, (pcache.size - (off - pcache.off)) as usize);
                 unsafe {
-                    core::ptr::copy_nonoverlapping(
-                        pcache
-                            .buffer
-                            .as_ref()
-                            .as_ptr()
-                            .add((off - pcache.off) as usize),
-                        data.as_mut_ptr(),
-                        diff,
-                    )
+                    data[..diff].copy_from_slice(
+                        &pcache.buffer.as_ref()
+                            [((off - pcache.off) as usize)..((off - pcache.off) as usize + diff)],
+                    );
                 };
 
                 data = &mut data[diff..];
