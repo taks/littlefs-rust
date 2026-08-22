@@ -34,13 +34,11 @@ pub fn lfs_cache_drop(_lfs: &Lfs, rcache: &mut LfsCache) {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_cache_zero(lfs: &Lfs, pcache: &mut LfsCache) {
+pub fn lfs_cache_zero(_lfs: &Lfs, pcache: &mut LfsCache) {
     unsafe {
-        let cfg = lfs.cfg;
-        let cache_size = (*cfg).cache_size as usize;
-        pcache.buffer.as_mut()[..cache_size].fill(0xff);
-        pcache.block = crate::types::LFS_BLOCK_NULL;
+        pcache.buffer.as_mut().fill(0xff);
     }
+    pcache.block = crate::types::LFS_BLOCK_NULL;
 }
 
 /// Per lfs.c lfs_bd_read (lines 44-126)
@@ -217,7 +215,7 @@ pub fn lfs_bd_read(
             rcache.size = lfs_min(
                 lfs_min(lfs_alignup(off + hint, cfg.read_size), cfg.block_size)
                     .saturating_sub(rcache.off),
-                cfg.cache_size,
+                rcache.buffer.len() as u32,
             );
             crate::lfs_trace!(
                 "bd_read block={} off={} size={}",
@@ -576,8 +574,8 @@ pub fn lfs_bd_prog(
 
     while size > 0 {
         if block == pcache.block && off >= pcache.off && off < pcache.off + cfg.cache_size {
-            let diff = lfs_min(size, cfg.cache_size - (off - pcache.off));
-            if !pcache.buffer.is_empty() && !data.is_empty() {
+            let diff = lfs_min(size, pcache.buffer.len() as u32 - (off - pcache.off));
+            if !data.is_empty() {
                 // Trace superblock magic region (offset 12-20 in block 0/1)
                 if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
                     let magic_start = 12usize.saturating_sub(off as usize);

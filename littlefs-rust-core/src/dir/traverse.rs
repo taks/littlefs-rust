@@ -87,13 +87,12 @@ pub fn lfs_dir_getslice(
     gtag: lfs_tag_t,
     goff: lfs_off_t,
     gbuffer: &mut [u8],
-    gsize: lfs_size_t,
 ) -> Result<lfs_tag_t, Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::tag::{
         lfs_mktag, lfs_tag_dsize, lfs_tag_id, lfs_tag_isdelete, lfs_tag_size, lfs_tag_type1,
     };
-    use crate::util::{lfs_frombe32, lfs_min};
+    use crate::util::lfs_frombe32;
 
     unsafe {
         let mut off = dir.off;
@@ -158,7 +157,7 @@ pub fn lfs_dir_getslice(
                 if lfs_tag_isdelete(tag) {
                     return Err(Error::NoEntry);
                 }
-                let diff = lfs_min(lfs_tag_size(tag), gsize);
+                let diff = core::cmp::min(lfs_tag_size(tag), gbuffer.len() as u32);
                 let buf = &mut gbuffer[..diff as usize];
                 lfs_bd_read(
                     lfs,
@@ -169,8 +168,8 @@ pub fn lfs_dir_getslice(
                     off + 4 + goff,
                     buf,
                 )?;
-                if !gbuffer.is_empty() && diff < gsize {
-                    gbuffer[(diff as usize)..(gsize as usize)].fill(0);
+                if !gbuffer.is_empty() && diff < gbuffer.len() as u32 {
+                    gbuffer[(diff as usize)..].fill(0);
                 }
                 return Ok((tag as i32).wrapping_add(gdiff) as u32);
             }
@@ -203,8 +202,7 @@ pub fn lfs_dir_get(
         gmask,
         gtag,
         0,
-        buffer,
-        crate::tag::lfs_tag_size(gtag),
+        &mut buffer[..crate::tag::lfs_tag_size(gtag) as usize],
     )
 }
 
@@ -310,15 +308,9 @@ pub fn lfs_dir_getread(
             lfs_alignup(off + hint, cfg.read_size),
             rcache.buffer.len() as u32,
         );
-        let _res = lfs_dir_getslice(
-            lfs,
-            dir,
-            gmask,
-            gtag,
-            rcache.off,
-            unsafe { &mut rcache.buffer.as_mut()[..rcache.size as usize] },
-            rcache.size,
-        )?;
+        let _res = lfs_dir_getslice(lfs, dir, gmask, gtag, rcache.off, unsafe {
+            &mut rcache.buffer.as_mut()[..rcache.size as usize]
+        })?;
     }
     Ok(())
 }
