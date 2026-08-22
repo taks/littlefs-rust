@@ -241,7 +241,7 @@ pub fn lfs_dir_getread(
     buffer: &mut [u8],
 ) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
-    use crate::util::{lfs_aligndown, lfs_alignup, lfs_min};
+    use crate::util::{lfs_aligndown, lfs_alignup};
 
     let cfg = unsafe { lfs.cfg.as_ref().expect("cfg") };
 
@@ -284,22 +284,9 @@ pub fn lfs_dir_getread(
         }
 
         if rcache.block == LFS_BLOCK_INLINE && off < rcache.off + rcache.size && off >= rcache.off {
-            diff = core::cmp::min(diff, (rcache.size - (off - rcache.off)) as usize);
-            unsafe {
-                data.as_mut()[..diff].copy_from_slice(
-                    &rcache.buffer.as_ref()
-                        [((off - rcache.off) as usize)..((off - rcache.off) as usize + diff)],
-                );
-                // core::ptr::copy_nonoverlapping(
-                //     rcache
-                //         .buffer
-                //         .as_ref()
-                //         .as_ptr()
-                //         .add((off - rcache.off) as usize),
-                //     data.as_mut_ptr(),
-                //     diff as usize,
-                // )
-            };
+            let src = unsafe { &rcache.buffer.as_ref()[((off - rcache.off) as usize)..] };
+            diff = core::cmp::min(diff, src.len());
+            data.as_mut()[..diff].copy_from_slice(&src[..diff]);
 
             data = &mut data[diff..];
             off += diff as u32;

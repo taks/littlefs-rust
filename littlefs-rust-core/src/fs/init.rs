@@ -199,8 +199,8 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
         crate::lfs_assert!(cfg.read_size != 0);
         crate::lfs_assert!(cfg.prog_size != 0);
         crate::lfs_assert!(cfg.cache_size != 0);
-        crate::lfs_assert!(cfg.read_buffer.unwrap().len() as u32 == cfg.cache_size);
-        crate::lfs_assert!(cfg.prog_buffer.unwrap().len() as u32 == cfg.cache_size);
+        crate::lfs_assert!(cfg.read_buffer.unwrap().len() as u32 >= cfg.cache_size);
+        crate::lfs_assert!(cfg.prog_buffer.unwrap().len() as u32 >= cfg.cache_size);
 
         // check that block size is a multiple of cache size is a multiple of prog and read sizes
         crate::lfs_assert!(cfg.cache_size.is_multiple_of(cfg.read_size));
