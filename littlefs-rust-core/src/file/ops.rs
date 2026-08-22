@@ -443,7 +443,7 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
 
     #[cfg(feature = "alloc")]
     unsafe {
-        let cfg = file.cfg.as_ref().unwrap();
+        let cfg = file.cfg.as_ref();
         if (cfg.buffer).is_empty() && !file.cache.buffer.is_empty() {
             crate::lfs_alloc_module::lfs_free(
                 file.cache.buffer.as_mut().as_mut_ptr(),
@@ -761,7 +761,7 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                     block: 0,
                     off: 0,
                     cache: core::ptr::read(lfs.rcache.get()),
-                    cfg: core::ptr::null(),
+                    cfg: NonNull::dangling(),
                 };
                 lfs_cache_drop(lfs, &mut *lfs.rcache.get());
 
@@ -917,15 +917,9 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                     tag: lfs_mktag(
                         crate::lfs_type::lfs_type::LFS_FROM_USERATTRS,
                         file.id as u32,
-                        file.cfg.as_ref().map_or(0, |c| c.attrs.len() as u32),
+                        file.cfg.as_ref().attrs.len() as u32,
                     ) as u32,
-                    buffer: file.cfg.as_ref().map_or(&[], |c| {
-                        if c.attrs.is_empty() {
-                            &[]
-                        } else {
-                            c.attrs.as_bytes()
-                        }
-                    }),
+                    buffer: file.cfg.as_ref().attrs.as_bytes(),
                 },
             ];
             let err = lfs_dir_commit(lfs, &mut file.m, &attrs);
