@@ -170,7 +170,7 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         }
 
         let lfs_ref = &*lfs;
-        let lookahead_size = cfg.lookahead_size;
+        let lookahead_size = cfg.lookahead_buffer.unwrap().len() as u32;
         let block_count = lfs_ref.block_count;
         if lfs_ref.lookahead.size < lfs_min(8 * lookahead_size, block_count) {
             crate::lfs_trace!("lfs_fs_gc: alloc_scan start");
