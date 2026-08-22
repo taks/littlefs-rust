@@ -217,7 +217,7 @@ impl SharedStorage {
             block_count: self.geo.block_count,
             block_cycles: -1,
             cache_size: self.geo.cache_size,
-            lookahead_size: self.geo.lookahead_size,
+            // lookahead_size: self.geo.lookahead_size,
             compact_thresh: u32::MAX,
             read_buffer: Some(NonNull::from_mut(&mut read_buf)),
             prog_buffer: Some(NonNull::from_mut(&mut prog_buf)),

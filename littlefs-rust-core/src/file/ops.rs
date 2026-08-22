@@ -387,7 +387,7 @@ pub fn lfs_file_opencfg_(
                     file.id as u32,
                     lfs_min(file.cache.size, 0x3fe),
                 ),
-                unsafe { &mut file.cache.buffer.as_mut()[..file.cache.size as usize] },
+                unsafe { file.cache.buffer.as_mut() },
             );
             if let Err(err) = res {
                 let _ = lfs_file_close_(lfs, file);
@@ -599,9 +599,8 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
             let pcache = lfs.pcache.get_mut();
 
             unsafe {
-                let cache_size = lfs.cfg.as_ref().expect("cfg").cache_size as usize;
-                file.cache.buffer.as_mut()[..cache_size]
-                    .copy_from_slice(&pcache.buffer.as_ref()[..cache_size]);
+                file.cache.buffer.as_mut()[..pcache.buffer.len()]
+                    .copy_from_slice(&pcache.buffer.as_ref());
             }
             file.cache.block = pcache.block;
             file.cache.off = pcache.off;

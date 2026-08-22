@@ -573,49 +573,47 @@ pub fn lfs_bd_prog(
     let mut size = buffer.len() as u32;
 
     while size > 0 {
-        if block == pcache.block && off >= pcache.off && off < pcache.off + cfg.cache_size {
+        if block == pcache.block
+            && off >= pcache.off
+            && off < pcache.off + pcache.buffer.len() as u32
+        {
             let diff = lfs_min(size, pcache.buffer.len() as u32 - (off - pcache.off));
-            if !data.is_empty() {
-                // Trace superblock magic region (offset 12-20 in block 0/1)
-                if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
-                    let magic_start = 12usize.saturating_sub(off as usize);
-                    let magic_len = (8).min(diff as usize - magic_start);
-                    if magic_len > 0 {
-                        crate::lfs_trace!(
-                            "bd_prog superblock block={} off={} size={} magic_region[{}..{}]={:?}",
-                            block,
-                            off,
-                            size,
-                            magic_start,
-                            magic_start + magic_len,
-                            unsafe {
-                                core::slice::from_raw_parts(
-                                    data.as_ptr().add(magic_start),
-                                    magic_len,
-                                )
-                            }
-                        );
-                    }
+            // Trace superblock magic region (offset 12-20 in block 0/1)
+            if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
+                let magic_start = 12usize.saturating_sub(off as usize);
+                let magic_len = core::cmp::min(8, diff as usize - magic_start);
+                if magic_len > 0 {
+                    crate::lfs_trace!(
+                        "bd_prog superblock block={} off={} size={} magic_region[{}..{}]={:?}",
+                        block,
+                        off,
+                        size,
+                        magic_start,
+                        magic_start + magic_len,
+                        unsafe {
+                            core::slice::from_raw_parts(data.as_ptr().add(magic_start), magic_len)
+                        }
+                    );
                 }
-                unsafe {
-                    core::ptr::copy_nonoverlapping(
-                        data.as_ptr(),
-                        pcache
-                            .buffer
-                            .as_mut()
-                            .as_mut_ptr()
-                            .add((off - pcache.off) as usize),
-                        diff as usize,
-                    )
-                };
             }
+            unsafe {
+                core::ptr::copy_nonoverlapping(
+                    data.as_ptr(),
+                    pcache
+                        .buffer
+                        .as_mut()
+                        .as_mut_ptr()
+                        .add((off - pcache.off) as usize),
+                    diff as usize,
+                )
+            };
 
             data = &data[(diff as usize)..];
             off += diff;
             size -= diff;
 
             pcache.size = lfs_max(pcache.size, off - pcache.off);
-            if pcache.size == cfg.cache_size {
+            if pcache.size == pcache.buffer.len() as u32 {
                 lfs_bd_flush(lfs, pcache, rcache, validate)?;
             }
 

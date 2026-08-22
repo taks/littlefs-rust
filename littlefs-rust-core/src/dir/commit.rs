@@ -402,13 +402,9 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
         commit.ptag = ntag ^ ((0x80 & !eperturb) as u32) << 24;
         commit.crc = 0xffff_ffff;
 
-        if noff >= end || noff >= lfs.pcache.get_mut().off + cfg.cache_size {
-            lfs_bd_sync(
-                lfs,
-                unsafe { &mut *lfs.pcache.get() },
-                unsafe { &mut *lfs.rcache.get() },
-                false,
-            )?;
+        let pcache = unsafe { &mut *lfs.pcache.get() };
+        if noff >= end || noff >= pcache.off + pcache.buffer.len() as u32 {
+            lfs_bd_sync(lfs, pcache, unsafe { &mut *lfs.rcache.get() }, false)?;
         }
     }
 
