@@ -79,7 +79,7 @@ pub use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_tole32};
 pub use crate::tag::{lfs_mattr, lfs_mktag};
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_soff_t};
 #[doc(hidden)]
-pub use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_tole32};
+pub use crate::util::{lfs_pair_fromle32, lfs_pair_tole32};
 
 /// Format a block device with littlefs.
 /// Per lfs.h lfs_format. Calls lfs_format_ (lfs.c:4391).

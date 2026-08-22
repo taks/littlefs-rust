@@ -3,7 +3,6 @@
 use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
 
 use crate::types::lfs_size_t;
-use crate::util::lfs_tole32;
 
 /// Per lfs.h typedef struct lfs_superblock
 #[repr(C)]
@@ -55,10 +54,10 @@ pub fn lfs_superblock_fromle32(sb: &mut LfsSuperblock) {
 /// ```
 #[inline(always)]
 pub fn lfs_superblock_tole32(sb: &mut LfsSuperblock) {
-    sb.version = lfs_tole32(sb.version);
-    sb.block_size = lfs_tole32(sb.block_size);
-    sb.block_count = lfs_tole32(sb.block_count);
-    sb.name_max = lfs_tole32(sb.name_max);
-    sb.file_max = lfs_tole32(sb.file_max);
-    sb.attr_max = lfs_tole32(sb.attr_max);
+    sb.version = sb.version.to_le();
+    sb.block_size = sb.block_size.to_le();
+    sb.block_count = sb.block_count.to_le();
+    sb.name_max = sb.name_max.to_le();
+    sb.file_max = sb.file_max.to_le();
+    sb.attr_max = sb.attr_max.to_le();
 }

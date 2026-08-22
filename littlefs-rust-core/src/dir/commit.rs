@@ -332,7 +332,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
     use crate::bd::bd::{lfs_bd_crc, lfs_bd_prog, lfs_bd_sync};
     use crate::crc::lfs_crc;
     use crate::tag::lfs_mktag;
-    use crate::util::{lfs_alignup, lfs_min, lfs_tobe32, lfs_tole32};
+    use crate::util::{lfs_alignup, lfs_min, lfs_tobe32};
 
     let cfg = unsafe { lfs.cfg.as_ref() };
     let block_size = cfg.block_size;
@@ -377,7 +377,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
 
         let xor_tag = lfs_tobe32(ntag ^ commit.ptag);
         commit.crc = lfs_crc(commit.crc, xor_tag.as_bytes());
-        let crc_le = lfs_tole32(commit.crc);
+        let crc_le = commit.crc.to_le();
 
         let mut ccrc: [u8; 8] = [0; 8];
         ccrc[..4].copy_from_slice(xor_tag.as_bytes());
@@ -954,7 +954,6 @@ pub fn lfs_dir_compact(
     use crate::tag::lfs_mktag;
     use crate::util::{
         lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_isnull, lfs_pair_swap, lfs_pair_tole32,
-        lfs_tole32,
     };
 
     let mut relocated = false;
@@ -1035,7 +1034,7 @@ pub fn lfs_dir_compact(
             return crate::lfs_pass_err!(Err(err));
         }
 
-        let rev = lfs_tole32(dir.rev);
+        let rev = dir.rev.to_le();
         let err = lfs_dir_commitprog(lfs, &mut commit, rev.as_bytes());
         dir.rev = u32::from_le(rev);
         if let Err(err) = err {

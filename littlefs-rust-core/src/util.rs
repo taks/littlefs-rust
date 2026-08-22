@@ -126,19 +126,6 @@ pub fn lfs_scmp(a: u32, b: u32) -> i32 {
     (a.wrapping_sub(b)) as i32
 }
 
-/// Per lfs_util.h lfs_tole32 (lines 206-208)
-///
-/// C:
-/// ```c
-/// static inline uint32_t lfs_tole32(uint32_t a) {
-///     return lfs_fromle32(a);
-/// }
-/// ```
-#[inline(always)]
-pub fn lfs_tole32(a: u32) -> u32 {
-    a.to_le()
-}
-
 /// Per lfs_util.h lfs_frombe32 (lines 211-226) - big-endian to native
 ///
 /// C:
@@ -249,8 +236,8 @@ pub fn lfs_pair_fromle32(pair: &mut [lfs_block_t; 2]) {
 /// ```
 #[inline(always)]
 pub fn lfs_pair_tole32(pair: &mut [lfs_block_t; 2]) {
-    pair[0] = lfs_tole32(pair[0]);
-    pair[1] = lfs_tole32(pair[1]);
+    pair[0] = pair[0].to_le();
+    pair[1] = pair[1].to_le();
 }
 
 /// Per lfs.c lfs_pair_swap (lines 302-306)

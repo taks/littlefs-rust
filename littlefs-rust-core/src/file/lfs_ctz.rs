@@ -3,7 +3,6 @@
 use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
 
 use crate::types::{lfs_block_t, lfs_size_t};
-use crate::util::lfs_tole32;
 
 /// Per lfs.h struct lfs_ctz (in lfs_file_t)
 #[repr(C)]
@@ -23,6 +22,6 @@ pub fn lfs_ctz_fromle32(ctz: &mut LfsCtz) {
 /// Per lfs.c lfs_ctz_tole32
 #[inline(always)]
 pub fn lfs_ctz_tole32(ctz: &mut LfsCtz) {
-    ctz.head = lfs_tole32(ctz.head);
-    ctz.size = lfs_tole32(ctz.size);
+    ctz.head = ctz.head.to_le();
+    ctz.size = ctz.size.to_le();
 }

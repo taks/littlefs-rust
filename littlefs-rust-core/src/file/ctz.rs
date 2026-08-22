@@ -367,7 +367,7 @@ pub fn lfs_ctz_extend(
 ) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_prog, lfs_bd_read, lfs_cache_drop};
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
-    use crate::util::{lfs_ctz, lfs_tole32};
+    use crate::util::{lfs_ctz};
 
     'relocate: loop {
         unsafe {
@@ -420,7 +420,7 @@ pub fn lfs_ctz_extend(
             let skips = lfs_ctz(index as u32) + 1;
             let mut nhead = head;
             for i in 0..skips {
-                let nhead_le = lfs_tole32(nhead);
+                let nhead_le = nhead.to_le();
                 let err = lfs_bd_prog(
                     lfs,
                     pcache,

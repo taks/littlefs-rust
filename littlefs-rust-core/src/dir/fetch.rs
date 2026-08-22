@@ -22,7 +22,7 @@ use crate::tag::{
     lfs_tag_size, lfs_tag_splice, lfs_tag_type1, lfs_tag_type2, lfs_tag_type3,
 };
 use crate::types::{LFS_BLOCK_NULL, lfs_block_t, lfs_stag_t, lfs_tag_t};
-use crate::util::{lfs_min, lfs_pair_swap, lfs_scmp, lfs_tole32};
+use crate::util::{lfs_min, lfs_pair_swap, lfs_scmp};
 use core::mem;
 
 /// Per lfs.c lfs_dir_fetchmatch (lines 1107-1386)
@@ -376,7 +376,7 @@ pub fn lfs_dir_fetchmatch(
             let mut hasfcrc = false;
             let mut fcrc = LfsFcrc { size: 0, crc: 0 };
 
-            let rev_le = lfs_tole32(dir.rev);
+            let rev_le = dir.rev.to_le();
             let mut crc = lfs_crc(0xffff_ffff, rev_le.as_bytes());
             dir.rev = u32::from_le(dir.rev);
 

@@ -437,7 +437,7 @@ pub unsafe fn test_format_minimal_superblock(
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_SUPERBLOCK};
     use crate::tag::lfs_mktag;
-    use crate::util::{lfs_min, lfs_tole32};
+    use crate::util::{lfs_min};
 
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
@@ -492,7 +492,7 @@ pub unsafe fn test_format_minimal_superblock(
     };
 
     let rev = 1u32;
-    let rev_le = lfs_tole32(rev);
+    let rev_le = rev.to_le();
     let err = lfs_dir_commitprog(lfs, &mut commit, rev_le.as_bytes());
     if err.is_err() {
         let _ = lfs_deinit(lfs);
