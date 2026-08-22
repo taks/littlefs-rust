@@ -2,7 +2,7 @@
 name = "littlefs-rust-core"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.89"
 description = "Port of LittleFS to unsafe rust"
 license = "BSD-3-Clause"
 repository = "https://github.com/light-player/littlefs-rust"

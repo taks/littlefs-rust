@@ -560,33 +560,33 @@ pub fn lfs_dir_fetchmatch(
                     hasfcrc = true;
                 }
 
-                if (fmask & tag) == (fmask & ftag) {
-                    if let Some(cb) = cb {
-                        let diskoff = crate::tag::lfs_diskoff {
-                            block: dir.pair[0],
-                            off: off + 4,
-                        };
-                        let res = match cb(tag, &diskoff) {
-                            Ok(res) => res,
-                            Err(err) => {
-                                if err == Error::Corrupt {
-                                    break;
-                                }
-                                return Err(err);
+                if (fmask & tag) == (fmask & ftag)
+                    && let Some(cb) = cb
+                {
+                    let diskoff = crate::tag::lfs_diskoff {
+                        block: dir.pair[0],
+                        off: off + 4,
+                    };
+                    let res = match cb(tag, &diskoff) {
+                        Ok(res) => res,
+                        Err(err) => {
+                            if err == Error::Corrupt {
+                                break;
                             }
-                        };
-
-                        if res == core::cmp::Ordering::Equal {
-                            tempbesttag = tag as lfs_stag_t;
-                        } else if (lfs_mktag(0x7ff, 0x3ff, 0) & tag)
-                            == (lfs_mktag(0x7ff, 0x3ff, 0) & tempbesttag as lfs_tag_t)
-                        {
-                            tempbesttag = -1;
-                        } else if res == core::cmp::Ordering::Greater
-                            && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
-                        {
-                            tempbesttag = (tag | 0x8000_0000) as lfs_stag_t;
+                            return Err(err);
                         }
+                    };
+
+                    if res == core::cmp::Ordering::Equal {
+                        tempbesttag = tag as lfs_stag_t;
+                    } else if (lfs_mktag(0x7ff, 0x3ff, 0) & tag)
+                        == (lfs_mktag(0x7ff, 0x3ff, 0) & tempbesttag as lfs_tag_t)
+                    {
+                        tempbesttag = -1;
+                    } else if res == core::cmp::Ordering::Greater
+                        && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
+                    {
+                        tempbesttag = (tag | 0x8000_0000) as lfs_stag_t;
                     }
                 }
             }

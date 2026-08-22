@@ -266,14 +266,13 @@ pub fn config_with_geometry(block_size: u32, block_count: u32) -> TestEnv {
         inline_max: 0,
     };
 
-    let mut env = TestEnv {
+    TestEnv {
         ram,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env
+    }
 }
 
 /// Build test environment with RAM BD. block_count defaults to 128 (upstream).
@@ -311,14 +310,13 @@ pub fn default_config(block_count: u32) -> TestEnv {
     // Build TestEnv, then set context/buffers. We must set context after returning
     // to the caller, since env moves and the stored &mut env.ram would otherwise
     // be a dangling pointer. Use TestEnv::init_context() after default_config().
-    let mut env = TestEnv {
+    TestEnv {
         ram,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env
+    }
 }
 
 /// Call after default_config() to set context to ram. Required because context
@@ -345,7 +343,7 @@ pub fn clone_config_with_block_count(env: &TestEnv, block_count: u32) -> ClonedC
     let bs = env.config.block_size as usize;
     let read_buf = vec![0u8; bs];
     let prog_buf = vec![0u8; bs];
-    let mut lookahead_buf = vec![0u8; bs];
+    let lookahead_buf = vec![0u8; bs];
     let config = LfsConfig {
         context: env.config.context,
         read: env.config.read,
@@ -427,14 +425,13 @@ pub fn config_badblock_with_behavior(
         inline_max: 0,
     };
 
-    let mut env = BadBlockTestEnv {
+    BadBlockTestEnv {
         badblock_ram,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env
+    }
 }
 
 /// Call after config_badblock() to set context. Required for BadBlockTestEnv.
@@ -942,14 +939,13 @@ pub fn config_with_wear_leveling_behavior(
         inline_max: 0,
     };
 
-    let mut env = WearLevelingEnv {
+    WearLevelingEnv {
         bd,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env
+    }
 }
 
 /// Build wear-leveling test environment with all parameters.

@@ -258,29 +258,30 @@ pub fn lfs_dir_getread(
     while size > 0 {
         let mut diff = size;
 
-        if let Some(pcache) = unsafe { pcache.as_ref() } {
-            if pcache.block == LFS_BLOCK_INLINE && off < pcache.off + pcache.size {
-                if off >= pcache.off {
-                    diff = lfs_min(diff, pcache.size - (off - pcache.off));
-                    unsafe {
-                        core::ptr::copy_nonoverlapping(
-                            pcache
-                                .buffer
-                                .as_ref()
-                                .as_ptr()
-                                .add((off - pcache.off) as usize),
-                            data.as_mut_ptr(),
-                            diff as usize,
-                        )
-                    };
+        if let Some(pcache) = unsafe { pcache.as_ref() }
+            && pcache.block == LFS_BLOCK_INLINE
+            && off < pcache.off + pcache.size
+        {
+            if off >= pcache.off {
+                diff = lfs_min(diff, pcache.size - (off - pcache.off));
+                unsafe {
+                    core::ptr::copy_nonoverlapping(
+                        pcache
+                            .buffer
+                            .as_ref()
+                            .as_ptr()
+                            .add((off - pcache.off) as usize),
+                        data.as_mut_ptr(),
+                        diff as usize,
+                    )
+                };
 
-                    data = &mut data[(diff as usize)..];
-                    off += diff;
-                    size -= diff;
-                    continue;
-                }
-                diff = lfs_min(diff, pcache.off - off);
+                data = &mut data[(diff as usize)..];
+                off += diff;
+                size -= diff;
+                continue;
             }
+            diff = lfs_min(diff, pcache.off - off);
         }
 
         if rcache.block == LFS_BLOCK_INLINE && off < rcache.off + rcache.size && off >= rcache.off {

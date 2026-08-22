@@ -443,13 +443,11 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
     #[cfg(feature = "alloc")]
     unsafe {
         let cfg = file.cfg.as_ref().unwrap();
-        if (cfg.buffer).is_empty() {
-            if !file.cache.buffer.is_empty() {
-                crate::lfs_alloc_module::lfs_free(
-                    file.cache.buffer.as_mut().as_mut_ptr(),
-                    lfs.cfg.as_ref().expect("cfg").cache_size,
-                );
-            }
+        if (cfg.buffer).is_empty() && !file.cache.buffer.is_empty() {
+            crate::lfs_alloc_module::lfs_free(
+                file.cache.buffer.as_mut().as_mut_ptr(),
+                lfs.cfg.as_ref().expect("cfg").cache_size,
+            );
         }
     }
 

@@ -2,7 +2,7 @@
 name = "littlefs-rust-compat"
 version = "0.1.0"
 publish = false
-edition = "2021"
+edition = "2024"
 description = "C ↔ Rust compatibility tests for littlefs-rust"
 license = "BSD-3-Clause"
 

@@ -189,14 +189,13 @@ pub fn powerloss_config(block_count: u32) -> PowerLossEnv {
         inline_max: 0,
     };
 
-    let mut env = PowerLossEnv {
+    PowerLossEnv {
         ctx,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env
+    }
 }
 
 /// Build power-loss test environment with explicit BD behavior.
@@ -234,14 +233,13 @@ pub fn powerloss_config_with_behavior(
         inline_max: 0,
     };
 
-    let mut env = PowerLossEnv {
+    PowerLossEnv {
         ctx,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env
+    }
 }
 
 /// Call after powerloss_config() to set context. Required for PowerLossEnv.

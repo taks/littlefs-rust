@@ -142,10 +142,10 @@ impl<'a, S: Storage> File<'a, S> {
 
 impl<S: Storage> Drop for File<'_, S> {
     fn drop(&mut self) {
-        if !self.closed {
-            if let Ok(mut inner) = self.fs.inner.try_borrow_mut() {
-                let _ = littlefs_rust_core::lfs_file_close(&mut inner.lfs, &mut self.alloc.file);
-            }
+        if !self.closed
+            && let Ok(mut inner) = self.fs.inner.try_borrow_mut()
+        {
+            let _ = littlefs_rust_core::lfs_file_close(&mut inner.lfs, &mut self.alloc.file);
         }
     }
 }

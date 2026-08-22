@@ -160,22 +160,23 @@ pub fn lfs_bd_read(
         while size > 0 {
             let mut diff = size;
 
-            if let Some(pcache) = pcache {
-                if block == pcache.block && off < pcache.off + pcache.size {
-                    if off >= pcache.off {
-                        diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
-                        data[..diff as usize].copy_from_slice(
-                            &pcache.buffer.as_ref()[((off - pcache.off) as usize)
-                                ..((off - pcache.off + diff) as usize)],
-                        );
+            if let Some(pcache) = pcache
+                && block == pcache.block
+                && off < pcache.off + pcache.size
+            {
+                if off >= pcache.off {
+                    diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
+                    data[..diff as usize].copy_from_slice(
+                        &pcache.buffer.as_ref()
+                            [((off - pcache.off) as usize)..((off - pcache.off + diff) as usize)],
+                    );
 
-                        data = &mut data[(diff as usize)..];
-                        off += diff;
-                        size -= diff;
-                        continue;
-                    }
-                    diff = diff.min(pcache.off - off);
+                    data = &mut data[(diff as usize)..];
+                    off += diff;
+                    size -= diff;
+                    continue;
                 }
+                diff = diff.min(pcache.off - off);
             }
 
             if block == rcache.block && off < rcache.off + rcache.size {

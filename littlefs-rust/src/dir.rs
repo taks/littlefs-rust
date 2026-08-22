@@ -82,10 +82,10 @@ impl<S: Storage> Iterator for ReadDir<'_, S> {
 
 impl<S: Storage> Drop for ReadDir<'_, S> {
     fn drop(&mut self) {
-        if !self.closed {
-            if let Ok(mut inner) = self.fs.inner.try_borrow_mut() {
-                let _ = littlefs_rust_core::lfs_dir_close(&mut inner.lfs, &mut self.alloc.dir);
-            }
+        if !self.closed
+            && let Ok(mut inner) = self.fs.inner.try_borrow_mut()
+        {
+            let _ = littlefs_rust_core::lfs_dir_close(&mut inner.lfs, &mut self.alloc.dir);
         }
     }
 }

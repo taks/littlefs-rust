@@ -11,7 +11,7 @@ use littlefs_rust_core::lfs_type::OpenFlags;
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
 
 use crate::config::Config;
-use crate::dir::{dir_entry_from_info, ReadDir};
+use crate::dir::{ReadDir, dir_entry_from_info};
 use crate::file::File;
 use crate::metadata::{DirEntry, Metadata};
 use crate::storage::Storage;
@@ -293,11 +293,11 @@ impl<S: Storage> Filesystem<S> {
 
 impl<S: Storage> Drop for Filesystem<S> {
     fn drop(&mut self) {
-        if let Ok(mut inner) = self.inner.try_borrow_mut() {
-            if inner.mounted {
-                let _ = littlefs_rust_core::lfs_unmount(&mut inner.lfs);
-                inner.mounted = false;
-            }
+        if let Ok(mut inner) = self.inner.try_borrow_mut()
+            && inner.mounted
+        {
+            let _ = littlefs_rust_core::lfs_unmount(&mut inner.lfs);
+            inner.mounted = false;
         }
     }
 }
