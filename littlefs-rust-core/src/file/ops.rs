@@ -600,7 +600,7 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
 
             unsafe {
                 file.cache.buffer.as_mut()[..pcache.buffer.len()]
-                    .copy_from_slice(&pcache.buffer.as_ref());
+                    .copy_from_slice(pcache.buffer.as_ref());
             }
             file.cache.block = pcache.block;
             file.cache.off = pcache.off;

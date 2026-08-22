@@ -496,7 +496,7 @@ pub fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), 
     use crate::bd::bd::lfs_bd_read;
     use crate::block_alloc::alloc::lfs_alloc;
     use crate::types::LFS_BLOCK_NULL;
-    use crate::util::{lfs_alignup, lfs_fromle32};
+    use crate::util::{lfs_alignup};
 
     for i in 0..2 {
         let out_block = &mut dir.pair[(i + 1) % 2];
@@ -515,7 +515,7 @@ pub fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), 
         0,
         rev_buf.as_mut_bytes(),
     );
-    dir.rev = lfs_fromle32(rev_buf);
+    dir.rev = u32::from_le(rev_buf);
     if err.is_err() && err != Err(Error::Corrupt) {
         return crate::lfs_pass_err!(err);
     }
@@ -953,7 +953,7 @@ pub fn lfs_dir_compact(
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_tole32, lfs_gstate_xor};
     use crate::tag::lfs_mktag;
     use crate::util::{
-        lfs_fromle32, lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_isnull, lfs_pair_swap,
+        lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_isnull, lfs_pair_swap,
         lfs_pair_tole32, lfs_tole32,
     };
 
@@ -1037,7 +1037,7 @@ pub fn lfs_dir_compact(
 
         let rev = lfs_tole32(dir.rev);
         let err = lfs_dir_commitprog(lfs, &mut commit, rev.as_bytes());
-        dir.rev = lfs_fromle32(rev);
+        dir.rev = u32::from_le(rev);
         if let Err(err) = err {
             if err == Error::Corrupt {
                 relocated = true;

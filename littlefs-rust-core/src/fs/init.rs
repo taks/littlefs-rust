@@ -245,7 +245,7 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
         lfs_cache_zero(lfs, &mut *lfs.rcache.get());
         lfs_cache_zero(lfs, &mut *lfs.pcache.get());
 
-        crate::lfs_assert!(cfg.lookahead_buffer.unwrap().len() > 0);
+        crate::lfs_assert!(!cfg.lookahead_buffer.unwrap().is_empty());
         lfs.lookahead.buffer = cfg.lookahead_buffer.unwrap();
 
         crate::lfs_assert!(cfg.name_max <= LFS_NAME_MAX as u32);

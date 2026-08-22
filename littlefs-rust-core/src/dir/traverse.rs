@@ -271,7 +271,7 @@ pub fn lfs_dir_getread(
                             .as_ptr()
                             .add((off - pcache.off) as usize),
                         data.as_mut_ptr(),
-                        diff as usize,
+                        diff,
                     )
                 };
 
@@ -286,7 +286,7 @@ pub fn lfs_dir_getread(
         if rcache.block == LFS_BLOCK_INLINE && off < rcache.off + rcache.size && off >= rcache.off {
             let src = unsafe { &rcache.buffer.as_ref()[((off - rcache.off) as usize)..] };
             diff = core::cmp::min(diff, src.len());
-            data.as_mut()[..diff].copy_from_slice(&src[..diff]);
+            data[..diff].copy_from_slice(&src[..diff]);
 
             data = &mut data[diff..];
             off += diff as u32;

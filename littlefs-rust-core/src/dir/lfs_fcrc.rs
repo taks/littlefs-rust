@@ -3,7 +3,7 @@
 use zerocopy_derive::{FromBytes, Immutable, IntoBytes};
 
 use crate::types::lfs_size_t;
-use crate::util::{lfs_fromle32, lfs_tole32};
+use crate::util::{lfs_tole32};
 
 /// Per lfs.c struct lfs_fcrc
 #[repr(C)]
@@ -24,8 +24,8 @@ pub struct LfsFcrc {
 /// ```
 #[inline(always)]
 pub fn lfs_fcrc_fromle32(fcrc: &mut LfsFcrc) {
-    fcrc.size = lfs_fromle32(fcrc.size);
-    fcrc.crc = lfs_fromle32(fcrc.crc);
+    fcrc.size = u32::from_le(fcrc.size);
+    fcrc.crc = u32::from_le(fcrc.crc);
 }
 
 /// Per lfs.c lfs_fcrc_tole32 (lines 468-473)

@@ -91,7 +91,7 @@ pub fn lfs_ctz_find(
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::types::LFS_BLOCK_NULL;
-    use crate::util::{lfs_ctz, lfs_fromle32, lfs_min, lfs_npw2};
+    use crate::util::{lfs_ctz, lfs_min, lfs_npw2};
 
     if size == 0 {
         *block = LFS_BLOCK_NULL;
@@ -138,7 +138,7 @@ pub fn lfs_ctz_find(
             head_buf.as_mut_bytes(),
         )?;
 
-        head_val = lfs_fromle32(head_buf);
+        head_val = u32::from_le(head_buf);
 
         current -= 1 << skip;
     }
@@ -206,7 +206,6 @@ pub fn lfs_ctz_traverse(
     cb: &mut dyn FnMut(crate::types::lfs_block_t) -> Result<(), Error>,
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
-    use crate::util::lfs_fromle32;
 
     if size == 0 {
         return Ok(());
@@ -237,8 +236,8 @@ pub fn lfs_ctz_traverse(
             heads.as_mut_bytes(),
         )?;
 
-        heads[0] = lfs_fromle32(heads[0]);
-        heads[1] = lfs_fromle32(heads[1]);
+        heads[0] = u32::from_le(heads[0]);
+        heads[1] = u32::from_le(heads[1]);
 
         #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
         for i in 0..count - 1 {
@@ -368,7 +367,7 @@ pub fn lfs_ctz_extend(
 ) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_prog, lfs_bd_read, lfs_cache_drop};
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
-    use crate::util::{lfs_ctz, lfs_fromle32, lfs_tole32};
+    use crate::util::{lfs_ctz, lfs_tole32};
 
     'relocate: loop {
         unsafe {
@@ -439,14 +438,14 @@ pub fn lfs_ctz_extend(
                     }
                     return crate::lfs_pass_err!(Err(err));
                 }
-                nhead = lfs_fromle32(nhead_le);
+                nhead = u32::from_le(nhead_le);
 
                 if i != skips - 1 {
                     let mut nhead_buf: u32 = 0;
 
                     lfs_bd_read(lfs, None, rcache, 4, nhead, 4 * i, nhead_buf.as_mut_bytes())?;
 
-                    nhead = lfs_fromle32(nhead_buf);
+                    nhead = u32::from_le(nhead_buf);
                 }
             }
 
