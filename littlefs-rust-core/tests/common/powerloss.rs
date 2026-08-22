@@ -387,10 +387,10 @@ where
                     );
                     // Propagate real errors (verify failures); ignore Err(IO)
                     // which just means max_iter wasn't enough at this depth.
-                    if let Err(e) = inner {
-                        if e != Error::Io {
-                            return Err(e);
-                        }
+                    if let Err(e) = inner
+                        && e != Error::Io
+                    {
+                        return Err(e);
                     }
                 }
             }
