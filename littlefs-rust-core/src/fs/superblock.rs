@@ -53,8 +53,7 @@ pub fn lfs_fs_prepmove(lfs: &mut super::lfs::Lfs, id: u16, pair: Option<&[lfs_bl
     if id != 0x3ff
         && let Some(pair) = pair
     {
-        lfs.gstate.pair[0] = pair[0];
-        lfs.gstate.pair[1] = pair[1];
+        lfs.gstate.pair = *pair;
     } else {
         lfs.gstate.pair[0] = 0;
         lfs.gstate.pair[1] = 0;

@@ -232,7 +232,7 @@ pub fn lfs_dir_get(
 pub fn lfs_dir_getread(
     lfs: &mut crate::fs::Lfs,
     dir: &LfsMdir,
-    pcache: *const LfsCache,
+    pcache: Option<&LfsCache>,
     rcache: &mut LfsCache,
     hint: lfs_size_t,
     gmask: lfs_tag_t,
@@ -257,7 +257,7 @@ pub fn lfs_dir_getread(
         let mut diff = size as usize;
 
         // TODO: check
-        if let Some(pcache) = unsafe { pcache.as_ref() }
+        if let Some(pcache) = pcache
             && pcache.block == LFS_BLOCK_INLINE
             && off < pcache.off + pcache.size
         {

@@ -555,7 +555,7 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                 lfs_dir_getread(
                     lfs,
                     &file.m,
-                    core::ptr::null(),
+                    None,
                     &mut file.cache,
                     file.off - i,
                     lfs_mktag(0xfff, 0x1ff, 0),
@@ -991,7 +991,7 @@ pub fn lfs_file_flushedread(
                 lfs_dir_getread(
                     lfs,
                     &file.m,
-                    core::ptr::null(),
+                    None,
                     &mut file.cache,
                     block_size,
                     lfs_mktag(0xfff, 0x1ff, 0),
