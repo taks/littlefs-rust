@@ -327,7 +327,7 @@ fn test_dirs_many_reentrant() {
                 for i in 0..n {
                     let expected = format!("hi{i:03}");
                     let r = lfs_dir_read(lfs_ptr, dir, info);
-                    if r != Ok(1) {
+                    if r != Ok(true) {
                         let _ = lfs_dir_close(lfs_ptr, dir);
                         return Err(if let Err(r) = r { r } else { Error::Invalid });
                     }
@@ -362,7 +362,7 @@ fn test_dirs_many_reentrant() {
                 for i in 0..n {
                     let expected = format!("hello{i:03}");
                     let r = lfs_dir_read(lfs_ptr, dir, info);
-                    if r != Ok(1) {
+                    if r != Ok(true) {
                         let _ = lfs_dir_close(lfs_ptr, dir);
                         return Err(if let Err(r) = r { r } else { Error::Invalid });
                     }
@@ -615,7 +615,7 @@ fn test_dirs_file_reentrant() {
                 for i in 0..n {
                     let expected = format!("hi{i:03}");
                     let r = lfs_dir_read(lfs_ptr, dir, info);
-                    if r != Ok(1) {
+                    if r != Ok(true) {
                         let _ = lfs_dir_close(lfs_ptr, dir);
                         return Err(if let Err(r) = r { r } else { Error::Invalid });
                     }
@@ -654,7 +654,7 @@ fn test_dirs_file_reentrant() {
                 for i in 0..n {
                     let expected = format!("hello{i:03}");
                     let r = lfs_dir_read(lfs_ptr, dir, info);
-                    if r != Ok(1) {
+                    if r != Ok(true) {
                         let _ = lfs_dir_close(lfs_ptr, dir);
                         return Err(if let Err(r) = r { r } else { Error::Invalid });
                     }
