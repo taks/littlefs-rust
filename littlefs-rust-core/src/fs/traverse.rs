@@ -129,135 +129,109 @@ pub fn lfs_fs_traverse_(
     use crate::types::{LFS_BLOCK_NULL, lfs_block_t};
     use crate::util::{lfs_pair_fromle32, lfs_pair_isnull};
 
-    unsafe {
-        // iterate over metadata pairs
-        let mut dir = crate::dir::LfsMdir {
-            pair: [0, 0],
-            rev: 0,
-            off: 0,
-            etag: 0,
-            count: 0,
-            erased: false,
-            split: false,
-            tail: [0, 1],
-        };
-        let mut tortoise = LfsTortoise {
-            pair: [LFS_BLOCK_NULL, LFS_BLOCK_NULL],
-            i: 1,
-            period: 1,
-        };
+    // iterate over metadata pairs
+    let mut dir = crate::dir::LfsMdir {
+        pair: [0, 0],
+        rev: 0,
+        off: 0,
+        etag: 0,
+        count: 0,
+        erased: false,
+        split: false,
+        tail: [0, 1],
+    };
+    let mut tortoise = LfsTortoise {
+        pair: [LFS_BLOCK_NULL, LFS_BLOCK_NULL],
+        i: 1,
+        period: 1,
+    };
 
-        #[cfg(feature = "loop_limits")]
-        const MAX_TRAVERSE_TAIL: u32 = 512;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
-        crate::lfs_trace!("fs_traverse: tail loop start");
-        while !lfs_pair_isnull(&dir.tail) {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_TRAVERSE_TAIL {
-                    panic!(
-                        "loop_limits: MAX_TRAVERSE_TAIL ({}) exceeded",
-                        MAX_TRAVERSE_TAIL
-                    );
+    crate::lfs_trace!("fs_traverse: tail loop start");
+    while !lfs_pair_isnull(&dir.tail) {
+        let err = lfs_tortoise_detectcycles(&dir, &mut tortoise);
+        if err.is_err() {
+            return Err(Error::Corrupt);
+        }
+
+        for i in 0..2 {
+            cb(dir.tail[i])?;
+        }
+
+        // iterate through ids in directory
+        crate::lfs_trace!("fs_traverse: fetch tail={:?} count={}", dir.tail, dir.count);
+        let dir_tail = dir.tail;
+        lfs_dir_fetch(lfs, &mut dir, dir_tail)?;
+
+        for id in 0..dir.count {
+            let mut raw: [lfs_block_t; 2] = [0, 0];
+            let tag = lfs_dir_get(
+                lfs,
+                &dir,
+                lfs_mktag(0x700, 0x3ff, 0),
+                lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_STRUCT, id as u32, 8),
+                raw.as_mut_bytes(),
+            );
+            if let Err(err) = tag {
+                if err == Error::NoEntry {
+                    continue;
                 }
-                if iter > 0 && iter.is_multiple_of(20) {
-                    crate::lfs_trace!("fs_traverse: iter={} tail={:?}", iter, dir.tail);
-                }
-                iter += 1;
+                return Err(err);
             }
-            let err = lfs_tortoise_detectcycles(&dir, &mut tortoise);
-            if err.is_err() {
-                return Err(Error::Corrupt);
-            }
+            lfs_pair_fromle32(&mut raw);
 
-            for i in 0..2 {
-                cb(dir.tail[i])?;
-            }
-
-            // iterate through ids in directory
-            crate::lfs_trace!("fs_traverse: fetch tail={:?} count={}", dir.tail, dir.count);
-            let dir_tail = dir.tail;
-            lfs_dir_fetch(lfs, &mut dir, dir_tail)?;
-
-            for id in 0..dir.count {
-                let mut raw: [lfs_block_t; 2] = [0, 0];
-                let tag = lfs_dir_get(
+            let tag = tag.unwrap();
+            if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
+                lfs_ctz_traverse(
                     lfs,
-                    &dir,
-                    lfs_mktag(0x700, 0x3ff, 0),
-                    lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_STRUCT, id as u32, 8),
-                    raw.as_mut_bytes(),
-                );
-                if let Err(err) = tag {
-                    if err == Error::NoEntry {
-                        continue;
-                    }
-                    return Err(err);
-                }
-                lfs_pair_fromle32(&mut raw);
-
-                let tag = tag.unwrap();
-                if (lfs_tag_type3(tag)) == LFS_TYPE_CTZSTRUCT {
-                    lfs_ctz_traverse(lfs, None, &mut *lfs.rcache.get(), raw[0], raw[1], cb)?;
-                } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
-                    #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
-                    for i in 0..2 {
-                        cb(raw[i])?;
-                    }
+                    None,
+                    unsafe { &mut *lfs.rcache.get() },
+                    raw[0],
+                    raw[1],
+                    cb,
+                )?;
+            } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
+                #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
+                for i in 0..2 {
+                    cb(raw[i])?;
                 }
             }
         }
-
-        // iterate over any open files
-        use crate::file::LfsFile;
-        use crate::file::ctz::lfs_ctz_traverse;
-        use crate::lfs_type::lfs_type::LFS_TYPE_REG;
-
-        let mut m = lfs.mlist;
-        #[cfg(feature = "loop_limits")]
-        const MAX_MLIST: u32 = 64;
-        #[cfg(feature = "loop_limits")]
-        let mut mlist_iter: u32 = 0;
-        while !m.is_null() {
-            #[cfg(feature = "loop_limits")]
-            {
-                if mlist_iter >= MAX_MLIST {
-                    panic!("loop_limits: MAX_MLIST ({}) exceeded", MAX_MLIST);
-                }
-                mlist_iter += 1;
-            }
-            let f = m as *mut LfsFile;
-            let f_ref = &*f;
-            if f_ref.type_ == LFS_TYPE_REG {
-                if f_ref.flags.contains(OpenFlags::DIRTY)
-                    && !f_ref.flags.contains(OpenFlags::INLINE)
-                {
-                    lfs_ctz_traverse(
-                        lfs,
-                        Some(&(*f).cache),
-                        &mut *lfs.rcache.get(),
-                        f_ref.ctz.head,
-                        f_ref.ctz.size,
-                        cb,
-                    )?;
-                }
-                if f_ref.flags.contains(OpenFlags::WRITING)
-                    && !f_ref.flags.contains(OpenFlags::INLINE)
-                {
-                    lfs_ctz_traverse(
-                        lfs,
-                        Some(&(*f).cache),
-                        &mut *lfs.rcache.get(),
-                        f_ref.block,
-                        f_ref.pos,
-                        cb,
-                    )?;
-                }
-            }
-            m = (*m).next;
-        }
-
-        Ok(())
     }
+
+    // iterate over any open files
+    use crate::file::LfsFile;
+    use crate::file::ctz::lfs_ctz_traverse;
+    use crate::lfs_type::lfs_type::LFS_TYPE_REG;
+
+    let mut m = lfs.mlist;
+    while !m.is_null() {
+        let f = m as *mut LfsFile;
+        let f_ref = unsafe { &*f };
+        if f_ref.type_ == LFS_TYPE_REG {
+            if f_ref.flags.contains(OpenFlags::DIRTY) && !f_ref.flags.contains(OpenFlags::INLINE) {
+                lfs_ctz_traverse(
+                    lfs,
+                    unsafe { Some(&(*f).cache) },
+                    unsafe { &mut *lfs.rcache.get() },
+                    f_ref.ctz.head,
+                    f_ref.ctz.size,
+                    cb,
+                )?;
+            }
+            if f_ref.flags.contains(OpenFlags::WRITING) && !f_ref.flags.contains(OpenFlags::INLINE)
+            {
+                lfs_ctz_traverse(
+                    lfs,
+                    unsafe { Some(&(*f).cache) },
+                    unsafe { &mut *lfs.rcache.get() },
+                    f_ref.block,
+                    f_ref.pos,
+                    cb,
+                )?;
+            }
+        }
+        m = unsafe { (*m).next };
+    }
+
+    Ok(())
 }

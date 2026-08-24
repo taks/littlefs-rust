@@ -126,7 +126,7 @@ pub fn lfs_fs_mkconsistent_(lfs: &mut Lfs) -> Result<(), Error> {
 pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_scan;
     use crate::dir::commit::lfs_dir_commit;
-    use crate::util::{lfs_pair_isnull};
+    use crate::util::lfs_pair_isnull;
 
     crate::lfs_trace!("lfs_fs_gc: start");
     let err = super::superblock::lfs_fs_forceconsistency(lfs);

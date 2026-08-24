@@ -6,7 +6,7 @@ use crate::Lfs;
 use crate::bd::bd::lfs_cache_zero;
 use crate::error::Error;
 use crate::types::{LFS_ATTR_MAX, LFS_BLOCK_NULL, LFS_FILE_MAX, LFS_NAME_MAX};
-use crate::util::{lfs_npw2};
+use crate::util::lfs_npw2;
 
 /// Per lfs.c lfs_init (lines 4198-4369)
 ///

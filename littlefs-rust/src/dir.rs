@@ -66,7 +66,7 @@ impl<S: Storage> Iterator for ReadDir<'_, S> {
             };
 
             return match rc {
-                Ok(0) => None,
+                Ok(false) => None,
                 Err(e) => Some(Err(e)),
                 _ => {
                     let entry = dir_entry_from_info(&info);
