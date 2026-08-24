@@ -840,8 +840,7 @@ fn test_dirs_remove_read() {
             assert_ok!(lfs_dir_seek(lfs, dir, j as _));
             assert_ok!(lfs_remove(lfs, &format!("prickly-pear/cactus{k:03}")));
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-            while lfs_dir_read(lfs, dir, info) == Ok(true)
-            {}
+            while lfs_dir_read(lfs, dir, info) == Ok(true) {}
             assert_ok!(lfs_dir_close(lfs, dir));
             assert_ok!(lfs_mkdir(lfs, &format!("prickly-pear/cactus{k:03}")));
         }
@@ -999,8 +998,7 @@ fn test_dirs_seek() {
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         let mut n = 0usize;
-        while lfs_dir_read(lfs, dir, info) == Ok(true)
-        {
+        while lfs_dir_read(lfs, dir, info) == Ok(true) {
             n += 1;
         }
         assert_eq!(n, count + 2, "COUNT={count}: . and .. plus {count} entries");
@@ -1054,8 +1052,7 @@ fn test_dirs_toot_seek() {
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         let mut n = 0usize;
-        while lfs_dir_read(lfs, dir, info) == Ok(true)
-        {
+        while lfs_dir_read(lfs, dir, info) == Ok(true) {
             n += 1;
         }
         assert_eq!(n, count + 2, "COUNT={count}: . and .. plus {count} entries");
