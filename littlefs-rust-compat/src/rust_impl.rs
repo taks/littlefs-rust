@@ -529,7 +529,7 @@ fn dir_names_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<Ve
     let info = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsInfo>::zeroed().assume_init() };
     loop {
         let res = littlefs_rust_core::lfs_dir_read(lfs, dir, info);
-        if res == Ok(0) {
+        if res == Ok(false) {
             break;
         }
         if let Err(err) = res {

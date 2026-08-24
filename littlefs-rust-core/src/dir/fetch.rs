@@ -379,31 +379,7 @@ pub fn lfs_dir_fetchmatch(
         let mut crc = lfs_crc(0xffff_ffff, rev_le.as_bytes());
         dir.rev = u32::from_le(dir.rev);
 
-        #[cfg(feature = "loop_limits")]
-        let mut tag_iter: u32 = 0;
-        #[cfg(feature = "loop_limits")]
-        const MAX_FETCH_TAG_ITER: u32 = 256;
         loop {
-            #[cfg(feature = "loop_limits")]
-            {
-                if tag_iter >= MAX_FETCH_TAG_ITER {
-                    panic!(
-                        "loop_limits: MAX_FETCH_TAG_ITER ({}) exceeded",
-                        MAX_FETCH_TAG_ITER
-                    );
-                }
-                if tag_iter > 0 && tag_iter.is_multiple_of(32) {
-                    crate::lfs_trace!(
-                        "fetchmatch: tag_iter={} off={} block_iter={} pair={:?}",
-                        tag_iter,
-                        off,
-                        _block_iter,
-                        dir.pair
-                    );
-                }
-                tag_iter += 1;
-            }
-
             off += lfs_tag_dsize(ptag);
 
             let mut tag_buf = [0u8; 4];

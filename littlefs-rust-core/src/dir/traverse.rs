@@ -92,7 +92,6 @@ pub fn lfs_dir_getslice(
     use crate::tag::{
         lfs_mktag, lfs_tag_dsize, lfs_tag_id, lfs_tag_isdelete, lfs_tag_size, lfs_tag_type1,
     };
-    use crate::util::lfs_frombe32;
 
     unsafe {
         let mut off = dir.off;
@@ -137,7 +136,7 @@ pub fn lfs_dir_getslice(
                 ntag_buf.as_mut_bytes(),
             )?;
 
-            ntag = (lfs_frombe32(ntag_buf) ^ tag) & 0x7fff_ffff;
+            ntag = (u32::from_be(ntag_buf) ^ tag) & 0x7fff_ffff;
 
             if lfs_tag_id(gmask) != 0
                 && (lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SPLICE
@@ -689,7 +688,6 @@ pub fn lfs_dir_traverse(
     use crate::lfs_type::lfs_type::LFS_FROM_NOOP;
     use crate::tag::{lfs_mktag, lfs_tag_dsize, lfs_tag_type3};
     use crate::types::lfs_tag_t;
-    use crate::util::lfs_frombe32;
 
     let mut stack: [core::mem::MaybeUninit<LfsDirTraverseStack>; LFS_DIR_TRAVERSE_DEPTH - 1] =
         core::array::from_fn(|_| core::mem::MaybeUninit::uninit());
@@ -741,7 +739,7 @@ pub fn lfs_dir_traverse(
                             tag_raw.as_mut_bytes(),
                         )?;
 
-                        let tag_val = (lfs_frombe32(tag_raw) ^ ptag) | 0x8000_0000;
+                        let tag_val = (u32::from_be(tag_raw) ^ ptag) | 0x8000_0000;
                         disk = crate::tag::lfs_diskoff {
                             block: dir.pair[0],
                             off: off + 4,
