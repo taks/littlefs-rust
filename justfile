@@ -38,6 +38,10 @@ compat:
     cargo build -p littlefs-rust-compat
     cargo test -p littlefs-rust-compat
 
+# Run the benchmarks locally (divan harness)
+bench *ARGS:
+    cargo bench -p littlefs-rust {{ARGS}}
+
 # Check with all features enabled
 features:
     cargo check --all-features
