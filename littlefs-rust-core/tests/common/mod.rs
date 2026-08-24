@@ -583,7 +583,7 @@ pub fn dir_entry_names(
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     loop {
         let n = lfs_dir_read(lfs, dir, info);
-        if n == Ok(0) {
+        if n == Ok(false) {
             break;
         }
         if let Err(err) = n {

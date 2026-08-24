@@ -1001,7 +1001,7 @@ fn test_move_fix_relocation() {
         loop {
             let n = lfs_dir_read(lfs, dir, info);
             assert!(n.is_ok());
-            if n == Ok(0) {
+            if n == Ok(false) {
                 break;
             }
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
@@ -1020,7 +1020,7 @@ fn test_move_fix_relocation() {
             idx += 1;
         }
         assert_eq!(idx, expect_parent.len());
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
         assert_ok!(lfs_dir_close(lfs, dir));
 
         assert_ok!(lfs_dir_open(lfs, dir, "parent/child"));
@@ -1029,7 +1029,7 @@ fn test_move_fix_relocation() {
         loop {
             let n = lfs_dir_read(lfs, dir, info);
             assert!(n.is_ok());
-            if n == Ok(0) {
+            if n == Ok(false) {
                 break;
             }
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
@@ -1150,26 +1150,26 @@ fn test_move_fix_relocation_predecessor() {
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
         assert_ok!(lfs_dir_open(lfs, dir, "parent/sibling"));
         // Skip . and ..
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
         let expect_sibling = ["0.before", "2.after"];
         for name in expect_sibling {
-            assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+            assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), name);
             assert_eq!(info.type_, LFS_TYPE_REG as u8);
             assert_eq!(info.size, 7);
         }
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
         assert_ok!(lfs_dir_close(lfs, dir));
 
         assert_ok!(lfs_dir_open(lfs, dir, "parent/child"));
         // Skip . and ..
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
         let expect_child = ["0.before", "1.move_me", "2.after"];
         for name in expect_child.iter() {
-            assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+            assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
             assert_eq!(info.type_, LFS_TYPE_REG as u8);
@@ -1179,7 +1179,7 @@ fn test_move_fix_relocation_predecessor() {
                 assert_eq!(info.size, 7);
             }
         }
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
         assert_ok!(lfs_dir_close(lfs, dir));
 
         let mut buf = [0u8; 32];
