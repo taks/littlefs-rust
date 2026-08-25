@@ -307,7 +307,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     lfs_pair_tole32(&mut orphan.pair);
     let attrs = [lfs_mattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
-        buffer: orphan.as_bytes(),
+        buffer: orphan.pair.as_bytes(),
     }];
     assert_ok!(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
 

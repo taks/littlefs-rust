@@ -1728,13 +1728,9 @@ pub fn lfs_dir_relocatingcommit(
             dir.count -= 1;
             hasdelete = true;
         } else if (lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
-            let buf = <[lfs_block_t; 2]>::try_ref_from_bytes(attr.buffer);
-            if let Ok(buf) = buf {
-                dir.tail[0] = buf[0];
-                dir.tail[1] = buf[1];
-            } else {
-                panic!("{}", attr.buffer.len());
-            }
+            let buf = <[lfs_block_t; 2]>::try_ref_from_bytes(attr.buffer).unwrap();
+            dir.tail[0] = buf[0];
+            dir.tail[1] = buf[1];
             dir.split = (crate::tag::lfs_tag_chunk(tag) & 1) != 0;
             lfs_pair_fromle32(&mut dir.tail);
         }
