@@ -19,7 +19,12 @@ littlefs-rust-core = { version = "0.1", path = "../littlefs-rust-core" }
 bitflags = "2"
 
 [dev-dependencies]
+divan = { version = "5.0.1", package = "codspeed-divan-compat" }
 env_logger = "0.10"
+
+[[bench]]
+name = "filesystem"
+harness = false
 
 [features]
 default = ["alloc"]
