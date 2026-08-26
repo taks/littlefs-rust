@@ -588,12 +588,10 @@ pub fn lfs_bd_prog(
                         "bd_prog superblock block={} off={} size={} magic_region[{}..{}]={:?}",
                         block,
                         off,
-                        size,
+                        data.len(),
                         magic_start,
                         magic_start + magic_len,
-                        unsafe {
-                            core::slice::from_raw_parts(data.as_ptr().add(magic_start), magic_len)
-                        }
+                        &data[magic_start..(magic_start + magic_len)]
                     );
                 }
             }

@@ -2140,7 +2140,7 @@ pub fn lfs_dir_orphaningcommit(
     if state == crate::error::LFS_OK_DROPPED {
         lfs_dir_getgstate(lfs, dir, &mut lfs.gdelta.borrow_mut())?;
 
-        let plpair = [pdir.pair[0], pdir.pair[1]];
+        let plpair = pdir.pair;
         lfs_pair_tole32(&mut dir.tail);
         let tail_attrs = [crate::tag::lfs_mattr {
             tag: crate::tag::lfs_mktag(
@@ -2160,21 +2160,8 @@ pub fn lfs_dir_orphaningcommit(
     let mut orphans = false;
     let mut state = state;
     let mut lpair = lpair;
-    #[cfg(feature = "loop_limits")]
-    const MAX_RELOCATE_ITER: u32 = 512;
-    #[cfg(feature = "loop_limits")]
-    let mut relocate_iter: u32 = 0;
+
     while state == crate::error::LFS_OK_RELOCATED {
-        #[cfg(feature = "loop_limits")]
-        {
-            if relocate_iter >= MAX_RELOCATE_ITER {
-                panic!(
-                    "loop_limits: MAX_RELOCATE_ITER ({}) exceeded",
-                    MAX_RELOCATE_ITER
-                );
-            }
-            relocate_iter += 1;
-        }
         state = 0;
 
         // C: lfs.c:2480-2483 — update internal root
@@ -2271,8 +2258,7 @@ pub fn lfs_dir_orphaningcommit(
                 crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, None);
             }
 
-            lpair[0] = pdir.pair[0];
-            lpair[1] = pdir.pair[1];
+            lpair = pdir.pair;
             lfs_pair_tole32(&mut ldir.pair);
             let tail_attrs = [
                 crate::tag::lfs_mattr {

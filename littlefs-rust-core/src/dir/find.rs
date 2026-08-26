@@ -245,21 +245,8 @@ pub fn lfs_dir_find(
         // C: lfs.c:1527-1541 - skip if matched by '..' in path
         let mut suffix = &name[namelen..];
         let mut depth: i32 = 1;
-        #[cfg(feature = "loop_limits")]
-        const MAX_PATH_DEPTH_ITER: u32 = 512;
-        #[cfg(feature = "loop_limits")]
-        let mut path_iter: u32 = 0;
+
         loop {
-            #[cfg(feature = "loop_limits")]
-            {
-                if path_iter >= MAX_PATH_DEPTH_ITER {
-                    panic!(
-                        "loop_limits: MAX_PATH_DEPTH_ITER ({}) exceeded in path .. parsing",
-                        MAX_PATH_DEPTH_ITER
-                    );
-                }
-                path_iter += 1;
-            }
             let suffix_skip = lfs_strspn(suffix, b'/');
             suffix = &suffix[suffix_skip..];
             let sufflen = lfs_strcspn(suffix, b'/');

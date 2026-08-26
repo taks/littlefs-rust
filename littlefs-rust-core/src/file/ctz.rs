@@ -106,22 +106,8 @@ pub fn lfs_ctz_find(
     let target = lfs_ctz_index(lfs, &mut target_off);
 
     let mut head_val = head;
-    #[cfg(feature = "loop_limits")]
-    const MAX_CTZ_FIND_ITER: u32 = 4096;
-    #[cfg(feature = "loop_limits")]
-    let mut iter: u32 = 0;
 
     while current > target {
-        #[cfg(feature = "loop_limits")]
-        {
-            iter += 1;
-            if iter > MAX_CTZ_FIND_ITER {
-                panic!(
-                    "loop_limits: MAX_CTZ_FIND_ITER ({}) exceeded",
-                    MAX_CTZ_FIND_ITER
-                );
-            }
-        }
         let skip = lfs_min(
             lfs_npw2((current - target + 1) as u32) - 1,
             lfs_ctz(current as u32),
