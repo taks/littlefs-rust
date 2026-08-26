@@ -870,67 +870,66 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
     use crate::tag::lfs_mktag;
     use crate::util::lfs_pair_isnull;
 
-    unsafe {
-        if file.flags.contains(OpenFlags::ERRED) {
-            return Ok(());
+    if file.flags.contains(OpenFlags::ERRED) {
+        return Ok(());
+    }
+
+    let err = lfs_file_flush(lfs, file);
+    if err.is_err() {
+        file.flags.insert(OpenFlags::ERRED);
+        return crate::lfs_pass_err!(err);
+    }
+
+    if file.flags.contains(OpenFlags::DIRTY) && !lfs_pair_isnull(&file.m.pair) {
+        if !file.flags.contains(OpenFlags::INLINE) {
+            crate::bd::bd::lfs_bd_sync(
+                lfs,
+                unsafe { &mut *lfs.pcache.get() },
+                unsafe { &mut *lfs.rcache.get() },
+                false,
+            )?;
         }
 
-        let err = lfs_file_flush(lfs, file);
+        // C: copy ctz so alloc will work during a relocate
+        // Must live through lfs_dir_commit — declared outside the if/else
+        let mut ctz = file.ctz;
+        let (type_, buffer, size) = if file.flags.contains(OpenFlags::INLINE) {
+            (
+                LFS_TYPE_INLINESTRUCT,
+                unsafe { &file.cache.buffer.as_ref()[..file.ctz.size as usize] },
+                file.ctz.size,
+            )
+        } else {
+            crate::file::lfs_ctz::lfs_ctz_tole32(&mut ctz);
+            (
+                crate::lfs_type::lfs_type::LFS_TYPE_CTZSTRUCT,
+                ctz.as_bytes(),
+                core::mem::size_of::<crate::file::LfsCtz>() as u32,
+            )
+        };
+
+        let attrs = [
+            crate::tag::lfs_mattr {
+                tag: lfs_mktag(type_, file.id as u32, size),
+                buffer,
+            },
+            crate::tag::lfs_mattr {
+                tag: lfs_mktag(
+                    crate::lfs_type::lfs_type::LFS_FROM_USERATTRS,
+                    file.id as u32,
+                    unsafe { file.cfg.as_ref().attrs.len() as u32 },
+                ) as u32,
+                buffer: unsafe { file.cfg.as_ref().attrs.as_bytes() },
+            },
+        ];
+        let err = lfs_dir_commit(lfs, &mut file.m, &attrs);
         if err.is_err() {
             file.flags.insert(OpenFlags::ERRED);
             return crate::lfs_pass_err!(err);
         }
-
-        if file.flags.contains(OpenFlags::DIRTY) && !lfs_pair_isnull(&file.m.pair) {
-            if !file.flags.contains(OpenFlags::INLINE) {
-                crate::bd::bd::lfs_bd_sync(
-                    lfs,
-                    &mut *lfs.pcache.get(),
-                    &mut *lfs.rcache.get(),
-                    false,
-                )?;
-            }
-
-            // C: copy ctz so alloc will work during a relocate
-            // Must live through lfs_dir_commit — declared outside the if/else
-            let mut ctz = file.ctz;
-            let (type_, buffer, size) = if file.flags.contains(OpenFlags::INLINE) {
-                (
-                    LFS_TYPE_INLINESTRUCT,
-                    &file.cache.buffer.as_ref()[..file.ctz.size as usize],
-                    file.ctz.size,
-                )
-            } else {
-                crate::file::lfs_ctz::lfs_ctz_tole32(&mut ctz);
-                (
-                    crate::lfs_type::lfs_type::LFS_TYPE_CTZSTRUCT,
-                    ctz.as_bytes(),
-                    core::mem::size_of::<crate::file::LfsCtz>() as u32,
-                )
-            };
-
-            let attrs = [
-                crate::tag::lfs_mattr {
-                    tag: lfs_mktag(type_, file.id as u32, size),
-                    buffer,
-                },
-                crate::tag::lfs_mattr {
-                    tag: lfs_mktag(
-                        crate::lfs_type::lfs_type::LFS_FROM_USERATTRS,
-                        file.id as u32,
-                        file.cfg.as_ref().attrs.len() as u32,
-                    ) as u32,
-                    buffer: file.cfg.as_ref().attrs.as_bytes(),
-                },
-            ];
-            let err = lfs_dir_commit(lfs, &mut file.m, &attrs);
-            if err.is_err() {
-                file.flags.insert(OpenFlags::ERRED);
-                return crate::lfs_pass_err!(err);
-            }
-            file.flags.remove(OpenFlags::DIRTY);
-        }
+        file.flags.remove(OpenFlags::DIRTY);
     }
+
     Ok(())
 }
 

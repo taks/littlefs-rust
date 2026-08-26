@@ -93,88 +93,70 @@ pub fn lfs_dir_getslice(
         lfs_mktag, lfs_tag_dsize, lfs_tag_id, lfs_tag_isdelete, lfs_tag_size, lfs_tag_type1,
     };
 
-    unsafe {
-        let mut off = dir.off;
-        let mut ntag = dir.etag;
-        let mut gdiff: lfs_stag_t = 0;
+    let mut off = dir.off;
+    let mut ntag = dir.etag;
+    let mut gdiff: lfs_stag_t = 0;
 
-        if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gdisk, &dir.pair)
-            && lfs_tag_id(gmask) != 0
+    if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gdisk, &dir.pair) && lfs_tag_id(gmask) != 0 {
+        if lfs_tag_id(lfs.gdisk.tag) == lfs_tag_id(gtag) {
+            return Err(Error::NoEntry);
+        } else if lfs_tag_id(lfs.gdisk.tag) < lfs_tag_id(gtag) {
+            gdiff = gdiff.wrapping_sub(lfs_mktag(0, 1, 0) as i32);
+        }
+    }
+
+    while off >= 4 + lfs_tag_dsize(ntag) {
+        off -= lfs_tag_dsize(ntag);
+        let tag = ntag;
+        let mut ntag_buf: lfs_tag_t = 0;
+        lfs_bd_read(
+            lfs,
+            None,
+            unsafe { &mut *lfs.rcache.get() },
+            4,
+            dir.pair[0],
+            off,
+            ntag_buf.as_mut_bytes(),
+        )?;
+
+        ntag = (u32::from_be(ntag_buf) ^ tag) & 0x7fff_ffff;
+
+        if lfs_tag_id(gmask) != 0
+            && (lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SPLICE
+            && lfs_tag_id(tag) <= lfs_tag_id((gtag as i32 - gdiff) as u32)
         {
-            if lfs_tag_id(lfs.gdisk.tag) == lfs_tag_id(gtag) {
+            if tag
+                == (lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_CREATE, 0, 0)
+                    | (lfs_mktag(0, 0x3ff, 0) & (gtag as i32 - gdiff) as u32))
+            {
                 return Err(Error::NoEntry);
-            } else if lfs_tag_id(lfs.gdisk.tag) < lfs_tag_id(gtag) {
-                gdiff = gdiff.wrapping_sub(lfs_mktag(0, 1, 0) as i32);
             }
+            gdiff =
+                gdiff.wrapping_add(lfs_mktag(0, crate::tag::lfs_tag_splice(tag) as u32, 0) as i32);
         }
 
-        #[cfg(feature = "loop_limits")]
-        const MAX_GETSLICE_TAG_ITER: u32 = 2048;
-        #[cfg(feature = "loop_limits")]
-        let mut tag_iter: u32 = 0;
-        while off >= 4 + lfs_tag_dsize(ntag) {
-            #[cfg(feature = "loop_limits")]
-            {
-                if tag_iter >= MAX_GETSLICE_TAG_ITER {
-                    panic!(
-                        "loop_limits: MAX_GETSLICE_TAG_ITER ({}) exceeded",
-                        MAX_GETSLICE_TAG_ITER
-                    );
-                }
-                tag_iter += 1;
+        if (gmask & tag) == (gmask & ((gtag as i32 - gdiff) as u32)) {
+            if lfs_tag_isdelete(tag) {
+                return Err(Error::NoEntry);
             }
-            off -= lfs_tag_dsize(ntag);
-            let tag = ntag;
-            let mut ntag_buf: lfs_tag_t = 0;
+            let diff = core::cmp::min(lfs_tag_size(tag), gbuffer.len() as u32);
+            let buf = &mut gbuffer[..diff as usize];
             lfs_bd_read(
                 lfs,
                 None,
-                &mut *lfs.rcache.get(),
-                4,
+                unsafe { &mut *lfs.rcache.get() },
+                diff,
                 dir.pair[0],
-                off,
-                ntag_buf.as_mut_bytes(),
+                off + 4 + goff,
+                buf,
             )?;
-
-            ntag = (u32::from_be(ntag_buf) ^ tag) & 0x7fff_ffff;
-
-            if lfs_tag_id(gmask) != 0
-                && (lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SPLICE
-                && lfs_tag_id(tag) <= lfs_tag_id((gtag as i32 - gdiff) as u32)
-            {
-                if tag
-                    == (lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_CREATE, 0, 0)
-                        | (lfs_mktag(0, 0x3ff, 0) & (gtag as i32 - gdiff) as u32))
-                {
-                    return Err(Error::NoEntry);
-                }
-                gdiff = gdiff
-                    .wrapping_add(lfs_mktag(0, crate::tag::lfs_tag_splice(tag) as u32, 0) as i32);
+            if !gbuffer.is_empty() && diff < gbuffer.len() as u32 {
+                gbuffer[(diff as usize)..].fill(0);
             }
-
-            if (gmask & tag) == (gmask & ((gtag as i32 - gdiff) as u32)) {
-                if lfs_tag_isdelete(tag) {
-                    return Err(Error::NoEntry);
-                }
-                let diff = core::cmp::min(lfs_tag_size(tag), gbuffer.len() as u32);
-                let buf = &mut gbuffer[..diff as usize];
-                lfs_bd_read(
-                    lfs,
-                    None,
-                    &mut *lfs.rcache.get(),
-                    diff,
-                    dir.pair[0],
-                    off + 4 + goff,
-                    buf,
-                )?;
-                if !gbuffer.is_empty() && diff < gbuffer.len() as u32 {
-                    gbuffer[(diff as usize)..].fill(0);
-                }
-                return Ok((tag as i32).wrapping_add(gdiff) as u32);
-            }
+            return Ok((tag as i32).wrapping_add(gdiff) as u32);
         }
-        Err(Error::NoEntry)
     }
+    Err(Error::NoEntry)
 }
 
 /// Per lfs.c lfs_dir_get (lines 786-791)
