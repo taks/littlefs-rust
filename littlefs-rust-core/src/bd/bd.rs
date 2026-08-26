@@ -558,8 +558,8 @@ pub fn lfs_bd_prog(
     rcache: &mut LfsCache,
     validate: bool,
     block: lfs_block_t,
-    off: lfs_off_t,
-    buffer: &[u8],
+    mut off: lfs_off_t,
+    mut data: &[u8],
 ) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_aligndown, lfs_min};
@@ -567,18 +567,18 @@ pub fn lfs_bd_prog(
     let cfg = unsafe { lfs.cfg.as_ref() };
 
     crate::lfs_assert!(block == LFS_BLOCK_INLINE || block < lfs.block_count);
-    crate::lfs_assert!(off + buffer.len() as u32 <= cfg.block_size);
+    crate::lfs_assert!(off + data.len() as u32 <= cfg.block_size);
 
-    let mut data = buffer;
-    let mut off = off;
-    let mut size = buffer.len() as u32;
-
-    while size > 0 {
+    while !data.is_empty() {
         if block == pcache.block
             && off >= pcache.off
             && off < pcache.off + pcache.buffer.len() as u32
         {
-            let diff = lfs_min(size, pcache.buffer.len() as u32 - (off - pcache.off));
+            let diff = lfs_min(
+                data.len() as u32,
+                pcache.buffer.len() as u32 - (off - pcache.off),
+            );
+            #[cfg(feature = "log")]
             // Trace superblock magic region (offset 12-20 in block 0/1)
             if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
                 let magic_start = 12usize.saturating_sub(off as usize);
@@ -605,7 +605,6 @@ pub fn lfs_bd_prog(
 
             data = &data[(diff as usize)..];
             off += diff;
-            size -= diff;
 
             pcache.size = cmp::max(pcache.size, off - pcache.off);
             if pcache.size == pcache.buffer.len() as u32 {
