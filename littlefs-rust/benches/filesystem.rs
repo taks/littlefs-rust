@@ -4,14 +4,13 @@
 //! reflect the cost of the filesystem logic itself (metadata handling, block
 //! allocation, CTZ skip-list traversal, ...) rather than real flash latency.
 
-use divan::{Bencher, black_box};
-use littlefs_rust::{Config, Filesystem, OpenFlags, SeekFrom};
+use divan::{black_box, Bencher};
+use littlefs_rust::{Config, Filesystem, OpenFlags, RamStorage, SeekFrom};
 
 const BLOCK_SIZE: u32 = 512;
 const BLOCK_COUNT: u32 = 256;
 
-type Ram = littlefs_rust::RamStorage<BLOCK_SIZE, BLOCK_COUNT>;
-type Fs = Filesystem<Ram>;
+type Fs = Filesystem<RamStorage>;
 
 /// File sizes exercised by the I/O benchmarks: inline, single block, and
 /// multi-block (CTZ skip list) payloads.
@@ -21,8 +20,8 @@ fn config() -> Config {
     Config::new(BLOCK_SIZE, BLOCK_COUNT)
 }
 
-fn formatted() -> Ram {
-    let mut storage = Ram::new();
+fn formatted() -> RamStorage {
+    let mut storage = RamStorage::new(BLOCK_SIZE, BLOCK_COUNT);
     Filesystem::format(&mut storage, &config()).expect("format");
     storage
 }
@@ -56,7 +55,7 @@ mod lifecycle {
     #[divan::bench]
     fn format(bencher: Bencher) {
         bencher
-            .with_inputs(Ram::new)
+            .with_inputs(|| RamStorage::new(BLOCK_SIZE, BLOCK_COUNT))
             .bench_refs(|storage| Filesystem::format(storage, &config()).unwrap());
     }
 
