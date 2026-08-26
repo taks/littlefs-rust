@@ -163,13 +163,24 @@ pub fn lfs_bd_read(
             && off < pcache.off + pcache.size
         {
             if off >= pcache.off {
-                let data_ = data.split_at_mut(diff as usize);
-
                 diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
-                data_.0.copy_from_slice(unsafe {
-                    &pcache.buffer.as_ref()
-                        [((off - pcache.off) as usize)..((off - pcache.off + diff) as usize)]
-                });
+                let data_ = data.split_at_mut(diff as usize);
+                unsafe {
+                    core::ptr::copy_nonoverlapping(
+                        pcache
+                            .buffer
+                            .as_ref()
+                            .as_ptr()
+                            .add((off - pcache.off) as usize),
+                        data_.0.as_mut_ptr(),
+                        diff as usize,
+                    )
+                };
+
+                // data_.0.copy_from_slice(unsafe {
+                //     &pcache.buffer.as_ref()
+                //         [((off - pcache.off) as usize)..((off - pcache.off + diff) as usize)]
+                // });
 
                 data = data_.1;
                 off += diff;
@@ -182,10 +193,22 @@ pub fn lfs_bd_read(
             if off >= rcache.off {
                 diff = cmp::min(diff, rcache.size - (off - rcache.off));
                 let data_ = data.split_at_mut(diff as usize);
-                data_.0.copy_from_slice(unsafe {
-                    &rcache.buffer.as_ref()
-                        [((off - rcache.off) as usize)..((off - rcache.off + diff) as usize)]
-                });
+                unsafe {
+                    core::ptr::copy_nonoverlapping(
+                        rcache
+                            .buffer
+                            .as_ref()
+                            .as_ptr()
+                            .add((off - rcache.off) as usize),
+                        data_.0.as_mut_ptr(),
+                        diff as usize,
+                    )
+                };
+
+                // data_.0.copy_from_slice(unsafe {
+                //     &rcache.buffer.as_ref()
+                //         [((off - rcache.off) as usize)..((off - rcache.off + diff) as usize)]
+                // });
 
                 data = data_.1;
                 off += diff;
