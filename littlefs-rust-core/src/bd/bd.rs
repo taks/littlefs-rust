@@ -154,25 +154,25 @@ pub fn lfs_bd_read(
 
     let mut data = buffer;
     let mut off = off;
-    let mut size = data.len() as u32;
 
-    while size > 0 {
-        let mut diff = size;
+    while !data.is_empty() {
+        let mut diff = data.len() as u32;
 
         if let Some(pcache) = pcache
             && block == pcache.block
             && off < pcache.off + pcache.size
         {
             if off >= pcache.off {
+                let data_ = data.split_at_mut(diff as usize);
+
                 diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
-                data[..diff as usize].copy_from_slice(unsafe {
+                data_.0.copy_from_slice(unsafe {
                     &pcache.buffer.as_ref()
                         [((off - pcache.off) as usize)..((off - pcache.off + diff) as usize)]
                 });
 
-                data = &mut data[(diff as usize)..];
+                data = data_.1;
                 off += diff;
-                size -= diff;
                 continue;
             }
             diff = diff.min(pcache.off - off);
@@ -181,20 +181,23 @@ pub fn lfs_bd_read(
         if block == rcache.block && off < rcache.off + rcache.size {
             if off >= rcache.off {
                 diff = cmp::min(diff, rcache.size - (off - rcache.off));
-                data[..diff as usize].copy_from_slice(unsafe {
+                let data_ = data.split_at_mut(diff as usize);
+                data_.0.copy_from_slice(unsafe {
                     &rcache.buffer.as_ref()
                         [((off - rcache.off) as usize)..((off - rcache.off + diff) as usize)]
                 });
 
-                data = &mut data[(diff as usize)..];
+                data = data_.1;
                 off += diff;
-                size -= diff;
                 continue;
             }
             diff = cmp::min(diff, rcache.off - off);
         }
 
-        if size >= hint && off.is_multiple_of(cfg.read_size) && size >= cfg.read_size {
+        if data.len() as u32 >= hint
+            && off.is_multiple_of(cfg.read_size)
+            && data.len() as u32 >= cfg.read_size
+        {
             diff = lfs_aligndown(diff, cfg.read_size);
             crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
             let data_ = data.split_at_mut(diff as _);
@@ -206,7 +209,6 @@ pub fn lfs_bd_read(
 
             data = data_.1;
             off += diff;
-            size -= diff;
             continue;
         }
 
@@ -214,8 +216,7 @@ pub fn lfs_bd_read(
         rcache.block = block;
         rcache.off = lfs_aligndown(off, cfg.read_size);
         rcache.size = cmp::min(
-            cmp::min(lfs_alignup(off + hint, cfg.read_size), cfg.block_size)
-                .saturating_sub(rcache.off),
+            cmp::min(lfs_alignup(off + hint, cfg.read_size), cfg.block_size) - rcache.off,
             rcache.buffer.len() as u32,
         );
         crate::lfs_trace!(
