@@ -192,10 +192,7 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
         crate::lfs_assert!(0x8000_0000u32 != 0);
 
         // check that the required io functions are provided
-        crate::lfs_assert!(cfg.read.is_some());
-        crate::lfs_assert!(cfg.prog.is_some());
-        crate::lfs_assert!(cfg.erase.is_some());
-        crate::lfs_assert!(cfg.sync.is_some());
+        crate::lfs_assert!(cfg.context.is_some());
 
         // validate that the lfs-cfg sizes were initiated properly
         crate::lfs_assert!(cfg.read_size != 0);

@@ -37,7 +37,7 @@ pub use crate::dir::LfsDir;
 use crate::error::Error;
 pub use crate::file::LfsFile;
 pub use crate::fs::Lfs;
-pub use crate::lfs_config::LfsConfig;
+pub use crate::lfs_config::{LfsConfig, Storage};
 pub use crate::lfs_info::{LfsAttr, LfsFileConfig, LfsInfo};
 
 // Test helpers for integration tests (bypass, traverse isolation).

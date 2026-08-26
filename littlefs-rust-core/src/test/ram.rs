@@ -1,6 +1,8 @@
 //! RAM block device for unit tests. Erase = 0xff; prog = copy; read = copy.
 
-use crate::{LfsConfig, error::Error};
+use core::ptr::NonNull;
+
+use crate::{LfsConfig, error::Error, lfs_config::Storage};
 
 /// Magic string "littlefs" in superblock blocks. Per lfs.h.
 pub const MAGIC: &[u8; 8] = b"littlefs";
@@ -55,45 +57,32 @@ impl RamStorage {
 
 pub const BLOCK_SIZE: u32 = 512;
 
-fn ram_read(cfg: &LfsConfig, block: u32, off: u32, buffer: &mut [u8]) -> Result<(), Error> {
-    let ctx = cfg.context as *mut RamStorage;
-    assert!(!ctx.is_null(), "ram_read: config.context is null");
-    let ram = unsafe { &mut *ctx };
-    assert!(
-        !ram.data.is_empty(),
-        "ram_read: RamStorage.data is empty; config.context may be invalid"
-    );
-    ram.read(block, off, buffer);
-    Ok(())
-}
+impl Storage for RamStorage {
+    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
+        assert!(
+            !self.data.is_empty(),
+            "ram_read: RamStorage.data is empty; config.context may be invalid"
+        );
+        self.read(block, offset, buf);
+        Ok(())
+    }
 
-fn ram_prog(cfg: &LfsConfig, block: u32, off: u32, buffer: &[u8]) -> Result<(), Error> {
-    let ctx = cfg.context as *mut RamStorage;
-    let ram = unsafe { &mut *ctx };
-    ram.prog(block, off, buffer);
-    Ok(())
-}
+    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
+        self.prog(block, offset, data);
+        Ok(())
+    }
 
-fn ram_erase(cfg: &LfsConfig, block: u32) -> Result<(), Error> {
-    let ctx = cfg.context as *mut RamStorage;
-    let ram = unsafe { &mut *ctx };
-    ram.erase(block);
-    Ok(())
-}
-
-fn ram_sync(_cfg: &LfsConfig) -> Result<(), Error> {
-    Ok(())
+    fn erase(&mut self, block: u32) -> Result<(), Error> {
+        self.erase(block);
+        Ok(())
+    }
 }
 
 /// Builds LfsConfig for the given RAM storage. Caller must set context after moving.
-pub fn make_config(block_count: u32, _ram: &RamStorage) -> LfsConfig {
+pub fn make_config(block_count: u32, ram: &mut RamStorage) -> LfsConfig {
     let block_size = BLOCK_SIZE;
     LfsConfig {
-        context: core::ptr::null_mut(),
-        read: Some(ram_read),
-        prog: Some(ram_prog),
-        erase: Some(ram_erase),
-        sync: Some(ram_sync),
+        context: Some(NonNull::from_mut(ram)),
         read_size: 16,
         prog_size: 16,
         block_size,

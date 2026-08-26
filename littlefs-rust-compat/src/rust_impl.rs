@@ -15,7 +15,7 @@ const LFS_O_EXCL: i32 = 0x0200;
 
 // ── Operation-level helpers (phase 2) ───────────────────────────────────
 
-pub fn format(storage: &SharedStorage) -> Result<(), Error> {
+pub fn format(storage: &mut SharedStorage) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
@@ -25,7 +25,7 @@ pub fn format(storage: &SharedStorage) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn mount_dir_names(storage: &SharedStorage, path: &str) -> Result<Vec<String>, Error> {
+pub fn mount_dir_names(storage: &mut SharedStorage, path: &str) -> Result<Vec<String>, Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
@@ -35,7 +35,7 @@ pub fn mount_dir_names(storage: &SharedStorage, path: &str) -> Result<Vec<String
     Ok(names)
 }
 
-pub fn mount_read_file(storage: &SharedStorage, path: &str) -> Result<Vec<u8>, Error> {
+pub fn mount_read_file(storage: &mut SharedStorage, path: &str) -> Result<Vec<u8>, Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
@@ -45,7 +45,7 @@ pub fn mount_read_file(storage: &SharedStorage, path: &str) -> Result<Vec<u8>, E
     Ok(data)
 }
 
-pub fn format_mkdir_unmount(storage: &SharedStorage, dir_name: &str) -> Result<(), Error> {
+pub fn format_mkdir_unmount(storage: &mut SharedStorage, dir_name: &str) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
@@ -57,7 +57,7 @@ pub fn format_mkdir_unmount(storage: &SharedStorage, dir_name: &str) -> Result<(
 }
 
 pub fn format_mkdir_file_unmount(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     dir_name: &str,
     file_name: &str,
 ) -> Result<(), Error> {
@@ -73,7 +73,7 @@ pub fn format_mkdir_file_unmount(
 }
 
 pub fn format_file_mkdir_unmount(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     file_name: &str,
     dir_name: &str,
 ) -> Result<(), Error> {
@@ -88,7 +88,7 @@ pub fn format_file_mkdir_unmount(
     Ok(())
 }
 
-pub fn format_create_three_unmount(storage: &SharedStorage) -> Result<(), Error> {
+pub fn format_create_three_unmount(storage: &mut SharedStorage) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
@@ -102,7 +102,7 @@ pub fn format_create_three_unmount(storage: &SharedStorage) -> Result<(), Error>
 }
 
 pub fn format_create_rename_unmount(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     old_name: &str,
     new_name: &str,
 ) -> Result<(), Error> {
@@ -117,7 +117,7 @@ pub fn format_create_rename_unmount(
     Ok(())
 }
 
-pub fn format_create_remove_unmount(storage: &SharedStorage, path: &str) -> Result<(), Error> {
+pub fn format_create_remove_unmount(storage: &mut SharedStorage, path: &str) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
@@ -130,7 +130,7 @@ pub fn format_create_remove_unmount(storage: &SharedStorage, path: &str) -> Resu
 }
 
 pub fn format_create_write_unmount(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     path: &str,
     content: &[u8],
 ) -> Result<(), Error> {
@@ -145,7 +145,7 @@ pub fn format_create_write_unmount(
 }
 
 pub fn format_nested_dir_file_unmount(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     parent: &str,
     child: &str,
     file_name: &str,
@@ -165,7 +165,7 @@ pub fn format_nested_dir_file_unmount(
 }
 
 pub fn format_mkdir_file_rmdir_unmount(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     dir_name: &str,
     file_name: &str,
 ) -> Result<(), Error> {
@@ -183,7 +183,7 @@ pub fn format_mkdir_file_rmdir_unmount(
     Ok(())
 }
 
-pub fn mount_mkdir_expect_exist(storage: &SharedStorage, path: &str) -> Result<(), Error> {
+pub fn mount_mkdir_expect_exist(storage: &mut SharedStorage, path: &str) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
@@ -201,14 +201,14 @@ pub fn mount_mkdir_expect_exist(storage: &SharedStorage, path: &str) -> Result<(
 
 // ── Compat-level helpers (phase 3) ──────────────────────────────────────
 
-pub fn format_only(storage: &SharedStorage) -> Result<(), Error> {
+pub fn format_only(storage: &mut SharedStorage) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
     (littlefs_rust_core::lfs_format(lfs, &env.config))?;
     Ok(())
 }
 
-pub fn format_create_n_dirs(storage: &SharedStorage, count: usize) -> Result<(), Error> {
+pub fn format_create_n_dirs(storage: &mut SharedStorage, count: usize) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
@@ -222,7 +222,7 @@ pub fn format_create_n_dirs(storage: &SharedStorage, count: usize) -> Result<(),
 }
 
 pub fn format_create_n_files_prng(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     count: usize,
     size: u32,
     chunk: u32,
@@ -240,7 +240,7 @@ pub fn format_create_n_files_prng(
 }
 
 pub fn format_create_n_dirs_with_files_prng(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     count: usize,
     size: u32,
     chunk: u32,
@@ -259,7 +259,7 @@ pub fn format_create_n_dirs_with_files_prng(
     Ok(())
 }
 
-pub fn mount_verify_n_empty_dirs(storage: &SharedStorage, count: usize) -> Result<(), Error> {
+pub fn mount_verify_n_empty_dirs(storage: &mut SharedStorage, count: usize) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
@@ -285,7 +285,7 @@ pub fn mount_verify_n_empty_dirs(storage: &SharedStorage, count: usize) -> Resul
 }
 
 pub fn mount_verify_n_files_prng(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     count: usize,
     size: u32,
     _chunk: u32,
@@ -312,7 +312,7 @@ pub fn mount_verify_n_files_prng(
 }
 
 pub fn mount_verify_n_dirs_with_files_prng(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     count: usize,
     size: u32,
     _chunk: u32,
@@ -341,7 +341,7 @@ pub fn mount_verify_n_dirs_with_files_prng(
 }
 
 pub fn mount_create_dirs_and_list(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     start: usize,
     count: usize,
     expected: usize,
@@ -365,7 +365,7 @@ pub fn mount_create_dirs_and_list(
 }
 
 pub fn mount_create_files_prng_and_verify_all(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     start: usize,
     count: usize,
     total: usize,
@@ -396,7 +396,7 @@ pub fn mount_create_files_prng_and_verify_all(
 }
 
 pub fn mount_create_dirs_files_prng_and_verify_all(
-    storage: &SharedStorage,
+    storage: &mut SharedStorage,
     start: usize,
     count: usize,
     total: usize,

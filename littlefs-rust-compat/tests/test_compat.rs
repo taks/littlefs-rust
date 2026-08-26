@@ -23,65 +23,66 @@ fn compat_storage() -> SharedStorage {
 /// Upstream: test_compat_forward_mount
 #[test]
 fn test_compat_forward_mount() {
-    let storage = compat_storage();
+    let mut storage = compat_storage();
     c_impl::format(&storage).expect("C format");
-    rust_impl::format_only(&storage).ok(); // just verify Rust can also format
+    rust_impl::format_only(&mut storage).ok(); // just verify Rust can also format
     c_impl::format(&storage).expect("C format again");
     // Rust mounts what C formatted
-    let names = rust_impl::mount_dir_names(&storage, "/").expect("Rust mount");
+    let names = rust_impl::mount_dir_names(&mut storage, "/").expect("Rust mount");
     assert!(names.is_empty());
 }
 
 /// Upstream: test_compat_forward_read_dirs
 #[test]
 fn test_compat_forward_read_dirs() {
-    let storage = compat_storage();
+    let mut storage = compat_storage();
     c_impl::format_create_n_dirs(&storage, 5).expect("C create dirs");
-    rust_impl::mount_verify_n_empty_dirs(&storage, 5).expect("Rust verify dirs");
+    rust_impl::mount_verify_n_empty_dirs(&mut storage, 5).expect("Rust verify dirs");
 }
 
 /// Upstream: test_compat_forward_read_files
 #[rstest]
 fn test_compat_forward_read_files(#[values(4, 32, 512, 8192)] size: u32) {
-    let storage = compat_storage();
+    let mut storage = compat_storage();
     c_impl::format_create_n_files_prng(&storage, 5, size, CHUNK).expect("C create files");
-    rust_impl::mount_verify_n_files_prng(&storage, 5, size, CHUNK).expect("Rust verify files");
+    rust_impl::mount_verify_n_files_prng(&mut storage, 5, size, CHUNK).expect("Rust verify files");
 }
 
 /// Upstream: test_compat_forward_read_files_in_dirs
 #[rstest]
 fn test_compat_forward_read_files_in_dirs(#[values(4, 32, 512, 8192)] size: u32) {
-    let storage = compat_storage();
+    let mut storage = compat_storage();
     c_impl::format_create_n_dirs_with_files_prng(&storage, 5, size, CHUNK)
         .expect("C create dirs+files");
-    rust_impl::mount_verify_n_dirs_with_files_prng(&storage, 5, size, CHUNK)
+    rust_impl::mount_verify_n_dirs_with_files_prng(&mut storage, 5, size, CHUNK)
         .expect("Rust verify dirs+files");
 }
 
 /// Upstream: test_compat_forward_write_dirs
 #[test]
 fn test_compat_forward_write_dirs() {
-    let storage = compat_storage();
+    let mut storage = compat_storage();
     c_impl::format_create_n_dirs(&storage, 5).expect("C create 5 dirs");
-    rust_impl::mount_create_dirs_and_list(&storage, 5, 5, 10).expect("Rust create 5 more, list 10");
+    rust_impl::mount_create_dirs_and_list(&mut storage, 5, 5, 10)
+        .expect("Rust create 5 more, list 10");
 }
 
 /// Upstream: test_compat_forward_write_files
 #[rstest]
 fn test_compat_forward_write_files(#[values(4, 32, 512, 8192)] size: u32) {
-    let storage = compat_storage();
+    let mut storage = compat_storage();
     c_impl::format_create_n_files_prng(&storage, 5, size, CHUNK).expect("C create 5 files");
-    rust_impl::mount_create_files_prng_and_verify_all(&storage, 5, 5, 10, size, CHUNK)
+    rust_impl::mount_create_files_prng_and_verify_all(&mut storage, 5, 5, 10, size, CHUNK)
         .expect("Rust create 5 more, verify all 10");
 }
 
 /// Upstream: test_compat_forward_write_files_in_dirs
 #[rstest]
 fn test_compat_forward_write_files_in_dirs(#[values(4, 32, 512, 8192)] size: u32) {
-    let storage = compat_storage();
+    let mut storage = compat_storage();
     c_impl::format_create_n_dirs_with_files_prng(&storage, 5, size, CHUNK)
         .expect("C create 5 dirs+files");
-    rust_impl::mount_create_dirs_files_prng_and_verify_all(&storage, 5, 5, 10, size, CHUNK)
+    rust_impl::mount_create_dirs_files_prng_and_verify_all(&mut storage, 5, 5, 10, size, CHUNK)
         .expect("Rust create 5 more, verify all 10");
 }
 
@@ -90,8 +91,8 @@ fn test_compat_forward_write_files_in_dirs(#[values(4, 32, 512, 8192)] size: u32
 /// Upstream: test_compat_backward_mount
 #[test]
 fn test_compat_backward_mount() {
-    let storage = compat_storage();
-    rust_impl::format(&storage).expect("Rust format");
+    let mut storage = compat_storage();
+    rust_impl::format(&mut storage).expect("Rust format");
     let names = c_impl::mount_dir_names(&storage, "/").expect("C mount");
     assert!(names.is_empty());
 }
@@ -99,24 +100,24 @@ fn test_compat_backward_mount() {
 /// Upstream: test_compat_backward_read_dirs
 #[test]
 fn test_compat_backward_read_dirs() {
-    let storage = compat_storage();
-    rust_impl::format_create_n_dirs(&storage, 5).expect("Rust create dirs");
+    let mut storage = compat_storage();
+    rust_impl::format_create_n_dirs(&mut storage, 5).expect("Rust create dirs");
     c_impl::mount_verify_n_empty_dirs(&storage, 5).expect("C verify dirs");
 }
 
 /// Upstream: test_compat_backward_read_files
 #[rstest]
 fn test_compat_backward_read_files(#[values(4, 32, 512, 8192)] size: u32) {
-    let storage = compat_storage();
-    rust_impl::format_create_n_files_prng(&storage, 5, size, CHUNK).expect("Rust create files");
+    let mut storage = compat_storage();
+    rust_impl::format_create_n_files_prng(&mut storage, 5, size, CHUNK).expect("Rust create files");
     c_impl::mount_verify_n_files_prng(&storage, 5, size, CHUNK).expect("C verify files");
 }
 
 /// Upstream: test_compat_backward_read_files_in_dirs
 #[rstest]
 fn test_compat_backward_read_files_in_dirs(#[values(4, 32, 512, 8192)] size: u32) {
-    let storage = compat_storage();
-    rust_impl::format_create_n_dirs_with_files_prng(&storage, 5, size, CHUNK)
+    let mut storage = compat_storage();
+    rust_impl::format_create_n_dirs_with_files_prng(&mut storage, 5, size, CHUNK)
         .expect("Rust create dirs+files");
     c_impl::mount_verify_n_dirs_with_files_prng(&storage, 5, size, CHUNK)
         .expect("C verify dirs+files");
@@ -125,16 +126,17 @@ fn test_compat_backward_read_files_in_dirs(#[values(4, 32, 512, 8192)] size: u32
 /// Upstream: test_compat_backward_write_dirs
 #[test]
 fn test_compat_backward_write_dirs() {
-    let storage = compat_storage();
-    rust_impl::format_create_n_dirs(&storage, 5).expect("Rust create 5 dirs");
+    let mut storage = compat_storage();
+    rust_impl::format_create_n_dirs(&mut storage, 5).expect("Rust create 5 dirs");
     c_impl::mount_create_dirs_and_list(&storage, 5, 5, 10).expect("C create 5 more, list 10");
 }
 
 /// Upstream: test_compat_backward_write_files
 #[rstest]
 fn test_compat_backward_write_files(#[values(4, 32, 512, 8192)] size: u32) {
-    let storage = compat_storage();
-    rust_impl::format_create_n_files_prng(&storage, 5, size, CHUNK).expect("Rust create 5 files");
+    let mut storage = compat_storage();
+    rust_impl::format_create_n_files_prng(&mut storage, 5, size, CHUNK)
+        .expect("Rust create 5 files");
     c_impl::mount_create_files_prng_and_verify_all(&storage, 5, 5, 10, size, CHUNK)
         .expect("C create 5 more, verify all 10");
 }
@@ -142,8 +144,8 @@ fn test_compat_backward_write_files(#[values(4, 32, 512, 8192)] size: u32) {
 /// Upstream: test_compat_backward_write_files_in_dirs
 #[rstest]
 fn test_compat_backward_write_files_in_dirs(#[values(4, 32, 512, 8192)] size: u32) {
-    let storage = compat_storage();
-    rust_impl::format_create_n_dirs_with_files_prng(&storage, 5, size, CHUNK)
+    let mut storage = compat_storage();
+    rust_impl::format_create_n_dirs_with_files_prng(&mut storage, 5, size, CHUNK)
         .expect("Rust create 5 dirs+files");
     c_impl::mount_create_dirs_files_prng_and_verify_all(&storage, 5, 5, 10, size, CHUNK)
         .expect("C create 5 more, verify all 10");

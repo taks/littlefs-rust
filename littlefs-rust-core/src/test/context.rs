@@ -23,12 +23,12 @@ impl TestContext {
     /// Fresh env with block_count blocks. Ready for format.
     pub fn new(block_count: u32) -> Self {
         let block_size = BLOCK_SIZE;
-        let ram = RamStorage::new(block_size, block_count);
+        let mut ram = RamStorage::new(block_size, block_count);
         let read_buf = alloc::vec![0u8; block_size as usize];
         let prog_buf = alloc::vec![0u8; block_size as usize];
         let lookahead_buf = alloc::vec![0u8; block_size as usize];
 
-        let mut config = make_config(block_count, &ram);
+        let mut config = make_config(block_count, &mut ram);
         config.read_buffer = Some(NonNull::from_ref(&read_buf));
         config.prog_buffer = Some(NonNull::from_ref(&prog_buf));
         config.lookahead_buffer = Some(NonNull::from_ref(&lookahead_buf));
@@ -41,7 +41,7 @@ impl TestContext {
             _prog_buf: prog_buf,
             _lookahead_buf: lookahead_buf,
         };
-        ctx.config.context = &mut ctx.ram as *mut RamStorage as *mut core::ffi::c_void;
+        // ctx.config.context = &mut ctx.ram as *mut RamStorage as *mut core::ffi::c_void;
         ctx
     }
 

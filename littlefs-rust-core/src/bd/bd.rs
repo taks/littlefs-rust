@@ -141,10 +141,6 @@ pub fn lfs_bd_read(
     buffer: &mut [u8],
 ) -> Result<(), Error> {
     let cfg = unsafe { lfs.cfg.as_ref() };
-    let read = match cfg.read {
-        Some(f) => f,
-        None => return Err(Error::Corrupt),
-    };
 
     if off + (buffer.len() as u32) > cfg.block_size
         || (lfs.block_count != 0 && block >= lfs.block_count)
@@ -199,7 +195,7 @@ pub fn lfs_bd_read(
             crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
             let data_ = data.split_at_mut(diff as _);
             lfs_pass_err!(
-                read(cfg, block, off, data_.0),
+                unsafe { lfs.cfg.as_ref().context.unwrap().as_mut() }.read(block, off, data_.0),
                 "bd_read block={} -> CORRUPT",
                 block
             )?;
@@ -225,7 +221,11 @@ pub fn lfs_bd_read(
             rcache.size
         );
         let data_ = unsafe { &mut rcache.buffer.as_mut()[..rcache.size as usize] };
-        let err = read(cfg, rcache.block, rcache.off, data_);
+        let err = unsafe { lfs.cfg.as_ref().context.unwrap().as_mut() }.read(
+            rcache.block,
+            rcache.off,
+            data_,
+        );
         if err.is_err() {
             crate::lfs_trace!("bd_read block={} -> CORRUPT", rcache.block);
             // Don't leave rcache claiming to have this block when the buffer wasn't filled.
@@ -426,12 +426,12 @@ pub fn lfs_bd_flush(
             pcache.off,
             diff
         );
-        let prog = match cfg.prog {
-            Some(f) => f,
-            None => return Err(Error::Corrupt),
-        };
         let data_ = unsafe { &pcache.buffer.as_ref()[..diff] };
-        let err = prog(cfg, pcache.block, pcache.off, data_);
+        let err = unsafe { lfs.cfg.as_ref().context.unwrap().as_mut() }.write(
+            pcache.block,
+            pcache.off,
+            data_,
+        );
         crate::lfs_pass_err!(err, "bd_prog block={} -> CORRUPT", pcache.block)?;
 
         if validate {
@@ -485,18 +485,11 @@ pub fn lfs_bd_sync(
     rcache: &mut LfsCache,
     validate: bool,
 ) -> Result<(), Error> {
-    unsafe {
-        lfs_cache_drop(lfs, rcache);
+    lfs_cache_drop(lfs, rcache);
 
-        lfs_bd_flush(lfs, pcache, rcache, validate)?;
+    lfs_bd_flush(lfs, pcache, rcache, validate)?;
 
-        let cfg = lfs.cfg.as_ref();
-        let sync = match cfg.sync {
-            Some(f) => f,
-            None => return Err(Error::Corrupt),
-        };
-        sync(cfg)
-    }
+    unsafe { lfs.cfg.as_ref().context.unwrap().as_mut() }.sync()
 }
 
 /// Per lfs.c lfs_bd_prog (lines 228-274)
@@ -638,15 +631,9 @@ pub fn lfs_bd_prog(
 /// #endif
 /// ```
 pub fn lfs_bd_erase(lfs: &Lfs, block: lfs_block_t) -> Result<(), Error> {
-    let cfg = unsafe { lfs.cfg.as_ref() };
-
     crate::lfs_assert!(block < lfs.block_count);
-    let erase = match cfg.erase {
-        Some(f) => f,
-        None => return Err(Error::Corrupt),
-    };
     crate::lfs_trace!("bd_erase block={}", block);
-    let err = erase(cfg, block);
+    let err = unsafe { lfs.cfg.as_ref().context.unwrap().as_mut() }.erase(block);
     if err.is_err() {
         crate::lfs_trace!("bd_erase block={} -> CORRUPT", block);
     }
