@@ -195,7 +195,8 @@ pub fn lfs_bd_read(
             crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
             let data_ = data.split_at_mut(diff as _);
             lfs_pass_err!(
-                unsafe { lfs.cfg.as_ref().context.unwrap().as_mut() }.read(block, off, data_.0),
+                unsafe { lfs.cfg.as_ref().context.unwrap_unchecked().as_mut() }
+                    .read(block, off, data_.0),
                 "bd_read block={} -> CORRUPT",
                 block
             )?;
@@ -221,7 +222,7 @@ pub fn lfs_bd_read(
             rcache.size
         );
         let data_ = unsafe { &mut rcache.buffer.as_mut()[..rcache.size as usize] };
-        let err = unsafe { lfs.cfg.as_ref().context.unwrap().as_mut() }.read(
+        let err = unsafe { lfs.cfg.as_ref().context.unwrap_unchecked().as_mut() }.read(
             rcache.block,
             rcache.off,
             data_,
@@ -427,7 +428,7 @@ pub fn lfs_bd_flush(
             diff
         );
         let data_ = unsafe { &pcache.buffer.as_ref()[..diff] };
-        let err = unsafe { lfs.cfg.as_ref().context.unwrap().as_mut() }.write(
+        let err = unsafe { lfs.cfg.as_ref().context.unwrap_unchecked().as_mut() }.write(
             pcache.block,
             pcache.off,
             data_,
@@ -489,7 +490,7 @@ pub fn lfs_bd_sync(
 
     lfs_bd_flush(lfs, pcache, rcache, validate)?;
 
-    unsafe { lfs.cfg.as_ref().context.unwrap().as_mut() }.sync()
+    unsafe { lfs.cfg.as_ref().context.unwrap_unchecked().as_mut() }.sync()
 }
 
 /// Per lfs.c lfs_bd_prog (lines 228-274)
@@ -633,7 +634,7 @@ pub fn lfs_bd_prog(
 pub fn lfs_bd_erase(lfs: &Lfs, block: lfs_block_t) -> Result<(), Error> {
     crate::lfs_assert!(block < lfs.block_count);
     crate::lfs_trace!("bd_erase block={}", block);
-    let err = unsafe { lfs.cfg.as_ref().context.unwrap().as_mut() }.erase(block);
+    let err = unsafe { lfs.cfg.as_ref().context.unwrap_unchecked().as_mut() }.erase(block);
     if err.is_err() {
         crate::lfs_trace!("bd_erase block={} -> CORRUPT", block);
     }
