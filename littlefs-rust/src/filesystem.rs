@@ -1,6 +1,7 @@
 use core::cell::{RefCell, UnsafeCell};
 use core::ffi::c_void;
 use core::mem;
+use core::ptr::NonNull;
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::OpenFlags;
 use typenum::Unsigned;
@@ -140,9 +141,12 @@ impl<S: Storage> Allocation<S> {
 impl<'a, S: Storage> Filesystem<'a, S> {
     fn new(storage: &'a mut S, alloc: &'a mut Allocation<S>) -> Self {
         alloc.config.get_mut().context = storage as *mut _ as *mut c_void;
-        alloc.config.get_mut().read_buffer = alloc.cache.read.as_mut_ptr() as *mut c_void;
-        alloc.config.get_mut().prog_buffer = alloc.cache.write.as_mut_ptr() as *mut c_void;
-        alloc.config.get_mut().lookahead_buffer = alloc.cache.lookahead.as_mut_ptr() as *mut c_void;
+        alloc.config.get_mut().read_buffer =
+            Some(NonNull::from_mut(alloc.cache.read.as_mut_slice()));
+        alloc.config.get_mut().prog_buffer =
+            Some(NonNull::from_mut(alloc.cache.write.as_mut_slice()));
+        alloc.config.get_mut().lookahead_buffer =
+            Some(NonNull::from_mut(alloc.cache.lookahead.as_mut_slice()));
 
         Self {
             alloc: RefCell::new(alloc),
@@ -233,7 +237,8 @@ impl<'a, S: Storage> Filesystem<'a, S> {
     /// Open a directory for iteration. The returned [`ReadDir`] is an
     /// [`Iterator`] that skips `.` and `..` entries.
     pub fn read_dir(&self, path: &str) -> Result<ReadDir<'_, '_, S>, Error> {
-        ReadDir::new(self, path)
+        // ReadDir::new(self, path)
+        todo!()
     }
 
     // ── FS-level ────────────────────────────────────────────────────────

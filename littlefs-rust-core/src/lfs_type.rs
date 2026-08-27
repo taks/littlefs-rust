@@ -7,8 +7,9 @@
 use bitflags::bitflags;
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum LsfType {
+    #[default]
     NONE = 0x00,
     REG = 0x01,
     DIR = 0x02,
@@ -54,7 +55,7 @@ bitflags! {
     /// - Create or overwrite: `OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::TRUNC`
     /// - Append: `OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::APPEND`
     /// - Create only (fail if exists): `OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::EXCL`
-    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
     pub struct OpenFlags: u32 {
         /// Open file in read only mode.
         const READ   = 0x1;

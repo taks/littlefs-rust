@@ -4,6 +4,7 @@ use crate::borrow_unchecked::borrow_unchecked;
 use crate::test::ram::{BLOCK_SIZE, RamStorage, make_config};
 use crate::{Lfs, LfsConfig, lfs_format, lfs_mount, lfs_unmount};
 use core::mem::MaybeUninit;
+use core::ptr::NonNull;
 
 const DEFAULT_BLOCK_COUNT: u32 = 128;
 
@@ -28,9 +29,9 @@ impl TestContext {
         let lookahead_buf = alloc::vec![0u8; block_size as usize];
 
         let mut config = make_config(block_count, &ram);
-        config.read_buffer = read_buf.as_ptr() as *mut core::ffi::c_void;
-        config.prog_buffer = prog_buf.as_ptr() as *mut core::ffi::c_void;
-        config.lookahead_buffer = lookahead_buf.as_ptr() as *mut core::ffi::c_void;
+        config.read_buffer = Some(NonNull::from_ref(&read_buf));
+        config.prog_buffer = Some(NonNull::from_ref(&prog_buf));
+        config.lookahead_buffer = Some(NonNull::from_ref(&lookahead_buf));
 
         let mut ctx = Self {
             ram,
@@ -41,9 +42,6 @@ impl TestContext {
             _lookahead_buf: lookahead_buf,
         };
         ctx.config.context = &mut ctx.ram as *mut RamStorage as *mut core::ffi::c_void;
-        ctx.config.read_buffer = ctx._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-        ctx.config.prog_buffer = ctx._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-        ctx.config.lookahead_buffer = ctx._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
         ctx
     }
 

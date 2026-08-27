@@ -94,7 +94,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
     // Create FILES_COUNT+1 files of BLOCK_SIZE - 0x40 bytes
     for i in 0..files_count + 1 {
         let path = format!("file_{:03}", i);
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
             lfs,
             file,
@@ -116,7 +116,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
         // Verify all files while still mounted
         for i in 0..files_count + 1 {
             let path = format!("file_{:03}", i);
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(lfs, file, &path, LFS_O_RDONLY));
 
             let mut rbuffer = vec![0u8; size as usize];
@@ -148,7 +148,7 @@ unsafe fn shrink_full(block_count: u32, after_block_count: u32, files_count: u32
 
         for i in 0..files_count + 1 {
             let path = format!("file_{:03}", i);
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(lfs2, file, &path, LFS_O_RDONLY));
 
             let mut rbuffer = vec![0u8; size as usize];

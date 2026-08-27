@@ -80,58 +80,56 @@ use crate::types::lfs_size_t;
 /// ```
 ///
 pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Result<(), Error> {
-    unsafe {
-        if block_count == lfs.block_count {
-            return Ok(());
-        }
-
-        // LFS_SHRINKNONRELOCATING path: check no blocks above threshold in use
-        if block_count < lfs.block_count {
-            let threshold = block_count;
-            super::traverse::lfs_fs_traverse_(
-                lfs,
-                &mut |block| {
-                    if block >= threshold {
-                        return Err(Error::NotEmpty);
-                    }
-                    Ok(())
-                },
-                true,
-            )?;
-        }
-
-        lfs.block_count = block_count;
-
-        // fetch the root
-        let mut root = core::mem::MaybeUninit::<LfsMdir>::zeroed();
-        let root = root.assume_init_mut();
-        lfs_dir_fetch(lfs, root, lfs.root)?;
-
-        // update the superblock
-        let mut superblock = core::mem::zeroed::<LfsSuperblock>();
-        let tag = lfs_dir_get(
-            lfs,
-            root,
-            lfs_mktag(0x7ff, 0x3ff, 0),
-            lfs_mktag(
-                LFS_TYPE_INLINESTRUCT,
-                0,
-                core::mem::size_of::<LfsSuperblock>() as u32,
-            ),
-            superblock.as_mut_bytes(),
-        )?;
-
-        lfs_superblock_fromle32(&mut superblock);
-        superblock.block_count = lfs.block_count;
-
-        lfs_superblock_tole32(&mut superblock);
-        // C: lfs_dir_commit(lfs, &root, LFS_MKATTRS({tag, &superblock}))
-        let attrs = [lfs_mattr {
-            tag: tag as u32,
-            buffer: superblock.as_bytes(),
-        }];
-        lfs_dir_commit(lfs, root, &attrs)?;
-
-        Ok(())
+    if block_count == lfs.block_count {
+        return Ok(());
     }
+
+    // LFS_SHRINKNONRELOCATING path: check no blocks above threshold in use
+    if block_count < lfs.block_count {
+        let threshold = block_count;
+        super::traverse::lfs_fs_traverse_(
+            lfs,
+            &mut |block| {
+                if block >= threshold {
+                    return Err(Error::NotEmpty);
+                }
+                Ok(())
+            },
+            true,
+        )?;
+    }
+
+    lfs.block_count = block_count;
+
+    // fetch the root
+    let mut root = core::mem::MaybeUninit::<LfsMdir>::zeroed();
+    let root = unsafe { root.assume_init_mut() };
+    lfs_dir_fetch(lfs, root, lfs.root)?;
+
+    // update the superblock
+    let mut superblock = unsafe { core::mem::zeroed::<LfsSuperblock>() };
+    let tag = lfs_dir_get(
+        lfs,
+        root,
+        lfs_mktag(0x7ff, 0x3ff, 0),
+        lfs_mktag(
+            LFS_TYPE_INLINESTRUCT,
+            0,
+            core::mem::size_of::<LfsSuperblock>() as u32,
+        ),
+        superblock.as_mut_bytes(),
+    )?;
+
+    lfs_superblock_fromle32(&mut superblock);
+    superblock.block_count = lfs.block_count;
+
+    lfs_superblock_tole32(&mut superblock);
+    // C: lfs_dir_commit(lfs, &root, LFS_MKATTRS({tag, &superblock}))
+    let attrs = [lfs_mattr {
+        tag: tag as u32,
+        buffer: superblock.as_bytes(),
+    }];
+    lfs_dir_commit(lfs, root, &attrs)?;
+
+    Ok(())
 }

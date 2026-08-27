@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/light-player/littlefs-rust/actions/workflows/ci.yml/badge.svg)](https://github.com/light-player/littlefs-rust/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE)
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://app.codspeed.io/taks/littlefs-rust?utm_source=badge)
 
 Pure Rust port of the [LittleFS](https://github.com/littlefs-project/littlefs) embedded filesystem.
 On-disk format compatible with upstream LittleFS for interoperability. No C dependencies, no
@@ -120,6 +121,21 @@ just compat                       # C compatibility tests (recommended; handles 
 Compat tests require a C toolchain. Use `just compat` from the repo root — it sets the bindgen
 workaround on macOS arm64 automatically.
 See [littlefs-rust-compat/README.md](littlefs-rust-compat/README.md) for details.
+
+### Running benchmarks
+
+Benchmarks live in [littlefs-rust/benches/filesystem.rs](littlefs-rust/benches/filesystem.rs) and
+run against the RAM-backed block device, covering format/mount, file I/O, directory metadata, and
+end-to-end workloads.
+
+```bash
+cargo bench -p littlefs-rust                    # locally, with divan
+just bench                                       # same, via just
+```
+
+They are also measured on every pull request by
+[CodSpeed](https://app.codspeed.io/taks/littlefs-rust) using CPU simulation, so performance
+regressions show up in the PR before they land.
 
 ## Upstream and reference
 

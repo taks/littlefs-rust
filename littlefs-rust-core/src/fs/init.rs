@@ -1,10 +1,12 @@
 //! Initialization. Per lfs.c lfs_init, lfs_deinit.
 
+use core::ptr::NonNull;
+
 use crate::Lfs;
 use crate::bd::bd::lfs_cache_zero;
 use crate::error::Error;
 use crate::types::{LFS_ATTR_MAX, LFS_BLOCK_NULL, LFS_FILE_MAX, LFS_NAME_MAX};
-use crate::util::{lfs_min, lfs_npw2};
+use crate::util::lfs_npw2;
 
 /// Per lfs.c lfs_init (lines 4198-4369)
 ///
@@ -199,6 +201,8 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
         crate::lfs_assert!(cfg.read_size != 0);
         crate::lfs_assert!(cfg.prog_size != 0);
         crate::lfs_assert!(cfg.cache_size != 0);
+        crate::lfs_assert!(cfg.read_buffer.unwrap().len() as u32 >= cfg.cache_size);
+        crate::lfs_assert!(cfg.prog_buffer.unwrap().len() as u32 >= cfg.cache_size);
 
         // check that block size is a multiple of cache size is a multiple of prog and read sizes
         crate::lfs_assert!(cfg.cache_size.is_multiple_of(cfg.read_size));
@@ -226,17 +230,25 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
             cfg.metadata_max == 0 || cfg.block_size.is_multiple_of(cfg.metadata_max)
         );
 
-        lfs.cfg = cfg;
+        lfs.cfg = NonNull::from_ref(cfg);
         lfs.block_count = cfg.block_count;
 
-        lfs.rcache.get_mut().buffer = cfg.read_buffer as *mut u8;
-        lfs.pcache.get_mut().buffer = cfg.prog_buffer as *mut u8;
+        lfs.rcache.get_mut().buffer = if let Some(buf) = cfg.read_buffer {
+            buf
+        } else {
+            todo!()
+        };
+        lfs.pcache.get_mut().buffer = if let Some(buf) = cfg.prog_buffer {
+            buf
+        } else {
+            todo!()
+        };
 
         lfs_cache_zero(lfs, &mut *lfs.rcache.get());
         lfs_cache_zero(lfs, &mut *lfs.pcache.get());
 
-        crate::lfs_assert!(cfg.lookahead_size > 0);
-        lfs.lookahead.buffer = cfg.lookahead_buffer as *mut u8;
+        crate::lfs_assert!(!cfg.lookahead_buffer.unwrap().is_empty());
+        lfs.lookahead.buffer = cfg.lookahead_buffer.unwrap();
 
         crate::lfs_assert!(cfg.name_max <= LFS_NAME_MAX as u32);
         lfs.name_max = if cfg.name_max != 0 {
@@ -269,7 +281,7 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
         lfs.inline_max = if cfg.inline_max == u32::MAX {
             0
         } else if cfg.inline_max == 0 {
-            lfs_min(cfg.cache_size, lfs_min(lfs.attr_max, metadata_max / 8))
+            cfg.cache_size.min(lfs.attr_max).min(metadata_max / 8)
         } else {
             cfg.inline_max
         };

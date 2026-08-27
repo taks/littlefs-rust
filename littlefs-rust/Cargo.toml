@@ -1,8 +1,8 @@
 [package]
 name = "littlefs-rust"
 version = "0.1.0"
-edition = "2021"
-rust-version = "1.87"
+edition = "2024"
+rust-version = "1.89"
 description = "Safe Rust API for the LittleFS embedded filesystem"
 license = "BSD-3-Clause"
 repository = "https://github.com/light-player/littlefs-rust"
@@ -21,7 +21,12 @@ hybrid-array = "0.4"
 typenum = "1.20"
 
 [dev-dependencies]
+divan = { version = "5.0.1", package = "codspeed-divan-compat" }
 env_logger = "0.10"
+
+[[bench]]
+name = "filesystem"
+harness = false
 
 [features]
 default = ["std"]

@@ -22,8 +22,8 @@ use crate::tag::{
     lfs_tag_size, lfs_tag_splice, lfs_tag_type1, lfs_tag_type2, lfs_tag_type3,
 };
 use crate::types::{LFS_BLOCK_NULL, lfs_block_t, lfs_stag_t, lfs_tag_t};
-use crate::util::{lfs_fromle32, lfs_min, lfs_pair_swap, lfs_scmp, lfs_tole32};
-use core::mem;
+use crate::util::{lfs_pair_swap, lfs_scmp};
+use core::{cmp, mem};
 
 /// Per lfs.c lfs_dir_fetchmatch (lines 1107-1386)
 ///
@@ -320,358 +320,331 @@ pub fn lfs_dir_fetchmatch(
     id: &mut Option<&mut u16>,
     cb: Option<&dyn Fn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
 ) -> Result<lfs_tag_t, Error> {
-    unsafe {
-        let cfg = &*lfs.cfg;
+    let cfg = unsafe { lfs.cfg.as_ref() };
 
-        let mut besttag: lfs_stag_t = -1;
-        crate::lfs_trace!("fetchmatch: start pair={:?}", pair);
+    let mut besttag: lfs_stag_t = -1;
+    crate::lfs_trace!("fetchmatch: start pair={:?}", pair);
 
-        // block_count check (C: lines 1117-1120)
-        if lfs.block_count != 0 && (pair[0] >= lfs.block_count || pair[1] >= lfs.block_count) {
-            return crate::lfs_err!(Err(Error::Corrupt));
+    // block_count check (C: lines 1117-1120)
+    if lfs.block_count != 0 && (pair[0] >= lfs.block_count || pair[1] >= lfs.block_count) {
+        return crate::lfs_err!(Err(Error::Corrupt));
+    }
+
+    // find the block with the most recent revision (C: lines 1123-1138)
+    let mut revs = [0u32; 2];
+    let mut r = 0usize;
+    for i in 0..2 {
+        crate::lfs_trace!("fetchmatch: reading rev for pair[{}]={}", i, pair[i]);
+        let mut rev_buf = [0u8; 4];
+        let err = lfs_bd_read(
+            lfs,
+            None,
+            unsafe { &mut *lfs.rcache.get() },
+            4,
+            pair[i],
+            0,
+            &mut rev_buf,
+        );
+        revs[i] = u32::from_le_bytes(rev_buf);
+        if let Err(err) = err
+            && err != Error::Corrupt
+        {
+            return Err(err);
         }
+        if err != Err(Error::Corrupt) && lfs_scmp(revs[i], revs[(i + 1) % 2]) > 0 {
+            r = i;
+        }
+    }
 
-        // find the block with the most recent revision (C: lines 1123-1138)
-        let mut revs = [0u32; 2];
-        let mut r = 0usize;
-        for i in 0..2 {
-            crate::lfs_trace!("fetchmatch: reading rev for pair[{}]={}", i, pair[i]);
-            let mut rev_buf = [0u8; 4];
+    dir.pair[0] = pair[r % 2];
+    dir.pair[1] = pair[(r + 1) % 2];
+    dir.rev = revs[r % 2];
+    dir.off = 0;
+
+    for _block_iter in 0..2 {
+        crate::lfs_trace!("fetchmatch: block_iter={}", _block_iter);
+        let mut off: u32 = 0;
+        let mut ptag: lfs_tag_t = 0xffff_ffff;
+
+        let mut tempcount: u16 = 0;
+        let mut temptail: [lfs_block_t; 2] = [LFS_BLOCK_NULL, LFS_BLOCK_NULL];
+        let mut tempsplit = false;
+        let mut tempbesttag = besttag;
+
+        let mut maybeerased = false;
+        let mut hasfcrc = false;
+        let mut fcrc = LfsFcrc { size: 0, crc: 0 };
+
+        let rev_le = dir.rev.to_le();
+        let mut crc = lfs_crc(0xffff_ffff, rev_le.as_bytes());
+        dir.rev = u32::from_le(dir.rev);
+
+        loop {
+            off += lfs_tag_dsize(ptag);
+
+            let mut tag_buf = [0u8; 4];
             let err = lfs_bd_read(
                 lfs,
                 None,
-                &mut *lfs.rcache.get(),
-                4,
-                pair[i],
-                0,
-                &mut rev_buf,
+                unsafe { &mut *lfs.rcache.get() },
+                cfg.block_size,
+                dir.pair[0],
+                off,
+                &mut tag_buf,
             );
-            revs[i] = u32::from_le_bytes(rev_buf);
+            if let Err(err) = err {
+                if err == Error::Corrupt {
+                    break;
+                }
+                return Err(err);
+            }
+
+            crc = lfs_crc(crc, &tag_buf);
+            let tag_raw = u32::from_be_bytes(tag_buf);
+            let tag = tag_raw ^ ptag;
+
+            if !lfs_tag_isvalid(tag) {
+                maybeerased = (lfs_tag_type2(ptag)) == LFS_TYPE_CCRC;
+                break;
+            } else if off + lfs_tag_dsize(tag) > cfg.block_size {
+                break;
+            }
+
+            ptag = tag;
+
+            if (lfs_tag_type2(tag)) == LFS_TYPE_CCRC {
+                let mut dcrc_buf = [0u8; 4];
+                let err = lfs_bd_read(
+                    lfs,
+                    None,
+                    unsafe { &mut *lfs.rcache.get() },
+                    cfg.block_size,
+                    dir.pair[0],
+                    off + 4,
+                    &mut dcrc_buf,
+                );
+                if let Err(err) = err {
+                    if err == Error::Corrupt {
+                        break;
+                    }
+                    return Err(err);
+                }
+                let dcrc = u32::from_le_bytes(dcrc_buf);
+
+                if crc != dcrc {
+                    break;
+                }
+
+                ptag ^= (lfs_tag_chunk(tag) as lfs_tag_t & 1) << 31;
+
+                lfs.seed = lfs_crc(lfs.seed, crc.as_bytes());
+
+                besttag = tempbesttag;
+                dir.off = off + lfs_tag_dsize(tag);
+                dir.etag = ptag;
+                dir.count = tempcount;
+                dir.tail[0] = temptail[0];
+                dir.tail[1] = temptail[1];
+                dir.split = tempsplit;
+
+                crc = 0xffff_ffff;
+                continue;
+            }
+
+            let entry_size = lfs_tag_dsize(tag) - 4;
+            let mut crc_val = crc;
+            let err = lfs_bd_crc(
+                lfs,
+                None,
+                unsafe { &mut *lfs.rcache.get() },
+                cfg.block_size,
+                dir.pair[0],
+                off + 4,
+                entry_size,
+                &mut crc_val,
+            );
+            if let Err(err) = err {
+                if err == Error::Corrupt {
+                    break;
+                }
+                return Err(err);
+            }
+            crc = crc_val;
+
+            if (lfs_tag_type1(tag)) == LFS_TYPE_NAME {
+                if lfs_tag_id(tag) >= tempcount {
+                    tempcount = lfs_tag_id(tag) + 1;
+                }
+            } else if (lfs_tag_type1(tag)) == LFS_TYPE_SPLICE {
+                // Divergence: C uses tempcount += lfs_tag_splice(tag) (unsigned wrap). We clamp
+                // to 0 to avoid underflow when splice is negative (Rule 7).
+                let delta = lfs_tag_splice(tag) as i32;
+                tempcount = (tempcount as i32 + delta).max(0) as u16;
+
+                let delete_tag = lfs_mktag(LFS_TYPE_DELETE, 0, 0)
+                    | (lfs_mktag(0, 0x3ff, 0) & tempbesttag as lfs_tag_t);
+                if tag == delete_tag {
+                    tempbesttag = (tempbesttag as u32 | 0x8000_0000) as lfs_stag_t;
+                } else if tempbesttag != -1
+                    && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
+                {
+                    tempbesttag = (tempbesttag as lfs_tag_t
+                        + lfs_mktag(0, lfs_tag_splice(tag) as u32, 0))
+                        as lfs_stag_t;
+                }
+            } else if (lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
+                tempsplit = (lfs_tag_chunk(tag) & 1) != 0;
+
+                let mut tail_buf = [0u8; 8];
+                let err = lfs_bd_read(
+                    lfs,
+                    None,
+                    unsafe { &mut *lfs.rcache.get() },
+                    cfg.block_size,
+                    dir.pair[0],
+                    off + 4,
+                    &mut tail_buf,
+                );
+                if let Err(err) = err {
+                    if err == Error::Corrupt {
+                        break;
+                    }
+                    return Err(err);
+                }
+                temptail[0] = u32::from_le_bytes(tail_buf[0..4].try_into().unwrap());
+                temptail[1] = u32::from_le_bytes(tail_buf[4..8].try_into().unwrap());
+            } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_FCRC {
+                let mut fcrc_buf: LfsFcrc = unsafe { core::mem::zeroed() };
+                let err = lfs_bd_read(
+                    lfs,
+                    None,
+                    unsafe { &mut *lfs.rcache.get() },
+                    cfg.block_size,
+                    dir.pair[0],
+                    off + 4,
+                    fcrc_buf.as_mut_bytes(),
+                );
+                if let Err(err) = err {
+                    if err == Error::Corrupt {
+                        break;
+                    }
+                    return Err(err);
+                }
+                fcrc = fcrc_buf;
+                lfs_fcrc_fromle32(&mut fcrc);
+                hasfcrc = true;
+            }
+
+            if (fmask & tag) == (fmask & ftag)
+                && let Some(cb) = cb
+            {
+                let diskoff = crate::tag::lfs_diskoff {
+                    block: dir.pair[0],
+                    off: off + 4,
+                };
+                let res = match cb(tag, &diskoff) {
+                    Ok(res) => res,
+                    Err(err) => {
+                        if err == Error::Corrupt {
+                            break;
+                        }
+                        return Err(err);
+                    }
+                };
+
+                if res == core::cmp::Ordering::Equal {
+                    tempbesttag = tag as lfs_stag_t;
+                } else if (lfs_mktag(0x7ff, 0x3ff, 0) & tag)
+                    == (lfs_mktag(0x7ff, 0x3ff, 0) & tempbesttag as lfs_tag_t)
+                {
+                    tempbesttag = -1;
+                } else if res == core::cmp::Ordering::Greater
+                    && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
+                {
+                    tempbesttag = (tag | 0x8000_0000) as lfs_stag_t;
+                }
+            }
+        }
+
+        if dir.off == 0 {
+            lfs_pair_swap(&mut dir.pair);
+            dir.rev = revs[(r + 1) % 2];
+            continue;
+        }
+
+        dir.erased = false;
+        if maybeerased && dir.off.is_multiple_of(cfg.prog_size) && hasfcrc {
+            let mut fcrc_ = 0xffff_ffffu32;
+            let err = lfs_bd_crc(
+                lfs,
+                None,
+                unsafe { &mut *lfs.rcache.get() },
+                cfg.block_size,
+                dir.pair[0],
+                dir.off,
+                fcrc.size,
+                &mut fcrc_,
+            );
             if let Err(err) = err
                 && err != Error::Corrupt
             {
                 return Err(err);
             }
-            if err != Err(Error::Corrupt) && lfs_scmp(revs[i], revs[(i + 1) % 2]) > 0 {
-                r = i;
+            dir.erased = fcrc_ == fcrc.crc;
+        }
+
+        if lfs_gstate_hasmovehere(&lfs.gdisk, &dir.pair) {
+            if lfs_tag_id(lfs.gdisk.tag) == lfs_tag_id(besttag as lfs_tag_t) {
+                besttag = (besttag as u32 | 0x8000_0000) as lfs_stag_t;
+            } else if besttag != -1 && lfs_tag_id(lfs.gdisk.tag) < lfs_tag_id(besttag as lfs_tag_t)
+            {
+                besttag -= lfs_mktag(0, 1, 0) as lfs_stag_t;
             }
         }
 
-        dir.pair[0] = pair[r % 2];
-        dir.pair[1] = pair[(r + 1) % 2];
-        dir.rev = revs[r % 2];
-        dir.off = 0;
-
-        for _block_iter in 0..2 {
-            crate::lfs_trace!("fetchmatch: block_iter={}", _block_iter);
-            let mut off: u32 = 0;
-            let mut ptag: lfs_tag_t = 0xffff_ffff;
-
-            let mut tempcount: u16 = 0;
-            let mut temptail: [lfs_block_t; 2] = [LFS_BLOCK_NULL, LFS_BLOCK_NULL];
-            let mut tempsplit = false;
-            let mut tempbesttag = besttag;
-
-            let mut maybeerased = false;
-            let mut hasfcrc = false;
-            let mut fcrc = LfsFcrc { size: 0, crc: 0 };
-
-            let rev_le = lfs_tole32(dir.rev);
-            let mut crc = lfs_crc(0xffff_ffff, rev_le.as_bytes());
-            dir.rev = lfs_fromle32(dir.rev);
-
-            #[cfg(feature = "loop_limits")]
-            let mut tag_iter: u32 = 0;
-            #[cfg(feature = "loop_limits")]
-            const MAX_FETCH_TAG_ITER: u32 = 256;
-            loop {
-                #[cfg(feature = "loop_limits")]
-                {
-                    if tag_iter >= MAX_FETCH_TAG_ITER {
-                        panic!(
-                            "loop_limits: MAX_FETCH_TAG_ITER ({}) exceeded",
-                            MAX_FETCH_TAG_ITER
-                        );
-                    }
-                    if tag_iter > 0 && tag_iter.is_multiple_of(32) {
-                        crate::lfs_trace!(
-                            "fetchmatch: tag_iter={} off={} block_iter={} pair={:?}",
-                            tag_iter,
-                            off,
-                            _block_iter,
-                            dir.pair
-                        );
-                    }
-                    tag_iter += 1;
-                }
-
-                off += lfs_tag_dsize(ptag);
-
-                let mut tag_buf = [0u8; 4];
-                let err = lfs_bd_read(
-                    lfs,
-                    None,
-                    &mut *lfs.rcache.get(),
-                    cfg.block_size,
-                    dir.pair[0],
-                    off,
-                    &mut tag_buf,
-                );
-                if let Err(err) = err {
-                    if err == Error::Corrupt {
-                        break;
-                    }
-                    return Err(err);
-                }
-
-                crc = lfs_crc(crc, &tag_buf);
-                let tag_raw = u32::from_be_bytes(tag_buf);
-                let tag = tag_raw ^ ptag;
-
-                if !lfs_tag_isvalid(tag) {
-                    maybeerased = (lfs_tag_type2(ptag)) == LFS_TYPE_CCRC;
-                    break;
-                } else if off + lfs_tag_dsize(tag) > cfg.block_size {
-                    break;
-                }
-
-                ptag = tag;
-
-                if (lfs_tag_type2(tag)) == LFS_TYPE_CCRC {
-                    let mut dcrc_buf = [0u8; 4];
-                    let err = lfs_bd_read(
-                        lfs,
-                        None,
-                        &mut *lfs.rcache.get(),
-                        cfg.block_size,
-                        dir.pair[0],
-                        off + 4,
-                        &mut dcrc_buf,
-                    );
-                    if let Err(err) = err {
-                        if err == Error::Corrupt {
-                            break;
-                        }
-                        return Err(err);
-                    }
-                    let dcrc = u32::from_le_bytes(dcrc_buf);
-
-                    if crc != dcrc {
-                        break;
-                    }
-
-                    ptag ^= (lfs_tag_chunk(tag) as lfs_tag_t & 1) << 31;
-
-                    lfs.seed = lfs_crc(lfs.seed, crc.as_bytes());
-
-                    besttag = tempbesttag;
-                    dir.off = off + lfs_tag_dsize(tag);
-                    dir.etag = ptag;
-                    dir.count = tempcount;
-                    dir.tail[0] = temptail[0];
-                    dir.tail[1] = temptail[1];
-                    dir.split = tempsplit;
-
-                    crc = 0xffff_ffff;
-                    continue;
-                }
-
-                let entry_size = lfs_tag_dsize(tag) - 4;
-                let mut crc_val = crc;
-                let err = lfs_bd_crc(
-                    lfs,
-                    None,
-                    &mut *lfs.rcache.get(),
-                    cfg.block_size,
-                    dir.pair[0],
-                    off + 4,
-                    entry_size,
-                    &mut crc_val,
-                );
-                if let Err(err) = err {
-                    if err == Error::Corrupt {
-                        break;
-                    }
-                    return Err(err);
-                }
-                crc = crc_val;
-
-                if (lfs_tag_type1(tag)) == LFS_TYPE_NAME {
-                    if lfs_tag_id(tag) >= tempcount {
-                        tempcount = lfs_tag_id(tag) + 1;
-                    }
-                } else if (lfs_tag_type1(tag)) == LFS_TYPE_SPLICE {
-                    // Divergence: C uses tempcount += lfs_tag_splice(tag) (unsigned wrap). We clamp
-                    // to 0 to avoid underflow when splice is negative (Rule 7).
-                    let delta = lfs_tag_splice(tag) as i32;
-                    tempcount = (tempcount as i32 + delta).max(0) as u16;
-
-                    let delete_tag = lfs_mktag(LFS_TYPE_DELETE, 0, 0)
-                        | (lfs_mktag(0, 0x3ff, 0) & tempbesttag as lfs_tag_t);
-                    if tag == delete_tag {
-                        tempbesttag = (tempbesttag as u32 | 0x8000_0000) as lfs_stag_t;
-                    } else if tempbesttag != -1
-                        && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
-                    {
-                        tempbesttag = (tempbesttag as lfs_tag_t
-                            + lfs_mktag(0, lfs_tag_splice(tag) as u32, 0))
-                            as lfs_stag_t;
-                    }
-                } else if (lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
-                    tempsplit = (lfs_tag_chunk(tag) & 1) != 0;
-
-                    let mut tail_buf = [0u8; 8];
-                    let err = lfs_bd_read(
-                        lfs,
-                        None,
-                        &mut *lfs.rcache.get(),
-                        cfg.block_size,
-                        dir.pair[0],
-                        off + 4,
-                        &mut tail_buf,
-                    );
-                    if let Err(err) = err {
-                        if err == Error::Corrupt {
-                            break;
-                        }
-                        return Err(err);
-                    }
-                    temptail[0] = u32::from_le_bytes(tail_buf[0..4].try_into().unwrap());
-                    temptail[1] = u32::from_le_bytes(tail_buf[4..8].try_into().unwrap());
-                } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_FCRC {
-                    let mut fcrc_buf: LfsFcrc = core::mem::zeroed();
-                    let err = lfs_bd_read(
-                        lfs,
-                        None,
-                        &mut *lfs.rcache.get(),
-                        cfg.block_size,
-                        dir.pair[0],
-                        off + 4,
-                        fcrc_buf.as_mut_bytes(),
-                    );
-                    if let Err(err) = err {
-                        if err == Error::Corrupt {
-                            break;
-                        }
-                        return Err(err);
-                    }
-                    fcrc = fcrc_buf;
-                    lfs_fcrc_fromle32(&mut fcrc);
-                    hasfcrc = true;
-                }
-
-                if (fmask & tag) == (fmask & ftag) {
-                    if let Some(cb) = cb {
-                        let diskoff = crate::tag::lfs_diskoff {
-                            block: dir.pair[0],
-                            off: off + 4,
-                        };
-                        let res = match cb(tag, &diskoff) {
-                            Ok(res) => res,
-                            Err(err) => {
-                                if err == Error::Corrupt {
-                                    break;
-                                }
-                                return Err(err);
-                            }
-                        };
-
-                        if res == core::cmp::Ordering::Equal {
-                            tempbesttag = tag as lfs_stag_t;
-                        } else if (lfs_mktag(0x7ff, 0x3ff, 0) & tag)
-                            == (lfs_mktag(0x7ff, 0x3ff, 0) & tempbesttag as lfs_tag_t)
-                        {
-                            tempbesttag = -1;
-                        } else if res == core::cmp::Ordering::Greater
-                            && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
-                        {
-                            tempbesttag = (tag | 0x8000_0000) as lfs_stag_t;
-                        }
-                    }
-                }
-            }
-
-            if dir.off == 0 {
-                lfs_pair_swap(&mut dir.pair);
-                dir.rev = revs[(r + 1) % 2];
-                continue;
-            }
-
-            dir.erased = false;
-            if maybeerased && dir.off.is_multiple_of(cfg.prog_size) && hasfcrc {
-                let mut fcrc_ = 0xffff_ffffu32;
-                let err = lfs_bd_crc(
-                    lfs,
-                    None,
-                    &mut *lfs.rcache.get(),
-                    cfg.block_size,
-                    dir.pair[0],
-                    dir.off,
-                    fcrc.size,
-                    &mut fcrc_,
-                );
-                if let Err(err) = err
-                    && err != Error::Corrupt
-                {
-                    return Err(err);
-                }
-                dir.erased = fcrc_ == fcrc.crc;
-            }
-
-            if lfs_gstate_hasmovehere(&lfs.gdisk, &dir.pair) {
-                if lfs_tag_id(lfs.gdisk.tag) == lfs_tag_id(besttag as lfs_tag_t) {
-                    besttag = (besttag as u32 | 0x8000_0000) as lfs_stag_t;
-                } else if besttag != -1
-                    && lfs_tag_id(lfs.gdisk.tag) < lfs_tag_id(besttag as lfs_tag_t)
-                {
-                    besttag -= lfs_mktag(0, 1, 0) as lfs_stag_t;
-                }
-            }
-
-            if let Some(_id) = id {
-                **_id = lfs_min(lfs_tag_id(besttag as lfs_tag_t) as u32, dir.count as u32) as u16;
-            }
-
-            if lfs_tag_isvalid(besttag as lfs_tag_t) {
-                crate::lfs_trace!(
-                    "fetchmatch: FOUND besttag=0x{:08x} pair=[{},{}] count={} split={} tail=[{},{}]",
-                    besttag as u32,
-                    dir.pair[0],
-                    dir.pair[1],
-                    dir.count,
-                    dir.split,
-                    dir.tail[0],
-                    dir.tail[1]
-                );
-                return Ok(besttag as _);
-            } else if lfs_tag_id(besttag as lfs_tag_t) < dir.count {
-                crate::lfs_trace!(
-                    "fetchmatch: NOENT pair=[{},{}] count={} besttag_id={} split={} tail=[{},{}]",
-                    dir.pair[0],
-                    dir.pair[1],
-                    dir.count,
-                    lfs_tag_id(besttag as lfs_tag_t),
-                    dir.split,
-                    dir.tail[0],
-                    dir.tail[1]
-                );
-                return Err(Error::NoEntry);
-            } else {
-                crate::lfs_trace!(
-                    "fetchmatch: CONTINUE pair=[{},{}] count={} split={} tail=[{},{}]",
-                    dir.pair[0],
-                    dir.pair[1],
-                    dir.count,
-                    dir.split,
-                    dir.tail[0],
-                    dir.tail[1]
-                );
-                return Ok(0);
-            }
+        if let Some(_id) = id {
+            **_id = cmp::min(lfs_tag_id(besttag as lfs_tag_t), dir.count);
         }
 
-        Err(Error::Corrupt)
+        if lfs_tag_isvalid(besttag as lfs_tag_t) {
+            crate::lfs_trace!(
+                "fetchmatch: FOUND besttag=0x{:08x} pair=[{},{}] count={} split={} tail=[{},{}]",
+                besttag as u32,
+                dir.pair[0],
+                dir.pair[1],
+                dir.count,
+                dir.split,
+                dir.tail[0],
+                dir.tail[1]
+            );
+            return Ok(besttag as _);
+        } else if lfs_tag_id(besttag as lfs_tag_t) < dir.count {
+            crate::lfs_trace!(
+                "fetchmatch: NOENT pair=[{},{}] count={} besttag_id={} split={} tail=[{},{}]",
+                dir.pair[0],
+                dir.pair[1],
+                dir.count,
+                lfs_tag_id(besttag as lfs_tag_t),
+                dir.split,
+                dir.tail[0],
+                dir.tail[1]
+            );
+            return Err(Error::NoEntry);
+        } else {
+            crate::lfs_trace!(
+                "fetchmatch: CONTINUE pair=[{},{}] count={} split={} tail=[{},{}]",
+                dir.pair[0],
+                dir.pair[1],
+                dir.count,
+                dir.split,
+                dir.tail[0],
+                dir.tail[1]
+            );
+            return Ok(0);
+        }
     }
+
+    Err(Error::Corrupt)
 }
 
 /// Per lfs.c lfs_dir_fetch (lines 1387-1393)

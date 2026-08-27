@@ -47,7 +47,7 @@ fn test_truncate_simple(#[case] medium: u32, #[case] large: u32) {
     assert_ok!(lfs_mount(lfs, &env.config));
 
     let path = "baldynoop";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
 
     let size = HAIR.len() as u32;
@@ -111,7 +111,7 @@ fn test_truncate_read(#[case] medium: u32, #[case] large: u32) {
     assert_ok!(lfs_mount(lfs, &env.config));
 
     let path = "baldyread";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
 
     let size = HAIR.len() as u32;
@@ -184,7 +184,7 @@ fn test_truncate_write_read() {
     assert_ok!(lfs_mount(lfs, &env.config));
 
     let path = "sequence";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -252,7 +252,7 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
     assert_ok!(lfs_mount(lfs, &env.config));
 
     let path = "baldywrite";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
 
     let size = HAIR.len() as u32;
@@ -339,7 +339,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
             }
 
             let path = "baldy";
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             let open_err = littlefs_rust_core::lfs_file_open(lfs_ptr, file, path, LFS_O_RDONLY);
             if open_err.is_ok() {
                 let sz = littlefs_rust_core::lfs_file_size(lfs_ptr, file);
@@ -484,7 +484,7 @@ fn test_truncate_aggressive() {
 
         for i in 0..COUNT {
             let path = &format!("hairyhead{}", i);
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(
                 lfs,
                 file,
@@ -520,7 +520,7 @@ fn test_truncate_aggressive() {
 
         for i in 0..COUNT {
             let path = &format!("hairyhead{}", i);
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
             assert_eq!(lfs_file_size(lfs, file), hotsizes[i] as i32);
 
@@ -558,7 +558,7 @@ fn test_truncate_aggressive() {
 
         for i in 0..COUNT {
             let path = &format!("hairyhead{}", i);
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
             assert_eq!(lfs_file_size(lfs, file), coldsizes[i] as i32);
 
@@ -611,7 +611,7 @@ fn test_truncate_nop(#[case] medium: u32) {
     assert_ok!(lfs_mount(lfs, &env.config));
 
     let path = "baldynoop";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR | LFS_O_CREAT));
 
     let size = HAIR.len() as u32;

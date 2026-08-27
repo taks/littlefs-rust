@@ -38,9 +38,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     assert_ok!(lfs_format(lfs, &env.config));
     assert_ok!(lfs_mount(lfs, &env.config));
 
-    let mut file_handles: Vec<LfsFile> = (0..files)
-        .map(|_| unsafe { core::mem::MaybeUninit::zeroed().assume_init() })
-        .collect();
+    let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
@@ -71,17 +69,17 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
     assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
     assert_eq!(info.type_, LFS_TYPE_DIR);
 
     for j in 0..files {
         let expected_name = String::from(ALPHAS[j] as char);
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
         assert_eq!(name, expected_name);
@@ -89,13 +87,11 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
         assert_eq!(info.size, size as u32);
     }
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     // Re-open for reading and verify first 10 bytes
-    let mut file_handles: Vec<LfsFile> = (0..files)
-        .map(|_| unsafe { core::mem::MaybeUninit::zeroed().assume_init() })
-        .collect();
+    let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
@@ -140,7 +136,7 @@ fn test_interspersed_remove_files(
     // Create FILES files with SIZE bytes each
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
             lfs,
             file,
@@ -159,7 +155,7 @@ fn test_interspersed_remove_files(
     // Remount, open "zzz", interleave writes+syncs with removes
     assert_ok!(lfs_mount(lfs, &env.config));
     let zzz_path = "zzz";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -185,26 +181,26 @@ fn test_interspersed_remove_files(
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
     assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
     assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     let name = core::str::from_utf8(&info.name[..nul]).unwrap();
     assert_eq!(name, "zzz");
     assert_eq!(info.type_, LFS_TYPE_REG);
     assert_eq!(info.size, files as u32);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     // Verify "zzz" content
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, zzz_path, LFS_O_RDONLY));
     for _i in 0..files {
         let mut buffer = [0u8; 1];
@@ -233,11 +229,7 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
     assert_ok!(lfs_format(lfs, &env.config));
     assert_ok!(lfs_mount(lfs, &env.config));
 
-    let mut files: [LfsFile; 3] = [
-        unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-        unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-        unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-    ];
+    let mut files: [LfsFile; 3] = Default::default();
 
     let path_e = "e";
     let path_f = "f";
@@ -290,34 +282,31 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
     assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
     assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "e");
     assert_eq!(info.type_, LFS_TYPE_REG);
     assert_eq!(info.size, size as u32);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "g");
     assert_eq!(info.type_, LFS_TYPE_REG);
     assert_eq!(info.size, size as u32);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     // Read "e" and "g", verify SIZE bytes
-    let mut files_r: [LfsFile; 2] = [
-        unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-        unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-    ];
+    let mut files_r: [LfsFile; 2] = Default::default();
     assert_ok!(lfs_file_open(lfs, &mut files_r[0], path_e, LFS_O_RDONLY));
     assert_ok!(lfs_file_open(lfs, &mut files_r[1], path_g, LFS_O_RDONLY));
 
@@ -361,9 +350,7 @@ fn test_interspersed_reentrant_files(
         assert_ok!(lfs_mount(lfs, &env.config));
     }
 
-    let mut file_handles: Vec<LfsFile> = (0..files)
-        .map(|_| unsafe { core::mem::MaybeUninit::zeroed().assume_init() })
-        .collect();
+    let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);
@@ -399,30 +386,28 @@ fn test_interspersed_reentrant_files(
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
     assert_eq!(info.type_, LFS_TYPE_DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
     assert_eq!(info.type_, LFS_TYPE_DIR);
 
     for j in 0..files {
         let expected_name = String::from(ALPHAS[j] as char);
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(1));
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
         assert_eq!(name, expected_name);
         assert_eq!(info.type_, LFS_TYPE_REG);
         assert_eq!(info.size, size as u32);
     }
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(0));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     // Read first 10 bytes from each
-    let mut file_handles: Vec<LfsFile> = (0..files)
-        .map(|_| unsafe { core::mem::MaybeUninit::zeroed().assume_init() })
-        .collect();
+    let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
         let path = &String::from(ALPHAS[j] as char);

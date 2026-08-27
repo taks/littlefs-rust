@@ -27,7 +27,7 @@ pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: &mut lfs_off_t) -> i32 {
     use crate::util::lfs_popc;
 
     let size = *off;
-    let block_size = unsafe { lfs.cfg.as_ref().expect("cfg").block_size };
+    let block_size = unsafe { lfs.cfg.as_ref().block_size };
     let b = block_size - 8;
     let mut i = size / b;
     if i == 0 {
@@ -91,7 +91,7 @@ pub fn lfs_ctz_find(
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::types::LFS_BLOCK_NULL;
-    use crate::util::{lfs_ctz, lfs_fromle32, lfs_min, lfs_npw2};
+    use crate::util::{lfs_ctz, lfs_min, lfs_npw2};
 
     if size == 0 {
         *block = LFS_BLOCK_NULL;
@@ -106,22 +106,8 @@ pub fn lfs_ctz_find(
     let target = lfs_ctz_index(lfs, &mut target_off);
 
     let mut head_val = head;
-    #[cfg(feature = "loop_limits")]
-    const MAX_CTZ_FIND_ITER: u32 = 4096;
-    #[cfg(feature = "loop_limits")]
-    let mut iter: u32 = 0;
 
     while current > target {
-        #[cfg(feature = "loop_limits")]
-        {
-            iter += 1;
-            if iter > MAX_CTZ_FIND_ITER {
-                panic!(
-                    "loop_limits: MAX_CTZ_FIND_ITER ({}) exceeded",
-                    MAX_CTZ_FIND_ITER
-                );
-            }
-        }
         let skip = lfs_min(
             lfs_npw2((current - target + 1) as u32) - 1,
             lfs_ctz(current as u32),
@@ -138,7 +124,7 @@ pub fn lfs_ctz_find(
             head_buf.as_mut_bytes(),
         )?;
 
-        head_val = lfs_fromle32(head_buf);
+        head_val = u32::from_le(head_buf);
 
         current -= 1 << skip;
     }
@@ -206,7 +192,6 @@ pub fn lfs_ctz_traverse(
     cb: &mut dyn FnMut(crate::types::lfs_block_t) -> Result<(), Error>,
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
-    use crate::util::lfs_fromle32;
 
     if size == 0 {
         return Ok(());
@@ -237,8 +222,8 @@ pub fn lfs_ctz_traverse(
             heads.as_mut_bytes(),
         )?;
 
-        heads[0] = lfs_fromle32(heads[0]);
-        heads[1] = lfs_fromle32(heads[1]);
+        heads[0] = u32::from_le(heads[0]);
+        heads[1] = u32::from_le(heads[1]);
 
         #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
         for i in 0..count - 1 {
@@ -368,11 +353,11 @@ pub fn lfs_ctz_extend(
 ) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_prog, lfs_bd_read, lfs_cache_drop};
     use crate::block_alloc::alloc::{lfs_alloc, lfs_alloc_lookahead};
-    use crate::util::{lfs_ctz, lfs_fromle32, lfs_tole32};
+    use crate::util::lfs_ctz;
 
     'relocate: loop {
         unsafe {
-            let block_size = lfs.cfg.as_ref().expect("cfg").block_size;
+            let block_size = lfs.cfg.as_ref().block_size;
 
             let mut nblock: lfs_block_t = 0;
             lfs_alloc(lfs, &mut nblock)?;
@@ -421,7 +406,7 @@ pub fn lfs_ctz_extend(
             let skips = lfs_ctz(index as u32) + 1;
             let mut nhead = head;
             for i in 0..skips {
-                let nhead_le = lfs_tole32(nhead);
+                let nhead_le = nhead.to_le();
                 let err = lfs_bd_prog(
                     lfs,
                     pcache,
@@ -439,14 +424,14 @@ pub fn lfs_ctz_extend(
                     }
                     return crate::lfs_pass_err!(Err(err));
                 }
-                nhead = lfs_fromle32(nhead_le);
+                nhead = u32::from_le(nhead_le);
 
                 if i != skips - 1 {
                     let mut nhead_buf: u32 = 0;
 
                     lfs_bd_read(lfs, None, rcache, 4, nhead, 4 * i, nhead_buf.as_mut_bytes())?;
 
-                    nhead = lfs_fromle32(nhead_buf);
+                    nhead = u32::from_le(nhead_buf);
                 }
             }
 

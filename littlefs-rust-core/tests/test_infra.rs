@@ -270,7 +270,7 @@ fn test_write_verify_prng_file() {
     assert_ok!(littlefs_rust_core::lfs_mount(lfs, &env.config));
 
     let path = "prng_test";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
 
     // Write 256 bytes in 31-byte chunks with seed=1
     assert_ok!(littlefs_rust_core::lfs_file_open(

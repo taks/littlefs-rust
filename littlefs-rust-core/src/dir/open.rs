@@ -1,5 +1,7 @@
 //! Directory open/read. Per lfs.c lfs_dir_open_, lfs_dir_close_, lfs_dir_read_, etc.
 
+use core::cmp;
+
 use zerocopy::IntoBytes;
 
 use crate::dir::LfsDir;
@@ -174,7 +176,7 @@ pub fn lfs_dir_read_(
     lfs: &mut crate::fs::Lfs,
     dir: &mut LfsDir,
     info: &mut LfsInfo,
-) -> Result<i32, Error> {
+) -> Result<bool, Error> {
     {
         info.type_ = 0;
         info.size = 0;
@@ -185,7 +187,7 @@ pub fn lfs_dir_read_(
             info.name[0] = b'.';
             info.name[1] = 0;
             dir.pos += 1;
-            return Ok(1);
+            return Ok(true);
         }
         if dir.pos == 1 {
             info.type_ = LFS_TYPE_DIR as u8;
@@ -193,27 +195,13 @@ pub fn lfs_dir_read_(
             info.name[1] = b'.';
             info.name[2] = 0;
             dir.pos += 1;
-            return Ok(1);
+            return Ok(true);
         }
 
-        #[cfg(feature = "loop_limits")]
-        const MAX_DIR_READ_ITER: u32 = 2048;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
         loop {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_DIR_READ_ITER {
-                    panic!(
-                        "loop_limits: MAX_DIR_READ_ITER ({}) exceeded",
-                        MAX_DIR_READ_ITER
-                    );
-                }
-                iter += 1;
-            }
             if dir.id == dir.m.count {
                 if !dir.m.split {
-                    return Ok(0);
+                    return Ok(false);
                 }
                 let dir_m_tail = dir.m.tail;
                 lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
@@ -234,7 +222,7 @@ pub fn lfs_dir_read_(
         }
 
         dir.pos += 1;
-        Ok(1)
+        Ok(true)
     }
 }
 
@@ -286,7 +274,7 @@ pub fn lfs_dir_seek_(
 ) -> Result<(), Error> {
     lfs_dir_rewind_(lfs, dir)?;
 
-    dir.pos = lfs_min(2, off);
+    dir.pos = cmp::min(2, off);
     let mut off = off - dir.pos;
 
     // skip superblock entry

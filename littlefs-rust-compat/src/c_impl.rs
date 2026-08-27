@@ -3,7 +3,7 @@
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_int, c_void};
 
-use crate::storage::{check, prng_verify, test_prng, SharedStorage};
+use crate::storage::{SharedStorage, check, prng_verify, test_prng};
 
 const LFS_O_RDONLY: c_int = 1;
 const LFS_O_WRONLY: c_int = 2;

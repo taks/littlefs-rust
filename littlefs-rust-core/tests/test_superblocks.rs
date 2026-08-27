@@ -228,8 +228,7 @@ fn test_superblocks_expand() {
 
             let dummy = "dummy";
             for _ in 0..n {
-                let file =
-                    &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+                let file = &mut LfsFile::default();
                 assert_ok!(lfs_file_open(
                     lfs,
                     file,
@@ -245,7 +244,7 @@ fn test_superblocks_expand() {
             assert_ok!(lfs_unmount(lfs));
 
             assert_ok!(lfs_mount(lfs, &env.config));
-            let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+            let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(
                 lfs,
                 file,
@@ -278,8 +277,7 @@ fn test_superblocks_magic_expand() {
 
             let dummy = "dummy";
             for _ in 0..n {
-                let file =
-                    &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+                let file = &mut LfsFile::default();
                 assert_ok!(lfs_file_open(
                     lfs,
                     file,
@@ -328,8 +326,7 @@ fn test_superblocks_expand_power_cycle() {
                     assert_ok!(lfs_remove(lfs, dummy));
                 }
 
-                let file =
-                    &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+                let file = &mut LfsFile::default();
                 assert_ok!(lfs_file_open(
                     lfs,
                     file,
@@ -397,8 +394,7 @@ fn test_superblocks_reentrant_expand() {
                         #[allow(clippy::unnecessary_unwrap)]
                         return Err(err.unwrap_err());
                     }
-                    let file =
-                        &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+                    let file = &mut LfsFile::default();
                     let e = lfs_file_open(
                         lfs_ptr,
                         file,
@@ -461,7 +457,7 @@ fn test_superblocks_unknown_blocks() {
     assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_count, BLOCK_COUNT);
     let test_path = "test";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -477,7 +473,7 @@ fn test_superblocks_unknown_blocks() {
     let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_count, BLOCK_COUNT);
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, test_path, LFS_O_RDONLY));
     let mut buf = [0u8; 256];
     let n = lfs_file_read(lfs, file, &mut buf);
@@ -513,7 +509,7 @@ fn test_superblocks_fewer_blocks() {
 
         let test_path = "test";
         assert_ok!(lfs_mount(lfs, &cfg0.config));
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
             lfs,
             file,
@@ -525,7 +521,7 @@ fn test_superblocks_fewer_blocks() {
         assert_ok!(lfs_unmount(lfs));
 
         assert_ok!(lfs_mount(lfs, &cfg0.config));
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(lfs, file, test_path, LFS_O_RDONLY));
         let mut buf = [0u8; 16];
         assert_eq!(lfs_file_read(lfs, file, &mut buf,), Ok(6));
@@ -577,7 +573,7 @@ fn test_superblocks_grow(
 
     // Create a file to verify after grow
     let path = "x";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -596,7 +592,7 @@ fn test_superblocks_grow(
     let mount_cfg = clone_config_with_block_count(&env, mount_block_count);
     env.config.block_count = large_count;
     assert_ok!(lfs_mount(lfs, &mount_cfg.config));
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     let mut rbuf = [0u8; 16];
     let n = lfs_file_read(lfs, file, &mut rbuf);
@@ -700,7 +696,7 @@ fn test_superblocks_shrink(
     assert_eq!(fsinfo.block_size, BLOCK_SIZE);
     assert_eq!(fsinfo.block_count, block_count_2);
     let test_path = "test";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -716,7 +712,7 @@ fn test_superblocks_shrink(
     assert_ok!(lfs_fs_stat(lfs, fsinfo));
     assert_eq!(fsinfo.block_size, BLOCK_SIZE);
     assert_eq!(fsinfo.block_count, block_count_2);
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, test_path, LFS_O_RDONLY));
     let mut buf = [0u8; 256];
     assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(6));
@@ -747,7 +743,7 @@ fn test_superblocks_metadata_max(
     for i in 0..n {
         let name_str = format!("hello{:03x}", i);
         let name = &name_str;
-        let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+        let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
             lfs,
             file,

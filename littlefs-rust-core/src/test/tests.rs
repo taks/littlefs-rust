@@ -1,5 +1,7 @@
 //! Unit tests using TestContext.
 
+use core::cmp;
+
 use super::*;
 
 /// Minimal: construct TestContext and verify config/ram. No lfs calls.
@@ -21,7 +23,7 @@ fn test_context_smoke() {
 #[test]
 fn test_context_lfs_init() {
     let ctx = TestContext::default_blocks();
-    let mut lfs = unsafe { core::mem::MaybeUninit::<crate::Lfs>::zeroed().assume_init() };
+    let mut lfs = crate::Lfs::default();
     let err = crate::fs::lfs_init(&mut lfs, ctx.config());
     assert_eq!(err, Ok(()));
 }
@@ -30,21 +32,21 @@ fn test_context_lfs_init() {
 #[test]
 fn test_context_format_to_alloc() {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
-    use crate::util::lfs_min;
 
     let ctx = TestContext::default_blocks();
-    let mut lfs = unsafe { core::mem::MaybeUninit::<crate::Lfs>::zeroed().assume_init() };
+    let mut lfs = crate::Lfs::default();
     let err = crate::fs::lfs_init(&mut lfs, ctx.config());
     assert_eq!(err, Ok(()));
 
-    let cfg = unsafe { &*lfs.cfg };
-    if !lfs.lookahead.buffer.is_null() {
-        unsafe {
-            core::ptr::write_bytes(lfs.lookahead.buffer, 0, cfg.lookahead_size as usize);
-        }
+    let cfg = unsafe { lfs.cfg.as_ref() };
+    unsafe {
+        lfs.lookahead.buffer.as_mut().fill(0);
     }
     lfs.lookahead.start = 0;
-    lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.block_count);
+    lfs.lookahead.size = cmp::min(
+        8 * cfg.lookahead_buffer.unwrap().len() as u32,
+        lfs.block_count,
+    );
     lfs.lookahead.next = 0;
     lfs_alloc_ckpoint(&mut lfs);
 
@@ -67,16 +69,14 @@ fn test_context_format_to_alloc() {
 #[test]
 fn test_context_buffers_writable() {
     let ctx = TestContext::default_blocks();
-    let cfg = ctx.config();
     // Manually write to each buffer - simulate what lfs_cache_zero and format do
-    let block_size = ctx.ram.block_size as usize;
-    if !cfg.read_buffer.is_null() {
-        unsafe { core::ptr::write_bytes(cfg.read_buffer as *mut u8, 0xff, block_size) };
+    if let Some(mut buf) = ctx.config.read_buffer {
+        unsafe { buf.as_mut().fill(0xff) };
     }
-    if !cfg.prog_buffer.is_null() {
-        unsafe { core::ptr::write_bytes(cfg.prog_buffer as *mut u8, 0xff, block_size) };
+    if let Some(mut buf) = ctx.config.prog_buffer {
+        unsafe { buf.as_mut().fill(0xff) };
     }
-    if !cfg.lookahead_buffer.is_null() {
-        unsafe { core::ptr::write_bytes(cfg.lookahead_buffer as *mut u8, 0, block_size) };
+    if let Some(mut buf) = ctx.config.lookahead_buffer {
+        unsafe { buf.as_mut().fill(0) };
     }
 }

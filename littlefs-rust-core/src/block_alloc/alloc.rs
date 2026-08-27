@@ -63,13 +63,11 @@ pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Erro
             % lfs.block_count;
 
         if off < lfs.lookahead.size {
-            let buf = lfs.lookahead.buffer;
-            if !buf.is_null() {
-                // buffer[off/8] |= 1 << (off%8)
-                let byte_idx = (off / 8) as usize;
-                let bit = 1u8 << (off % 8);
-                *buf.add(byte_idx) |= bit;
-            }
+            let buf = lfs.lookahead.buffer.as_mut();
+            // buffer[off/8] |= 1 << (off%8)
+            let byte_idx = (off / 8) as usize;
+            let bit = 1u8 << (off % 8);
+            buf[byte_idx] |= bit;
         }
         Ok(())
     }
@@ -110,21 +108,20 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
 
     crate::lfs_trace!("alloc_scan: start");
     unsafe {
-        let cfg = lfs.cfg.as_ref().expect("cfg");
-        let buf = lfs.lookahead.buffer;
-        if buf.is_null() {
-            return Err(Error::NoSpace);
-        }
+        let cfg = lfs.cfg.as_ref();
 
         // move lookahead buffer to the first unused block
         lfs.lookahead.start = (lfs.lookahead.start + lfs.lookahead.next) % lfs.block_count;
         lfs.lookahead.next = 0;
         // note we limit the lookahead buffer to at most the amount of blocks
         // checkpointed, this prevents the math in lfs_alloc from underflowing
-        lfs.lookahead.size = lfs_min(8 * cfg.lookahead_size, lfs.lookahead.ckpoint);
+        lfs.lookahead.size = lfs_min(
+            8 * cfg.lookahead_buffer.unwrap().len() as u32,
+            lfs.lookahead.ckpoint,
+        );
 
         // find mask of free blocks from tree
-        core::ptr::write_bytes(buf, 0, cfg.lookahead_size as usize);
+        lfs.lookahead.buffer.as_mut().fill(0);
 
         let err = {
             let lfs = UnsafeCell::new(&mut *lfs);
@@ -203,37 +200,19 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
 /// ```
 pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
     unsafe {
-        let buf = lfs.lookahead.buffer;
-        if buf.is_null() {
-            return crate::lfs_err!(Err(Error::NoSpace));
-        }
+        let buf = lfs.lookahead.buffer.as_ref();
 
         loop {
             // scan our lookahead buffer for free blocks
             while lfs.lookahead.next < lfs.lookahead.size {
-                if (*buf.add((lfs.lookahead.next / 8) as usize)) & (1u8 << (lfs.lookahead.next % 8))
-                    == 0
+                if (buf[(lfs.lookahead.next / 8) as usize]) & (1u8 << (lfs.lookahead.next % 8)) == 0
                 {
                     // found a free block
                     *block = (lfs.lookahead.start + lfs.lookahead.next) % lfs.block_count;
 
                     // eagerly find next free block to maximize how many blocks
                     // lfs_alloc_ckpoint makes available for scanning
-                    #[cfg(feature = "loop_limits")]
-                    const MAX_ALLOC_SCAN_BIT_ITER: u32 = 4096;
-                    #[cfg(feature = "loop_limits")]
-                    let mut bit_iter: u32 = 0;
                     loop {
-                        #[cfg(feature = "loop_limits")]
-                        {
-                            if bit_iter >= MAX_ALLOC_SCAN_BIT_ITER {
-                                panic!(
-                                    "loop_limits: MAX_ALLOC_SCAN_BIT_ITER ({}) exceeded",
-                                    MAX_ALLOC_SCAN_BIT_ITER
-                                );
-                            }
-                            bit_iter += 1;
-                        }
                         lfs.lookahead.next += 1;
                         lfs.lookahead.ckpoint = lfs.lookahead.ckpoint.wrapping_sub(1);
 
@@ -242,7 +221,7 @@ pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
                         }
                         let next_byte = (lfs.lookahead.next / 8) as usize;
                         let next_bit = 1u8 << (lfs.lookahead.next % 8);
-                        if (*buf.add(next_byte)) & next_bit == 0 {
+                        if buf[next_byte] & next_bit == 0 {
                             return Ok(());
                         }
                     }

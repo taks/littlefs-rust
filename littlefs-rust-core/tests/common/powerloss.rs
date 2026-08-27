@@ -9,6 +9,7 @@
 //!          block written since last sync is reverted to its pre-write state.
 
 use core::cell::Cell;
+use std::ptr::NonNull;
 
 use littlefs_rust_core::{Lfs, LfsConfig, error::Error};
 
@@ -176,11 +177,10 @@ pub fn powerloss_config(block_count: u32) -> PowerLossEnv {
         block_count,
         block_cycles: -1,
         cache_size: block_size,
-        lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -188,17 +188,13 @@ pub fn powerloss_config(block_count: u32) -> PowerLossEnv {
         inline_max: 0,
     };
 
-    let mut env = PowerLossEnv {
+    PowerLossEnv {
         ctx,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env
+    }
 }
 
 /// Build power-loss test environment with explicit BD behavior.
@@ -224,11 +220,10 @@ pub fn powerloss_config_with_behavior(
         block_count,
         block_cycles: -1,
         cache_size: block_size,
-        lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -236,17 +231,13 @@ pub fn powerloss_config_with_behavior(
         inline_max: 0,
     };
 
-    let mut env = PowerLossEnv {
+    PowerLossEnv {
         ctx,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env
+    }
 }
 
 /// Call after powerloss_config() to set context. Required for PowerLossEnv.
@@ -396,10 +387,10 @@ where
                     );
                     // Propagate real errors (verify failures); ignore Err(IO)
                     // which just means max_iter wasn't enough at this depth.
-                    if let Err(e) = inner {
-                        if e != Error::Io {
-                            return Err(e);
-                        }
+                    if let Err(e) = inner
+                        && e != Error::Io
+                    {
+                        return Err(e);
                     }
                 }
             }

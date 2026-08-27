@@ -56,22 +56,8 @@ pub fn lfs_fs_pred(
         period: 1,
     };
     let mut have_fetched = false;
-    #[cfg(feature = "loop_limits")]
-    const MAX_PARENT_ITER: u32 = 2048;
-    #[cfg(feature = "loop_limits")]
-    let mut iter: u32 = 0;
 
     while !lfs_pair_isnull(&pdir.tail) {
-        #[cfg(feature = "loop_limits")]
-        {
-            if iter >= MAX_PARENT_ITER {
-                panic!(
-                    "loop_limits: MAX_PARENT_ITER ({}) exceeded in lfs_fs_parent",
-                    MAX_PARENT_ITER
-                );
-            }
-            iter += 1;
-        }
         let err = lfs_tortoise_detectcycles(pdir, &mut tortoise);
         if err.is_err() {
             return Err(Error::Corrupt);
@@ -133,7 +119,7 @@ pub fn lfs_fs_parent_match(
         lfs,
         None,
         unsafe { &mut *lfs.rcache.get() },
-        unsafe { lfs.cfg.as_ref().expect("cfg").block_size },
+        unsafe { lfs.cfg.as_ref().block_size },
         disk.block,
         disk.off,
         child.as_mut_bytes(),

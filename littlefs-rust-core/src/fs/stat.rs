@@ -138,7 +138,7 @@ pub fn lfs_fs_stat_(
         fsinfo.disk_version = superblock.version;
     }
 
-    fsinfo.block_size = unsafe { (*lfs.cfg).block_size };
+    fsinfo.block_size = unsafe { lfs.cfg.as_ref().block_size };
     fsinfo.block_count = lfs.block_count;
     fsinfo.name_max = lfs.name_max;
     fsinfo.file_max = lfs.file_max;

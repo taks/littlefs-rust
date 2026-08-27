@@ -305,7 +305,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
         }
 
         if !samepair {
-            lfs_fs_prepmove(lfs, newoldid, &oldcwd.pair);
+            lfs_fs_prepmove(lfs, newoldid, Some(&oldcwd.pair));
         }
 
         let nlen = lfs_path_namelen(newpath_slice);
@@ -341,7 +341,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
         crate::lfs_pass_err!(err)?;
 
         if !samepair && lfs_gstate_hasmove(&lfs.gstate) {
-            lfs_fs_prepmove(lfs, 0x3ff, core::ptr::null());
+            lfs_fs_prepmove(lfs, 0x3ff, None);
             let attrs2 = [lfs_mattr {
                 tag: lfs_mktag(LFS_TYPE_DELETE, lfs_tag_id(oldtag) as u32, 0),
                 buffer: &[],

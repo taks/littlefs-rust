@@ -10,6 +10,7 @@ pub mod powerloss;
 
 use core::cell::RefCell;
 use littlefs_rust_core::{LfsConfig, error::Error, lfs_type::OpenFlags};
+use std::ptr::NonNull;
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
@@ -253,11 +254,10 @@ pub fn config_with_geometry(block_size: u32, block_count: u32) -> TestEnv {
         block_count,
         block_cycles: -1,
         cache_size: block_size,
-        lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -265,17 +265,13 @@ pub fn config_with_geometry(block_size: u32, block_count: u32) -> TestEnv {
         inline_max: 0,
     };
 
-    let mut env = TestEnv {
+    TestEnv {
         ram,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env
+    }
 }
 
 /// Build test environment with RAM BD. block_count defaults to 128 (upstream).
@@ -298,11 +294,10 @@ pub fn default_config(block_count: u32) -> TestEnv {
         block_count,
         block_cycles: -1,
         cache_size: block_size,
-        lookahead_size: block_size,
         compact_thresh: u32::MAX, // -1 in C
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -313,17 +308,13 @@ pub fn default_config(block_count: u32) -> TestEnv {
     // Build TestEnv, then set context/buffers. We must set context after returning
     // to the caller, since env moves and the stored &mut env.ram would otherwise
     // be a dangling pointer. Use TestEnv::init_context() after default_config().
-    let mut env = TestEnv {
+    TestEnv {
         ram,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env
+    }
 }
 
 /// Call after default_config() to set context to ram. Required because context
@@ -348,9 +339,9 @@ pub struct ClonedConfig {
 /// RAM context pointer. Caller must ensure the original TestEnv outlives this.
 pub fn clone_config_with_block_count(env: &TestEnv, block_count: u32) -> ClonedConfig {
     let bs = env.config.block_size as usize;
-    let mut read_buf = vec![0u8; bs];
-    let mut prog_buf = vec![0u8; bs];
-    let mut lookahead_buf = vec![0u8; bs];
+    let read_buf = vec![0u8; bs];
+    let prog_buf = vec![0u8; bs];
+    let lookahead_buf = vec![0u8; bs];
     let config = LfsConfig {
         context: env.config.context,
         read: env.config.read,
@@ -363,11 +354,10 @@ pub fn clone_config_with_block_count(env: &TestEnv, block_count: u32) -> ClonedC
         block_count,
         block_cycles: env.config.block_cycles,
         cache_size: env.config.cache_size,
-        lookahead_size: env.config.lookahead_size,
         compact_thresh: env.config.compact_thresh,
-        read_buffer: read_buf.as_mut_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_mut_ptr() as *mut core::ffi::c_void,
-        lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: env.config.name_max,
         file_max: env.config.file_max,
         attr_max: env.config.attr_max,
@@ -420,11 +410,10 @@ pub fn config_badblock_with_behavior(
         block_count,
         block_cycles: -1,
         cache_size: block_size,
-        lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -432,17 +421,13 @@ pub fn config_badblock_with_behavior(
         inline_max: 0,
     };
 
-    let mut env = BadBlockTestEnv {
+    BadBlockTestEnv {
         badblock_ram,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env
+    }
 }
 
 /// Call after config_badblock() to set context. Required for BadBlockTestEnv.
@@ -598,7 +583,7 @@ pub fn dir_entry_names(
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     loop {
         let n = lfs_dir_read(lfs, dir, info);
-        if n == Ok(0) {
+        if n == Ok(false) {
             break;
         }
         if let Err(err) = n {
@@ -649,7 +634,7 @@ pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
 
     let path = "hello";
     let data = b"Hello World!\0";
-    let file = &mut unsafe { core::mem::MaybeUninit::<LfsFile>::zeroed().assume_init() };
+    let file = &mut LfsFile::default();
     let err = lfs_file_open(lfs, file, path, OpenFlags::WRITE | OpenFlags::CREATE);
     if let Err(err) = err {
         let _ = lfs_unmount(lfs);
@@ -938,11 +923,10 @@ pub fn config_with_wear_leveling_behavior(
         block_count,
         block_cycles: -1,
         cache_size: block_size,
-        lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -950,17 +934,13 @@ pub fn config_with_wear_leveling_behavior(
         inline_max: 0,
     };
 
-    let mut env = WearLevelingEnv {
+    WearLevelingEnv {
         bd,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env
+    }
 }
 
 /// Build wear-leveling test environment with all parameters.
@@ -988,11 +968,10 @@ pub fn config_with_wear_leveling_full(
         block_count,
         block_cycles: -1,
         cache_size: block_size,
-        lookahead_size: block_size,
         compact_thresh: u32::MAX,
-        read_buffer: read_buf.as_ptr() as *mut core::ffi::c_void,
-        prog_buffer: prog_buf.as_ptr() as *mut core::ffi::c_void,
-        lookahead_buffer: lookahead_buf.as_ptr() as *mut core::ffi::c_void,
+        read_buffer: Some(NonNull::from_ref(&read_buf)),
+        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
+        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
         name_max: 255,
         file_max: 2_147_483_647,
         attr_max: 1022,
@@ -1000,17 +979,13 @@ pub fn config_with_wear_leveling_full(
         inline_max: 0,
     };
 
-    let mut env = WearLevelingEnv {
+    WearLevelingEnv {
         bd,
         config,
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
-    };
-    env.config.read_buffer = env._read_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.prog_buffer = env._prog_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env.config.lookahead_buffer = env._lookahead_buf.as_mut_ptr() as *mut core::ffi::c_void;
-    env
+    }
 }
 
 /// Call after config_with_wear_leveling() to set context. Required for WearLevelingEnv.

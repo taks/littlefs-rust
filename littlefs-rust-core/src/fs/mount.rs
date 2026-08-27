@@ -1,5 +1,7 @@
 //! Mount/unmount. Per lfs.c lfs_mount_, lfs_unmount_.
 
+use core::cmp;
+
 use zerocopy::IntoBytes;
 
 use crate::{borrow_unchecked::borrow_unchecked, error::Error};
@@ -221,7 +223,7 @@ pub fn lfs_mount_(
     use crate::lfs_type::lfs_type::{LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK};
     use crate::tag::{lfs_mktag, lfs_tag_isdelete, lfs_tag_isvalid};
     use crate::types::{LFS_BLOCK_NULL, LFS_DISK_VERSION_MAJOR, LFS_DISK_VERSION_MINOR};
-    use crate::util::{lfs_min, lfs_pair_isnull};
+    use crate::util::lfs_pair_isnull;
 
     lfs_init(lfs, cfg)?;
 
@@ -329,7 +331,7 @@ pub fn lfs_mount_(
                         break;
                     }
                     lfs.attr_max = superblock.attr_max;
-                    lfs.inline_max = lfs_min(lfs.inline_max, lfs.attr_max);
+                    lfs.inline_max = cmp::min(lfs.inline_max, lfs.attr_max);
                 }
 
                 if cfg.block_count != 0 && superblock.block_count != cfg.block_count {

@@ -1,7 +1,7 @@
 //! Shared storage and config builders for C ↔ Rust compat tests.
 
 use core::cell::UnsafeCell;
-use std::os::raw::c_void;
+use std::{os::raw::c_void, ptr::NonNull};
 
 use littlefs_rust_core::error::Error;
 
@@ -217,11 +217,11 @@ impl SharedStorage {
             block_count: self.geo.block_count,
             block_cycles: -1,
             cache_size: self.geo.cache_size,
-            lookahead_size: self.geo.lookahead_size,
+            // lookahead_size: self.geo.lookahead_size,
             compact_thresh: u32::MAX,
-            read_buffer: read_buf.as_mut_ptr() as *mut c_void,
-            prog_buffer: prog_buf.as_mut_ptr() as *mut c_void,
-            lookahead_buffer: lookahead_buf.as_mut_ptr() as *mut c_void,
+            read_buffer: Some(NonNull::from_mut(&mut read_buf)),
+            prog_buffer: Some(NonNull::from_mut(&mut prog_buf)),
+            lookahead_buffer: Some(NonNull::from_mut(&mut lookahead_buf)),
             name_max: 255,
             file_max: 2_147_483_647,
             attr_max: 1022,
@@ -272,9 +272,5 @@ pub fn prng_verify(buf: &[u8], seed: u32) {
 }
 
 pub fn check(err: i32) -> Result<(), i32> {
-    if err != 0 {
-        Err(err)
-    } else {
-        Ok(())
-    }
+    if err != 0 { Err(err) } else { Ok(()) }
 }
