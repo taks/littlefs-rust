@@ -1,34 +1,33 @@
 //! Error codes. Per lfs.h enum lfs_error.
 //! Negative values allow positive return values (e.g. bytes read).
-//!
 
 /// LittleFS operation error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     /// I/O error
-    Io = -5,
+    Io,
     /// filesystem corrupt
-    Corrupt = -84,
+    Corrupt,
     /// no such file or directory
-    NoEntry = -2,
+    NoEntry,
     /// file or directory already exists
-    Exists = -17,
+    Exists,
     /// not a directory
-    NotDir = -20,
+    NotDir,
     /// is a directory
-    IsDir = -21,
+    IsDir,
     /// directory not empty
-    NotEmpty = -39,
+    NotEmpty,
     /// invalid parameter
-    Invalid = -22,
+    Invalid,
     /// no space left on device
-    NoSpace = -28,
+    NoSpace,
     /// out of memory
-    NoMemory = -12,
+    NoMemory,
     /// no such attribute
-    NoAttribute = -61,
+    NoAttribute,
     /// name too long
-    NameTooLong = -36,
+    NameTooLong,
     FileTooBig,
 }
 
