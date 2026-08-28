@@ -1513,7 +1513,7 @@ pub fn lfs_file_truncate_(
                 &mut file.cache,
                 file.ctz.head,
                 file.ctz.size,
-                size.saturating_sub(1),
+                size - 1,
                 &mut file.block,
                 &mut off_zero,
             )?;
