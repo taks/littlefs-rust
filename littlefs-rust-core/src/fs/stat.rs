@@ -173,7 +173,7 @@ pub fn lfs_fs_size_(lfs: &mut super::lfs::Lfs) -> Result<lfs_size_t, Error> {
     lfs_fs_traverse_(
         lfs,
         &mut |_| {
-            size = size.saturating_add(1);
+            size = size + 1;
             Ok(())
         },
         false,

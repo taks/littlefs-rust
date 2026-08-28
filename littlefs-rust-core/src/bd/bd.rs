@@ -165,7 +165,7 @@ pub fn lfs_bd_read(
             if off >= pcache.off {
                 diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
                 debug_assert!(data.len() as u32 >= diff);
-                debug_assert!(pcache.buffer.len() as u32 >= diff - (off - pcache.off));
+                debug_assert!(pcache.buffer.len() as u32 >= diff + (off - pcache.off));
                 unsafe {
                     core::ptr::copy_nonoverlapping(
                         pcache
@@ -189,7 +189,7 @@ pub fn lfs_bd_read(
             if off >= rcache.off {
                 diff = cmp::min(diff, rcache.size - (off - rcache.off));
                 debug_assert!(data.len() as u32 >= diff);
-                debug_assert!(rcache.buffer.len() as u32 > diff - (off - rcache.off));
+                debug_assert!(rcache.buffer.len() as u32 >= diff + (off - rcache.off));
                 unsafe {
                     core::ptr::copy_nonoverlapping(
                         rcache
@@ -370,7 +370,7 @@ pub fn lfs_bd_crc(
             lfs,
             pcache,
             rcache,
-            hint.saturating_sub(i),
+            hint - i,
             block,
             off + i,
             &mut dat[0..diff],
@@ -596,7 +596,7 @@ pub fn lfs_bd_prog(
             #[cfg(feature = "log")]
             // Trace superblock magic region (offset 12-20 in block 0/1)
             if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
-                let magic_start = 12usize.saturating_sub(off as usize);
+                let magic_start = 12usize - (off as usize);
                 let magic_len = core::cmp::min(8, diff as usize - magic_start);
                 if magic_len > 0 {
                     crate::lfs_trace!(

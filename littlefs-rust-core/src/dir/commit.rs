@@ -148,16 +148,16 @@ pub fn lfs_dir_commitattr(
 
         if lfs_tag_isvalid(tag) {
             // TODO:
-            assert!(
-                buffer.len() >= dsize.saturating_sub(4) as usize,
+            debug_assert!(
+                buffer.len() >= (dsize - 4) as usize,
                 "buffer: {:?} dsize: {}",
                 buffer,
                 dsize
             );
-            lfs_dir_commitprog(lfs, commit, &buffer[..dsize.saturating_sub(4) as usize])?;
+            lfs_dir_commitprog(lfs, commit, &buffer[..(dsize - 4) as usize])?;
         } else {
             let disk = crate::tag::lfs_diskoff::ref_from_bytes(buffer).unwrap();
-            let data_size = dsize.saturating_sub(4);
+            let data_size = dsize - 4;
             for i in 0..data_size {
                 let mut dat: u8 = 0;
                 lfs_bd_read(
