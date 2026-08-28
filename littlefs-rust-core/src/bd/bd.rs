@@ -165,7 +165,7 @@ pub fn lfs_bd_read(
             if off >= pcache.off {
                 diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
                 debug_assert!(data.len() as u32 >= diff);
-                debug_assert!(pcache.buffer.len() as u32 >= diff - (off - pcache.off));
+                debug_assert!(pcache.buffer.len() as u32 >= diff + (off - pcache.off));
                 unsafe {
                     core::ptr::copy_nonoverlapping(
                         pcache
@@ -189,7 +189,7 @@ pub fn lfs_bd_read(
             if off >= rcache.off {
                 diff = cmp::min(diff, rcache.size - (off - rcache.off));
                 debug_assert!(data.len() as u32 >= diff);
-                debug_assert!(rcache.buffer.len() as u32 > diff - (off - rcache.off));
+                debug_assert!(rcache.buffer.len() as u32 >= diff + (off - rcache.off));
                 unsafe {
                     core::ptr::copy_nonoverlapping(
                         rcache
