@@ -139,7 +139,7 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         let prog_size = cfg.prog_size;
         let compact_thresh = cfg.compact_thresh;
 
-        if compact_thresh < block_size.saturating_sub(prog_size) {
+        if compact_thresh < block_size - prog_size {
             crate::lfs_trace!("lfs_fs_gc: compact loop start");
             let mut mdir = LfsMdir {
                 pair: [0, 0],
