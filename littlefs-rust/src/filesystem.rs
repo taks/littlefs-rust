@@ -116,11 +116,11 @@ impl<S: Storage> Allocation<S> {
             block_count: config.block_count,
             block_cycles: S::BLOCK_CYCLES as _,
             cache_size: S::CACHE_SIZE::U32,
-            lookahead_size: 8 * S::LOOKAHEAD_SIZE::U32,
+            // lookahead_size: 8 * S::LOOKAHEAD_SIZE::U32,
             compact_thresh: u32::MAX,
-            read_buffer: core::ptr::null_mut(),
-            prog_buffer: core::ptr::null_mut(),
-            lookahead_buffer: core::ptr::null_mut(),
+            read_buffer: None,
+            prog_buffer: None,
+            lookahead_buffer: None,
             name_max: config.name_max,
             file_max: config.file_max,
             attr_max: config.attr_max,
@@ -145,8 +145,12 @@ impl<'a, S: Storage> Filesystem<'a, S> {
             Some(NonNull::from_mut(alloc.cache.read.as_mut_slice()));
         alloc.config.get_mut().prog_buffer =
             Some(NonNull::from_mut(alloc.cache.write.as_mut_slice()));
-        alloc.config.get_mut().lookahead_buffer =
-            Some(NonNull::from_mut(alloc.cache.lookahead.as_mut_slice()));
+        alloc.config.get_mut().lookahead_buffer = Some(NonNull::from_mut(unsafe {
+            core::slice::from_raw_parts_mut(
+                alloc.cache.lookahead.as_mut_ptr() as *mut u8,
+                alloc.cache.lookahead.len() * 8,
+            )
+        }));
 
         Self {
             alloc: RefCell::new(alloc),
