@@ -19,6 +19,7 @@ log = { version = "0.4", optional = true }
 zerocopy = "0.8"
 zerocopy-derive = "0.8"
 bitflags = "2"
+defmt = { version = "1", optional = true }
 
 [dev-dependencies]
 env_logger = "0.11"
@@ -30,6 +31,8 @@ alloc = []
 # Enable for debugging: RUST_LOG=littlefs_rust=trace cargo test --features log ...
 std = []
 log = ["dep:log"]
+defmt = ["dep:defmt"]
+
 # LittleFS compile-time flags (match C -DLFS_*)
 readonly = []      # Omit all write operations
 no_malloc = []     # lfs_file_open disabled; use lfs_file_opencfg only
