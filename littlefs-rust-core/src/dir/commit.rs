@@ -984,7 +984,7 @@ pub fn lfs_dir_compact(
 
     dir.rev = dir.rev.wrapping_add(1);
 
-    if tired && !lfs_pair_cmp(&dir.pair, &superblock_pair) {
+    if tired && lfs_pair_cmp(&dir.pair, &superblock_pair) {
         relocated = true;
         lfs_cache_drop(lfs, unsafe { &mut *lfs.pcache.get() });
         let err = lfs_alloc(lfs, &mut dir.pair[1]);
@@ -1930,7 +1930,7 @@ fn relocatingcommit_fixmlist(
                 }
             }
             while d_ref.id >= d_ref.m.count && d_ref.m.split {
-                if !lfs_pair_cmp(&d_ref.m.tail, &lfs.root) {
+                if lfs_pair_cmp(&d_ref.m.tail, &lfs.root) {
                     d_ref.id -= d_ref.m.count;
                 }
                 let d_ref_m_tail = d_ref.m.tail;
