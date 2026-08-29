@@ -32,7 +32,8 @@ fn compact_thresh_u32(val: i32) -> u32 {
 /// Create breakfast dir, open 3 files in parallel, write SIZE bytes to each (optional GC),
 /// close, unmount, remount, read and verify.
 #[rstest]
-fn test_alloc_parallel(
+#[tokio::test]
+async fn test_alloc_parallel(
     #[values(false, true)] gc: bool,
     #[values(-1, 0, 256)] compact_thresh_val: i32,
     #[values(false, true)] infer_bc: bool,
