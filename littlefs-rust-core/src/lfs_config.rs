@@ -9,18 +9,18 @@ use crate::{error::Error, types::lfs_size_t};
 
 pub trait Storage {
     /// Read `buf.len()` bytes starting at `offset` within `block`.
-    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error>;
+    async fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error>;
 
     /// Write `data` starting at `offset` within `block`.
     ///
     /// The block must have been erased before writing.
-    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error>;
+    async fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error>;
 
     /// Erase `block`, resetting all bytes to the erased state (typically `0xFF`).
-    fn erase(&mut self, block: u32) -> Result<(), Error>;
+    async fn erase(&mut self, block: u32) -> Result<(), Error>;
 
     /// Flush pending writes. The default implementation is a no-op.
-    fn sync(&mut self) -> Result<(), Error> {
+    async fn sync(&mut self) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -28,8 +28,8 @@ pub trait Storage {
 /// Per lfs.h struct lfs_config.
 /// Layout matches C for potential FFI. Callbacks use Option to allow null.
 #[repr(C)]
-pub struct LfsConfig {
-    pub context: Option<NonNull<dyn Storage>>,
+pub struct LfsConfig<S> {
+    pub context: Option<NonNull<S>>,
     pub read_size: lfs_size_t,
     pub prog_size: lfs_size_t,
     pub block_size: lfs_size_t,

@@ -14,7 +14,7 @@ use super::lfs_lookahead::LfsLookahead;
 
 /// Per lfs.h typedef struct lfs
 #[repr(C)]
-pub struct Lfs {
+pub struct Lfs<S> {
     pub rcache: UnsafeCell<LfsCache>,
     pub pcache: UnsafeCell<LfsCache>,
     pub root: [lfs_block_t; 2],
@@ -24,7 +24,7 @@ pub struct Lfs {
     pub gdisk: LfsGstate,
     pub gdelta: RefCell<LfsGstate>,
     pub lookahead: LfsLookahead,
-    pub cfg: NonNull<LfsConfig>,
+    pub cfg: NonNull<LfsConfig<S>>,
     pub block_count: u32,
     pub name_max: u32,
     pub file_max: u32,

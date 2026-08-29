@@ -208,9 +208,9 @@ pub fn lfs_tortoise_detectcycles(
 ///     return err;
 /// }
 /// ```
-pub fn lfs_mount_(
+pub fn lfs_mount_<S>(
     lfs: &mut super::lfs::Lfs,
-    cfg: &crate::lfs_config::LfsConfig,
+    cfg: &crate::lfs_config::LfsConfig<S>,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_drop;
     use crate::dir::fetch::{lfs_dir_fetchmatch, lfs_dir_getgstate};
