@@ -197,9 +197,9 @@ pub fn lfs_format_(
 /// # Safety
 /// Caller must ensure `lfs` points to valid (e.g. zeroed) `Lfs`, `cfg` to valid `LfsConfig`,
 /// and `out` to valid `TraverseTestOut` for the duration of the call.
-pub unsafe fn test_traverse_format_attrs(
-    lfs: &mut super::lfs::Lfs,
-    cfg: &crate::lfs_config::LfsConfig,
+pub unsafe fn test_traverse_format_attrs<S>(
+    lfs: &mut super::lfs::Lfs<S>,
+    cfg: &crate::lfs_config::LfsConfig<S>,
     out: *mut crate::dir::traverse::TraverseTestOut,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
@@ -301,9 +301,9 @@ pub unsafe fn test_traverse_format_attrs(
 ///
 /// # Safety
 /// Same as `test_traverse_format_attrs`.
-pub unsafe fn test_traverse_filter_gets_superblock_after_push(
-    lfs: &mut super::lfs::Lfs,
-    cfg: &crate::lfs_config::LfsConfig,
+pub unsafe fn test_traverse_filter_gets_superblock_after_push<S>(
+    lfs: &mut super::lfs::Lfs<S>,
+    cfg: &crate::lfs_config::LfsConfig<S>,
     out: *mut crate::dir::traverse::TraverseTestOut,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;

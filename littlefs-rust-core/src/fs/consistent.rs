@@ -43,7 +43,7 @@ use crate::error::Error;
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_mkconsistent_(lfs: &mut Lfs) -> Result<(), Error> {
+pub fn lfs_fs_mkconsistent_<S>(lfs: &mut Lfs<S>) -> Result<(), Error> {
     use crate::dir::commit::lfs_dir_commit;
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_xor};
 
@@ -123,7 +123,7 @@ pub fn lfs_fs_mkconsistent_(lfs: &mut Lfs) -> Result<(), Error> {
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_fs_gc_<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_scan;
     use crate::dir::commit::lfs_dir_commit;
     use crate::util::lfs_pair_isnull;

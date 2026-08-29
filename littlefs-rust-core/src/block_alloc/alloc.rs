@@ -2,6 +2,7 @@
 
 use core::cell::UnsafeCell;
 
+use crate::Storage;
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::types::lfs_block_t;
@@ -17,7 +18,7 @@ use crate::types::lfs_block_t;
 ///
 /// # Safety
 /// `lfs` must point to a valid, initialized `Lfs` instance.
-pub fn lfs_alloc_ckpoint(lfs: &mut Lfs) {
+pub fn lfs_alloc_ckpoint<S>(lfs: &mut Lfs<S>) {
     lfs.lookahead.ckpoint = lfs.block_count;
 }
 
@@ -31,7 +32,7 @@ pub fn lfs_alloc_ckpoint(lfs: &mut Lfs) {
 ///     lfs_alloc_ckpoint(lfs);
 /// }
 /// ```
-pub fn lfs_alloc_drop(lfs: &mut Lfs) {
+pub fn lfs_alloc_drop<S>(lfs: &mut Lfs<S>) {
     lfs.lookahead.size = 0;
     lfs.lookahead.next = 0;
     lfs_alloc_ckpoint(lfs);
@@ -102,7 +103,7 @@ pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Erro
 /// }
 /// #endif
 /// ```
-pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
+pub async  fn lfs_alloc_scan<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Error> {
     use crate::fs::traverse::lfs_fs_traverse_;
     use crate::util::lfs_min;
 
@@ -129,7 +130,7 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
                 *lfs.get(),
                 &mut |block| lfs_alloc_lookahead(*lfs.get(), block),
                 true,
-            )
+            ).await
         };
         if err.is_err() {
             crate::lfs_trace!("alloc_scan: traverse err={:?}", err);
@@ -198,7 +199,7 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
 /// }
 /// #endif
 /// ```
-pub fn lfs_alloc(lfs: &mut Lfs, block: *mut lfs_block_t) -> Result<(), Error> {
+pub fn lfs_alloc<S>(lfs: &mut Lfs<S>, block: *mut lfs_block_t) -> Result<(), Error> {
     unsafe {
         let buf = lfs.lookahead.buffer.as_ref();
 

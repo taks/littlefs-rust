@@ -2,7 +2,7 @@
 
 use zerocopy::IntoBytes;
 
-use crate::{error::Error, lfs_type::OpenFlags};
+use crate::{Storage, error::Error, lfs_type::OpenFlags};
 //
 /// Per lfs.c lfs_fs_traverse_ (lines 4693-4794)
 ///
@@ -116,8 +116,8 @@ use crate::{error::Error, lfs_type::OpenFlags};
 /// includeorphans: when true, include directory struct blocks in the traversal.
 ///
 /// C: lfs.c:4693-4794
-pub fn lfs_fs_traverse_(
-    lfs: &mut super::lfs::Lfs,
+pub async fn lfs_fs_traverse_<S: Storage>(
+    lfs: &mut super::lfs::Lfs<S>,
     cb: &mut dyn FnMut(crate::types::lfs_block_t) -> Result<(), Error>,
     includeorphans: bool,
 ) -> Result<(), Error> {
@@ -216,7 +216,8 @@ pub fn lfs_fs_traverse_(
                     f_ref.ctz.head,
                     f_ref.ctz.size,
                     cb,
-                )?;
+                )
+                .await?;
             }
             if f_ref.flags.contains(OpenFlags::WRITING) && !f_ref.flags.contains(OpenFlags::INLINE)
             {
@@ -227,7 +228,8 @@ pub fn lfs_fs_traverse_(
                     f_ref.block,
                     f_ref.pos,
                     cb,
-                )?;
+                )
+                .await?;
             }
         }
         m = unsafe { (*m).next };

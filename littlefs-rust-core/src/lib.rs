@@ -221,7 +221,11 @@ pub fn lfs_file_seek<S>(
 
 /// Truncate the size of the file. Per lfs.h lfs_file_truncate (lfs.c:6471-6475).
 #[inline]
-pub fn lfs_file_truncate<S>(lfs: &mut Lfs<S>, file: &mut LfsFile, size: lfs_off_t) -> Result<(), Error> {
+pub fn lfs_file_truncate<S>(
+    lfs: &mut Lfs<S>,
+    file: &mut LfsFile,
+    size: lfs_off_t,
+) -> Result<(), Error> {
     crate::file::ops::lfs_file_truncate_(lfs, file, size)
 }
 
@@ -263,7 +267,11 @@ pub fn lfs_dir_close<S>(lfs: &mut Lfs<S>, dir: &mut LfsDir) -> Result<(), Error>
 
 /// Read an entry in the directory. Per lfs.h lfs_dir_read.
 #[inline]
-pub fn lfs_dir_read<S>(lfs: &mut Lfs<S>, dir: &mut LfsDir, info: &mut LfsInfo) -> Result<bool, Error> {
+pub fn lfs_dir_read<S>(
+    lfs: &mut Lfs<S>,
+    dir: &mut LfsDir,
+    info: &mut LfsInfo,
+) -> Result<bool, Error> {
     crate::dir::open::lfs_dir_read_(lfs, dir, info)
 }
 
@@ -302,8 +310,11 @@ pub type LfsTraverseCb = dyn FnMut(lfs_block_t) -> Result<(), Error>;
 
 /// Traverse through all blocks in use by the filesystem. Per lfs.h lfs_fs_traverse.
 #[inline]
-pub fn lfs_fs_traverse<S>(lfs: &mut Lfs<S>, cb: &mut LfsTraverseCb) -> Result<(), Error> {
-    crate::fs::traverse::lfs_fs_traverse_(lfs, cb, false)
+pub async fn lfs_fs_traverse<S: Storage>(
+    lfs: &mut Lfs<S>,
+    cb: &mut LfsTraverseCb,
+) -> Result<(), Error> {
+    crate::fs::traverse::lfs_fs_traverse_(lfs, cb, false).await
 }
 
 /// Attempt to make the filesystem consistent. Per lfs.h lfs_fs_mkconsistent (lfs.c:6479-6483).
@@ -337,7 +348,10 @@ pub fn lfs_fs_hasorphans<S>(lfs: &Lfs<S>) -> bool {
 }
 
 /// Grow (or shrink) the filesystem to a new size. Per lfs.h lfs_fs_grow (lfs.c:6511-6515).
-#[inline(never)]
-pub fn lfs_fs_grow<S>(lfs: &mut Lfs<S>, block_count: lfs_size_t) -> Result<(), Error> {
-    crate::fs::grow::lfs_fs_grow_(lfs, block_count)
+#[inline]
+pub async fn lfs_fs_grow<S: Storage>(
+    lfs: &mut Lfs<S>,
+    block_count: lfs_size_t,
+) -> Result<(), Error> {
+    crate::fs::grow::lfs_fs_grow_(lfs, block_count).await
 }

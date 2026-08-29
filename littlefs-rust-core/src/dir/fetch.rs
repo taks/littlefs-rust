@@ -2,6 +2,7 @@
 
 use zerocopy::IntoBytes;
 
+use crate::Storage;
 use crate::bd::bd::{lfs_bd_crc, lfs_bd_read};
 use crate::crc::lfs_crc;
 use crate::dir::LfsFcrc;
@@ -311,14 +312,14 @@ use core::{cmp, mem};
 ///
 /// ```
 #[allow(clippy::type_complexity)]
-pub fn lfs_dir_fetchmatch(
-    lfs: &mut crate::fs::Lfs,
+pub async fn lfs_dir_fetchmatch<S: Storage>(
+    lfs: &mut crate::fs::Lfs<S>,
     dir: &mut LfsMdir,
     pair: [lfs_block_t; 2],
     fmask: lfs_tag_t,
     ftag: lfs_tag_t,
     id: &mut Option<&mut u16>,
-    cb: Option<&dyn Fn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
+    cb: Option<&impl AsyncFn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
 ) -> Result<lfs_tag_t, Error> {
     let cfg = unsafe { lfs.cfg.as_ref() };
 
@@ -344,7 +345,7 @@ pub fn lfs_dir_fetchmatch(
             pair[i],
             0,
             &mut rev_buf,
-        );
+        ).await;
         revs[i] = u32::from_le_bytes(rev_buf);
         if let Err(err) = err
             && err != Error::Corrupt
@@ -391,7 +392,7 @@ pub fn lfs_dir_fetchmatch(
                 dir.pair[0],
                 off,
                 &mut tag_buf,
-            );
+            ).await;
             if let Err(err) = err {
                 if err == Error::Corrupt {
                     break;
@@ -422,7 +423,7 @@ pub fn lfs_dir_fetchmatch(
                     dir.pair[0],
                     off + 4,
                     &mut dcrc_buf,
-                );
+                ).await;
                 if let Err(err) = err {
                     if err == Error::Corrupt {
                         break;
@@ -462,7 +463,7 @@ pub fn lfs_dir_fetchmatch(
                 off + 4,
                 entry_size,
                 &mut crc_val,
-            );
+            ).await;
             if let Err(err) = err {
                 if err == Error::Corrupt {
                     break;
@@ -502,7 +503,7 @@ pub fn lfs_dir_fetchmatch(
                     dir.pair[0],
                     off + 4,
                     &mut tail_buf,
-                );
+                ).await;
                 if let Err(err) = err {
                     if err == Error::Corrupt {
                         break;
@@ -540,7 +541,7 @@ pub fn lfs_dir_fetchmatch(
                     block: dir.pair[0],
                     off: off + 4,
                 };
-                let res = match cb(tag, &diskoff) {
+                let res = match cb(tag, &diskoff).await {
                     Ok(res) => res,
                     Err(err) => {
                         if err == Error::Corrupt {
@@ -582,7 +583,7 @@ pub fn lfs_dir_fetchmatch(
                 dir.off,
                 fcrc.size,
                 &mut fcrc_,
-            );
+            ).await;
             if let Err(err) = err
                 && err != Error::Corrupt
             {

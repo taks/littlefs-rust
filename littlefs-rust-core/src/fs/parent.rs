@@ -2,7 +2,7 @@
 
 use zerocopy::IntoBytes;
 
-use crate::{error::Error, lfs_pass_err};
+use crate::{Storage, error::Error, lfs_pass_err};
 
 /// Per lfs.c lfs_fs_pred (lines 4796-4833)
 ///
@@ -39,8 +39,8 @@ use crate::{error::Error, lfs_pass_err};
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_pred(
-    lfs: &mut crate::fs::Lfs,
+pub fn lfs_fs_pred<S>(
+    lfs: &mut crate::fs::Lfs<S>,
     pair: &[crate::types::lfs_block_t; 2],
     pdir: &mut crate::dir::LfsMdir,
 ) -> Result<(), Error> {
@@ -85,8 +85,8 @@ pub fn lfs_fs_pred(
 
 /// C: lfs.c:4835-4853
 #[repr(C)]
-pub struct LfsFsParentMatch {
-    pub lfs: *mut crate::fs::Lfs,
+pub struct LfsFsParentMatch<S> {
+    pub lfs: *mut crate::fs::Lfs<S>,
     pub pair: [crate::types::lfs_block_t; 2],
 }
 
@@ -106,8 +106,8 @@ pub struct LfsFsParentMatch {
 ///     return (lfs_pair_cmp(child, find->pair) == 0) ? LFS_CMP_EQ : LFS_CMP_LT;
 /// }
 /// ```
-pub fn lfs_fs_parent_match(
-    find: &LfsFsParentMatch,
+pub async fn lfs_fs_parent_match<S: Storage>(
+    find: &LfsFsParentMatch<S>,
     disk: &crate::tag::lfs_diskoff,
 ) -> Result<core::cmp::Ordering, Error> {
     use crate::bd::bd::lfs_bd_read;
@@ -123,7 +123,7 @@ pub fn lfs_fs_parent_match(
         disk.block,
         disk.off,
         child.as_mut_bytes(),
-    )?;
+    ).await?;
 
     lfs_pair_fromle32(&mut child);
     if lfs_pair_cmp(&child, &find.pair) == 0 {

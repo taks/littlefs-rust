@@ -32,7 +32,7 @@ pub struct Lfs<S> {
     pub inline_max: u32,
 }
 
-impl Default for Lfs {
+impl<S> Default for Lfs<S> {
     fn default() -> Self {
         Self {
             rcache: Default::default(),
@@ -54,7 +54,7 @@ impl Default for Lfs {
     }
 }
 
-impl Debug for Lfs {
+impl<S> Debug for Lfs<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut s = f.debug_struct("Lfs");
         unsafe {

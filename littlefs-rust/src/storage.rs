@@ -24,7 +24,7 @@ pub trait Storage {
     /// Value zero is invalid, must be positive or -1.
     const BLOCK_CYCLES: isize = -1;
 
-        /// Read `buf.len()` bytes starting at `offset` within `block`.
+    /// Read `buf.len()` bytes starting at `offset` within `block`.
     fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error>;
 
     /// Write `data` starting at `offset` within `block`.
@@ -45,11 +45,21 @@ pub trait Storage {
 pub(crate) struct SS<S: Storage>(pub S);
 
 impl<'a, S: Storage> littlefs_rust_core::Storage for SS<S> {
-    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), littlefs_rust_core::error::Error> {
+    fn read(
+        &mut self,
+        block: u32,
+        offset: u32,
+        buf: &mut [u8],
+    ) -> Result<(), littlefs_rust_core::error::Error> {
         self.0.read(block, offset, buf)
     }
 
-    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), littlefs_rust_core::error::Error> {
+    fn write(
+        &mut self,
+        block: u32,
+        offset: u32,
+        data: &[u8],
+    ) -> Result<(), littlefs_rust_core::error::Error> {
         self.0.write(block, offset, data)
     }
 

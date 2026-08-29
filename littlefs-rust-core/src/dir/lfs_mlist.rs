@@ -69,7 +69,7 @@ pub fn lfs_mlist_isopen(head: *mut LfsMlist, node: *const LfsMlist) -> bool {
 ///     }
 /// }
 /// ```
-pub fn lfs_mlist_remove(lfs: &mut crate::fs::Lfs, mlist: &mut LfsMlist) {
+pub fn lfs_mlist_remove<S>(lfs: &mut crate::fs::Lfs<S>, mlist: &mut LfsMlist) {
     unsafe {
         let mut p = &mut lfs.mlist;
         while !(*p).is_null() {
@@ -91,7 +91,7 @@ pub fn lfs_mlist_remove(lfs: &mut crate::fs::Lfs, mlist: &mut LfsMlist) {
 ///     lfs->mlist = mlist;
 /// }
 /// ```
-pub fn lfs_mlist_append(lfs: &mut crate::fs::Lfs, mlist: &mut LfsMlist) {
+pub fn lfs_mlist_append<S>(lfs: &mut crate::fs::Lfs<S>, mlist: &mut LfsMlist) {
     let head = lfs.mlist;
     mlist.next = head;
     lfs.mlist = mlist;

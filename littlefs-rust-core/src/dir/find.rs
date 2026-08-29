@@ -4,6 +4,7 @@ use core::cmp;
 
 use zerocopy::IntoBytes;
 
+use crate::Storage;
 use crate::bd::bd::lfs_bd_cmp;
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
@@ -18,8 +19,8 @@ use crate::util::{lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 
 /// Per lfs.c struct lfs_dir_find_match (lines 1447-1475)
 #[repr(C)]
-pub struct LfsDirFindMatch<'a> {
-    pub lfs: *mut Lfs,
+pub struct LfsDirFindMatch<'a, S> {
+    pub lfs: *mut Lfs<S>,
     pub name: &'a [u8],
     pub size: lfs_size_t,
 }
@@ -59,8 +60,8 @@ pub struct LfsDirFindMatch<'a> {
 /// }
 ///
 /// ```
-pub fn lfs_dir_find_match(
-    name: &LfsDirFindMatch,
+pub async  fn lfs_dir_find_match<S: Storage>(
+    name: &LfsDirFindMatch<'_, S>,
     tag: lfs_tag_t,
     disk: &lfs_diskoff,
 ) -> Result<cmp::Ordering, Error> {
@@ -75,7 +76,7 @@ pub fn lfs_dir_find_match(
         disk.block,
         disk.off,
         &name.name[..diff],
-    );
+    ).await;
     if res != Ok(core::cmp::Ordering::Equal) {
         return res;
     }
@@ -202,8 +203,8 @@ pub fn lfs_dir_find_match(
 ///     }
 /// }
 /// ```
-pub fn lfs_dir_find(
-    lfs: &mut Lfs,
+pub async  fn lfs_dir_find<S: Storage>(
+    lfs: &mut Lfs<S>,
     dir: &mut LfsMdir,
     path: &mut &str,
     id: &mut Option<&mut u16>,
@@ -309,7 +310,7 @@ pub fn lfs_dir_find(
                 lfs_mktag(LFS_TYPE_NAME, 0, namelen as u32),
                 id,
                 Some(&|tag, disk| lfs_dir_find_match(&match_data, tag, disk)),
-            )?;
+            ).await?;
 
             if tag != 0 {
                 break;

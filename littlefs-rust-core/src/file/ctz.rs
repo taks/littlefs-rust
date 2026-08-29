@@ -2,9 +2,9 @@
 
 use zerocopy::IntoBytes;
 
-use crate::Lfs;
 use crate::error::Error;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
+use crate::{Lfs, Storage};
 
 /// Per lfs.c lfs_ctz_index (lines 2873-2884)
 ///
@@ -23,7 +23,7 @@ use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
 ///     return i;
 /// }
 /// ```
-pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: &mut lfs_off_t) -> i32 {
+pub fn lfs_ctz_index<S>(lfs: &crate::fs::Lfs<S>, off: &mut lfs_off_t) -> i32 {
     use crate::util::lfs_popc;
 
     let size = *off;
@@ -79,8 +79,8 @@ pub fn lfs_ctz_index(lfs: &crate::fs::Lfs, off: &mut lfs_off_t) -> i32 {
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_ctz_find(
-    lfs: &Lfs,
+pub fn lfs_ctz_find<S: Storage>(
+    lfs: &Lfs<S>,
     pcache: Option<&crate::bd::LfsCache>,
     rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
@@ -122,7 +122,7 @@ pub fn lfs_ctz_find(
             head_val,
             4 * skip,
             head_buf.as_mut_bytes(),
-        )?;
+        ).await?;
 
         head_val = u32::from_le(head_buf);
 
@@ -183,8 +183,8 @@ pub fn lfs_ctz_find(
 /// }
 /// ```
 #[allow(clippy::type_complexity)]
-pub fn lfs_ctz_traverse(
-    lfs: &crate::fs::Lfs,
+pub async fn lfs_ctz_traverse<S: Storage>(
+    lfs: &crate::fs::Lfs<S>,
     pcache: Option<&crate::bd::LfsCache>,
     rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
@@ -220,7 +220,8 @@ pub fn lfs_ctz_traverse(
             current_head,
             0,
             heads.as_mut_bytes(),
-        )?;
+        )
+        .await?;
 
         heads[0] = u32::from_le(heads[0]);
         heads[1] = u32::from_le(heads[1]);

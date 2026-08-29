@@ -15,7 +15,7 @@ use crate::{lfs_debug, lfs_pass_err};
 ///             | (uint32_t)needssuperblock << 9;
 /// }
 /// ```
-pub fn lfs_fs_prepsuperblock(lfs: &mut super::lfs::Lfs, needssuperblock: bool) {
+pub fn lfs_fs_prepsuperblock<S>(lfs: &mut super::lfs::Lfs<S>, needssuperblock: bool) {
     use crate::tag::lfs_mktag;
     lfs.gstate.tag = (lfs.gstate.tag & !lfs_mktag(0, 0, 0x200)) | ((needssuperblock as u32) << 9);
 }
@@ -24,7 +24,7 @@ pub fn lfs_fs_prepsuperblock(lfs: &mut super::lfs::Lfs, needssuperblock: bool) {
 /// Assertions ensure we don't overflow the 9-bit orphan count.
 ///
 /// C: lfs.c:4894-4904
-pub fn lfs_fs_preporphans(lfs: &mut super::lfs::Lfs, orphans: i8) -> Result<(), Error> {
+pub fn lfs_fs_preporphans<S>(lfs: &mut super::lfs::Lfs<S>, orphans: i8) -> Result<(), Error> {
     use crate::lfs_gstate::lfs_gstate_hasorphans;
     use crate::tag::{lfs_mktag, lfs_tag_size};
 
@@ -40,7 +40,7 @@ pub fn lfs_fs_preporphans(lfs: &mut super::lfs::Lfs, orphans: i8) -> Result<(), 
 /// Translation docs: Record a pending move (or clear it when id=0x3ff) in gstate.
 ///
 /// C: lfs.c:4906-4914
-pub fn lfs_fs_prepmove(lfs: &mut super::lfs::Lfs, id: u16, pair: Option<&[lfs_block_t; 2]>) {
+pub fn lfs_fs_prepmove<S>(lfs: &mut super::lfs::Lfs<S>, id: u16, pair: Option<&[lfs_block_t; 2]>) {
     use crate::lfs_type::lfs_type::LFS_TYPE_DELETE;
     use crate::tag::lfs_mktag;
 

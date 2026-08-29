@@ -87,7 +87,9 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
 /// `inner` is at its final address (i.e., inside the `RefCell`).
 fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
     inner.config.context = unsafe {
-        core::mem::transmute(&mut inner.storage as *mut SS<S> as *mut dyn littlefs_rust_core::Storage)
+        core::mem::transmute(
+            &mut inner.storage as *mut SS<S> as *mut dyn littlefs_rust_core::Storage,
+        )
     };
     inner.config.read_buffer = Some(NonNull::from_mut(&mut inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_mut(&mut inner._prog_buf));

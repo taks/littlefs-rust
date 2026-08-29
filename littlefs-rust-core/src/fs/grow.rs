@@ -2,6 +2,7 @@
 
 use zerocopy::IntoBytes;
 
+use crate::Storage;
 use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
@@ -79,7 +80,10 @@ use crate::types::lfs_size_t;
 /// }
 /// ```
 ///
-pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Result<(), Error> {
+pub async fn lfs_fs_grow_<S: Storage>(
+    lfs: &mut super::lfs::Lfs<S>,
+    block_count: lfs_size_t,
+) -> Result<(), Error> {
     if block_count == lfs.block_count {
         return Ok(());
     }
@@ -96,7 +100,8 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
                 Ok(())
             },
             true,
-        )?;
+        )
+        .await?;
     }
 
     lfs.block_count = block_count;
