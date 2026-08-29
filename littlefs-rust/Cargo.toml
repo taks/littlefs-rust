@@ -29,6 +29,6 @@ harness = false
 [features]
 default = ["alloc"]
 alloc = ["littlefs-rust-core/alloc"]
-std = ["alloc"]
+std = ["littlefs-rust-core/std", "alloc"]
 log = ["littlefs-rust-core/log"]
 defmt = ["littlefs-rust-core/defmt"]

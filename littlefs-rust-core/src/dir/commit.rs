@@ -371,7 +371,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             // of the eperturb, it should still be in our cache
             let mut fcrc = LfsFcrc {
                 size: cfg.prog_size,
-                crc: 0xffffffff,
+                crc: 0xffff_ffff,
             };
 
             let ret = lfs_bd_crc(
