@@ -248,7 +248,6 @@ pub fn lfs_mount_(
         let find_match = LfsDirFindMatch {
             lfs: lfs as *mut _,
             name: magic,
-            size: 8,
         };
 
         let mut err_inner = Ok(());

@@ -21,7 +21,6 @@ use crate::util::{lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 pub struct LfsDirFindMatch<'a> {
     pub lfs: *mut Lfs,
     pub name: &'a [u8],
-    pub size: lfs_size_t,
 }
 
 /// Per lfs.c lfs_dir_find_match (and struct lfs_dir_find_match) (lines 1447-1475)
@@ -66,7 +65,7 @@ pub fn lfs_dir_find_match(
 ) -> Result<cmp::Ordering, Error> {
     let lfs = unsafe { &mut *name.lfs };
 
-    let diff = cmp::min(name.size, lfs_tag_size(tag)) as usize;
+    let diff = cmp::min(name.name.len(), lfs_tag_size(tag) as usize);
     let res = lfs_bd_cmp(
         lfs,
         None,
@@ -79,8 +78,8 @@ pub fn lfs_dir_find_match(
     if res != Ok(core::cmp::Ordering::Equal) {
         return res;
     }
-    if name.size != lfs_tag_size(tag) {
-        return if name.size < lfs_tag_size(tag) {
+    if name.name.len() as u32 != lfs_tag_size(tag) {
+        return if (name.name.len() as u32) < lfs_tag_size(tag) {
             Ok(core::cmp::Ordering::Less)
         } else {
             Ok(core::cmp::Ordering::Greater)
@@ -298,8 +297,7 @@ pub fn lfs_dir_find(
         loop {
             let match_data = LfsDirFindMatch {
                 lfs,
-                name,
-                size: namelen as u32,
+                name: &name[..namelen],
             };
             tag = lfs_dir_fetchmatch(
                 lfs,
