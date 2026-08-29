@@ -114,70 +114,61 @@ pub fn lfs_dir_commitattr(
     use crate::bd::bd::lfs_bd_read;
     use crate::tag::{lfs_tag_dsize, lfs_tag_isvalid};
 
-    unsafe {
-        let dsize = lfs_tag_dsize(tag);
+    let dsize = lfs_tag_dsize(tag);
 
-        if commit.off + dsize > commit.end {
-            crate::lfs_trace!(
-                "lfs_dir_commitattr NOSPC: off+dsize>end off={} dsize={} end={} block={}",
-                commit.off,
-                dsize,
-                commit.end,
-                commit.block
-            );
-            return crate::lfs_err!(Err(Error::NoSpace));
-        }
-
-        let ntag = ((tag & 0x7fff_ffff) ^ commit.ptag).to_be();
-        lfs_dir_commitprog(lfs, commit, ntag.as_bytes())?;
-
-        if (crate::tag::lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK {
-            crate::lfs_trace!(
-                "commitattr SUPERBLOCK: dsize={} buffer={:p} commit.block={} commit.off={}",
-                dsize,
-                buffer,
-                commit.block,
-                commit.off
-            );
-            if !buffer.is_empty() && dsize >= 8 {
-                crate::lfs_trace!(
-                    "commitattr SUPERBLOCK data (first 8): {:?}",
-                    core::slice::from_raw_parts(&buffer, 8)
-                );
-            }
-        }
-
-        if lfs_tag_isvalid(tag) {
-            // TODO:
-            debug_assert!(
-                buffer.len() >= (dsize - 4) as usize,
-                "buffer: {:?} dsize: {}",
-                buffer,
-                dsize
-            );
-            lfs_dir_commitprog(lfs, commit, &buffer[..(dsize - 4) as usize])?;
-        } else {
-            let disk = crate::tag::lfs_diskoff::ref_from_bytes(buffer).unwrap();
-            let data_size = dsize - 4;
-            for i in 0..data_size {
-                let mut dat: u8 = 0;
-                lfs_bd_read(
-                    lfs,
-                    None,
-                    &mut *lfs.rcache.get(),
-                    data_size - i,
-                    disk.block,
-                    disk.off + i,
-                    dat.as_mut_bytes(),
-                )?;
-
-                lfs_dir_commitprog(lfs, commit, dat.as_bytes())?;
-            }
-        }
-
-        commit.ptag = tag & 0x7fff_ffff;
-        Ok(())
+    if commit.off + dsize > commit.end {
+        crate::lfs_trace!(
+            "lfs_dir_commitattr NOSPC: off+dsize>end off={} dsize={} end={} block={}",
+            commit.off,
+            dsize,
+            commit.end,
+            commit.block
+        );
+        return crate::lfs_err!(Err(Error::NoSpace));
     }
+
+    let ntag = ((tag & 0x7fff_ffff) ^ commit.ptag).to_be();
+    lfs_dir_commitprog(lfs, commit, ntag.as_bytes())?;
+
+    if (crate::tag::lfs_tag_type1(tag)) == crate::lfs_type::lfs_type::LFS_TYPE_SUPERBLOCK {
+        crate::lfs_trace!(
+            "commitattr SUPERBLOCK: dsize={} buffer={:p} commit.block={} commit.off={}",
+            dsize,
+            buffer,
+            commit.block,
+            commit.off
+        );
+        if !buffer.is_empty() && dsize >= 8 {
+            crate::lfs_trace!(
+                "commitattr SUPERBLOCK data (first 8): {:?}",
+                core::slice::from_raw_parts(&buffer, 8)
+            );
+        }
+    }
+
+    if lfs_tag_isvalid(tag) {
+        lfs_dir_commitprog(lfs, commit, &buffer[..(dsize - 4) as usize])?;
+    } else {
+        let disk = crate::tag::lfs_diskoff::ref_from_bytes(buffer).unwrap();
+        let data_size = dsize - 4;
+        for i in 0..data_size {
+            let mut dat: u8 = 0;
+            lfs_bd_read(
+                lfs,
+                None,
+                unsafe { &mut *lfs.rcache.get() },
+                data_size - i,
+                disk.block,
+                disk.off + i,
+                dat.as_mut_bytes(),
+            )?;
+
+            lfs_dir_commitprog(lfs, commit, dat.as_bytes())?;
+        }
+    }
+
+    commit.ptag = tag & 0x7fff_ffff;
+    Ok(())
 }
 
 /// Per lfs.c lfs_dir_commitcrc (lines 1669-1812)

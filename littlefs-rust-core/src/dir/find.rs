@@ -13,7 +13,7 @@ use crate::error::Error;
 use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::{LFS_TYPE_GLOBALS, LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
 use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
-use crate::types::{lfs_size_t, lfs_tag_t};
+use crate::types::lfs_tag_t;
 use crate::util::{lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 
 /// Per lfs.c struct lfs_dir_find_match (lines 1447-1475)
@@ -78,14 +78,8 @@ pub fn lfs_dir_find_match(
     if res != Ok(core::cmp::Ordering::Equal) {
         return res;
     }
-    if name.name.len() as u32 != lfs_tag_size(tag) {
-        return if (name.name.len() as u32) < lfs_tag_size(tag) {
-            Ok(core::cmp::Ordering::Less)
-        } else {
-            Ok(core::cmp::Ordering::Greater)
-        };
-    }
-    Ok(core::cmp::Ordering::Equal)
+
+    Ok((name.name.len() as u32).cmp(&lfs_tag_size(tag)))
 }
 
 /// Per lfs.c lfs_dir_find (lines 1483-1590)

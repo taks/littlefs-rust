@@ -493,7 +493,7 @@ pub fn lfs_dir_fetchmatch(
             } else if (lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
                 tempsplit = (lfs_tag_chunk(tag) & 1) != 0;
 
-                let mut tail_buf = [0u8; 8];
+                let mut tail_buf = [0u32; 2];
                 let err = lfs_bd_read(
                     lfs,
                     None,
@@ -501,7 +501,7 @@ pub fn lfs_dir_fetchmatch(
                     cfg.block_size,
                     dir.pair[0],
                     off + 4,
-                    &mut tail_buf,
+                    tail_buf.as_mut_bytes(),
                 );
                 if let Err(err) = err {
                     if err == Error::Corrupt {
@@ -509,8 +509,7 @@ pub fn lfs_dir_fetchmatch(
                     }
                     return Err(err);
                 }
-                temptail[0] = u32::from_le_bytes(tail_buf[0..4].try_into().unwrap());
-                temptail[1] = u32::from_le_bytes(tail_buf[4..8].try_into().unwrap());
+                temptail = tail_buf;
             } else if lfs_tag_type3(tag) == LFS_TYPE_FCRC {
                 let mut fcrc_buf: LfsFcrc = unsafe { core::mem::zeroed() };
                 let err = lfs_bd_read(
