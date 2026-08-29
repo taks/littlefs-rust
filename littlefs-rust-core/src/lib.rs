@@ -3,7 +3,7 @@
 //! Logic and architecture kept close to reference/lfs.c. Uses `unsafe` where needed.
 //! Safe wrapper API deferred until core passes all tests.
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![allow(clippy::too_many_arguments)]
 
 #[cfg(feature = "alloc")]

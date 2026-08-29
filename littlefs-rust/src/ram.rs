@@ -21,7 +21,7 @@ impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> RamStorage<BLOCK_SIZE, BLOCK
             .checked_mul(BLOCK_COUNT as usize)
             .expect("block_size * block_count overflow");
         Self {
-            data: vec![0xFFu8; size],
+            data: vec![0x00u8; size],
         }
     }
 
@@ -62,6 +62,13 @@ impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> Storage
     }
 
     fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
+        println!("{} {} {}", block, offset, data.len());
+        // println!("{}", data.len());
+        for x in data {
+            print!("{:02X?} ", x);
+        }
+        println!("");
+
         let start = self.offset(block, offset);
         let end = start + data.len();
         if end > self.data.len() {
@@ -77,7 +84,7 @@ impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> Storage
         if end > self.data.len() {
             return Err(Error::Io);
         }
-        self.data[start..end].fill(0xFF);
+        self.data[start..end].fill(0x00);
         Ok(())
     }
 }

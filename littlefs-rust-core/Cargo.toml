@@ -26,7 +26,7 @@ env_logger = "0.11"
 rstest = "0.26"
 
 [features]
-default = ["alloc"]
+default = ["std"]
 alloc = []
 # Enable for debugging: RUST_LOG=littlefs_rust=trace cargo test --features log ...
 std = []

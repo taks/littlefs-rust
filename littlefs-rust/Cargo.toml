@@ -27,7 +27,7 @@ name = "filesystem"
 harness = false
 
 [features]
-default = ["alloc"]
+default = ["std"]
 alloc = ["littlefs-rust-core/alloc"]
 std = ["littlefs-rust-core/std", "alloc"]
 log = ["littlefs-rust-core/log"]

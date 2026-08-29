@@ -6,7 +6,7 @@ fn main() {
     // RamStorage is an in-memory block device — useful for tests and examples.
     // 128 blocks of 512 bytes each = 64 KB.
     const BLOCK_SIZE: u32 = 512;
-    const BLOCK_COUNT: u32 = 128;
+    const BLOCK_COUNT: u32 = 256;
     let mut storage = RamStorage::<BLOCK_SIZE, BLOCK_COUNT>::new();
     let config = Config::new(BLOCK_SIZE, BLOCK_COUNT);
 
