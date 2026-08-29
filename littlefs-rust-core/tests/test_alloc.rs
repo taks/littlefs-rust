@@ -620,7 +620,7 @@ fn test_alloc_two_files_ctz() {
     init_logger();
     let mut env = default_config(48);
     init_context(&mut env);
-    let block_size = env.config.block_size;
+    let block_size = env.config.block_size as usize;
 
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, &env.config));
@@ -645,7 +645,7 @@ fn test_alloc_two_files_ctz() {
     }
     assert_ok!(lfs_file_close(lfs, file));
 
-    filesize = filesize - (3 * block_size as usize);
+    filesize -= 3 * block_size;
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -714,7 +714,7 @@ fn test_alloc_bad_blocks_body() {
     let mut env = config_badblock(128);
     init_badblock_context(&mut env);
 
-    let block_size = env.config.block_size;
+    let block_size = env.config.block_size as usize;
 
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, &env.config));
@@ -747,7 +747,7 @@ fn test_alloc_bad_blocks_body() {
     }
     assert_ok!(lfs_file_close(lfs, file));
 
-    filesize = filesize - (3 * block_size as usize);
+    filesize -= 3 * block_size;
 
     assert_ok!(lfs_file_open(
         lfs,
