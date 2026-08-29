@@ -379,9 +379,9 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
         commit.crc = lfs_crc(commit.crc, xor_tag.as_bytes());
         let crc_le = commit.crc.to_le();
 
-        let mut ccrc: [u8; 8] = [0; 8];
-        ccrc[..4].copy_from_slice(xor_tag.as_bytes());
-        ccrc[4..].copy_from_slice(crc_le.as_bytes());
+        let mut ccrc: [u32; 2] = [0; 2];
+        ccrc[0] = xor_tag;
+        ccrc[1] = crc_le;
 
         lfs_bd_prog(
             lfs,
@@ -390,11 +390,11 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             false,
             commit.block,
             commit.off,
-            &ccrc,
+            ccrc.as_bytes(),
         )?;
 
         if off1 == 0 {
-            off1 = commit.off + 4;
+            off1 = commit.off + core::mem::size_of::<lfs_tag_t>() as u32;
             crc1 = commit.crc;
         }
 
@@ -413,7 +413,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
         lfs,
         None,
         unsafe { &mut *lfs.rcache.get() },
-        off1 + 4,
+        off1 + core::mem::size_of::<u32>() as u32,
         commit.block,
         commit.begin,
         off1 - commit.begin,
