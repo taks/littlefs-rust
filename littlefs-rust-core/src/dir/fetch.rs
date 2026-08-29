@@ -703,7 +703,7 @@ pub fn lfs_dir_getgstate(
         crate::tag::lfs_mktag(
             crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
             0,
-            core::mem::size_of::<LfsGstate>() as u32,
+            core::mem::size_of::<LfsGstate>(),
         ),
         temp.as_mut_bytes(),
     );
@@ -772,7 +772,7 @@ pub fn lfs_dir_getinfo(
     }
 
     // C: lfs.c:1422-1426
-    let name_max = lfs.name_max;
+    let name_max = lfs.name_max as usize;
     let tag = lfs_dir_get(
         lfs,
         dir,
@@ -789,7 +789,7 @@ pub fn lfs_dir_getinfo(
         lfs,
         dir,
         lfs_mktag(0x700, 0x3ff, 0),
-        lfs_mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>() as u32),
+        lfs_mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>()),
         ctz.as_mut_bytes(),
     )?;
 

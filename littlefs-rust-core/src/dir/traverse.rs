@@ -894,7 +894,7 @@ pub fn lfs_dir_traverse(
                                 crate::lfs_type::lfs_type::LFS_TYPE_USERATTR
                                     .wrapping_add(u16::from(a.type_)),
                                 crate::tag::lfs_tag_id(tag) as u32 + diff as u32,
-                                a.buffer.len() as u32,
+                                a.buffer.len(),
                             );
                             res = dispatch_tag(cb, data, userattr_tag, a.buffer, diff)?;
                             if res != 0 {

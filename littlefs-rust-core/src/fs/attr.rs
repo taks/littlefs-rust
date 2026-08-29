@@ -77,7 +77,7 @@ pub fn lfs_getattr_(
         id = 0;
         lfs_dir_fetch(lfs, &mut cwd, lfs.root)?;
     }
-    let size = cmp::min(buffer.len() as u32, lfs.attr_max);
+    let size = cmp::min(buffer.len(), lfs.attr_max as usize);
     let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size);
     let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer).map_err(|err| {
         if err == Error::NoEntry {
@@ -124,7 +124,7 @@ pub fn lfs_commitattr(
     path: &str,
     r#type: u8,
     buffer: &[u8],
-    size: lfs_size_t,
+    size: usize,
 ) -> Result<(), Error> {
     let mut cwd = LfsMdir {
         pair: [0, 0],
@@ -148,7 +148,7 @@ pub fn lfs_commitattr(
     }
 
     let attrs = [lfs_mattr {
-        tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size),
+        tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size as usize),
         buffer,
     }];
     lfs_dir_commit(lfs, &mut cwd, &attrs)
@@ -175,9 +175,9 @@ pub fn lfs_setattr_(
     path: &str,
     r#type: u8,
     buffer: &[u8],
-    size: lfs_size_t,
+    size: usize,
 ) -> Result<(), Error> {
-    if size > lfs.attr_max {
+    if size > lfs.attr_max as usize {
         return crate::lfs_err!(Err(Error::NoSpace));
     }
     lfs_commitattr(lfs, path, r#type, buffer, size)

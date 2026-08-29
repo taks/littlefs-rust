@@ -142,7 +142,7 @@ pub fn lfs_setattr(
     path: &str,
     r#type: u8,
     buffer: &[u8],
-    size: lfs_size_t,
+    size: usize,
 ) -> Result<(), Error> {
     crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer, size)
 }

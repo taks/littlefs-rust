@@ -387,7 +387,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             lfs_dir_commitattr(
                 lfs,
                 commit,
-                lfs_mktag(LFS_TYPE_FCRC, 0x3ff, core::mem::size_of::<LfsFcrc>() as u32),
+                lfs_mktag(LFS_TYPE_FCRC, 0x3ff, core::mem::size_of::<LfsFcrc>()),
                 fcrc.as_bytes(),
             )?;
         }
@@ -397,7 +397,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
         let ntag = lfs_mktag(
             crate::lfs_type::lfs_type::LFS_TYPE_CCRC + (u16::from(!eperturb) >> 7),
             0x3ff,
-            noff - (commit.off + core::mem::size_of::<lfs_tag_t>() as u32),
+            noff as usize - (commit.off as usize + core::mem::size_of::<lfs_tag_t>()),
         );
         ccrc[0] = (ntag ^ commit.ptag).to_be();
         commit.crc = lfs_crc(commit.crc, ccrc[0].as_bytes());
@@ -1216,7 +1216,7 @@ pub fn lfs_dir_compact(
                 lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
                     0x3ff,
-                    core::mem::size_of::<crate::lfs_gstate::LfsGstate>() as u32,
+                    core::mem::size_of::<crate::lfs_gstate::LfsGstate>(),
                 ),
                 delta.as_bytes(),
             );
@@ -1837,7 +1837,7 @@ pub fn lfs_dir_relocatingcommit(
                     let movestate_tag = lfs_mktag(
                         crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
                         0x3ff,
-                        core::mem::size_of::<crate::lfs_gstate::LfsGstate>() as u32,
+                        core::mem::size_of::<crate::lfs_gstate::LfsGstate>(),
                     );
                     let err2 =
                         lfs_dir_commitattr(lfs, &mut commit, movestate_tag, delta.as_bytes());

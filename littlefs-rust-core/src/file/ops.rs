@@ -246,7 +246,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
             return Err(Error::NotDir);
         }
         let nlen = lfs_path_namelen(path_ptr.as_bytes());
-        if nlen > lfs.name_max {
+        if nlen > lfs.name_max as usize {
             let _ = lfs_file_close_(lfs, file);
             return crate::lfs_err!(Err(Error::NameTooLong));
         }
@@ -317,7 +317,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
                 lfs_mktag(
                     LFS_TYPE_USERATTR + attr.type_ as u16,
                     file.id as u32,
-                    attr.buffer.len() as u32,
+                    attr.buffer.len(),
                 ),
                 attr.buffer,
             );
@@ -387,7 +387,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
                 lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
                     file.id as u32,
-                    cmp::min(file.cache.size, 0x3fe),
+                    cmp::min(file.cache.size as usize, 0x3fe),
                 ),
                 unsafe { file.cache.buffer.as_mut() },
             );
@@ -896,14 +896,14 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
             (
                 LFS_TYPE_INLINESTRUCT,
                 unsafe { &file.cache.buffer.as_ref()[..file.ctz.size as usize] },
-                file.ctz.size,
+                file.ctz.size as usize,
             )
         } else {
             crate::file::lfs_ctz::lfs_ctz_tole32(&mut ctz);
             (
                 crate::lfs_type::lfs_type::LFS_TYPE_CTZSTRUCT,
                 ctz.as_bytes(),
-                core::mem::size_of::<crate::file::LfsCtz>() as u32,
+                core::mem::size_of::<crate::file::LfsCtz>(),
             )
         };
 
@@ -916,7 +916,7 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                 tag: lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_FROM_USERATTRS,
                     file.id as u32,
-                    unsafe { file.cfg.as_ref().attrs.len() as u32 },
+                    unsafe { file.cfg.as_ref().attrs.len() },
                 ) as u32,
                 buffer: unsafe { file.cfg.as_ref().attrs.as_bytes() },
             },

@@ -1,6 +1,6 @@
 //! Utility functions. Per lfs_util.h static inline and lfs.c small type-level utils.
 
-use crate::types::{lfs_block_t, lfs_size_t};
+use crate::types::{lfs_block_t};
 
 /// Per lfs_util.h lfs_aligndown (lines 138-140)
 ///
@@ -123,8 +123,8 @@ pub fn lfs_strcspn(p: &[u8], c: u8) -> usize {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_path_namelen(path: &[u8]) -> u32 {
-    path.iter().position(|&b| b == b'/').unwrap_or(path.len()) as lfs_size_t
+pub fn lfs_path_namelen(path: &[u8]) -> usize {
+    path.iter().position(|&b| b == b'/').unwrap_or(path.len())
 }
 
 /// Per lfs.c lfs_path_islast (lines 293-296)

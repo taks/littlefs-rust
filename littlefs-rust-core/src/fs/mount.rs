@@ -288,7 +288,7 @@ pub fn lfs_mount_(
                     lfs_mktag(
                         LFS_TYPE_INLINESTRUCT,
                         0,
-                        core::mem::size_of::<LfsSuperblock>() as u32,
+                        core::mem::size_of::<LfsSuperblock>(),
                     ),
                     superblock.as_mut_bytes(),
                 );

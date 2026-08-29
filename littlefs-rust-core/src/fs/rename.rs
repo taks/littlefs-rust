@@ -265,7 +265,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
             if lfs_path_isdir(newpath_slice) && (lfs_tag_type3(oldtag)) != LFS_TYPE3_DIR {
                 return crate::lfs_err!(Err(Error::NotDir));
             }
-            let nlen = lfs_path_namelen(newpath_slice);
+            let nlen = lfs_path_namelen(newpath_slice) as u32;
             if nlen > lfs.name_max {
                 return crate::lfs_err!(Err(Error::NameTooLong));
             }
@@ -324,11 +324,11 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
                 buffer: &[],
             },
             lfs_mattr {
-                tag: lfs_mktag(lfs_tag_type3(oldtag), newid as u32, nlen),
+                tag: lfs_mktag(lfs_tag_type3(oldtag), newid as u32, nlen as usize),
                 buffer: newpath_ptr.as_bytes(),
             },
             lfs_mattr {
-                tag: lfs_mktag(LFS_FROM_MOVE, newid as u32, lfs_tag_id(oldtag) as u32),
+                tag: lfs_mktag(LFS_FROM_MOVE, newid as u32, lfs_tag_id(oldtag) as usize),
                 buffer: oldcwd.as_bytes(),
             },
             lfs_mattr {

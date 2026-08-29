@@ -90,7 +90,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
             block_count: lfs.block_count,
             name_max: lfs.name_max,
             file_max: lfs.file_max,
-            attr_max: lfs.attr_max,
+            attr_max: lfs.attr_max as u32,
         };
         lfs_superblock_tole32(&mut superblock);
 
@@ -98,7 +98,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
             tag: lfs_mktag(
                 LFS_TYPE_INLINESTRUCT,
                 0,
-                core::mem::size_of::<LfsSuperblock>() as u32,
+                core::mem::size_of::<LfsSuperblock>(),
             ),
             buffer: superblock.as_bytes(),
         }];

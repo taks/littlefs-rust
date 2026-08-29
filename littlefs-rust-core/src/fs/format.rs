@@ -159,7 +159,7 @@ pub fn lfs_format_(
                 tag: lfs_mktag(
                     LFS_TYPE_INLINESTRUCT,
                     0,
-                    core::mem::size_of::<LfsSuperblock>() as u32,
+                    core::mem::size_of::<LfsSuperblock>(),
                 ),
                 buffer: superblock.as_bytes(),
             },
@@ -265,7 +265,7 @@ pub unsafe fn test_traverse_format_attrs(
                 tag: lfs_mktag(
                     LFS_TYPE_INLINESTRUCT,
                     0,
-                    core::mem::size_of::<crate::lfs_superblock::LfsSuperblock>() as u32,
+                    core::mem::size_of::<crate::lfs_superblock::LfsSuperblock>(),
                 ),
                 buffer: superblock.as_bytes(),
             },
@@ -371,7 +371,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
                 tag: lfs_mktag(
                     LFS_TYPE_INLINESTRUCT,
                     0,
-                    core::mem::size_of::<crate::lfs_superblock::LfsSuperblock>() as u32,
+                    core::mem::size_of::<crate::lfs_superblock::LfsSuperblock>(),
                 ),
                 buffer: superblock.as_bytes(),
             },

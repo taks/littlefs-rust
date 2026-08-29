@@ -298,7 +298,7 @@ pub fn lfs_dir_find(
                 dir,
                 dir.tail,
                 lfs_mktag(0x780, 0, 0),
-                lfs_mktag(LFS_TYPE_NAME, 0, namelen as u32),
+                lfs_mktag(LFS_TYPE_NAME, 0, namelen),
                 id,
                 Some(&|tag, disk| lfs_dir_find_match(&match_data, tag, disk)),
             )?;
