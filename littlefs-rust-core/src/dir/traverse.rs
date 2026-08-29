@@ -227,15 +227,14 @@ pub fn lfs_dir_getread(
     let cfg = unsafe { lfs.cfg.as_ref() };
 
     let mut off = off;
-    let mut size = buffer.len() as u32;
     let mut data = buffer;
 
-    if off + size > cfg.block_size {
+    if off + data.len() as u32 > cfg.block_size {
         return crate::lfs_err!(Err(Error::Corrupt));
     }
 
-    while size > 0 {
-        let mut diff = size as usize;
+    while !data.is_empty() {
+        let mut diff = data.len();
 
         if let Some(pcache) = pcache
             && pcache.block == LFS_BLOCK_INLINE
@@ -252,7 +251,6 @@ pub fn lfs_dir_getread(
 
                 data = &mut data[diff..];
                 off += diff as u32;
-                size -= diff as u32;
                 continue;
             }
             diff = core::cmp::min(diff, (pcache.off - off) as usize);
@@ -265,7 +263,6 @@ pub fn lfs_dir_getread(
 
             data = &mut data[diff..];
             off += diff as u32;
-            size -= diff as u32;
             continue;
         }
 
