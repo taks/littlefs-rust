@@ -369,19 +369,15 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             }
         }
 
+        let mut ccrc: [u32; 2] = [0; 2];
         let ntag = lfs_mktag(
             crate::lfs_type::lfs_type::LFS_TYPE_CCRC + (u16::from(!eperturb) >> 7),
             0x3ff,
-            noff - (commit.off + 4),
+            noff - (commit.off + core::mem::size_of::<lfs_tag_t>() as u32),
         );
-
-        let xor_tag = (ntag ^ commit.ptag).to_be();
-        commit.crc = lfs_crc(commit.crc, xor_tag.as_bytes());
-        let crc_le = commit.crc.to_le();
-
-        let mut ccrc: [u32; 2] = [0; 2];
-        ccrc[0] = xor_tag;
-        ccrc[1] = crc_le;
+        ccrc[0] = (ntag ^ commit.ptag).to_be();
+        commit.crc = lfs_crc(commit.crc, ccrc[0].as_bytes());
+        ccrc[1] = commit.crc.to_le();
 
         lfs_bd_prog(
             lfs,
