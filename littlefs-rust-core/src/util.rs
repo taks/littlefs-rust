@@ -2,19 +2,6 @@
 
 use crate::types::{lfs_block_t, lfs_size_t};
 
-/// Per lfs_util.h lfs_min (lines 133-135)
-///
-/// C:
-/// ```c
-/// static inline uint32_t lfs_min(uint32_t a, uint32_t b) {
-///     return (a < b) ? a : b;
-/// }
-/// ```
-#[inline(always)]
-pub fn lfs_min(a: u32, b: u32) -> u32 {
-    if a < b { a } else { b }
-}
-
 /// Per lfs_util.h lfs_aligndown (lines 138-140)
 ///
 /// C:

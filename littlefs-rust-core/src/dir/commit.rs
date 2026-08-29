@@ -1438,7 +1438,7 @@ pub fn lfs_dir_splittingcompact(
     use crate::dir::traverse::lfs_dir_traverse;
     use crate::tag::lfs_mktag;
     use crate::types::lfs_size_t;
-    use crate::util::{lfs_alignup, lfs_min, lfs_pair_cmp};
+    use crate::util::{lfs_alignup, lfs_pair_cmp};
 
     let mut split = begin;
     let mut end_val = end;
@@ -1480,9 +1480,9 @@ pub fn lfs_dir_splittingcompact(
                 size,
                 max_space,
                 half_block,
-                end_val - split < 0xff && size <= lfs_min(max_space, half_block)
+                end_val - split < 0xff && size <= cmp::min(max_space, half_block)
             );
-            if end_val - split < 0xff && size <= lfs_min(max_space, half_block) {
+            if end_val - split < 0xff && size <= cmp::min(max_space, half_block) {
                 break;
             }
             split = split + ((end_val - split) / 2);
