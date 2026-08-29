@@ -8,7 +8,7 @@
 mod common;
 
 use common::{
-    BadBlockBehavior, WearLevelingEnv, config_with_wear_leveling_behavior,
+    BadBlockBehavior, WearLevelingEnv, config_with_wear_leveling_behavior, init_logger,
     init_wear_leveling_context, test_prng,
 };
 use littlefs_rust_core::{
@@ -260,6 +260,8 @@ fn verify_after_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) {
 #[test]
 #[ignore = "TODO FIX"]
 fn test_exhaustion_wear_leveling() {
+    init_logger();
+
     let erase_cycles: u32 = 20;
     let block_cycles: i32 = (erase_cycles / 2) as i32;
     let files: u32 = 10;

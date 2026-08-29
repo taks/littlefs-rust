@@ -328,7 +328,7 @@ where
             }
             Err(e) => return Err(e),
         }
-        n = n * 2;
+        n *= 2;
     }
     Err(Error::Io)
 }
