@@ -174,11 +174,11 @@ pub fn lfs_bd_read(
                             .as_ptr()
                             .add((off - pcache.off) as usize),
                         data.as_mut_ptr(),
-                        diff as usize,
+                        diff,
                     )
                 };
 
-                data = &mut data[(diff as usize)..];
+                data = &mut data[diff..];
                 off += diff as u32;
                 continue;
             }
@@ -197,11 +197,11 @@ pub fn lfs_bd_read(
                             .as_ptr()
                             .add((off - rcache.off) as usize),
                         data.as_mut_ptr(),
-                        diff as usize,
+                        diff,
                     )
                 };
 
-                data = &mut data[(diff as usize)..];
+                data = &mut data[diff..];
                 off += diff as u32;
                 continue;
             }
@@ -596,7 +596,7 @@ pub fn lfs_bd_prog(
             #[cfg(feature = "log")]
             // Trace superblock magic region (offset 12-20 in block 0/1)
             if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
-                let magic_start = 12usize - (off as usize);
+                let magic_start = 12usize - off;
                 let magic_len = core::cmp::min(8, diff as usize - magic_start);
                 if magic_len > 0 {
                     crate::lfs_trace!(
