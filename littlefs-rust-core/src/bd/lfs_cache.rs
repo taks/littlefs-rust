@@ -1,6 +1,6 @@
 //! Block cache. Per lfs.h lfs_cache_t.
 
-use core::ptr::NonNull;
+use core::{fmt::Debug, ptr::NonNull};
 
 use crate::types::lfs_block_t;
 
@@ -20,5 +20,16 @@ impl Default for LfsCache {
             size: 0,
             buffer: NonNull::from_ref(&[]),
         }
+    }
+}
+
+impl Debug for LfsCache {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("LfsCache")
+            .field("block", &self.block)
+            .field("off", &self.off)
+            .field("size", &self.size)
+            .field("buffer", &self.buffer)
+            .finish()
     }
 }

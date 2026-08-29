@@ -150,10 +150,9 @@ pub fn lfs_bd_read(
 
     let mut data = buffer;
     let mut off = off;
-    let mut size = data.len() as u32;
 
-    while size > 0 {
-        let mut diff = size;
+    while !data.is_empty() {
+        let mut diff = data.len() as u32;
 
         if let Some(pcache) = pcache
             && block == pcache.block
@@ -161,14 +160,22 @@ pub fn lfs_bd_read(
         {
             if off >= pcache.off {
                 diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
-                data[..diff as usize].copy_from_slice(unsafe {
-                    &pcache.buffer.as_ref()
-                        [((off - pcache.off) as usize)..((off - pcache.off + diff) as usize)]
-                });
+                debug_assert!(data.len() as u32 >= diff);
+                debug_assert!(pcache.buffer.len() as u32 >= diff + (off - pcache.off));
+                unsafe {
+                    core::ptr::copy_nonoverlapping(
+                        pcache
+                            .buffer
+                            .as_ref()
+                            .as_ptr()
+                            .add((off - pcache.off) as usize),
+                        data.as_mut_ptr(),
+                        diff as usize,
+                    )
+                };
 
                 data = &mut data[(diff as usize)..];
                 off += diff;
-                size -= diff;
                 continue;
             }
             diff = diff.min(pcache.off - off);
@@ -177,20 +184,31 @@ pub fn lfs_bd_read(
         if block == rcache.block && off < rcache.off + rcache.size {
             if off >= rcache.off {
                 diff = cmp::min(diff, rcache.size - (off - rcache.off));
-                data[..diff as usize].copy_from_slice(unsafe {
-                    &rcache.buffer.as_ref()
-                        [((off - rcache.off) as usize)..((off - rcache.off + diff) as usize)]
-                });
+                debug_assert!(data.len() as u32 >= diff);
+                debug_assert!(rcache.buffer.len() as u32 >= diff + (off - rcache.off));
+                unsafe {
+                    core::ptr::copy_nonoverlapping(
+                        rcache
+                            .buffer
+                            .as_ref()
+                            .as_ptr()
+                            .add((off - rcache.off) as usize),
+                        data.as_mut_ptr(),
+                        diff as usize,
+                    )
+                };
 
                 data = &mut data[(diff as usize)..];
                 off += diff;
-                size -= diff;
                 continue;
             }
             diff = cmp::min(diff, rcache.off - off);
         }
 
-        if size >= hint && off.is_multiple_of(cfg.read_size) && size >= cfg.read_size {
+        if data.len() as u32 >= hint
+            && off.is_multiple_of(cfg.read_size)
+            && data.len() as u32 >= cfg.read_size
+        {
             diff = lfs_aligndown(diff, cfg.read_size);
             crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
             let data_ = data.split_at_mut(diff as _);
@@ -203,7 +221,6 @@ pub fn lfs_bd_read(
 
             data = data_.1;
             off += diff;
-            size -= diff;
             continue;
         }
 
@@ -211,8 +228,7 @@ pub fn lfs_bd_read(
         rcache.block = block;
         rcache.off = lfs_aligndown(off, cfg.read_size);
         rcache.size = cmp::min(
-            cmp::min(lfs_alignup(off + hint, cfg.read_size), cfg.block_size)
-                .saturating_sub(rcache.off),
+            cmp::min(lfs_alignup(off + hint, cfg.read_size), cfg.block_size) - rcache.off,
             rcache.buffer.len() as u32,
         );
         crate::lfs_trace!(
@@ -355,7 +371,7 @@ pub fn lfs_bd_crc(
             lfs,
             pcache,
             rcache,
-            hint.saturating_sub(i),
+            hint - i,
             block,
             off + i,
             &mut dat[0..diff],
@@ -551,8 +567,8 @@ pub fn lfs_bd_prog(
     rcache: &mut LfsCache,
     validate: bool,
     block: lfs_block_t,
-    off: lfs_off_t,
-    buffer: &[u8],
+    mut off: lfs_off_t,
+    mut data: &[u8],
 ) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_aligndown, lfs_min};
@@ -560,33 +576,31 @@ pub fn lfs_bd_prog(
     let cfg = unsafe { lfs.cfg.as_ref() };
 
     crate::lfs_assert!(block == LFS_BLOCK_INLINE || block < lfs.block_count);
-    crate::lfs_assert!(off + buffer.len() as u32 <= cfg.block_size);
+    crate::lfs_assert!(off + data.len() as u32 <= cfg.block_size);
 
-    let mut data = buffer;
-    let mut off = off;
-    let mut size = buffer.len() as u32;
-
-    while size > 0 {
+    while !data.is_empty() {
         if block == pcache.block
             && off >= pcache.off
             && off < pcache.off + pcache.buffer.len() as u32
         {
-            let diff = lfs_min(size, pcache.buffer.len() as u32 - (off - pcache.off));
+            let diff = lfs_min(
+                data.len() as u32,
+                pcache.buffer.len() as u32 - (off - pcache.off),
+            );
+            #[cfg(feature = "log")]
             // Trace superblock magic region (offset 12-20 in block 0/1)
             if (block == 0 || block == 1) && off <= 12 && off + diff > 12 {
-                let magic_start = 12usize.saturating_sub(off as usize);
+                let magic_start = 12usize - (off as usize);
                 let magic_len = core::cmp::min(8, diff as usize - magic_start);
                 if magic_len > 0 {
                     crate::lfs_trace!(
                         "bd_prog superblock block={} off={} size={} magic_region[{}..{}]={:?}",
                         block,
                         off,
-                        size,
+                        data.len(),
                         magic_start,
                         magic_start + magic_len,
-                        unsafe {
-                            core::slice::from_raw_parts(data.as_ptr().add(magic_start), magic_len)
-                        }
+                        &data[magic_start..(magic_start + magic_len)]
                     );
                 }
             }
@@ -598,7 +612,6 @@ pub fn lfs_bd_prog(
 
             data = &data[(diff as usize)..];
             off += diff;
-            size -= diff;
 
             pcache.size = cmp::max(pcache.size, off - pcache.off);
             if pcache.size == pcache.buffer.len() as u32 {

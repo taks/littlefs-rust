@@ -484,13 +484,11 @@ pub fn lfs_dir_fetchmatch(
                 let delete_tag = lfs_mktag(LFS_TYPE_DELETE, 0, 0)
                     | (lfs_mktag(0, 0x3ff, 0) & tempbesttag as lfs_tag_t);
                 if tag == delete_tag {
-                    tempbesttag = (tempbesttag as u32 | 0x8000_0000) as lfs_stag_t;
+                    tempbesttag |= 0x8000_0000u32 as lfs_stag_t;
                 } else if tempbesttag != -1
                     && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
                 {
-                    tempbesttag = (tempbesttag as lfs_tag_t
-                        + lfs_mktag(0, lfs_tag_splice(tag) as u32, 0))
-                        as lfs_stag_t;
+                    tempbesttag += lfs_mktag(0, lfs_tag_splice(tag) as u32, 0) as lfs_stag_t;
                 }
             } else if (lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
                 tempsplit = (lfs_tag_chunk(tag) & 1) != 0;
@@ -513,7 +511,7 @@ pub fn lfs_dir_fetchmatch(
                 }
                 temptail[0] = u32::from_le_bytes(tail_buf[0..4].try_into().unwrap());
                 temptail[1] = u32::from_le_bytes(tail_buf[4..8].try_into().unwrap());
-            } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_FCRC {
+            } else if lfs_tag_type3(tag) == LFS_TYPE_FCRC {
                 let mut fcrc_buf: LfsFcrc = unsafe { core::mem::zeroed() };
                 let err = lfs_bd_read(
                     lfs,

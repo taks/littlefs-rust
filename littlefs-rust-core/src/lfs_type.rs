@@ -40,7 +40,7 @@ pub mod lfs_type {
     pub const LFS_TYPE_HARDTAIL: u16 = 0x601;
     pub const LFS_TYPE_MOVESTATE: u16 = 0x7ff;
     pub const LFS_TYPE_CCRC: u16 = 0x500;
-    pub const LFS_TYPE_FCRC: u32 = 0x5ff;
+    pub const LFS_TYPE_FCRC: u16 = 0x5ff;
     pub const LFS_FROM_NOOP: u16 = 0x000;
     pub const LFS_FROM_MOVE: u16 = 0x101;
     pub const LFS_FROM_USERATTRS: u16 = 0x102;

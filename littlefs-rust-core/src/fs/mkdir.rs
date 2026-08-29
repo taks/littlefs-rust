@@ -149,22 +149,8 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
         lfs_dir_alloc(lfs, &mut dir)?;
 
         let mut pred = cwd.m;
-        #[cfg(feature = "loop_limits")]
-        const MAX_MKDIR_PRED_ITER: u32 = 2048;
-        #[cfg(feature = "loop_limits")]
-        let mut iter: u32 = 0;
-        while pred.split {
-            #[cfg(feature = "loop_limits")]
-            {
-                if iter >= MAX_MKDIR_PRED_ITER {
-                    panic!(
-                        "loop_limits: MAX_MKDIR_PRED_ITER ({}) exceeded",
-                        MAX_MKDIR_PRED_ITER
-                    );
-                }
-                iter += 1;
-            }
 
+        while pred.split {
             let pred_tail = pred.tail;
             lfs_dir_fetch(lfs, &mut pred, pred_tail)?;
         }

@@ -314,7 +314,7 @@ where
             }
             Err(e) => return Err(e),
         }
-        n = n.saturating_mul(2);
+        n *= 2;
     }
     Err(Error::Io)
 }

@@ -4,7 +4,6 @@ use core::cmp;
 
 use zerocopy::IntoBytes;
 
-use crate::bd::bd::lfs_bd_sync;
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
 use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_alloc;
@@ -171,15 +170,8 @@ pub fn lfs_format_(
             return crate::lfs_pass_err!(err);
         }
 
-        // Flush pcache so the second commit can read the first block from disk.
-        // Otherwise the second compact reads from a block that was never written.
-        err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
-
-        // force compaction to prevent accidentally mounting any older version
+        // force compaction to prevent accidentally mounting any
+        // older version of littlefs that may live on disk
         root.erased = false;
         err = lfs_dir_commit(lfs, &mut root, &[]);
         if err.is_err() {
@@ -188,15 +180,7 @@ pub fn lfs_format_(
         }
 
         // sanity check that fetch works
-        let root_pair = root.pair;
-        err = lfs_dir_fetch(lfs, &mut root, root_pair);
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
-
-        // flush pcache so raw block reads (e.g. test_superblocks_magic) see data
-        err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
+        err = lfs_dir_fetch(lfs, &mut root, [0, 1]);
         if err.is_err() {
             let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);

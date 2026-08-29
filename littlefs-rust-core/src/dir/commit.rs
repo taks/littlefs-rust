@@ -6,12 +6,13 @@ use core::ptr::NonNull;
 
 use zerocopy::{FromBytes, IntoBytes, TryFromBytes};
 
-use crate::dir::LfsCommit;
-use crate::dir::LfsMdir;
 use crate::dir::fetch::lfs_dir_getgstate;
+use crate::dir::lfs_fcrc::lfs_fcrc_tole32;
+use crate::dir::{LfsCommit, LfsFcrc, LfsMdir};
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::fs::stat::lfs_fs_size_;
+use crate::lfs_type::lfs_type::LFS_TYPE_FCRC;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_tag_t};
 
 #[allow(non_camel_case_types)]
@@ -148,16 +149,16 @@ pub fn lfs_dir_commitattr(
 
         if lfs_tag_isvalid(tag) {
             // TODO:
-            assert!(
-                buffer.len() >= dsize.saturating_sub(4) as usize,
+            debug_assert!(
+                buffer.len() >= (dsize - 4) as usize,
                 "buffer: {:?} dsize: {}",
                 buffer,
                 dsize
             );
-            lfs_dir_commitprog(lfs, commit, &buffer[..dsize.saturating_sub(4) as usize])?;
+            lfs_dir_commitprog(lfs, commit, &buffer[..(dsize - 4) as usize])?;
         } else {
             let disk = crate::tag::lfs_diskoff::ref_from_bytes(buffer).unwrap();
-            let data_size = dsize.saturating_sub(4);
+            let data_size = dsize - 4;
             for i in 0..data_size {
                 let mut dat: u8 = 0;
                 lfs_bd_read(
@@ -344,12 +345,10 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
     let mut crc1: u32 = 0;
 
     while commit.off < end {
-        let noff = cmp::min(end - (commit.off + 4), 0x3fe) + (commit.off + 4);
-        let noff = if noff < end {
-            cmp::min(noff, end - 20)
-        } else {
-            noff
-        };
+        let mut noff = cmp::min(end - (commit.off + 4), 0x3fe) + (commit.off + 4);
+        if noff < end {
+            noff = cmp::min(noff, end - 20);
+        }
 
         let mut eperturb: u8 = 0xff;
         if noff >= end && noff <= block_size - prog_size {
@@ -367,21 +366,51 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             {
                 return crate::lfs_pass_err!(ret);
             }
+
+            // find the expected fcrc, don't bother avoiding a reread
+            // of the eperturb, it should still be in our cache
+            let mut fcrc = LfsFcrc {
+                size: cfg.prog_size,
+                crc: 0xffff_ffff,
+            };
+
+            let ret = lfs_bd_crc(
+                lfs,
+                None,
+                unsafe { &mut *lfs.rcache.get() },
+                cfg.prog_size,
+                commit.block,
+                noff,
+                fcrc.size,
+                &mut fcrc.crc,
+            );
+
+            if let Err(err) = ret
+                && err != Error::Corrupt
+            {
+                return crate::lfs_pass_err!(ret);
+            }
+
+            lfs_fcrc_tole32(&mut fcrc);
+
+            lfs_dir_commitattr(
+                lfs,
+                commit,
+                lfs_mktag(LFS_TYPE_FCRC, 0x3ff, core::mem::size_of::<LfsFcrc>() as u32),
+                fcrc.as_bytes(),
+            )?;
         }
 
+        // build commit crc
+        let mut ccrc: [u32; 2] = [0; 2];
         let ntag = lfs_mktag(
             crate::lfs_type::lfs_type::LFS_TYPE_CCRC + (u16::from(!eperturb) >> 7),
             0x3ff,
-            noff - (commit.off + 4),
+            noff - (commit.off + core::mem::size_of::<lfs_tag_t>() as u32),
         );
-
-        let xor_tag = (ntag ^ commit.ptag).to_be();
-        commit.crc = lfs_crc(commit.crc, xor_tag.as_bytes());
-        let crc_le = commit.crc.to_le();
-
-        let mut ccrc: [u8; 8] = [0; 8];
-        ccrc[..4].copy_from_slice(xor_tag.as_bytes());
-        ccrc[4..].copy_from_slice(crc_le.as_bytes());
+        ccrc[0] = (ntag ^ commit.ptag).to_be();
+        commit.crc = lfs_crc(commit.crc, ccrc[0].as_bytes());
+        ccrc[1] = commit.crc.to_le();
 
         lfs_bd_prog(
             lfs,
@@ -390,11 +419,11 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             false,
             commit.block,
             commit.off,
-            &ccrc,
+            ccrc.as_bytes(),
         )?;
 
         if off1 == 0 {
-            off1 = commit.off + 4;
+            off1 = commit.off + core::mem::size_of::<lfs_tag_t>() as u32;
             crc1 = commit.crc;
         }
 
@@ -413,7 +442,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
         lfs,
         None,
         unsafe { &mut *lfs.rcache.get() },
-        off1 + 4,
+        off1 + core::mem::size_of::<u32>() as u32,
         commit.block,
         commit.begin,
         off1 - commit.begin,
@@ -2140,7 +2169,7 @@ pub fn lfs_dir_orphaningcommit(
     if state == crate::error::LFS_OK_DROPPED {
         lfs_dir_getgstate(lfs, dir, &mut lfs.gdelta.borrow_mut())?;
 
-        let plpair = [pdir.pair[0], pdir.pair[1]];
+        let plpair = pdir.pair;
         lfs_pair_tole32(&mut dir.tail);
         let tail_attrs = [crate::tag::lfs_mattr {
             tag: crate::tag::lfs_mktag(
@@ -2160,21 +2189,8 @@ pub fn lfs_dir_orphaningcommit(
     let mut orphans = false;
     let mut state = state;
     let mut lpair = lpair;
-    #[cfg(feature = "loop_limits")]
-    const MAX_RELOCATE_ITER: u32 = 512;
-    #[cfg(feature = "loop_limits")]
-    let mut relocate_iter: u32 = 0;
+
     while state == crate::error::LFS_OK_RELOCATED {
-        #[cfg(feature = "loop_limits")]
-        {
-            if relocate_iter >= MAX_RELOCATE_ITER {
-                panic!(
-                    "loop_limits: MAX_RELOCATE_ITER ({}) exceeded",
-                    MAX_RELOCATE_ITER
-                );
-            }
-            relocate_iter += 1;
-        }
         state = 0;
 
         // C: lfs.c:2480-2483 — update internal root
@@ -2271,8 +2287,7 @@ pub fn lfs_dir_orphaningcommit(
                 crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, None);
             }
 
-            lpair[0] = pdir.pair[0];
-            lpair[1] = pdir.pair[1];
+            lpair = pdir.pair;
             lfs_pair_tole32(&mut ldir.pair);
             let tail_attrs = [
                 crate::tag::lfs_mattr {

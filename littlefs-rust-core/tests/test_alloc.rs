@@ -645,7 +645,7 @@ fn test_alloc_two_files_ctz() {
     }
     assert_ok!(lfs_file_close(lfs, file));
 
-    filesize = filesize.saturating_sub(3 * block_size as usize);
+    filesize = filesize - (3 * block_size as usize);
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -747,7 +747,7 @@ fn test_alloc_bad_blocks_body() {
     }
     assert_ok!(lfs_file_close(lfs, file));
 
-    filesize = filesize.saturating_sub(3 * block_size as usize);
+    filesize = filesize - (3 * block_size as usize);
 
     assert_ok!(lfs_file_open(
         lfs,
