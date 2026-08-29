@@ -955,11 +955,10 @@ pub fn lfs_file_flushedread(
             return Ok(0);
         }
 
-        let size = cmp::min(buffer.len() as u32, file.ctz.size - file.pos);
-        let mut nsize = size;
+        let size = cmp::min(buffer.len(), (file.ctz.size - file.pos) as usize);
 
-        let mut data = buffer;
-        while nsize > 0 {
+        let mut data = &mut buffer[..size];
+        while !data.is_empty() {
             if !file.flags.contains(OpenFlags::READING) || file.off == block_size {
                 if !file.flags.contains(OpenFlags::INLINE) {
                     lfs_ctz_find(
@@ -979,7 +978,7 @@ pub fn lfs_file_flushedread(
                 file.flags.insert(OpenFlags::READING);
             }
 
-            let diff = cmp::min(nsize, block_size - file.off);
+            let diff = cmp::min(data.len(), (block_size - file.off) as usize);
             if file.flags.contains(OpenFlags::INLINE) {
                 let gtag = lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0);
                 lfs_dir_getread(
@@ -991,7 +990,7 @@ pub fn lfs_file_flushedread(
                     lfs_mktag(0xfff, 0x1ff, 0),
                     gtag,
                     file.off,
-                    &mut data[..diff as usize],
+                    &mut data[..diff],
                 )?;
             } else {
                 lfs_bd_read(
@@ -1001,14 +1000,13 @@ pub fn lfs_file_flushedread(
                     block_size,
                     file.block,
                     file.off,
-                    &mut data[..(diff as usize)],
+                    &mut data[..diff],
                 )?;
             }
 
-            file.pos += diff;
-            file.off += diff;
-            data = &mut data[(diff as usize)..];
-            nsize -= diff;
+            file.pos += diff as u32;
+            file.off += diff as u32;
+            data = &mut data[diff..];
         }
 
         Ok(size as crate::types::lfs_size_t)
@@ -1138,99 +1136,95 @@ pub fn lfs_file_flushedwrite(
         return Ok(0);
     }
 
-    unsafe {
-        let cfg = lfs.cfg.as_ref();
-        let block_size = cfg.block_size;
-        let mut nsize = buffer.len() as u32;
+    let cfg = unsafe { lfs.cfg.as_ref() };
+    let block_size = cfg.block_size;
 
-        if file.flags.contains(OpenFlags::INLINE)
-            && cmp::max(file.pos + nsize, file.ctz.size) > lfs.inline_max
-        {
-            let err = lfs_file_outline(lfs, file);
-            if let Err(err) = err {
-                file.flags.insert(OpenFlags::ERRED);
-                return Err(err);
-            }
+    if file.flags.contains(OpenFlags::INLINE)
+        && cmp::max(file.pos + buffer.len() as u32, file.ctz.size) > lfs.inline_max
+    {
+        let err = lfs_file_outline(lfs, file);
+        if let Err(err) = err {
+            file.flags.insert(OpenFlags::ERRED);
+            return Err(err);
         }
+    }
 
-        let mut data = buffer;
-        while nsize > 0 {
-            if !file.flags.contains(OpenFlags::WRITING) || file.off == block_size {
-                if file.flags.contains(OpenFlags::INLINE) {
-                    file.block = LFS_BLOCK_INLINE;
-                    file.off = file.pos;
-                } else {
-                    if !file.flags.contains(OpenFlags::WRITING) && file.pos > 0 {
-                        let mut block_off: lfs_off_t = 0;
-                        let err = lfs_ctz_find(
-                            lfs,
-                            None,
-                            &mut *lfs.rcache.get(),
-                            file.ctz.head,
-                            file.ctz.size,
-                            file.pos - 1,
-                            &mut file.block,
-                            &mut block_off,
-                        );
-                        if let Err(err) = err {
-                            file.flags.insert(OpenFlags::ERRED);
-                            return Err(err);
-                        }
-                        lfs_cache_zero(lfs, &mut file.cache);
-                    }
-                    lfs_alloc_ckpoint(lfs);
-                    let err = lfs_ctz_extend(
+    let mut data = buffer;
+    while !data.is_empty() {
+        if !file.flags.contains(OpenFlags::WRITING) || file.off == block_size {
+            if file.flags.contains(OpenFlags::INLINE) {
+                file.block = LFS_BLOCK_INLINE;
+                file.off = file.pos;
+            } else {
+                if !file.flags.contains(OpenFlags::WRITING) && file.pos > 0 {
+                    let mut block_off: lfs_off_t = 0;
+                    let err = lfs_ctz_find(
                         lfs,
-                        &mut file.cache,
-                        &mut *lfs.rcache.get(),
-                        file.block,
-                        file.pos,
+                        None,
+                        unsafe { &mut *lfs.rcache.get() },
+                        file.ctz.head,
+                        file.ctz.size,
+                        file.pos - 1,
                         &mut file.block,
-                        &mut file.off,
+                        &mut block_off,
                     );
                     if let Err(err) = err {
                         file.flags.insert(OpenFlags::ERRED);
                         return Err(err);
                     }
+                    lfs_cache_zero(lfs, &mut file.cache);
                 }
-                file.flags.insert(OpenFlags::WRITING);
-            }
-
-            let diff = cmp::min(nsize, block_size - file.off);
-            'prog: loop {
-                let err = lfs_bd_prog(
+                lfs_alloc_ckpoint(lfs);
+                let err = lfs_ctz_extend(
                     lfs,
                     &mut file.cache,
-                    &mut *lfs.rcache.get(),
-                    true,
+                    unsafe { &mut *lfs.rcache.get() },
                     file.block,
-                    file.off,
-                    &data[..(diff as usize)],
+                    file.pos,
+                    &mut file.block,
+                    &mut file.off,
                 );
                 if let Err(err) = err {
-                    if err == Error::Corrupt {
-                        let err = lfs_file_relocate(lfs, file);
-                        if let Err(err) = err {
-                            file.flags.insert(OpenFlags::ERRED);
-                            return Err(err);
-                        }
-                        continue 'prog;
-                    }
                     file.flags.insert(OpenFlags::ERRED);
                     return Err(err);
                 }
-                break;
             }
-
-            file.pos += diff;
-            file.off += diff;
-            data = &data[(diff as usize)..];
-            nsize -= diff;
-
-            lfs_alloc_ckpoint(lfs);
+            file.flags.insert(OpenFlags::WRITING);
         }
-        Ok(buffer.len() as u32)
+
+        let diff = cmp::min(data.len(), (block_size - file.off) as usize);
+        'prog: loop {
+            let err = lfs_bd_prog(
+                lfs,
+                &mut file.cache,
+                unsafe { &mut *lfs.rcache.get() },
+                true,
+                file.block,
+                file.off,
+                &data[..diff],
+            );
+            if let Err(err) = err {
+                if err == Error::Corrupt {
+                    let err = lfs_file_relocate(lfs, file);
+                    if let Err(err) = err {
+                        file.flags.insert(OpenFlags::ERRED);
+                        return Err(err);
+                    }
+                    continue 'prog;
+                }
+                file.flags.insert(OpenFlags::ERRED);
+                return Err(err);
+            }
+            break;
+        }
+
+        file.pos += diff as u32;
+        file.off += diff as u32;
+        data = &data[diff..];
+
+        lfs_alloc_ckpoint(lfs);
     }
+    Ok(buffer.len() as u32)
 }
 
 /// Per lfs.c lfs_file_write_ (lines 3656-3698)
