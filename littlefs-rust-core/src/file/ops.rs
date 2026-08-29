@@ -1574,9 +1574,9 @@ pub fn lfs_file_rewind_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<
 ///     return file->ctz.size;
 /// }
 /// ```
-pub fn lfs_file_size_(_lfs: &Lfs, file: &LfsFile) -> crate::types::lfs_soff_t {
+pub fn lfs_file_size_(_lfs: &Lfs, file: &LfsFile) -> u32 {
     if file.flags.contains(OpenFlags::WRITING) {
-        return cmp::max(file.pos, file.ctz.size) as crate::types::lfs_soff_t;
+        return cmp::max(file.pos, file.ctz.size);
     }
-    file.ctz.size as crate::types::lfs_soff_t
+    file.ctz.size
 }
