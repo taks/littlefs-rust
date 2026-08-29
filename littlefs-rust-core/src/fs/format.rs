@@ -4,7 +4,6 @@ use core::cmp;
 
 use zerocopy::IntoBytes;
 
-use crate::bd::bd::lfs_bd_sync;
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
 use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_alloc;
