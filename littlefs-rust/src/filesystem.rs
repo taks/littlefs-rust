@@ -13,12 +13,12 @@ use crate::config::Config;
 use crate::dir::{ReadDir, dir_entry_from_info};
 use crate::file::File;
 use crate::metadata::{DirEntry, Metadata};
-use crate::storage::StorageWithConfig;
+use crate::storage::{SS, Storage};
 
-pub(crate) struct FsInner<S: StorageWithConfig> {
+pub(crate) struct FsInner<S: Storage> {
     pub(crate) lfs: Lfs,
     pub(crate) config: LfsConfig,
-    pub(crate) storage: S,
+    pub(crate) storage: SS<S>,
     _read_buf: Vec<u8>,
     _prog_buf: Vec<u8>,
     _lookahead_buf: Vec<u8>,
@@ -38,13 +38,13 @@ pub(crate) struct FsInner<S: StorageWithConfig> {
 /// `Filesystem` is `!Send` and `!Sync` (due to interior `RefCell`). This is
 /// appropriate for single-threaded embedded use. If you need cross-thread
 /// access, wrap it in a `Mutex`.
-pub struct Filesystem<S: StorageWithConfig> {
+pub struct Filesystem<S: Storage> {
     pub(crate) inner: RefCell<Box<FsInner<S>>>,
 }
 
 // ── FsInner construction ────────────────────────────────────────────────────
 
-fn build_inner<S: StorageWithConfig>(storage: S, config: &Config) -> FsInner<S> {
+fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
     let cache_size = config.resolve_cache_size() as usize;
     let lookahead_size = config.resolve_lookahead_size() as usize;
 
@@ -75,7 +75,7 @@ fn build_inner<S: StorageWithConfig>(storage: S, config: &Config) -> FsInner<S> 
     FsInner {
         lfs: Lfs::default(),
         config: lfs_config,
-        storage,
+        storage: SS(storage),
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
@@ -85,9 +85,9 @@ fn build_inner<S: StorageWithConfig>(storage: S, config: &Config) -> FsInner<S> 
 
 /// Wire `config.context` to point at `inner.storage`. Must be called after
 /// `inner` is at its final address (i.e., inside the `RefCell`).
-fn wire_context<S: StorageWithConfig>(inner: &mut FsInner<S>) {
+fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
     inner.config.context = unsafe {
-        core::mem::transmute(&mut inner.storage as *mut S as *mut dyn littlefs_rust_core::Storage)
+        core::mem::transmute(&mut inner.storage as *mut SS<S> as *mut dyn littlefs_rust_core::Storage)
     };
     inner.config.read_buffer = Some(NonNull::from_mut(&mut inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_mut(&mut inner._prog_buf));
@@ -96,7 +96,7 @@ fn wire_context<S: StorageWithConfig>(inner: &mut FsInner<S>) {
 
 // ── Filesystem ──────────────────────────────────────────────────────────────
 
-impl<S: StorageWithConfig> Filesystem<S> {
+impl<S: Storage> Filesystem<S> {
     /// Format `storage` with a fresh LittleFS filesystem.
     ///
     /// This erases any existing data. The storage can be mounted afterwards
@@ -116,7 +116,7 @@ impl<S: StorageWithConfig> Filesystem<S> {
         wire_context(&mut inner);
         let rc = littlefs_rust_core::lfs_mount(&mut inner.lfs, &inner.config);
         if let Err(err) = rc {
-            return Err((err, inner.storage));
+            return Err((err, inner.storage.0));
         }
         inner.mounted = true;
         Ok(Filesystem {
@@ -142,7 +142,7 @@ impl<S: StorageWithConfig> Filesystem<S> {
         // already unmounted. Take ownership of the RefCell's contents.
         let fs_inner = unsafe { core::ptr::read(&this.inner) }.into_inner();
         rc?;
-        Ok(fs_inner.storage)
+        Ok(fs_inner.storage.0)
     }
 
     pub(crate) fn cache_size(&self) -> u32 {
@@ -256,7 +256,7 @@ impl<S: StorageWithConfig> Filesystem<S> {
     }
 }
 
-impl<S: StorageWithConfig> Drop for Filesystem<S> {
+impl<S: Storage> Drop for Filesystem<S> {
     fn drop(&mut self) {
         if let Ok(mut inner) = self.inner.try_borrow_mut()
             && inner.mounted
@@ -269,16 +269,16 @@ impl<S: StorageWithConfig> Drop for Filesystem<S> {
 
 // ── format helper (borrows storage instead of taking ownership) ─────────────
 
-struct BorrowedFsInner<'a, S: StorageWithConfig> {
+struct BorrowedFsInner<'a, S: Storage> {
     lfs: Lfs,
     config: LfsConfig,
-    storage: &'a mut S,
+    storage: &'a mut SS<S>,
     _read_buf: Vec<u8>,
     _prog_buf: Vec<u8>,
     _lookahead_buf: Vec<u8>,
 }
 
-fn build_inner_borrowed<'a, S: StorageWithConfig>(
+fn build_inner_borrowed<'a, S: Storage>(
     storage: &'a mut S,
     config: &Config,
 ) -> BorrowedFsInner<'a, S> {
@@ -312,16 +312,16 @@ fn build_inner_borrowed<'a, S: StorageWithConfig>(
     BorrowedFsInner {
         lfs: Lfs::default(),
         config: lfs_config,
-        storage,
+        storage: unsafe { core::mem::transmute(storage) },
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     }
 }
 
-fn wire_context_borrowed<S: StorageWithConfig>(inner: &mut BorrowedFsInner<'_, S>) {
+fn wire_context_borrowed<'a, S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
     inner.config.context = unsafe {
-        core::mem::transmute(inner.storage as *mut S as *mut dyn littlefs_rust_core::Storage)
+        core::mem::transmute(inner.storage as *mut SS<S> as *mut dyn littlefs_rust_core::Storage)
     };
     inner.config.read_buffer = Some(NonNull::from_ref(&inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_ref(&inner._prog_buf));

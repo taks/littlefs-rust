@@ -8,7 +8,7 @@ use littlefs_rust_core::{LfsFile, LfsFileConfig};
 
 use crate::filesystem::Filesystem;
 use crate::metadata::SeekFrom;
-use crate::storage::StorageWithConfig;
+use crate::storage::Storage;
 
 pub(crate) struct FileAllocation<'a> {
     pub(crate) file: LfsFile<'a>,
@@ -35,13 +35,13 @@ impl FileAllocation<'_> {
 ///
 /// Obtained from [`Filesystem::open`]. Automatically closed on drop; call
 /// [`File::close`] explicitly to check for errors.
-pub struct File<'a, S: StorageWithConfig> {
+pub struct File<'a, S: Storage> {
     fs: &'a Filesystem<S>,
     alloc: Box<FileAllocation<'a>>,
     closed: bool,
 }
 
-impl<'a, S: StorageWithConfig> File<'a, S> {
+impl<'a, S: Storage> File<'a, S> {
     pub(crate) fn open(fs: &'a Filesystem<S>, path: &str, flags: OpenFlags) -> Result<Self, Error> {
         let mut alloc = Box::new(FileAllocation::new(fs.cache_size()));
         {
@@ -140,7 +140,7 @@ impl<'a, S: StorageWithConfig> File<'a, S> {
     }
 }
 
-impl<S: StorageWithConfig> Drop for File<'_, S> {
+impl<S: Storage> Drop for File<'_, S> {
     fn drop(&mut self) {
         if !self.closed
             && let Ok(mut inner) = self.fs.inner.try_borrow_mut()
