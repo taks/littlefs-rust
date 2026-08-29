@@ -70,9 +70,9 @@ pub fn lfs_dir_find_match(
         lfs,
         None,
         unsafe { &mut *lfs.rcache.get() },
-        diff as u32,
+        diff,
         disk.block,
-        disk.off,
+        disk.off as usize,
         &name.name[..diff],
     );
     if res != Ok(core::cmp::Ordering::Equal) {

@@ -54,7 +54,7 @@ pub fn lfs_dir_commitprog(
         unsafe { &mut *lfs.rcache.get() },
         false,
         commit.block,
-        commit.off,
+        commit.off as usize,
         buffer,
     )?;
 
@@ -154,9 +154,9 @@ pub fn lfs_dir_commitattr(
                 lfs,
                 None,
                 unsafe { &mut *lfs.rcache.get() },
-                data_size - i,
+                (data_size - i) as usize,
                 disk.block,
-                disk.off + i,
+                (disk.off + i) as usize,
                 dat.as_mut_bytes(),
             )?;
 
@@ -324,16 +324,16 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
     use crate::util::lfs_alignup;
 
     let cfg = unsafe { lfs.cfg.as_ref() };
-    let block_size = cfg.block_size;
-    let prog_size = cfg.prog_size;
+    let block_size = cfg.block_size as usize;
+    let prog_size = cfg.prog_size as usize;
 
-    let end = lfs_alignup(cmp::min(commit.off + 20, block_size), prog_size);
+    let end = lfs_alignup(cmp::min(commit.off as usize + 20, block_size), prog_size);
 
     let mut off1: lfs_off_t = 0;
     let mut crc1: u32 = 0;
 
-    while commit.off < end {
-        let mut noff = cmp::min(end - (commit.off + 4), 0x3fe) + (commit.off + 4);
+    while (commit.off as usize) < end {
+        let mut noff = cmp::min(end - (commit.off as usize + 4), 0x3fe) + (commit.off as usize + 4);
         if noff < end {
             noff = cmp::min(noff, end - 20);
         }
@@ -369,7 +369,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
                 cfg.prog_size,
                 commit.block,
                 noff,
-                fcrc.size,
+                fcrc.size as usize,
                 &mut fcrc.crc,
             );
 
@@ -406,7 +406,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             unsafe { &mut *lfs.rcache.get() },
             false,
             commit.block,
-            commit.off,
+            commit.off as usize,
             ccrc.as_bytes(),
         )?;
 
@@ -415,12 +415,12 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             crc1 = commit.crc;
         }
 
-        commit.off = noff;
+        commit.off = noff as u32;
         commit.ptag = ntag ^ ((0x80 & !eperturb) as u32) << 24;
         commit.crc = 0xffff_ffff;
 
         let pcache = unsafe { &mut *lfs.pcache.get() };
-        if noff >= end || noff >= pcache.off + pcache.buffer.len() as u32 {
+        if noff >= end || noff >= pcache.off + pcache.buffer.len() {
             lfs_bd_sync(lfs, pcache, unsafe { &mut *lfs.rcache.get() }, false)?;
         }
     }
@@ -432,8 +432,8 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
         unsafe { &mut *lfs.rcache.get() },
         off1 + core::mem::size_of::<u32>() as u32,
         commit.block,
-        commit.begin,
-        off1 - commit.begin,
+        commit.begin as usize,
+        (off1 - commit.begin) as usize,
         &mut crc,
     )?;
 
@@ -447,7 +447,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
         unsafe { &mut *lfs.rcache.get() },
         4,
         commit.block,
-        off1,
+        off1 as usize,
         4,
         &mut crc,
     )?;
@@ -527,7 +527,7 @@ pub fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), 
         lfs,
         None,
         unsafe { &mut *lfs.rcache.get() },
-        core::mem::size_of::<u32>() as u32,
+        core::mem::size_of::<u32>(),
         dir.pair[0],
         0,
         rev_buf.as_mut_bytes(),
@@ -540,8 +540,8 @@ pub fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), 
     let cfg = unsafe { lfs.cfg.as_ref() };
 
     if cfg.block_cycles > 0 {
-        let modulus = (cfg.block_cycles as u32 + 1) | 1;
-        dir.rev = lfs_alignup(dir.rev, modulus);
+        let modulus = (cfg.block_cycles as usize + 1) | 1;
+        dir.rev = lfs_alignup(dir.rev as usize, modulus) as u32;
     }
 
     dir.off = core::mem::size_of::<u32>() as u32;
@@ -1469,7 +1469,7 @@ pub fn lfs_dir_splittingcompact(
                 cfg.block_size
             };
             let max_space = effective_max - 40;
-            let half_block = lfs_alignup(effective_max / 2, cfg.prog_size);
+            let half_block = lfs_alignup(effective_max as usize / 2, cfg.prog_size as usize) as u32;
             crate::lfs_trace!(
                 "splittingcompact: split={} end_val={} size={} max_space={} half_block={} break={}",
                 split,

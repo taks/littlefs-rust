@@ -119,9 +119,9 @@ pub fn lfs_fs_parent_match(
         lfs,
         None,
         unsafe { &mut *lfs.rcache.get() },
-        unsafe { lfs.cfg.as_ref().block_size },
+        unsafe { lfs.cfg.as_ref().block_size as usize },
         disk.block,
-        disk.off,
+        disk.off as usize,
         child.as_mut_bytes(),
     )?;
 

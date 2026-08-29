@@ -378,7 +378,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
         file.flags.insert(OpenFlags::INLINE);
         file.cache.block = file.ctz.head;
         file.cache.off = 0;
-        file.cache.size = unsafe { lfs.cfg.as_ref().cache_size };
+        file.cache.size = unsafe { lfs.cfg.as_ref().cache_size as usize };
         if file.ctz.size > 0 {
             let res = lfs_dir_get(
                 lfs,
@@ -387,7 +387,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
                 lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
                     file.id as u32,
-                    cmp::min(file.cache.size as usize, 0x3fe),
+                    cmp::min(file.cache.size, 0x3fe),
                 ),
                 unsafe { file.cache.buffer.as_mut() },
             );
@@ -550,7 +550,7 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
             return crate::lfs_pass_err!(err);
         }
 
-        for i in 0..file.off {
+        for i in 0..(file.off as usize) {
             let mut data = [0u8];
             let err = if file.flags.contains(OpenFlags::INLINE) {
                 let gtag = lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0);
@@ -559,7 +559,7 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                     &file.m,
                     None,
                     &mut file.cache,
-                    file.off - i,
+                    file.off - i as u32,
                     lfs_mktag(0xfff, 0x1ff, 0),
                     gtag,
                     i,
@@ -570,7 +570,7 @@ pub fn lfs_file_relocate(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result
                     lfs,
                     Some(&file.cache),
                     unsafe { &mut *lfs.rcache.get() },
-                    file.off - i,
+                    file.off as usize - i,
                     file.block,
                     i,
                     &mut data,
@@ -989,7 +989,7 @@ pub fn lfs_file_flushedread(
                     block_size,
                     lfs_mktag(0xfff, 0x1ff, 0),
                     gtag,
-                    file.off,
+                    file.off as usize,
                     &mut data[..diff],
                 )?;
             } else {
@@ -997,9 +997,9 @@ pub fn lfs_file_flushedread(
                     lfs,
                     None,
                     &mut file.cache,
-                    block_size,
+                    block_size as usize,
                     file.block,
-                    file.off,
+                    file.off as usize,
                     &mut data[..diff],
                 )?;
             }
@@ -1200,7 +1200,7 @@ pub fn lfs_file_flushedwrite(
                 unsafe { &mut *lfs.rcache.get() },
                 true,
                 file.block,
-                file.off,
+                file.off as usize,
                 &data[..diff],
             );
             if let Err(err) = err {
@@ -1349,8 +1349,8 @@ pub fn lfs_file_seek_(
         let oindex = lfs_ctz_index(lfs, &mut opos);
         let nindex = lfs_ctz_index(lfs, &mut npos_off);
         if oindex == nindex
-            && npos_off >= file.cache.off
-            && npos_off < file.cache.off + file.cache.size
+            && (npos_off as usize) >= file.cache.off
+            && (npos_off as usize) < file.cache.off + file.cache.size
         {
             file.pos = npos;
             file.off = npos_off;
@@ -1486,7 +1486,7 @@ pub fn lfs_file_truncate_(
                 .insert(OpenFlags::DIRTY | OpenFlags::READING | OpenFlags::INLINE);
             file.cache.block = file.ctz.head;
             file.cache.off = 0;
-            file.cache.size = unsafe { lfs.cfg.as_ref().cache_size };
+            file.cache.size = unsafe { lfs.cfg.as_ref().cache_size as usize };
 
             // Copy data from rcache into file cache
             unsafe {

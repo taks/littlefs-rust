@@ -11,7 +11,7 @@ use crate::types::lfs_block_t;
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_aligndown(a: u32, alignment: u32) -> u32 {
+pub fn lfs_aligndown(a: usize, alignment: usize) -> usize {
     a - (a % alignment)
 }
 
@@ -24,7 +24,7 @@ pub fn lfs_aligndown(a: u32, alignment: u32) -> u32 {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_alignup(a: u32, alignment: u32) -> u32 {
+pub fn lfs_alignup(a: usize, alignment: usize) -> usize {
     lfs_aligndown(a + alignment - 1, alignment)
 }
 

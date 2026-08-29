@@ -387,9 +387,9 @@ pub fn lfs_dir_fetchmatch(
                 lfs,
                 None,
                 unsafe { &mut *lfs.rcache.get() },
-                cfg.block_size,
+                cfg.block_size as usize,
                 dir.pair[0],
-                off,
+                off as usize,
                 &mut tag_buf,
             );
             if let Err(err) = err {
@@ -418,9 +418,9 @@ pub fn lfs_dir_fetchmatch(
                     lfs,
                     None,
                     unsafe { &mut *lfs.rcache.get() },
-                    cfg.block_size,
+                    cfg.block_size as usize,
                     dir.pair[0],
-                    off + 4,
+                    (off + 4) as usize,
                     &mut dcrc_buf,
                 );
                 if let Err(err) = err {
@@ -459,8 +459,8 @@ pub fn lfs_dir_fetchmatch(
                 unsafe { &mut *lfs.rcache.get() },
                 cfg.block_size,
                 dir.pair[0],
-                off + 4,
-                entry_size,
+                (off + 4) as usize,
+                entry_size as usize,
                 &mut crc_val,
             );
             if let Err(err) = err {
@@ -498,9 +498,9 @@ pub fn lfs_dir_fetchmatch(
                     lfs,
                     None,
                     unsafe { &mut *lfs.rcache.get() },
-                    cfg.block_size,
+                    cfg.block_size as usize,
                     dir.pair[0],
-                    off + 4,
+                    (off + 4) as usize,
                     tail_buf.as_mut_bytes(),
                 );
                 if let Err(err) = err {
@@ -516,9 +516,9 @@ pub fn lfs_dir_fetchmatch(
                     lfs,
                     None,
                     unsafe { &mut *lfs.rcache.get() },
-                    cfg.block_size,
+                    cfg.block_size as usize,
                     dir.pair[0],
-                    off + 4,
+                    (off + 4) as usize,
                     fcrc_buf.as_mut_bytes(),
                 );
                 if let Err(err) = err {
@@ -578,8 +578,8 @@ pub fn lfs_dir_fetchmatch(
                 unsafe { &mut *lfs.rcache.get() },
                 cfg.block_size,
                 dir.pair[0],
-                dir.off,
-                fcrc.size,
+                dir.off as usize,
+                fcrc.size as usize,
                 &mut fcrc_,
             );
             if let Err(err) = err

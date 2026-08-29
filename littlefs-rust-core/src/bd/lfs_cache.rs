@@ -7,8 +7,8 @@ use crate::types::lfs_block_t;
 /// Per lfs.h typedef struct lfs_cache
 pub struct LfsCache {
     pub block: lfs_block_t,
-    pub off: u32,
-    pub size: u32,
+    pub off: usize,
+    pub size: usize,
     pub buffer: NonNull<[u8]>,
 }
 

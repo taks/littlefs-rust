@@ -113,7 +113,7 @@ pub fn lfs_ctz_find(
         let skip = cmp::min(
             lfs_npw2((current - target + 1) as u32) - 1,
             lfs_ctz(current as u32),
-        );
+        ) as usize;
 
         let mut head_buf: u32 = 0;
         lfs_bd_read(
@@ -122,7 +122,7 @@ pub fn lfs_ctz_find(
             rcache,
             4,
             head_val,
-            4 * skip,
+            (4 * skip) as usize,
             head_buf.as_mut_bytes(),
         )?;
 
@@ -213,7 +213,7 @@ pub fn lfs_ctz_traverse(
         // C: count*sizeof(head) as hint
         let count = (2 - (index & 1)) as usize;
         let mut heads = [0u32; 2];
-        let read_size = (count * core::mem::size_of::<lfs_block_t>()) as u32;
+        let read_size = count * core::mem::size_of::<lfs_block_t>();
         lfs_bd_read(
             lfs,
             pcache,
@@ -385,9 +385,17 @@ pub fn lfs_ctz_extend(
             noff += 1;
 
             if noff != block_size {
-                for i in 0..noff {
+                for i in 0..(noff as usize) {
                     let mut data: u8 = 0;
-                    lfs_bd_read(lfs, None, rcache, noff - i, head, i, data.as_mut_bytes())?;
+                    lfs_bd_read(
+                        lfs,
+                        None,
+                        rcache,
+                        noff as usize - i,
+                        head,
+                        i,
+                        data.as_mut_bytes(),
+                    )?;
 
                     let err = lfs_bd_prog(lfs, pcache, rcache, true, nblock, i, data.as_bytes());
                     if let Err(err) = err {
@@ -415,7 +423,7 @@ pub fn lfs_ctz_extend(
                     rcache,
                     true,
                     nblock,
-                    4 * i,
+                    (4 * i) as usize,
                     nhead_le.as_bytes(),
                 );
                 if let Err(err) = err {
@@ -431,7 +439,15 @@ pub fn lfs_ctz_extend(
                 if i != skips - 1 {
                     let mut nhead_buf: u32 = 0;
 
-                    lfs_bd_read(lfs, None, rcache, 4, nhead, 4 * i, nhead_buf.as_mut_bytes())?;
+                    lfs_bd_read(
+                        lfs,
+                        None,
+                        rcache,
+                        4,
+                        nhead,
+                        (4 * i) as usize,
+                        nhead_buf.as_mut_bytes(),
+                    )?;
 
                     nhead = u32::from_le(nhead_buf);
                 }
