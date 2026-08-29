@@ -573,25 +573,26 @@ pub fn lfs_bd_prog(
     rcache: &mut LfsCache,
     validate: bool,
     block: lfs_block_t,
-    mut off: lfs_off_t,
+    off: lfs_off_t,
     mut data: &[u8],
 ) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::lfs_aligndown;
 
     let cfg = unsafe { lfs.cfg.as_ref() };
+    let mut off = off as usize;
 
     crate::lfs_assert!(block == LFS_BLOCK_INLINE || block < lfs.block_count);
-    crate::lfs_assert!(off + data.len() as u32 <= cfg.block_size);
+    crate::lfs_assert!(off + data.len() <= cfg.block_size as usize);
 
     while !data.is_empty() {
         if block == pcache.block
-            && off >= pcache.off
-            && off < pcache.off + pcache.buffer.len() as u32
+            && off >= (pcache.off as usize)
+            && off < (pcache.off as usize) + pcache.buffer.len()
         {
             let diff = cmp::min(
                 data.len(),
-                pcache.buffer.len() - (off - pcache.off) as usize,
+                pcache.buffer.len() - (off - pcache.off as usize),
             );
             #[cfg(feature = "log")]
             // Trace superblock magic region (offset 12-20 in block 0/1)
@@ -612,14 +613,14 @@ pub fn lfs_bd_prog(
             }
             unsafe {
                 pcache.buffer.as_mut()
-                    [((off - pcache.off) as usize)..((off - pcache.off) as usize + diff)]
+                    [((off - pcache.off as usize))..((off - pcache.off as usize) + diff)]
                     .copy_from_slice(&data[..diff]);
             };
 
             data = &data[diff..];
-            off += diff as u32;
+            off += diff;
 
-            pcache.size = cmp::max(pcache.size, off - pcache.off);
+            pcache.size = cmp::max(pcache.size, off as u32 - pcache.off);
             if pcache.size == pcache.buffer.len() as u32 {
                 lfs_bd_flush(lfs, pcache, rcache, validate)?;
             }
@@ -630,7 +631,7 @@ pub fn lfs_bd_prog(
         crate::lfs_assert!(pcache.block == crate::types::LFS_BLOCK_NULL);
 
         pcache.block = block;
-        pcache.off = lfs_aligndown(off, cfg.prog_size);
+        pcache.off = lfs_aligndown(off as u32, cfg.prog_size);
         pcache.size = 0;
     }
 

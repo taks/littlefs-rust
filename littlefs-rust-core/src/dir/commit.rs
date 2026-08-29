@@ -141,7 +141,7 @@ pub fn lfs_dir_commitattr(
         if !buffer.is_empty() && dsize >= 8 {
             crate::lfs_trace!(
                 "commitattr SUPERBLOCK data (first 8): {:?}",
-                core::slice::from_raw_parts(&buffer, 8)
+                &buffer[..8]
             );
         }
     }
