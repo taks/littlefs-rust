@@ -1,5 +1,7 @@
 //! CTZ operations. Per lfs.c lfs_ctz_index, lfs_ctz_find, lfs_ctz_extend, lfs_ctz_traverse.
 
+use core::cmp;
+
 use zerocopy::IntoBytes;
 
 use crate::Lfs;
@@ -91,7 +93,7 @@ pub fn lfs_ctz_find(
 ) -> Result<(), Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::types::LFS_BLOCK_NULL;
-    use crate::util::{lfs_ctz, lfs_min, lfs_npw2};
+    use crate::util::{lfs_ctz, lfs_npw2};
 
     if size == 0 {
         *block = LFS_BLOCK_NULL;
@@ -108,7 +110,7 @@ pub fn lfs_ctz_find(
     let mut head_val = head;
 
     while current > target {
-        let skip = lfs_min(
+        let skip = cmp::min(
             lfs_npw2((current - target + 1) as u32) - 1,
             lfs_ctz(current as u32),
         );

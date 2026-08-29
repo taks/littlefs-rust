@@ -16,7 +16,6 @@ use crate::lfs_type::lfs_type::{LFS_TYPE_INLINESTRUCT, LFS_TYPE3_REG};
 use crate::tag::lfs_mktag;
 use crate::types::LFS_BLOCK_INLINE;
 use crate::types::{lfs_block_t, lfs_off_t};
-use crate::util::lfs_min;
 use crate::{Lfs, LfsAttr};
 
 /// Per lfs.c lfs_file_opencfg_ (lines 3065-3236)
@@ -211,7 +210,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_REG, LFS_TYPE_USERATTR};
     use crate::tag::{lfs_mktag, lfs_tag_size, lfs_tag_type3};
     use crate::types::LFS_BLOCK_INLINE;
-    use crate::util::{lfs_min, lfs_path_isdir, lfs_path_islast, lfs_path_namelen};
+    use crate::util::{lfs_path_isdir, lfs_path_islast, lfs_path_namelen};
 
     if flags.contains(OpenFlags::WRITE) {
         lfs_fs_forceconsistency(lfs)?;
@@ -388,7 +387,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
                 lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_TYPE_STRUCT,
                     file.id as u32,
-                    lfs_min(file.cache.size, 0x3fe),
+                    cmp::min(file.cache.size, 0x3fe),
                 ),
                 unsafe { file.cache.buffer.as_mut() },
             );
@@ -1197,7 +1196,7 @@ pub fn lfs_file_flushedwrite(
                 file.flags.insert(OpenFlags::WRITING);
             }
 
-            let diff = lfs_min(nsize, block_size - file.off);
+            let diff = cmp::min(nsize, block_size - file.off);
             'prog: loop {
                 let err = lfs_bd_prog(
                     lfs,

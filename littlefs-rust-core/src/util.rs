@@ -2,19 +2,6 @@
 
 use crate::types::{lfs_block_t, lfs_size_t};
 
-/// Per lfs_util.h lfs_min (lines 133-135)
-///
-/// C:
-/// ```c
-/// static inline uint32_t lfs_min(uint32_t a, uint32_t b) {
-///     return (a < b) ? a : b;
-/// }
-/// ```
-#[inline(always)]
-pub fn lfs_min(a: u32, b: u32) -> u32 {
-    if a < b { a } else { b }
-}
-
 /// Per lfs_util.h lfs_aligndown (lines 138-140)
 ///
 /// C:
@@ -239,12 +226,8 @@ pub fn lfs_pair_isnull(pair: &[lfs_block_t; 2]) -> bool {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_pair_cmp(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> i32 {
-    let eq = paira[0] == pairb[0]
-        || paira[1] == pairb[1]
-        || paira[0] == pairb[1]
-        || paira[1] == pairb[0];
-    if eq { 0 } else { 1 }
+pub fn lfs_pair_cmp(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> bool {
+    !(paira[0] == pairb[0] || paira[1] == pairb[1] || paira[0] == pairb[1] || paira[1] == pairb[0])
 }
 
 /// Per lfs.c lfs_pair_issync (lines 319-324)
