@@ -613,7 +613,7 @@ pub fn lfs_bd_prog(
             }
             unsafe {
                 pcache.buffer.as_mut()
-                    [((off - pcache.off as usize))..((off - pcache.off as usize) + diff)]
+                    [(off - pcache.off as usize)..((off - pcache.off as usize) + diff)]
                     .copy_from_slice(&data[..diff]);
             };
 

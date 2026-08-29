@@ -454,20 +454,12 @@ unsafe fn evil_mdir_loop2() {
         lfs,
         mdir,
         lfs_mktag(0x7ff, 0x3ff, 0),
-        lfs_mktag(
-            LFS_TYPE_DIRSTRUCT,
-            1,
-            core::mem::size_of::<[u32; 2]>(),
-        ),
+        lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()),
         child_pair.as_mut_bytes(),
     );
     assert_eq!(
         tag,
-        Ok(lfs_mktag(
-            LFS_TYPE_DIRSTRUCT,
-            1,
-            core::mem::size_of::<[u32; 2]>()
-        ) as u32)
+        Ok(lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()) as u32)
     );
     lfs_pair_fromle32(&mut child_pair);
 
@@ -517,20 +509,12 @@ unsafe fn evil_mdir_loop_child() {
         lfs,
         mdir,
         lfs_mktag(0x7ff, 0x3ff, 0),
-        lfs_mktag(
-            LFS_TYPE_DIRSTRUCT,
-            1,
-            core::mem::size_of::<[u32; 2]>(),
-        ),
+        lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()),
         child_pair.as_mut_bytes(),
     );
     assert_eq!(
         tag,
-        Ok(lfs_mktag(
-            LFS_TYPE_DIRSTRUCT,
-            1,
-            core::mem::size_of::<[u32; 2]>()
-        ) as u32)
+        Ok(lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()) as u32)
     );
     lfs_pair_fromle32(&mut child_pair);
 

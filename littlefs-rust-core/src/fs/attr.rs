@@ -148,7 +148,7 @@ pub fn lfs_commitattr(
     }
 
     let attrs = [lfs_mattr {
-        tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size as usize),
+        tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size),
         buffer,
     }];
     lfs_dir_commit(lfs, &mut cwd, &attrs)

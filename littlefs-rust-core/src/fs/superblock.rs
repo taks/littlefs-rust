@@ -90,7 +90,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
             block_count: lfs.block_count,
             name_max: lfs.name_max,
             file_max: lfs.file_max,
-            attr_max: lfs.attr_max as u32,
+            attr_max: lfs.attr_max,
         };
         lfs_superblock_tole32(&mut superblock);
 

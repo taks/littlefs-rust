@@ -192,7 +192,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
                 buffer: &[],
             },
             lfs_mattr {
-                tag: lfs_mktag(LFS_TYPE3_DIR, id as u32, nlen as usize),
+                tag: lfs_mktag(LFS_TYPE3_DIR, id as u32, nlen),
                 buffer: path_ptr.as_bytes(),
             },
             lfs_mattr {

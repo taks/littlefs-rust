@@ -324,7 +324,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
                 buffer: &[],
             },
             lfs_mattr {
-                tag: lfs_mktag(lfs_tag_type3(oldtag), newid as u32, nlen as usize),
+                tag: lfs_mktag(lfs_tag_type3(oldtag), newid as u32, nlen),
                 buffer: newpath_ptr.as_bytes(),
             },
             lfs_mattr {
