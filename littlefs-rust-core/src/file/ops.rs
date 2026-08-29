@@ -1323,47 +1323,45 @@ pub fn lfs_file_seek_(
     use crate::file::ctz::lfs_ctz_index;
     use crate::lfs_type::lfs_whence_flags::{LFS_SEEK_CUR, LFS_SEEK_END, LFS_SEEK_SET};
 
-    unsafe {
-        let file_max = lfs.file_max;
-        let block_size = lfs.cfg.as_ref().block_size;
+    let file_max = lfs.file_max;
+    let block_size = unsafe { lfs.cfg.as_ref() }.block_size;
 
-        let mut npos = file.pos;
-        if whence == LFS_SEEK_SET {
-            npos = off as lfs_off_t;
-        } else if whence == LFS_SEEK_CUR {
-            npos = (file.pos as i64 + off as i64) as lfs_off_t;
-        } else if whence == LFS_SEEK_END {
-            npos = (lfs_file_size_(lfs, file) as i64 + off as i64) as lfs_off_t;
-        }
+    let mut npos = file.pos;
+    if whence == LFS_SEEK_SET {
+        npos = off as lfs_off_t;
+    } else if whence == LFS_SEEK_CUR {
+        npos = (file.pos as i64 + off as i64) as lfs_off_t;
+    } else if whence == LFS_SEEK_END {
+        npos = (lfs_file_size_(lfs, file) as i64 + off as i64) as lfs_off_t;
+    }
 
-        if npos > file_max {
-            return crate::lfs_err!(Err(Error::Invalid));
-        }
+    if npos > file_max {
+        return crate::lfs_err!(Err(Error::Invalid));
+    }
 
-        if file.pos == npos {
+    if file.pos == npos {
+        return Ok(npos as _);
+    }
+
+    if file.flags.contains(OpenFlags::READING) && file.off != block_size {
+        let mut opos = file.pos;
+        let mut npos_off = npos;
+        let oindex = lfs_ctz_index(lfs, &mut opos);
+        let nindex = lfs_ctz_index(lfs, &mut npos_off);
+        if oindex == nindex
+            && npos_off >= file.cache.off
+            && npos_off < file.cache.off + file.cache.size
+        {
+            file.pos = npos;
+            file.off = npos_off;
             return Ok(npos as _);
         }
-
-        if file.flags.contains(OpenFlags::READING) && file.off != block_size {
-            let mut opos = file.pos;
-            let mut npos_off = npos;
-            let oindex = lfs_ctz_index(lfs, &mut opos);
-            let nindex = lfs_ctz_index(lfs, &mut npos_off);
-            if oindex == nindex
-                && npos_off >= file.cache.off
-                && npos_off < file.cache.off + file.cache.size
-            {
-                file.pos = npos;
-                file.off = npos_off;
-                return Ok(npos as _);
-            }
-        }
-
-        lfs_file_flush(lfs, file)?;
-
-        file.pos = npos;
-        Ok(npos as crate::types::lfs_off_t)
     }
+
+    lfs_file_flush(lfs, file)?;
+
+    file.pos = npos;
+    Ok(npos as crate::types::lfs_off_t)
 }
 
 /// Translation docs: Truncates file to size. Shrink: revert to inline if size <= inline_max,
