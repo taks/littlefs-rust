@@ -488,8 +488,7 @@ pub fn lfs_dir_fetchmatch(
                 } else if tempbesttag != -1
                     && lfs_tag_id(tag) <= lfs_tag_id(tempbesttag as lfs_tag_t)
                 {
-                    tempbesttag =
-                        tempbesttag + lfs_mktag(0, lfs_tag_splice(tag) as u32, 0) as lfs_stag_t;
+                    tempbesttag += lfs_mktag(0, lfs_tag_splice(tag) as u32, 0) as lfs_stag_t;
                 }
             } else if (lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
                 tempsplit = (lfs_tag_chunk(tag) & 1) != 0;
