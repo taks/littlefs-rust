@@ -41,9 +41,6 @@ impl Debug for LfsMlist {
 /// ```
 #[allow(unused)]
 pub fn lfs_mlist_isopen(head: *mut LfsMlist, node: *const LfsMlist) -> bool {
-    if head.is_null() || node.is_null() {
-        return false;
-    }
     unsafe {
         let mut p = head;
         while !p.is_null() {

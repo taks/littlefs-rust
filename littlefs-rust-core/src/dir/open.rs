@@ -278,7 +278,7 @@ pub fn lfs_dir_seek_(
     let mut off = off - dir.pos;
 
     // skip superblock entry
-    dir.id = if off > 0 && lfs_pair_cmp(&dir.head, &lfs.root) == 0 {
+    dir.id = if off > 0 && !lfs_pair_cmp(&dir.head, &lfs.root) {
         1
     } else {
         0

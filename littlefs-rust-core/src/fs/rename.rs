@@ -251,7 +251,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
             };
         }
 
-        let samepair = lfs_pair_cmp(&oldcwd.pair, &newcwd.pair) == 0;
+        let samepair = !lfs_pair_cmp(&oldcwd.pair, &newcwd.pair);
         let mut newoldid = lfs_tag_id(oldtag);
 
         let mut prevdir = LfsMlist {

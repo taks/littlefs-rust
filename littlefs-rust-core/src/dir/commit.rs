@@ -690,7 +690,7 @@ pub fn lfs_dir_split(
 
     // update root if needed
     let root = &lfs.root;
-    if lfs_pair_cmp(&dir.pair, root) == 0 && split == 0 {
+    if !lfs_pair_cmp(&dir.pair, root) && split == 0 {
         lfs.root[0] = tail.pair[0];
         lfs.root[1] = tail.pair[1];
     }
@@ -984,7 +984,7 @@ pub fn lfs_dir_compact(
 
     dir.rev = dir.rev.wrapping_add(1);
 
-    if tired && lfs_pair_cmp(&dir.pair, &superblock_pair) != 0 {
+    if tired && lfs_pair_cmp(&dir.pair, &superblock_pair) {
         relocated = true;
         lfs_cache_drop(lfs, unsafe { &mut *lfs.pcache.get() });
         let err = lfs_alloc(lfs, &mut dir.pair[1]);
@@ -1034,7 +1034,7 @@ pub fn lfs_dir_compact(
                 );
                 let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                 lfs_cache_drop(lfs, unsafe { &mut *lfs.pcache.get() });
-                if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
+                if !lfs_pair_cmp(&dir.pair, &superblock_pair) {
                     crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT bd_erase");
                     return crate::lfs_err!(Err(Error::NoSpace));
                 }
@@ -1071,7 +1071,7 @@ pub fn lfs_dir_compact(
                 );
                 let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                 lfs_cache_drop(lfs, unsafe { &mut *lfs.pcache.get() });
-                if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
+                if !lfs_pair_cmp(&dir.pair, &superblock_pair) {
                     crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT commitprog");
                     return crate::lfs_err!(Err(Error::NoSpace));
                 }
@@ -1126,7 +1126,7 @@ pub fn lfs_dir_compact(
                 );
                 let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                 lfs_cache_drop(lfs, unsafe { &mut *lfs.pcache.get() });
-                if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
+                if !lfs_pair_cmp(&dir.pair, &superblock_pair) {
                     crate::lfs_trace!("lfs_dir_compact NOSPC: root+err traverse");
                     return crate::lfs_err!(Err(Error::NoSpace));
                 }
@@ -1174,7 +1174,7 @@ pub fn lfs_dir_compact(
                     );
                     let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                     lfs_cache_drop(lfs, unsafe { &mut *lfs.pcache.get() });
-                    if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
+                    if !lfs_pair_cmp(&dir.pair, &superblock_pair) {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT tail");
                         return crate::lfs_err!(Err(Error::NoSpace));
                     }
@@ -1234,7 +1234,7 @@ pub fn lfs_dir_compact(
                     );
                     let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                     lfs_cache_drop(lfs, unsafe { &mut *lfs.pcache.get() });
-                    if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
+                    if !lfs_pair_cmp(&dir.pair, &superblock_pair) {
                         crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT movestate");
                         return crate::lfs_err!(Err(Error::NoSpace));
                     }
@@ -1270,7 +1270,7 @@ pub fn lfs_dir_compact(
                 );
                 let _ = lfs_alloc_lookahead(lfs, dir.pair[1]);
                 lfs_cache_drop(lfs, unsafe { &mut *lfs.pcache.get() });
-                if lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
+                if !lfs_pair_cmp(&dir.pair, &superblock_pair) {
                     crate::lfs_trace!("lfs_dir_compact NOSPC: root+CORRUPT commitcrc");
                     return crate::lfs_err!(Err(Error::NoSpace));
                 }
@@ -1520,7 +1520,7 @@ pub fn lfs_dir_splittingcompact(
     }
 
     let superblock_pair = [0u32, 1u32];
-    if lfs_dir_needsrelocation(lfs, dir) && lfs_pair_cmp(&dir.pair, &superblock_pair) == 0 {
+    if lfs_dir_needsrelocation(lfs, dir) && !lfs_pair_cmp(&dir.pair, &superblock_pair) {
         let size = lfs_fs_size_(lfs)?;
         if lfs.block_count as i64 - size as i64 > (lfs.block_count as i64) / 8 {
             let err = lfs_dir_split(lfs, dir, attrs, source, begin, end_val);
@@ -1910,7 +1910,7 @@ fn relocatingcommit_fixmlist(
     let oldpair = [(*pair)[0], (*pair)[1]];
     let mut d = lfs.mlist;
     while let Some(d_ref) = unsafe { d.as_mut() } {
-        if lfs_pair_cmp(&d_ref.m.pair, &oldpair) == 0 {
+        if !lfs_pair_cmp(&d_ref.m.pair, &oldpair) {
             d_ref.m = *dir;
             if !core::ptr::eq(&d_ref.m.pair as *const _, pair as *const _) {
                 for attr in attrs_slice.iter() {
@@ -1930,7 +1930,7 @@ fn relocatingcommit_fixmlist(
                 }
             }
             while d_ref.id >= d_ref.m.count && d_ref.m.split {
-                if lfs_pair_cmp(&d_ref.m.tail, &lfs.root) != 0 {
+                if lfs_pair_cmp(&d_ref.m.tail, &lfs.root) {
                     d_ref.id -= d_ref.m.count;
                 }
                 let d_ref_m_tail = d_ref.m.tail;
@@ -2153,7 +2153,7 @@ pub fn lfs_dir_orphaningcommit(
 
     let state = lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?;
 
-    if lfs_pair_cmp(&dir.pair, &lpair) == 0 {
+    if !lfs_pair_cmp(&dir.pair, &lpair) {
         *dir = ldir;
     }
 
@@ -2185,7 +2185,7 @@ pub fn lfs_dir_orphaningcommit(
         state = 0;
 
         // C: lfs.c:2480-2483 — update internal root
-        if lfs_pair_cmp(&lpair, &lfs.root) == 0 {
+        if !lfs_pair_cmp(&lpair, &lfs.root) {
             lfs.root[0] = ldir.pair[0];
             lfs.root[1] = ldir.pair[1];
         }
@@ -2194,7 +2194,7 @@ pub fn lfs_dir_orphaningcommit(
         unsafe {
             let mut d = lfs.mlist;
             while !d.is_null() {
-                if lfs_pair_cmp(&lpair, &(*d).m.pair) == 0 {
+                if !lfs_pair_cmp(&lpair, &(*d).m.pair) {
                     (*d).m.pair[0] = ldir.pair[0];
                     (*d).m.pair[1] = ldir.pair[1];
                 }

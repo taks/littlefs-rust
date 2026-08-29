@@ -226,12 +226,8 @@ pub fn lfs_pair_isnull(pair: &[lfs_block_t; 2]) -> bool {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_pair_cmp(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> i32 {
-    let eq = paira[0] == pairb[0]
-        || paira[1] == pairb[1]
-        || paira[0] == pairb[1]
-        || paira[1] == pairb[0];
-    if eq { 0 } else { 1 }
+pub fn lfs_pair_cmp(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> bool {
+    !(paira[0] == pairb[0] || paira[1] == pairb[1] || paira[0] == pairb[1] || paira[1] == pairb[0])
 }
 
 /// Per lfs.c lfs_pair_issync (lines 319-324)
