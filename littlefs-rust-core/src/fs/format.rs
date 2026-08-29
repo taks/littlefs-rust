@@ -171,15 +171,8 @@ pub fn lfs_format_(
             return crate::lfs_pass_err!(err);
         }
 
-        // Flush pcache so the second commit can read the first block from disk.
-        // Otherwise the second compact reads from a block that was never written.
-        err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
-
-        // force compaction to prevent accidentally mounting any older version
+        // force compaction to prevent accidentally mounting any
+        // older version of littlefs that may live on disk
         root.erased = false;
         err = lfs_dir_commit(lfs, &mut root, &[]);
         if err.is_err() {
