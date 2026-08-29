@@ -181,15 +181,7 @@ pub fn lfs_format_(
         }
 
         // sanity check that fetch works
-        let root_pair = root.pair;
-        err = lfs_dir_fetch(lfs, &mut root, root_pair);
-        if err.is_err() {
-            let _ = lfs_deinit(lfs);
-            return crate::lfs_pass_err!(err);
-        }
-
-        // flush pcache so raw block reads (e.g. test_superblocks_magic) see data
-        err = lfs_bd_sync(lfs, &mut *lfs.pcache.get(), &mut *lfs.rcache.get(), false);
+        err = lfs_dir_fetch(lfs, &mut root, [0, 1]);
         if err.is_err() {
             let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);
