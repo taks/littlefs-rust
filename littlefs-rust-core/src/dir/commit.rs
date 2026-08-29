@@ -6,12 +6,13 @@ use core::ptr::NonNull;
 
 use zerocopy::{FromBytes, IntoBytes, TryFromBytes};
 
-use crate::dir::LfsCommit;
-use crate::dir::LfsMdir;
 use crate::dir::fetch::lfs_dir_getgstate;
+use crate::dir::lfs_fcrc::lfs_fcrc_tole32;
+use crate::dir::{LfsCommit, LfsFcrc, LfsMdir};
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::fs::stat::lfs_fs_size_;
+use crate::lfs_type::lfs_type::LFS_TYPE_FCRC;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_tag_t};
 
 #[allow(non_camel_case_types)]
@@ -344,12 +345,10 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
     let mut crc1: u32 = 0;
 
     while commit.off < end {
-        let noff = cmp::min(end - (commit.off + 4), 0x3fe) + (commit.off + 4);
-        let noff = if noff < end {
-            cmp::min(noff, end - 20)
-        } else {
-            noff
-        };
+        let mut noff = cmp::min(end - (commit.off + 4), 0x3fe) + (commit.off + 4);
+        if noff < end {
+            noff = cmp::min(noff, end - 20);
+        }
 
         let mut eperturb: u8 = 0xff;
         if noff >= end && noff <= block_size - prog_size {
@@ -367,8 +366,42 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
             {
                 return crate::lfs_pass_err!(ret);
             }
+
+            // find the expected fcrc, don't bother avoiding a reread
+            // of the eperturb, it should still be in our cache
+            let mut fcrc = LfsFcrc {
+                size: cfg.prog_size,
+                crc: 0xffffffff,
+            };
+
+            let ret = lfs_bd_crc(
+                lfs,
+                None,
+                unsafe { &mut *lfs.rcache.get() },
+                cfg.prog_size,
+                commit.block,
+                noff,
+                fcrc.size,
+                &mut fcrc.crc,
+            );
+
+            if let Err(err) = ret
+                && err != Error::Corrupt
+            {
+                return crate::lfs_pass_err!(ret);
+            }
+
+            lfs_fcrc_tole32(&mut fcrc);
+
+            lfs_dir_commitattr(
+                lfs,
+                commit,
+                lfs_mktag(LFS_TYPE_FCRC, 0x3ff, core::mem::size_of::<LfsFcrc>() as u32),
+                fcrc.as_bytes(),
+            )?;
         }
 
+        // build commit crc
         let mut ccrc: [u32; 2] = [0; 2];
         let ntag = lfs_mktag(
             crate::lfs_type::lfs_type::LFS_TYPE_CCRC + (u16::from(!eperturb) >> 7),

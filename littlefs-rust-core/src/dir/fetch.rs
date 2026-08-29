@@ -513,7 +513,7 @@ pub fn lfs_dir_fetchmatch(
                 }
                 temptail[0] = u32::from_le_bytes(tail_buf[0..4].try_into().unwrap());
                 temptail[1] = u32::from_le_bytes(tail_buf[4..8].try_into().unwrap());
-            } else if u32::from(lfs_tag_type3(tag)) == LFS_TYPE_FCRC {
+            } else if lfs_tag_type3(tag) == LFS_TYPE_FCRC {
                 let mut fcrc_buf: LfsFcrc = unsafe { core::mem::zeroed() };
                 let err = lfs_bd_read(
                     lfs,
