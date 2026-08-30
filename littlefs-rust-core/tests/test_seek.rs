@@ -547,7 +547,7 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
         lfs_file_seek(lfs, file, -(hole_offset as i32), LFS_SEEK_CUR,),
         Err(Error::Invalid)
     );
-    assert_eq!(lfs_file_tell(lfs, file), (count as u32 + 1) * (size as u32));
+    assert_eq!(lfs_file_tell(lfs, file), (count + 1) * (size as u32));
 
     assert_eq!(
         lfs_file_seek(
@@ -558,7 +558,7 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
         ),
         Err(Error::Invalid)
     );
-    assert_eq!(lfs_file_tell(lfs, file), (count as u32 + 1) * (size as u32));
+    assert_eq!(lfs_file_tell(lfs, file), (count + 1) * (size as u32));
 
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));

@@ -938,7 +938,7 @@ fn test_alloc_chained_dir_exhaustion() {
         }
         let filesize = lfs_file_size(lfs, file);
         assert!(filesize > 0, "need positive file size to truncate");
-        let new_size = (filesize - blah.len() as u32).max(0);
+        let new_size = filesize - blah.len() as u32;
         assert_ok!(lfs_file_truncate(lfs, file, new_size));
         assert_ok!(lfs_file_sync(lfs, file));
     }

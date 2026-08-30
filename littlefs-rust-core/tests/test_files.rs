@@ -435,7 +435,7 @@ fn test_files_reentrant_write_sync(
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
         )?;
         let current_size = littlefs_rust_core::lfs_file_size(lfs, file);
-        let skip = current_size.max(0) as u32;
+        let skip = current_size;
         let mut prng = 1u32;
         common::advance_prng(&mut prng, skip);
         let mut i = skip;
