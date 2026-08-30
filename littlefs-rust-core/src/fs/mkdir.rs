@@ -2,6 +2,7 @@
 
 use zerocopy::IntoBytes;
 
+use crate::Storage;
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
 use crate::dir::LfsMlist;
 use crate::dir::commit::{lfs_dir_alloc, lfs_dir_commit};
@@ -115,8 +116,8 @@ use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_path_islast, lfs_path_
 /// }
 /// #endif
 /// ```
-pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
-    lfs_fs_forceconsistency(lfs)?;
+pub async fn lfs_mkdir_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, path: &str) -> Result<(), Error> {
+    lfs_fs_forceconsistency(lfs).await?;
 
     unsafe {
         let mut cwd = LfsMlist {
@@ -129,7 +130,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
 
         let mut path_ptr = path;
         let mut id: u16 = 0;
-        let find_err = lfs_dir_find(lfs, &mut cwd.m, &mut path_ptr, &mut Some(&mut id));
+        let find_err = lfs_dir_find(lfs, &mut cwd.m, &mut path_ptr, &mut Some(&mut id)).await;
         if !(find_err == Err(Error::NoEntry) && lfs_path_islast(path_ptr.as_bytes())) {
             return if let Err(err) = find_err {
                 Err(err)
@@ -146,13 +147,13 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
 
         lfs_alloc_ckpoint(lfs);
         let mut dir = core::mem::zeroed();
-        lfs_dir_alloc(lfs, &mut dir)?;
+        lfs_dir_alloc(lfs, &mut dir).await?;
 
         let mut pred = cwd.m;
 
         while pred.split {
             let pred_tail = pred.tail;
-            lfs_dir_fetch(lfs, &mut pred, pred_tail)?;
+            lfs_dir_fetch(lfs, &mut pred, pred_tail).await?;
         }
 
         lfs_pair_tole32(&mut pred.tail);

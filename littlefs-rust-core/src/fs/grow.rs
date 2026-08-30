@@ -109,7 +109,7 @@ pub async fn lfs_fs_grow_<S: Storage>(
     // fetch the root
     let mut root = core::mem::MaybeUninit::<LfsMdir>::zeroed();
     let root = unsafe { root.assume_init_mut() };
-    lfs_dir_fetch(lfs, root, lfs.root)?;
+    lfs_dir_fetch(lfs, root, lfs.root).await?;
 
     // update the superblock
     let mut superblock = unsafe { core::mem::zeroed::<LfsSuperblock>() };

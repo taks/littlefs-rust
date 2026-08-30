@@ -2,12 +2,12 @@
 
 use zerocopy::{IntoBytes, TryFromBytes};
 
-use crate::LfsAttr;
 use crate::bd::LfsCache;
 use crate::borrow_unchecked::borrow_unchecked;
 use crate::dir::LfsMdir;
 use crate::error::Error;
 use crate::types::{lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
+use crate::{LfsAttr, Storage};
 
 /// Per lfs.c lfs_dir_getslice (lines 719-784)
 ///
@@ -80,8 +80,8 @@ use crate::types::{lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
 ///     return LFS_ERR_NOENT;
 /// }
 /// ```
-pub fn lfs_dir_getslice(
-    lfs: &crate::fs::Lfs,
+pub async fn lfs_dir_getslice<S: Storage>(
+    lfs: &crate::fs::Lfs<S>,
     dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
@@ -117,7 +117,8 @@ pub fn lfs_dir_getslice(
             dir.pair[0],
             off as usize,
             ntag_buf.as_mut_bytes(),
-        )?;
+        )
+        .await?;
 
         ntag = (u32::from_be(ntag_buf) ^ tag) & 0x7fff_ffff;
 
@@ -149,7 +150,8 @@ pub fn lfs_dir_getslice(
                 dir.pair[0],
                 off as usize + 4 + goff,
                 buf,
-            )?;
+            )
+            .await?;
             if !gbuffer.is_empty() && diff < gbuffer.len() {
                 gbuffer[(diff as usize)..].fill(0);
             }
@@ -170,8 +172,8 @@ pub fn lfs_dir_getslice(
 ///             0, buffer, lfs_tag_size(gtag));
 /// }
 /// ```
-pub fn lfs_dir_get(
-    lfs: &crate::fs::Lfs,
+pub async fn lfs_dir_get<S: Storage>(
+    lfs: &crate::fs::Lfs<S>,
     dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
@@ -185,6 +187,7 @@ pub fn lfs_dir_get(
         0,
         &mut buffer[..crate::tag::lfs_tag_size(gtag) as usize],
     )
+    .await
 }
 
 /// Per lfs.c lfs_dir_getread (lines 793-850)
@@ -210,8 +213,8 @@ pub fn lfs_dir_get(
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_getread(
-    lfs: &mut crate::fs::Lfs,
+pub async fn lfs_dir_getread<S: Storage>(
+    lfs: &mut crate::fs::Lfs<S>,
     dir: &LfsMdir,
     pcache: Option<&LfsCache>,
     rcache: &mut LfsCache,
@@ -273,7 +276,8 @@ pub fn lfs_dir_getread(
         );
         let _res = lfs_dir_getslice(lfs, dir, gmask, gtag, rcache.off, unsafe {
             &mut rcache.buffer.as_mut()[..rcache.size]
-        })?;
+        })
+        .await?;
     }
     Ok(())
 }
@@ -648,12 +652,12 @@ fn dispatch_tag(
 }
 
 #[allow(clippy::type_complexity)]
-pub fn lfs_dir_traverse(
-    lfs: &crate::fs::Lfs,
+pub async fn lfs_dir_traverse<'a, S: Storage>(
+    lfs: &crate::fs::Lfs<S>,
     dir: &LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
-    attrs_slice: &[crate::tag::lfs_mattr],
+    attrs_slice: &[crate::tag::lfs_mattr<'a>],
     tmask: lfs_tag_t,
     ttag: lfs_tag_t,
     begin: u16,
@@ -715,7 +719,8 @@ pub fn lfs_dir_traverse(
                             dir.pair[0],
                             off as usize,
                             tag_raw.as_mut_bytes(),
-                        )?;
+                        )
+                        .await?;
 
                         let tag_val = (u32::from_be(tag_raw) ^ ptag) | 0x8000_0000;
                         disk = crate::tag::lfs_diskoff {

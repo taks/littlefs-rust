@@ -186,7 +186,7 @@ use crate::util::lfs_npw2;
 /// }
 /// ```
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
-pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(), Error> {
+pub fn lfs_init<S>(lfs: &mut Lfs<S>, cfg: &crate::lfs_config::LfsConfig<S>) -> Result<(), Error> {
     unsafe {
         // check that bool is a truthy-preserving type (C: (bool)0x80000000)
         crate::lfs_assert!(0x8000_0000u32 != 0);
@@ -326,7 +326,7 @@ pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(),
 ///
 ///
 /// ```
-pub fn lfs_deinit(_lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_deinit<S>(_lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
     // With provided buffers (read_buffer, prog_buffer, lookahead_buffer), no free needed
     Ok(())
 }

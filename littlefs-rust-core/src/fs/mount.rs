@@ -4,7 +4,7 @@ use core::cmp;
 
 use zerocopy::IntoBytes;
 
-use crate::{borrow_unchecked::borrow_unchecked, error::Error};
+use crate::{Storage, borrow_unchecked::borrow_unchecked, error::Error};
 
 /// Per lfs.c lfs_tortoise_t and lfs_tortoise_detectcycles (lines 4464-4480)
 #[repr(C)]
@@ -208,8 +208,8 @@ pub fn lfs_tortoise_detectcycles(
 ///     return err;
 /// }
 /// ```
-pub fn lfs_mount_<S>(
-    lfs: &mut super::lfs::Lfs,
+pub async fn lfs_mount_<S: Storage>(
+    lfs: &mut super::lfs::Lfs<S>,
     cfg: &crate::lfs_config::LfsConfig<S>,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_drop;
@@ -269,7 +269,8 @@ pub fn lfs_mount_<S>(
                 lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
                 &mut None,
                 Some(&|tag, disk| lfs_dir_find_match(&find_match, tag, disk)),
-            );
+            )
+            .await;
 
             if let Err(err) = tag {
                 err_inner = Err(err);
@@ -388,6 +389,6 @@ pub fn lfs_mount_<S>(
 ///
 ///
 /// ```
-pub fn lfs_unmount_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_unmount_<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
     crate::fs::init::lfs_deinit(lfs)
 }

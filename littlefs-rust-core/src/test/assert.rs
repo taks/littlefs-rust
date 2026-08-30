@@ -1,12 +1,19 @@
 //! Assertion helpers for superblock magic and block content.
 
-use crate::LfsConfig;
 use crate::test::ram::{MAGIC, MAGIC_OFFSET};
+use crate::{LfsConfig, Storage};
 
 /// Read config's block at offset 0, return magic region (8 bytes at MAGIC_OFFSET).
-fn read_magic_region(config: &LfsConfig, block: u32) -> Option<[u8; 8]> {
+async fn read_magic_region<S: Storage>(config: &LfsConfig<S>, block: u32) -> Option<[u8; 8]> {
     let mut buf = [0u8; 24];
-    let err = unsafe { config.context.unwrap().as_mut().read(block, 0, &mut buf) };
+    let err = unsafe {
+        config
+            .context
+            .unwrap()
+            .as_mut()
+            .read(block, 0, &mut buf)
+            .await
+    };
     if err.is_err() {
         return None;
     }

@@ -208,8 +208,12 @@ use crate::util::{
 ///     return lfs_tag_size(tag);
 /// }
 /// ```
-pub async fn lfs_rename_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, oldpath: &str, newpath: &str) -> Result<(), Error> {
-    lfs_fs_forceconsistency(lfs)?;
+pub async fn lfs_rename_<S: Storage>(
+    lfs: &mut super::lfs::Lfs<S>,
+    oldpath: &str,
+    newpath: &str,
+) -> Result<(), Error> {
+    lfs_fs_forceconsistency(lfs).await?;
 
     unsafe {
         let mut oldcwd = LfsMdir {
@@ -240,7 +244,7 @@ pub async fn lfs_rename_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, oldpath: &str
         };
         let mut newpath_ptr = newpath;
         let mut newid: u16 = 0;
-        let prevtag = lfs_dir_find(lfs, &mut newcwd, &mut newpath_ptr, &mut Some(&mut newid));
+        let prevtag = lfs_dir_find(lfs, &mut newcwd, &mut newpath_ptr, &mut Some(&mut newid)).await;
         let newpath_slice = newpath_ptr.as_bytes();
         if (prevtag.is_err() || lfs_tag_id(prevtag.unwrap()) == 0x3ff)
             && !(prevtag == Err(Error::NoEntry) && lfs_path_islast(newpath_slice))
@@ -289,11 +293,12 @@ pub async fn lfs_rename_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, oldpath: &str
                 lfs_mktag(0x700, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_STRUCT, newid as u32, 8),
                 prevpair.as_mut_bytes(),
-            )?;
+            )
+            .await?;
 
             lfs_pair_fromle32(&mut prevpair);
 
-            lfs_dir_fetch(lfs, &mut prevdir.m, prevpair)?;
+            lfs_dir_fetch(lfs, &mut prevdir.m, prevpair).await?;
 
             if prevdir.m.count > 0 || prevdir.m.split {
                 return crate::lfs_err!(Err(Error::NotEmpty));
@@ -339,7 +344,7 @@ pub async fn lfs_rename_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, oldpath: &str
         ];
         let err = lfs_dir_commit(lfs, &mut newcwd, &attrs);
         lfs.mlist = prevdir.next;
-        crate::lfs_pass_err!(err)?;
+        crate::lfs_pass_err!(err).await?;
 
         if !samepair && lfs_gstate_hasmove(&lfs.gstate) {
             lfs_fs_prepmove(lfs, 0x3ff, None);
@@ -349,7 +354,7 @@ pub async fn lfs_rename_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, oldpath: &str
             }];
             let err = lfs_dir_commit(lfs, &mut oldcwd, &attrs2);
             lfs.mlist = prevdir.next;
-            crate::lfs_pass_err!(err)?;
+            crate::lfs_pass_err!(err).await?;
         }
 
         if lfs_gstate_hasorphans(&lfs.gstate) {
@@ -357,7 +362,7 @@ pub async fn lfs_rename_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, oldpath: &str
             crate::lfs_assert!(lfs_tag_type3(prevtag.unwrap()) == LFS_TYPE3_DIR);
 
             lfs_fs_preporphans(lfs, -1)?;
-            lfs_fs_pred(lfs, &prevdir.m.pair, &mut newcwd)?;
+            lfs_fs_pred(lfs, &prevdir.m.pair, &mut newcwd).await?;
 
             lfs_dir_drop(lfs, &mut newcwd, &prevdir.m)
         } else {

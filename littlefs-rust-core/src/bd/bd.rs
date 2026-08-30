@@ -21,7 +21,7 @@ use crate::{Storage, lfs_pass_err};
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_cache_drop(_lfs: &Lfs, rcache: &mut LfsCache) {
+pub fn lfs_cache_drop<S>(_lfs: &Lfs<S>, rcache: &mut LfsCache) {
     rcache.block = crate::types::LFS_BLOCK_NULL;
 }
 
@@ -36,7 +36,7 @@ pub fn lfs_cache_drop(_lfs: &Lfs, rcache: &mut LfsCache) {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_cache_zero(_lfs: &Lfs, pcache: &mut LfsCache) {
+pub fn lfs_cache_zero<S>(_lfs: &Lfs<S>, pcache: &mut LfsCache) {
     unsafe {
         pcache.buffer.as_mut().fill(0xff);
     }
@@ -204,13 +204,9 @@ pub async fn lfs_bd_read<S: Storage>(
             crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
             let data_ = data.split_at_mut(diff as _);
             lfs_pass_err!(
-<<<<<<< HEAD
                 unsafe { lfs.cfg.as_ref().context.unwrap_unchecked().as_mut() }
-                    .read(block, off, data_.0)
+                    .read(block, off as u32, data_.0)
                     .await,
-=======
-                read(cfg, block, off as u32, data_.0),
->>>>>>> test
                 "bd_read block={} -> CORRUPT",
                 block
             )?;
@@ -450,16 +446,7 @@ pub async fn lfs_bd_flush<S: Storage>(
 
         if validate {
             lfs_cache_drop(lfs, rcache);
-            let res = lfs_bd_cmp(
-                lfs,
-                None,
-                rcache,
-                diff,
-                pcache.block,
-                pcache.off,
-                data_,
-            )
-            .await;
+            let res = lfs_bd_cmp(lfs, None, rcache, diff, pcache.block, pcache.off, data_).await;
             res?;
             if let Ok(res) = res
                 && res != core::cmp::Ordering::Equal

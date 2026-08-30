@@ -76,17 +76,19 @@ pub async fn lfs_getattr_<S: Storage>(
     let mut id = lfs_tag_id(tag);
     if id == 0x3ff {
         id = 0;
-        lfs_dir_fetch(lfs, &mut cwd, lfs.root)?;
+        lfs_dir_fetch(lfs, &mut cwd, lfs.root).await?;
     }
     let size = cmp::min(buffer.len(), lfs.attr_max as usize);
     let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size);
-    let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer).map_err(|err| {
-        if err == Error::NoEntry {
-            crate::lfs_err!(Error::NoAttribute)
-        } else {
-            err
-        }
-    })?;
+    let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer)
+        .await
+        .map_err(|err| {
+            if err == Error::NoEntry {
+                crate::lfs_err!(Error::NoAttribute)
+            } else {
+                err
+            }
+        })?;
 
     Ok(lfs_tag_size(tag))
 }
@@ -120,7 +122,7 @@ pub async fn lfs_getattr_<S: Storage>(
 /// }
 /// #endif
 /// ```
-pub async  fn lfs_commitattr<S: Storage>(
+pub async fn lfs_commitattr<S: Storage>(
     lfs: &mut Lfs<S>,
     path: &str,
     r#type: u8,
@@ -145,7 +147,7 @@ pub async  fn lfs_commitattr<S: Storage>(
     if id == 0x3ff {
         id = 0;
         let lfs_root = lfs.root;
-        lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
+        lfs_dir_fetch(lfs, &mut cwd, lfs_root).await?;
     }
 
     let attrs = [lfs_mattr {
@@ -171,7 +173,7 @@ pub async  fn lfs_commitattr<S: Storage>(
 /// }
 /// #endif
 /// ```
-pub async  fn lfs_setattr_<S: Storage>(
+pub async fn lfs_setattr_<S: Storage>(
     lfs: &mut Lfs<S>,
     path: &str,
     r#type: u8,
@@ -195,6 +197,10 @@ pub async  fn lfs_setattr_<S: Storage>(
 /// }
 /// #endif
 /// ```
-pub fn lfs_removeattr_(lfs: &mut Lfs, path: &str, r#type: u8) -> Result<(), Error> {
-    lfs_commitattr(lfs, path, r#type, &[], 0x3ff)
+pub async fn lfs_removeattr_<S: Storage>(
+    lfs: &mut Lfs<S>,
+    path: &str,
+    r#type: u8,
+) -> Result<(), Error> {
+    lfs_commitattr(lfs, path, r#type, &[], 0x3ff).await
 }

@@ -2,10 +2,10 @@
 
 use core::cmp;
 
-use crate::{Lfs, Storage};
 use crate::dir::LfsMdir;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::error::Error;
+use crate::{Lfs, Storage};
 
 /// Translation docs: Deorphan, complete moves, persist gstate. If pending gstate
 /// (delta != 0), fetches root and commits empty to write MOVESTATE.
@@ -43,11 +43,11 @@ use crate::error::Error;
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_mkconsistent_<S>(lfs: &mut Lfs<S>) -> Result<(), Error> {
+pub async fn lfs_fs_mkconsistent_<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Error> {
     use crate::dir::commit::lfs_dir_commit;
     use crate::lfs_gstate::{lfs_gstate_iszero, lfs_gstate_xor};
 
-    super::superblock::lfs_fs_forceconsistency(lfs)?;
+    super::superblock::lfs_fs_forceconsistency(lfs).await?;
 
     unsafe {
         let mut delta = crate::lfs_gstate::LfsGstate {
@@ -60,7 +60,7 @@ pub fn lfs_fs_mkconsistent_<S>(lfs: &mut Lfs<S>) -> Result<(), Error> {
         if !lfs_gstate_iszero(&delta) {
             let mut root = core::mem::zeroed::<LfsMdir>();
 
-            lfs_dir_fetch(lfs, &mut root, lfs.root)?;
+            lfs_dir_fetch(lfs, &mut root, lfs.root).await?;
             lfs_dir_commit(lfs, &mut root, &[])?;
         }
     }
@@ -131,7 +131,7 @@ pub async fn lfs_fs_gc_<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), 
     crate::lfs_trace!("lfs_fs_gc: start");
     let err = super::superblock::lfs_fs_forceconsistency(lfs);
     crate::lfs_trace!("lfs_fs_gc: after forceconsistency err={:?}", err);
-    crate::lfs_pass_err!(err)?;
+    crate::lfs_pass_err!(err).await?;
 
     unsafe {
         let cfg = lfs.cfg.as_ref();
@@ -154,7 +154,7 @@ pub async fn lfs_fs_gc_<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), 
 
             while !lfs_pair_isnull(&mdir.tail) {
                 let mdir_tail = mdir.tail;
-                lfs_dir_fetch(lfs, &mut mdir, mdir_tail)?;
+                lfs_dir_fetch(lfs, &mut mdir, mdir_tail).await?;
 
                 let should_compact = !mdir.erased
                     || if compact_thresh == 0 {

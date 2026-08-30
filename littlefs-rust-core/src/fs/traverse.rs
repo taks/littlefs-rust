@@ -160,7 +160,7 @@ pub async fn lfs_fs_traverse_<S: Storage>(
         // iterate through ids in directory
         crate::lfs_trace!("fs_traverse: fetch tail={:?} count={}", dir.tail, dir.count);
         let dir_tail = dir.tail;
-        lfs_dir_fetch(lfs, &mut dir, dir_tail)?;
+        lfs_dir_fetch(lfs, &mut dir, dir_tail).await?;
 
         for id in 0..dir.count {
             let mut raw: [lfs_block_t; 2] = [0, 0];
@@ -170,7 +170,8 @@ pub async fn lfs_fs_traverse_<S: Storage>(
                 lfs_mktag(0x700, 0x3ff, 0),
                 lfs_mktag(crate::lfs_type::lfs_type::LFS_TYPE_STRUCT, id as u32, 8),
                 raw.as_mut_bytes(),
-            );
+            )
+            .await;
             if let Err(err) = tag {
                 if err == Error::NoEntry {
                     continue;
@@ -188,7 +189,8 @@ pub async fn lfs_fs_traverse_<S: Storage>(
                     raw[0],
                     raw[1],
                     cb,
-                ).await?;
+                )
+                .await?;
             } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
                 #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
                 for i in 0..2 {

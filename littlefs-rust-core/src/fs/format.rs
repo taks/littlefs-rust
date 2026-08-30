@@ -4,6 +4,7 @@ use core::cmp;
 
 use zerocopy::IntoBytes;
 
+use crate::Storage;
 use crate::block_alloc::alloc::lfs_alloc_ckpoint;
 use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_alloc;
@@ -94,9 +95,9 @@ use crate::types::LFS_DISK_VERSION;
 ///     lfs_size_t period;
 /// };
 /// ```
-pub fn lfs_format_(
-    lfs: &mut super::lfs::Lfs,
-    cfg: &crate::lfs_config::LfsConfig,
+pub fn lfs_format_<S>(
+    lfs: &mut super::lfs::Lfs<S>,
+    cfg: &crate::lfs_config::LfsConfig<S>,
 ) -> Result<(), Error> {
     let mut err = lfs_init(lfs, cfg);
     if err.is_err() {
@@ -407,9 +408,9 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push<S>(
 /// # Safety
 /// Caller must ensure `lfs` points to valid (e.g. zeroed) `Lfs` and `cfg` to valid
 /// `LfsConfig` for the duration of the call.
-pub unsafe fn test_format_minimal_superblock(
-    lfs: &mut super::lfs::Lfs,
-    cfg: &crate::lfs_config::LfsConfig,
+pub async unsafe fn test_format_minimal_superblock<S: Storage>(
+    lfs: &mut super::lfs::Lfs<S>,
+    cfg: &crate::lfs_config::LfsConfig<S>,
 ) -> Result<(), Error> {
     use crate::bd::bd::{lfs_bd_erase, lfs_bd_sync};
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
@@ -457,7 +458,7 @@ pub unsafe fn test_format_minimal_superblock(
     // Write to block 1 (compact-style), skip traverse. pair is [1,0] or [0,1]
     // depending on alloc order; use pair[1] which receives the first compact write.
     let block = root.pair[1];
-    let err = lfs_bd_erase(lfs, block);
+    let err = lfs_bd_erase(lfs, block).await;
     if err.is_err() {
         let _ = lfs_deinit(lfs);
         return crate::lfs_pass_err!(err);
@@ -510,7 +511,8 @@ pub unsafe fn test_format_minimal_superblock(
         unsafe { &mut *lfs.pcache.get() },
         unsafe { &mut *lfs.rcache.get() },
         false,
-    );
+    )
+    .await;
     if err.is_err() {
         let _ = lfs_deinit(lfs);
         return crate::lfs_pass_err!(err);

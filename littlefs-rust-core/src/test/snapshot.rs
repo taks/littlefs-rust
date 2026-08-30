@@ -18,7 +18,7 @@ pub struct SuperblockSnapshot {
 #[allow(unused)]
 impl SuperblockSnapshot {
     /// Read blocks 0 and 1 from config. root_pair from mounted Lfs.
-    pub fn capture(config: &LfsConfig, root_pair: [u32; 2]) -> Result<Self, Error> {
+    pub fn capture<S>(config: &LfsConfig<S>, root_pair: [u32; 2]) -> Result<Self, Error> {
         let block_size = unsafe { config.block_size } as usize;
         let mut block0 = alloc::vec![0u8; block_size];
         let mut block1 = alloc::vec![0u8; block_size];

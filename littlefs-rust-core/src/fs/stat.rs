@@ -47,7 +47,7 @@ pub async fn lfs_stat_<S: Storage>(
             return Err(Error::NotDir);
         }
 
-        lfs_dir_getinfo(lfs, &cwd, lfs_tag_id(tag as u32), info)
+        lfs_dir_getinfo(lfs, &cwd, lfs_tag_id(tag as u32), info).await
     }
 }
 
@@ -95,7 +95,7 @@ pub async fn lfs_stat_<S: Storage>(
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_fs_stat_<S>(
+pub async fn lfs_fs_stat_<S: Storage>(
     lfs: &mut super::lfs::Lfs<S>,
     fsinfo: &mut crate::lfs_info::LfsFsinfo,
 ) -> Result<(), Error> {
@@ -120,7 +120,7 @@ pub fn lfs_fs_stat_<S>(
             split: false,
             tail: [0, 0],
         };
-        lfs_dir_fetch(lfs, &mut dir, lfs.root)?;
+        lfs_dir_fetch(lfs, &mut dir, lfs.root).await?;
 
         let mut superblock = unsafe { core::mem::zeroed::<LfsSuperblock>() };
         let _tag = lfs_dir_get(
@@ -133,7 +133,8 @@ pub fn lfs_fs_stat_<S>(
                 core::mem::size_of::<LfsSuperblock>(),
             ),
             superblock.as_mut_bytes(),
-        )?;
+        )
+        .await?;
 
         lfs_superblock_fromle32(&mut superblock);
         fsinfo.disk_version = superblock.version;
@@ -169,7 +170,7 @@ pub fn lfs_fs_stat_<S>(
 ///     return size;
 /// }
 /// ```
-pub async  fn lfs_fs_size_<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<lfs_size_t, Error> {
+pub async fn lfs_fs_size_<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<lfs_size_t, Error> {
     let mut size: lfs_size_t = 0;
     lfs_fs_traverse_(
         lfs,
@@ -178,7 +179,8 @@ pub async  fn lfs_fs_size_<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<l
             Ok(())
         },
         false,
-    ).await?;
+    )
+    .await?;
 
     Ok(size)
 }

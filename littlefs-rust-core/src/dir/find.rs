@@ -59,7 +59,7 @@ pub struct LfsDirFindMatch<'a, S> {
 /// }
 ///
 /// ```
-pub async  fn lfs_dir_find_match<S: Storage>(
+pub async fn lfs_dir_find_match<S: Storage>(
     name: &LfsDirFindMatch<'_, S>,
     tag: lfs_tag_t,
     disk: &lfs_diskoff,
@@ -75,7 +75,8 @@ pub async  fn lfs_dir_find_match<S: Storage>(
         disk.block,
         disk.off as usize,
         &name.name[..diff],
-    ).await;
+    )
+    .await;
     if res != Ok(core::cmp::Ordering::Equal) {
         return res;
     }
@@ -196,7 +197,7 @@ pub async  fn lfs_dir_find_match<S: Storage>(
 ///     }
 /// }
 /// ```
-pub async  fn lfs_dir_find<S: Storage>(
+pub async fn lfs_dir_find<S: Storage>(
     lfs: &mut Lfs<S>,
     dir: &mut LfsMdir,
     path: &mut &str,
@@ -302,7 +303,8 @@ pub async  fn lfs_dir_find<S: Storage>(
                 lfs_mktag(LFS_TYPE_NAME, 0, namelen),
                 id,
                 Some(&|tag, disk| lfs_dir_find_match(&match_data, tag, disk)),
-            ).await?;
+            )
+            .await?;
 
             if tag != 0 {
                 break;

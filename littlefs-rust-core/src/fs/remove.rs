@@ -2,6 +2,7 @@
 
 use zerocopy::IntoBytes;
 
+use crate::Storage;
 use crate::dir::commit::{lfs_dir_commit, lfs_dir_drop};
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
@@ -102,8 +103,11 @@ use crate::util::lfs_pair_fromle32;
 ///
 /// #ifndef LFS_READONLY
 /// ```
-pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
-    lfs_fs_forceconsistency(lfs)?;
+pub async fn lfs_remove_<S: Storage>(
+    lfs: &mut super::lfs::Lfs<S>,
+    path: &str,
+) -> Result<(), Error> {
+    lfs_fs_forceconsistency(lfs).await?;
 
     unsafe {
         let mut cwd = LfsMdir {
@@ -118,7 +122,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
         };
 
         let mut path_ptr = path;
-        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
+        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None).await?;
         if lfs_tag_id(tag) == 0x3ff {
             return Err(Error::Invalid);
         }

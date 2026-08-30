@@ -39,7 +39,7 @@ use crate::{Storage, error::Error, lfs_pass_err};
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_pred<S>(
+pub async fn lfs_fs_pred<S: Storage>(
     lfs: &mut crate::fs::Lfs<S>,
     pair: &[crate::types::lfs_block_t; 2],
     pdir: &mut crate::dir::LfsMdir,
@@ -67,7 +67,7 @@ pub fn lfs_fs_pred<S>(
             if !have_fetched {
                 // Matched before any fetch: tail [0,1] == pair (root).
                 // The root has no predecessor.
-                lfs_dir_fetch(lfs, pdir, pdir.tail)?;
+                lfs_dir_fetch(lfs, pdir, pdir.tail).await?;
 
                 if lfs_pair_isnull(&pdir.tail) {
                     return Err(crate::error::Error::NoEntry);
@@ -76,7 +76,7 @@ pub fn lfs_fs_pred<S>(
             return Ok(());
         }
 
-        lfs_dir_fetch(lfs, pdir, pdir.tail)?;
+        lfs_dir_fetch(lfs, pdir, pdir.tail).await?;
         have_fetched = true;
     }
 
@@ -123,7 +123,8 @@ pub async fn lfs_fs_parent_match<S: Storage>(
         disk.block,
         disk.off as usize,
         child.as_mut_bytes(),
-    ).await?;
+    )
+    .await?;
 
     lfs_pair_fromle32(&mut child);
     if !lfs_pair_cmp(&child, &find.pair) {
@@ -169,8 +170,8 @@ pub async fn lfs_fs_parent_match<S: Storage>(
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_parent(
-    lfs: &mut crate::fs::Lfs,
+pub async fn lfs_fs_parent<S: Storage>(
+    lfs: &mut crate::fs::Lfs<S>,
     pair: &[crate::types::lfs_block_t; 2],
     parent: &mut crate::dir::LfsMdir,
 ) -> Result<crate::types::lfs_tag_t, Error> {
@@ -203,7 +204,8 @@ pub fn lfs_fs_parent(
             lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
             &mut None,
             Some(&|_, disk| lfs_fs_parent_match(&find_match, disk)),
-        );
+        )
+        .await;
 
         if tag != Ok(0) && tag != Err(Error::NoEntry) {
             return tag;

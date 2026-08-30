@@ -345,7 +345,8 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
             pair[i],
             0,
             &mut rev_buf,
-        ).await;
+        )
+        .await;
         revs[i] = u32::from_le_bytes(rev_buf);
         if let Err(err) = err
             && err != Error::Corrupt
@@ -392,7 +393,8 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
                 dir.pair[0],
                 off as usize,
                 &mut tag_buf,
-            ).await;
+            )
+            .await;
             if let Err(err) = err {
                 if err == Error::Corrupt {
                     break;
@@ -423,7 +425,8 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
                     dir.pair[0],
                     (off + 4) as usize,
                     &mut dcrc_buf,
-                ).await;
+                )
+                .await;
                 if let Err(err) = err {
                     if err == Error::Corrupt {
                         break;
@@ -463,7 +466,8 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
                 (off + 4) as usize,
                 entry_size as usize,
                 &mut crc_val,
-            ).await;
+            )
+            .await;
             if let Err(err) = err {
                 if err == Error::Corrupt {
                     break;
@@ -503,7 +507,8 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
                     dir.pair[0],
                     (off + 4) as usize,
                     tail_buf.as_mut_bytes(),
-                ).await;
+                )
+                .await;
                 if let Err(err) = err {
                     if err == Error::Corrupt {
                         break;
@@ -521,7 +526,8 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
                     dir.pair[0],
                     (off + 4) as usize,
                     fcrc_buf.as_mut_bytes(),
-                ).await;
+                )
+                .await;
                 if let Err(err) = err {
                     if err == Error::Corrupt {
                         break;
@@ -582,7 +588,8 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
                 dir.off as usize,
                 fcrc.size as usize,
                 &mut fcrc_,
-            ).await;
+            )
+            .await;
             if let Err(err) = err
                 && err != Error::Corrupt
             {
@@ -657,12 +664,12 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
 ///             (lfs_tag_t)-1, (lfs_tag_t)-1, NULL, NULL, NULL);
 /// }
 /// ```
-pub fn lfs_dir_fetch(
-    lfs: &mut crate::fs::Lfs,
+pub async fn lfs_dir_fetch<S: Storage>(
+    lfs: &mut crate::fs::Lfs<S>,
     dir: &mut LfsMdir,
     pair: [lfs_block_t; 2],
 ) -> Result<(), Error> {
-    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, &mut None, None);
+    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, &mut None, None).await;
     if let Err(e) = res { Err(e) } else { Ok(()) }
 }
 
@@ -688,8 +695,8 @@ pub fn lfs_dir_fetch(
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_getgstate(
-    lfs: &crate::fs::Lfs,
+pub async fn lfs_dir_getgstate<S: Storage>(
+    lfs: &crate::fs::Lfs<S>,
     dir: &LfsMdir,
     gstate: &mut LfsGstate,
 ) -> Result<(), Error> {
@@ -707,7 +714,8 @@ pub fn lfs_dir_getgstate(
             core::mem::size_of::<LfsGstate>(),
         ),
         temp.as_mut_bytes(),
-    );
+    )
+    .await;
     if let Err(err) = res
         && err != Error::NoEntry
     {
@@ -758,8 +766,8 @@ pub fn lfs_dir_getgstate(
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_getinfo(
-    lfs: &mut crate::fs::Lfs,
+pub async fn lfs_dir_getinfo<S: Storage>(
+    lfs: &mut crate::fs::Lfs<S>,
     dir: &LfsMdir,
     id: u16,
     info: &mut LfsInfo,
@@ -780,7 +788,8 @@ pub fn lfs_dir_getinfo(
         lfs_mktag(0x780, 0x3ff, 0),
         lfs_mktag(LFS_TYPE_NAME, id as u32, name_max + 1),
         &mut info.name,
-    )?;
+    )
+    .await?;
 
     info.type_ = lfs_tag_type3(tag as _) as u8;
 
@@ -792,7 +801,8 @@ pub fn lfs_dir_getinfo(
         lfs_mktag(0x700, 0x3ff, 0),
         lfs_mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>()),
         ctz.as_mut_bytes(),
-    )?;
+    )
+    .await?;
 
     lfs_ctz_fromle32(&mut ctz);
 

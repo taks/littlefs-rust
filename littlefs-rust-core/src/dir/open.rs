@@ -66,7 +66,11 @@ use crate::util::{lfs_pair_cmp, lfs_pair_fromle32};
 ///     return 0;
 /// }
 /// ```
-pub async fn lfs_dir_open_<S: Storage>(lfs: &mut crate::fs::Lfs<S>, dir: &mut LfsDir, path: &str) -> Result<(), Error> {
+pub async fn lfs_dir_open_<S: Storage>(
+    lfs: &mut crate::fs::Lfs<S>,
+    dir: &mut LfsDir,
+    path: &str,
+) -> Result<(), Error> {
     let mut path_ptr = path;
 
     let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None).await?;
@@ -90,12 +94,13 @@ pub async fn lfs_dir_open_<S: Storage>(lfs: &mut crate::fs::Lfs<S>, dir: &mut Lf
                 8,
             ),
             pair.as_mut_bytes(),
-        )?;
+        )
+        .await?;
 
         lfs_pair_fromle32(&mut pair);
     }
 
-    lfs_dir_fetch(lfs, &mut dir.m, pair)?;
+    lfs_dir_fetch(lfs, &mut dir.m, pair).await?;
 
     dir.head[0] = dir.m.pair[0];
     dir.head[1] = dir.m.pair[1];
@@ -173,7 +178,7 @@ pub fn lfs_dir_close_<S>(lfs: &mut crate::fs::Lfs<S>, dir: &mut LfsDir) -> Resul
 ///     return true;
 /// }
 /// ```
-pub fn lfs_dir_read_<S: Storage>(
+pub async fn lfs_dir_read_<S: Storage>(
     lfs: &mut crate::fs::Lfs<S>,
     dir: &mut LfsDir,
     info: &mut LfsInfo,
@@ -205,12 +210,12 @@ pub fn lfs_dir_read_<S: Storage>(
                     return Ok(false);
                 }
                 let dir_m_tail = dir.m.tail;
-                lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
+                lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail).await?;
 
                 dir.id = 0;
             }
 
-            let err = lfs_dir_getinfo(lfs, &dir.m, dir.id, info);
+            let err = lfs_dir_getinfo(lfs, &dir.m, dir.id, info).await;
             if let Err(err) = err
                 && err != Error::NoEntry
             {
@@ -268,12 +273,12 @@ pub fn lfs_dir_read_<S: Storage>(
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_seek_<S>(
+pub async fn lfs_dir_seek_<S: Storage>(
     lfs: &mut crate::fs::Lfs<S>,
     dir: &mut LfsDir,
     off: lfs_off_t,
 ) -> Result<(), Error> {
-    lfs_dir_rewind_(lfs, dir)?;
+    lfs_dir_rewind_(lfs, dir).await?;
 
     dir.pos = cmp::min(2, off);
     let mut off = off - dir.pos;
@@ -291,7 +296,7 @@ pub fn lfs_dir_seek_<S>(
                 return Err(Error::Invalid);
             }
             let dir_m_tail = dir.m.tail;
-            lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
+            lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail).await?;
             dir.id = 0;
         }
         let diff = cmp::min((dir.m.count - dir.id) as u32, off);
@@ -312,7 +317,10 @@ pub fn lfs_dir_seek_<S>(
 ///     return dir->pos;
 /// }
 /// ```
-pub fn lfs_dir_tell_<S>(_lfs: *mut crate::fs::Lfs<S>, dir: *const LfsDir) -> crate::types::lfs_soff_t {
+pub fn lfs_dir_tell_<S>(
+    _lfs: *mut crate::fs::Lfs<S>,
+    dir: *const LfsDir,
+) -> crate::types::lfs_soff_t {
     unsafe { (*dir).pos as crate::types::lfs_soff_t }
 }
 
@@ -332,8 +340,11 @@ pub fn lfs_dir_tell_<S>(_lfs: *mut crate::fs::Lfs<S>, dir: *const LfsDir) -> cra
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_rewind_<S>(lfs: &mut crate::fs::Lfs<S>, dir: &mut LfsDir) -> Result<(), Error> {
-    lfs_dir_fetch(lfs, &mut dir.m, dir.head)?;
+pub async fn lfs_dir_rewind_<S: Storage>(
+    lfs: &mut crate::fs::Lfs<S>,
+    dir: &mut LfsDir,
+) -> Result<(), Error> {
+    lfs_dir_fetch(lfs, &mut dir.m, dir.head).await?;
     dir.id = 0;
     dir.pos = 0;
     Ok(())

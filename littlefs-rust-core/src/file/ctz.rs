@@ -81,7 +81,7 @@ pub fn lfs_ctz_index<S>(lfs: &crate::fs::Lfs<S>, off: &mut lfs_off_t) -> i32 {
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_ctz_find<S: Storage>(
+pub async fn lfs_ctz_find<S: Storage>(
     lfs: &Lfs<S>,
     pcache: Option<&crate::bd::LfsCache>,
     rcache: &mut crate::bd::LfsCache,
@@ -124,7 +124,8 @@ pub fn lfs_ctz_find<S: Storage>(
             head_val,
             (4 * skip) as usize,
             head_buf.as_mut_bytes(),
-        ).await?;
+        )
+        .await?;
 
         head_val = u32::from_le(head_buf);
 
@@ -345,8 +346,8 @@ pub async fn lfs_ctz_traverse<S: Storage>(
 /// }
 /// #endif
 /// ```
-pub fn lfs_ctz_extend(
-    lfs: &mut crate::fs::Lfs,
+pub async fn lfs_ctz_extend<S: Storage>(
+    lfs: &mut crate::fs::Lfs<S>,
     pcache: &mut crate::bd::LfsCache,
     rcache: &mut crate::bd::LfsCache,
     head: lfs_block_t,
@@ -363,9 +364,9 @@ pub fn lfs_ctz_extend(
             let block_size = lfs.cfg.as_ref().block_size;
 
             let mut nblock: lfs_block_t = 0;
-            lfs_alloc(lfs, &mut nblock)?;
+            lfs_alloc(lfs, &mut nblock).await?;
 
-            let err = lfs_bd_erase(lfs, nblock);
+            let err = lfs_bd_erase(lfs, nblock).await;
             if let Err(err) = err {
                 if err == Error::Corrupt {
                     let _ = lfs_alloc_lookahead(lfs, nblock);
@@ -396,9 +397,11 @@ pub fn lfs_ctz_extend(
                         head,
                         i,
                         data.as_mut_bytes(),
-                    )?;
+                    )
+                    .await?;
 
-                    let err = lfs_bd_prog(lfs, pcache, rcache, true, nblock, i, data.as_bytes());
+                    let err =
+                        lfs_bd_prog(lfs, pcache, rcache, true, nblock, i, data.as_bytes()).await;
                     if let Err(err) = err {
                         if err == Error::Corrupt {
                             let _ = lfs_alloc_lookahead(lfs, nblock);
@@ -426,7 +429,8 @@ pub fn lfs_ctz_extend(
                     nblock,
                     (4 * i) as usize,
                     nhead_le.as_bytes(),
-                );
+                )
+                .await;
                 if let Err(err) = err {
                     if err == Error::Corrupt {
                         let _ = lfs_alloc_lookahead(lfs, nblock);
@@ -448,7 +452,8 @@ pub fn lfs_ctz_extend(
                         nhead,
                         (4 * i) as usize,
                         nhead_buf.as_mut_bytes(),
-                    )?;
+                    )
+                    .await?;
 
                     nhead = u32::from_le(nhead_buf);
                 }

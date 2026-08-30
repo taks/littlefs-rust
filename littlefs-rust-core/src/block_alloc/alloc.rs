@@ -58,7 +58,7 @@ pub fn lfs_alloc_drop<S>(lfs: &mut Lfs<S>) {
 /// #endif
 /// ```
 /// Callback wrapper for lfs_fs_traverse_: C expects (void* data, block), we pass lfs as data.
-pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Error> {
+pub fn lfs_alloc_lookahead<S>(lfs: &mut Lfs<S>, block: lfs_block_t) -> Result<(), Error> {
     unsafe {
         // off = ((block - start) + block_count) % block_count
         let off = (block.wrapping_sub(lfs.lookahead.start)).wrapping_add(lfs.block_count)
@@ -104,7 +104,7 @@ pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Erro
 /// }
 /// #endif
 /// ```
-pub async  fn lfs_alloc_scan<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Error> {
+pub async fn lfs_alloc_scan<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Error> {
     use crate::fs::traverse::lfs_fs_traverse_;
 
     crate::lfs_trace!("alloc_scan: start");
@@ -130,7 +130,8 @@ pub async  fn lfs_alloc_scan<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Error> 
                 *lfs.get(),
                 &mut |block| lfs_alloc_lookahead(*lfs.get(), block),
                 true,
-            ).await
+            )
+            .await
         };
         if err.is_err() {
             crate::lfs_trace!("alloc_scan: traverse err={:?}", err);
@@ -199,7 +200,7 @@ pub async  fn lfs_alloc_scan<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Error> 
 /// }
 /// #endif
 /// ```
-pub async  fn lfs_alloc<S: Storage>(lfs: &mut Lfs<S>, block: *mut lfs_block_t) -> Result<(), Error> {
+pub async fn lfs_alloc<S: Storage>(lfs: &mut Lfs<S>, block: *mut lfs_block_t) -> Result<(), Error> {
     unsafe {
         let buf = lfs.lookahead.buffer.as_ref();
 
