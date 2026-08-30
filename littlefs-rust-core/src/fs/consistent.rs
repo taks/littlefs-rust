@@ -61,7 +61,7 @@ pub async fn lfs_fs_mkconsistent_<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Er
             let mut root = core::mem::zeroed::<LfsMdir>();
 
             lfs_dir_fetch(lfs, &mut root, lfs.root).await?;
-            lfs_dir_commit(lfs, &mut root, &[])?;
+            lfs_dir_commit(lfs, &mut root, &[]).await?;
         }
     }
 
@@ -166,7 +166,7 @@ pub async fn lfs_fs_gc_<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), 
                 if should_compact {
                     let mdir_ref = &mut mdir;
                     mdir_ref.erased = false;
-                    lfs_dir_commit(lfs, mdir_ref, &[])?;
+                    lfs_dir_commit(lfs, mdir_ref, &[]).await?;
                 }
             }
         }

@@ -342,9 +342,9 @@ pub async fn lfs_rename_<S: Storage>(
                 buffer: &[],
             },
         ];
-        let err = lfs_dir_commit(lfs, &mut newcwd, &attrs);
+        let err = lfs_dir_commit(lfs, &mut newcwd, &attrs).await;
         lfs.mlist = prevdir.next;
-        crate::lfs_pass_err!(err).await?;
+        crate::lfs_pass_err!(err)?;
 
         if !samepair && lfs_gstate_hasmove(&lfs.gstate) {
             lfs_fs_prepmove(lfs, 0x3ff, None);
@@ -352,9 +352,9 @@ pub async fn lfs_rename_<S: Storage>(
                 tag: lfs_mktag(LFS_TYPE_DELETE, lfs_tag_id(oldtag) as u32, 0),
                 buffer: &[],
             }];
-            let err = lfs_dir_commit(lfs, &mut oldcwd, &attrs2);
+            let err = lfs_dir_commit(lfs, &mut oldcwd, &attrs2).await;
             lfs.mlist = prevdir.next;
-            crate::lfs_pass_err!(err).await?;
+            crate::lfs_pass_err!(err)?;
         }
 
         if lfs_gstate_hasorphans(&lfs.gstate) {
@@ -364,7 +364,7 @@ pub async fn lfs_rename_<S: Storage>(
             lfs_fs_preporphans(lfs, -1)?;
             lfs_fs_pred(lfs, &prevdir.m.pair, &mut newcwd).await?;
 
-            lfs_dir_drop(lfs, &mut newcwd, &prevdir.m)
+            lfs_dir_drop(lfs, &mut newcwd, &prevdir.m).await
         } else {
             Ok(())
         }

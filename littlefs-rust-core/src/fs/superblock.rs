@@ -63,7 +63,7 @@ pub fn lfs_fs_prepmove<S>(lfs: &mut super::lfs::Lfs<S>, id: u16, pair: Option<&[
 /// Translation docs: Rewrite superblock when needssuperblock is set (older minor version on disk).
 ///
 /// C: lfs.c:4916-4953
-pub fn lfs_fs_desuperblock<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
+pub async fn lfs_fs_desuperblock<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
     crate::lfs_trace!("desuperblock: start");
     use crate::dir::commit::lfs_dir_commit;
     use crate::dir::fetch::lfs_dir_fetch;
@@ -81,7 +81,7 @@ pub fn lfs_fs_desuperblock<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error>
         crate::lfs_trace!("desuperblock: need superblock, fetching root");
 
         let mut root = core::mem::zeroed();
-        lfs_dir_fetch(lfs, &mut root, lfs.root)?;
+        lfs_dir_fetch(lfs, &mut root, lfs.root).await?;
 
         // write a new superblock
         let mut superblock = LfsSuperblock {
@@ -102,7 +102,7 @@ pub fn lfs_fs_desuperblock<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error>
             ),
             buffer: superblock.as_bytes(),
         }];
-        lfs_dir_commit(lfs, &mut root, &attrs)?;
+        lfs_dir_commit(lfs, &mut root, &attrs).await?;
 
         lfs_fs_prepsuperblock(lfs, false);
         Ok(())
@@ -148,7 +148,7 @@ pub fn lfs_fs_desuperblock<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error>
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_demove<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
+pub async fn lfs_fs_demove<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
     crate::lfs_trace!("demove: start");
     use crate::dir::commit::lfs_dir_commit;
     use crate::dir::fetch::lfs_dir_fetch;
@@ -165,7 +165,7 @@ pub fn lfs_fs_demove<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
     crate::lfs_assert!((lfs_tag_type3(lfs.gdisk.tag)) == LFS_TYPE_DELETE);
 
     let mut movedir = unsafe { core::mem::zeroed() };
-    lfs_dir_fetch(lfs, &mut movedir, lfs.gdisk.pair)?;
+    lfs_dir_fetch(lfs, &mut movedir, lfs.gdisk.pair).await?;
 
     let moveid = lfs_tag_id(lfs.gdisk.tag);
     lfs_fs_prepmove(lfs, 0x3ff, None);
@@ -174,7 +174,7 @@ pub fn lfs_fs_demove<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
         tag: lfs_mktag(LFS_TYPE_DELETE, moveid as u32, 0),
         buffer: &[],
     }];
-    lfs_dir_commit(lfs, &mut movedir, &attrs)
+    lfs_dir_commit(lfs, &mut movedir, &attrs).await
 }
 
 /// Per lfs.c lfs_fs_deorphan (lines 4991-5120)
@@ -351,7 +351,7 @@ pub async fn lfs_fs_deorphan<S: Storage>(
         let mut moreorphans = false;
 
         while !crate::util::lfs_pair_isnull(&pdir.tail) {
-            lfs_dir_fetch(lfs, &mut dir, pdir.tail)?;
+            lfs_dir_fetch(lfs, &mut dir, pdir.tail).await?;
 
             if !pdir.split {
                 let mut parent = unsafe { core::mem::zeroed() };
@@ -464,11 +464,11 @@ pub async fn lfs_fs_forceconsistency<S: Storage>(
     lfs: &mut super::lfs::Lfs<S>,
 ) -> Result<(), Error> {
     crate::lfs_trace!("forceconsistency: start");
-    let err = lfs_fs_desuperblock(lfs);
+    let err = lfs_fs_desuperblock(lfs).await;
     crate::lfs_trace!("forceconsistency: after desuperblock err={:?}", err);
     crate::lfs_pass_err!(err)?;
 
-    let err = lfs_fs_demove(lfs);
+    let err = lfs_fs_demove(lfs).await;
     crate::lfs_trace!("forceconsistency: after demove err={:?}", err);
     crate::lfs_pass_err!(err)?;
 

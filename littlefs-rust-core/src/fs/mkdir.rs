@@ -161,7 +161,7 @@ pub async fn lfs_mkdir_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, path: &str) ->
             tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
             buffer: pred.tail.as_bytes(),
         }];
-        let err = lfs_dir_commit(lfs, &mut dir, &attrs1);
+        let err = lfs_dir_commit(lfs, &mut dir, &attrs1).await;
         lfs_pair_fromle32(&mut pred.tail);
         crate::lfs_pass_err!(err)?;
 
@@ -178,7 +178,7 @@ pub async fn lfs_mkdir_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, path: &str) ->
                 buffer: dir.pair.as_bytes(),
             }];
 
-            let err = lfs_dir_commit(lfs, &mut pred, &attrs2);
+            let err = lfs_dir_commit(lfs, &mut pred, &attrs2).await;
             lfs_pair_fromle32(&mut dir.pair);
             lfs.mlist = cwd.next;
             crate::lfs_pass_err!(err)?;
@@ -205,7 +205,7 @@ pub async fn lfs_mkdir_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, path: &str) ->
                 buffer: dir.pair.as_bytes(),
             },
         ];
-        let err = lfs_dir_commit(lfs, &mut cwd.m, &attrs3);
+        let err = lfs_dir_commit(lfs, &mut cwd.m, &attrs3).await;
         lfs_pair_fromle32(&mut dir.pair);
         err
     }

@@ -154,7 +154,7 @@ pub async fn lfs_commitattr<S: Storage>(
         tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size),
         buffer,
     }];
-    lfs_dir_commit(lfs, &mut cwd, &attrs)
+    lfs_dir_commit(lfs, &mut cwd, &attrs).await
 }
 
 /// Per lfs.c lfs_setattr_ (lines 4165-4174)

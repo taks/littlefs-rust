@@ -84,9 +84,9 @@ pub use crate::util::{lfs_pair_fromle32, lfs_pair_tole32};
 /// Format a block device with littlefs.
 /// Per lfs.h lfs_format. Calls lfs_format_ (lfs.c:4391).
 #[inline]
-pub fn lfs_format<S>(lfs: &mut Lfs<S>, config: &LfsConfig<S>) -> Result<(), Error> {
+pub async  fn lfs_format<S: Storage>(lfs: &mut Lfs<S>, config: &LfsConfig<S>) -> Result<(), Error> {
     crate::lfs_trace!("lfs_format({:p}, {:p})", lfs, config);
-    let err = crate::fs::lfs_format_(lfs, config);
+    let err = crate::fs::lfs_format_(lfs, config).await;
     crate::lfs_trace!("lfs_format -> {:?}", err);
     err
 }

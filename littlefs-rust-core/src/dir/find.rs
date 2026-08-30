@@ -284,7 +284,7 @@ pub async fn lfs_dir_find<S: Storage>(
                 lfs_mktag(LFS_TYPE_GLOBALS, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag as u32) as u32, 8),
                 dir_tail.as_mut_bytes(),
-            );
+            ).await;
             res?;
             lfs_pair_fromle32(&mut dir.tail);
         }

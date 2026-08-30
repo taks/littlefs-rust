@@ -265,7 +265,7 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
                 buffer: &[],
             },
         ];
-        let err = crate::dir::commit::lfs_dir_commit(lfs, &mut file.m, &attrs);
+        let err = crate::dir::commit::lfs_dir_commit(lfs, &mut file.m, &attrs).await;
         let err = if err == Err(Error::NoSpace) {
             Err(Error::NameTooLong)
         } else {
@@ -945,7 +945,7 @@ pub async fn lfs_file_sync_<'a, S: Storage>(
                 buffer: unsafe { file.cfg.as_ref().attrs.as_bytes() },
             },
         ];
-        let err = lfs_dir_commit(lfs, &mut file.m, &attrs);
+        let err = lfs_dir_commit(lfs, &mut file.m, &attrs).await;
         if err.is_err() {
             file.flags.insert(OpenFlags::ERRED);
             return crate::lfs_pass_err!(err);

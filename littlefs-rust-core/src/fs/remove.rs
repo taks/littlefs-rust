@@ -142,10 +142,10 @@ pub async fn lfs_remove_<S: Storage>(
                 lfs_mktag(0x700, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag) as u32, 8),
                 pair.as_mut_bytes(),
-            )?;
+            ).await?;
             lfs_pair_fromle32(&mut pair);
 
-            lfs_dir_fetch(lfs, &mut dir.m, pair)?;
+            lfs_dir_fetch(lfs, &mut dir.m, pair).await?;
 
             if dir.m.count > 0 || dir.m.split {
                 return crate::lfs_err!(Err(Error::NotEmpty));
@@ -162,7 +162,7 @@ pub async fn lfs_remove_<S: Storage>(
             tag: lfs_mktag(LFS_TYPE_DELETE, lfs_tag_id(tag) as u32, 0),
             buffer: &[],
         }];
-        let err = lfs_dir_commit(lfs, &mut cwd, &attrs);
+        let err = lfs_dir_commit(lfs, &mut cwd, &attrs).await;
         lfs.mlist = dir.next;
         crate::lfs_pass_err!(err)?;
 
@@ -171,9 +171,9 @@ pub async fn lfs_remove_<S: Storage>(
 
             lfs_fs_preporphans(lfs, -1)?;
 
-            lfs_fs_pred(lfs, &dir.m.pair, &mut cwd)?;
+            lfs_fs_pred(lfs, &dir.m.pair, &mut cwd).await?;
 
-            lfs_dir_drop(lfs, &mut cwd, &dir.m)
+            lfs_dir_drop(lfs, &mut cwd, &dir.m).await
         } else {
             Ok(())
         }

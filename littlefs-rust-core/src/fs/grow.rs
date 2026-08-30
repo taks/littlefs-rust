@@ -123,7 +123,7 @@ pub async fn lfs_fs_grow_<S: Storage>(
             core::mem::size_of::<LfsSuperblock>(),
         ),
         superblock.as_mut_bytes(),
-    )?;
+    ).await?;
 
     lfs_superblock_fromle32(&mut superblock);
     superblock.block_count = lfs.block_count;
@@ -134,7 +134,7 @@ pub async fn lfs_fs_grow_<S: Storage>(
         tag: tag as u32,
         buffer: superblock.as_bytes(),
     }];
-    lfs_dir_commit(lfs, root, &attrs)?;
+    lfs_dir_commit(lfs, root, &attrs).await?;
 
     Ok(())
 }

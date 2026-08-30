@@ -292,7 +292,7 @@ pub async fn lfs_mount_<S: Storage>(
                         core::mem::size_of::<LfsSuperblock>(),
                     ),
                     superblock.as_mut_bytes(),
-                );
+                ).await;
                 if let Err(err) = sbtag {
                     err_inner = Err(err);
                     break;
@@ -348,7 +348,7 @@ pub async fn lfs_mount_<S: Storage>(
 
             crate::lfs_trace!("mount: before getgstate");
             let lfs_gstate = borrow_unchecked(&mut lfs.gstate);
-            err_inner = lfs_dir_getgstate(lfs, &dir, lfs_gstate);
+            err_inner = lfs_dir_getgstate(lfs, &dir, lfs_gstate).await;
             crate::lfs_trace!(
                 "mount: after getgstate err={:?} tail={:?}",
                 err_inner,
