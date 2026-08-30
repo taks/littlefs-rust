@@ -14,7 +14,7 @@ use crate::error::Error;
 use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::{LFS_TYPE_GLOBALS, LFS_TYPE_NAME, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
 use crate::tag::{lfs_diskoff, lfs_mktag, lfs_tag_id, lfs_tag_size, lfs_tag_type3};
-use crate::types::{lfs_size_t, lfs_tag_t};
+use crate::types::lfs_tag_t;
 use crate::util::{lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 
 /// Per lfs.c struct lfs_dir_find_match (lines 1447-1475)
@@ -22,7 +22,6 @@ use crate::util::{lfs_pair_fromle32, lfs_strcspn, lfs_strspn};
 pub struct LfsDirFindMatch<'a, S> {
     pub lfs: *mut Lfs<S>,
     pub name: &'a [u8],
-    pub size: lfs_size_t,
 }
 
 /// Per lfs.c lfs_dir_find_match (and struct lfs_dir_find_match) (lines 1447-1475)
@@ -67,27 +66,21 @@ pub async  fn lfs_dir_find_match<S: Storage>(
 ) -> Result<cmp::Ordering, Error> {
     let lfs = unsafe { &mut *name.lfs };
 
-    let diff = cmp::min(name.size, lfs_tag_size(tag)) as usize;
+    let diff = cmp::min(name.name.len(), lfs_tag_size(tag) as usize);
     let res = lfs_bd_cmp(
         lfs,
         None,
         unsafe { &mut *lfs.rcache.get() },
-        diff as u32,
+        diff,
         disk.block,
-        disk.off,
+        disk.off as usize,
         &name.name[..diff],
     ).await;
     if res != Ok(core::cmp::Ordering::Equal) {
         return res;
     }
-    if name.size != lfs_tag_size(tag) {
-        return if name.size < lfs_tag_size(tag) {
-            Ok(core::cmp::Ordering::Less)
-        } else {
-            Ok(core::cmp::Ordering::Greater)
-        };
-    }
-    Ok(core::cmp::Ordering::Equal)
+
+    Ok((name.name.len() as u32).cmp(&lfs_tag_size(tag)))
 }
 
 /// Per lfs.c lfs_dir_find (lines 1483-1590)
@@ -299,15 +292,14 @@ pub async  fn lfs_dir_find<S: Storage>(
         loop {
             let match_data = LfsDirFindMatch {
                 lfs,
-                name,
-                size: namelen as u32,
+                name: &name[..namelen],
             };
             tag = lfs_dir_fetchmatch(
                 lfs,
                 dir,
                 dir.tail,
                 lfs_mktag(0x780, 0, 0),
-                lfs_mktag(LFS_TYPE_NAME, 0, namelen as u32),
+                lfs_mktag(LFS_TYPE_NAME, 0, namelen),
                 id,
                 Some(&|tag, disk| lfs_dir_find_match(&match_data, tag, disk)),
             ).await?;

@@ -58,24 +58,24 @@ fn test_truncate_simple(#[case] medium: u32, #[case] large: u32) {
         assert_eq!(n, Ok(chunk));
         j += chunk;
     }
-    assert_eq!(lfs_file_size(lfs, file), large as i32);
+    assert_eq!(lfs_file_size(lfs, file), large);
 
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
-    assert_eq!(lfs_file_size(lfs, file), large as i32);
+    assert_eq!(lfs_file_size(lfs, file), large);
 
     assert_ok!(lfs_file_truncate(lfs, file, medium));
-    assert_eq!(lfs_file_size(lfs, file), medium as i32);
+    assert_eq!(lfs_file_size(lfs, file), medium);
 
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    assert_eq!(lfs_file_size(lfs, file), medium as i32);
+    assert_eq!(lfs_file_size(lfs, file), medium);
 
     let mut buf = [0u8; 16];
     j = 0;
@@ -122,17 +122,17 @@ fn test_truncate_read(#[case] medium: u32, #[case] large: u32) {
         assert_eq!(n, Ok(chunk));
         j += chunk;
     }
-    assert_eq!(lfs_file_size(lfs, file), large as i32);
+    assert_eq!(lfs_file_size(lfs, file), large);
 
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
-    assert_eq!(lfs_file_size(lfs, file), large as i32);
+    assert_eq!(lfs_file_size(lfs, file), large);
 
     assert_ok!(lfs_file_truncate(lfs, file, medium));
-    assert_eq!(lfs_file_size(lfs, file), medium as i32);
+    assert_eq!(lfs_file_size(lfs, file), medium);
 
     let mut buf = [0u8; 16];
     j = 0;
@@ -151,7 +151,7 @@ fn test_truncate_read(#[case] medium: u32, #[case] large: u32) {
 
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    assert_eq!(lfs_file_size(lfs, file), medium as i32);
+    assert_eq!(lfs_file_size(lfs, file), medium);
 
     j = 0;
     while j < medium {
@@ -200,8 +200,8 @@ fn test_truncate_write_read() {
 
     let n = lfs_file_write(lfs, file, &wb);
     assert_eq!(n, Ok(size as u32));
-    assert_eq!(lfs_file_size(lfs, file), size as i32);
-    assert_eq!(lfs_file_tell(lfs, file), size as i32);
+    assert_eq!(lfs_file_size(lfs, file), size);
+    assert_eq!(lfs_file_tell(lfs, file), size);
 
     assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
     assert_eq!(lfs_file_tell(lfs, file), 0);
@@ -209,23 +209,23 @@ fn test_truncate_write_read() {
     let trunc = size - qsize;
     assert_ok!(lfs_file_truncate(lfs, file, trunc));
     assert_eq!(lfs_file_tell(lfs, file), 0);
-    assert_eq!(lfs_file_size(lfs, file), trunc as i32);
+    assert_eq!(lfs_file_size(lfs, file), trunc);
 
     let n = lfs_file_read(lfs, file, &mut rb[..size as usize]);
     assert_eq!(n, Ok(trunc as u32));
     assert_eq!(&rb[..trunc as usize], &wb[..trunc as usize]);
 
-    assert_eq!(lfs_file_size(lfs, file), trunc as i32);
+    assert_eq!(lfs_file_size(lfs, file), trunc);
     assert_eq!(
         lfs_file_seek(lfs, file, qsize as i32, LFS_SEEK_SET),
         Ok(qsize as u32)
     );
-    assert_eq!(lfs_file_tell(lfs, file), qsize as i32);
+    assert_eq!(lfs_file_tell(lfs, file), qsize);
 
     let trunc2 = trunc - qsize;
     assert_ok!(lfs_file_truncate(lfs, file, trunc2));
-    assert_eq!(lfs_file_tell(lfs, file), qsize as i32);
-    assert_eq!(lfs_file_size(lfs, file), trunc2 as i32);
+    assert_eq!(lfs_file_tell(lfs, file), qsize);
+    assert_eq!(lfs_file_size(lfs, file), trunc2);
 
     let n = lfs_file_read(lfs, file, &mut rb[..size as usize]);
     assert_eq!(n, Ok((trunc2 - qsize) as u32));
@@ -263,17 +263,17 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
         assert_eq!(n, Ok(chunk));
         j += chunk;
     }
-    assert_eq!(lfs_file_size(lfs, file), large as i32);
+    assert_eq!(lfs_file_size(lfs, file), large);
 
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
-    assert_eq!(lfs_file_size(lfs, file), large as i32);
+    assert_eq!(lfs_file_size(lfs, file), large);
 
     assert_ok!(lfs_file_truncate(lfs, file, medium));
-    assert_eq!(lfs_file_size(lfs, file), medium as i32);
+    assert_eq!(lfs_file_size(lfs, file), medium);
 
     j = 0;
     while j < medium {
@@ -282,14 +282,14 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
         assert_eq!(n, Ok(chunk));
         j += chunk;
     }
-    assert_eq!(lfs_file_size(lfs, file), medium as i32);
+    assert_eq!(lfs_file_size(lfs, file), medium);
 
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    assert_eq!(lfs_file_size(lfs, file), medium as i32);
+    assert_eq!(lfs_file_size(lfs, file), medium);
 
     let mut buf = [0u8; 16];
     j = 0;
@@ -343,7 +343,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
             let open_err = littlefs_rust_core::lfs_file_open(lfs_ptr, file, path, LFS_O_RDONLY);
             if open_err.is_ok() {
                 let sz = littlefs_rust_core::lfs_file_size(lfs_ptr, file);
-                if sz == 0 || sz == LARGE as i32 || sz == medium as i32 || sz == small_size as i32 {
+                if sz == 0 || sz == LARGE || sz == medium || sz == small_size {
                     let mut buf = [0u8; 16];
                     let mut j: u32 = 0;
                     while j < sz as u32 {
@@ -500,7 +500,7 @@ fn test_truncate_aggressive() {
                 assert_eq!(n, Ok(chunk));
                 j += chunk;
             }
-            assert_eq!(lfs_file_size(lfs, file), startsizes[i] as i32);
+            assert_eq!(lfs_file_size(lfs, file), startsizes[i]);
 
             if startseeks[i] != startsizes[i] {
                 assert_eq!(
@@ -510,7 +510,7 @@ fn test_truncate_aggressive() {
             }
 
             assert_ok!(lfs_file_truncate(lfs, file, hotsizes[i]));
-            assert_eq!(lfs_file_size(lfs, file), hotsizes[i] as i32);
+            assert_eq!(lfs_file_size(lfs, file), hotsizes[i]);
 
             assert_ok!(lfs_file_close(lfs, file));
         }
@@ -522,7 +522,7 @@ fn test_truncate_aggressive() {
             let path = &format!("hairyhead{}", i);
             let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
-            assert_eq!(lfs_file_size(lfs, file), hotsizes[i] as i32);
+            assert_eq!(lfs_file_size(lfs, file), hotsizes[i]);
 
             let size = HAIR.len() as u32;
             let mut buf = [0u8; 16];
@@ -548,7 +548,7 @@ fn test_truncate_aggressive() {
             }
 
             assert_ok!(lfs_file_truncate(lfs, file, coldsizes[i]));
-            assert_eq!(lfs_file_size(lfs, file), coldsizes[i] as i32);
+            assert_eq!(lfs_file_size(lfs, file), coldsizes[i]);
 
             assert_ok!(lfs_file_close(lfs, file));
         }
@@ -560,7 +560,7 @@ fn test_truncate_aggressive() {
             let path = &format!("hairyhead{}", i);
             let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-            assert_eq!(lfs_file_size(lfs, file), coldsizes[i] as i32);
+            assert_eq!(lfs_file_size(lfs, file), coldsizes[i]);
 
             let size = HAIR.len() as u32;
             let mut buf = [0u8; 16];
@@ -623,11 +623,11 @@ fn test_truncate_nop(#[case] medium: u32) {
         assert_ok!(lfs_file_truncate(lfs, file, j + chunk));
         j += chunk;
     }
-    assert_eq!(lfs_file_size(lfs, file), medium as i32);
+    assert_eq!(lfs_file_size(lfs, file), medium);
 
     assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
     assert_ok!(lfs_file_truncate(lfs, file, medium));
-    assert_eq!(lfs_file_size(lfs, file), medium as i32);
+    assert_eq!(lfs_file_size(lfs, file), medium);
 
     let mut buf = [0u8; 16];
     j = 0;
@@ -646,7 +646,7 @@ fn test_truncate_nop(#[case] medium: u32) {
 
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
-    assert_eq!(lfs_file_size(lfs, file), medium as i32);
+    assert_eq!(lfs_file_size(lfs, file), medium);
 
     j = 0;
     while j < medium {

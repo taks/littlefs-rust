@@ -63,7 +63,7 @@ pub fn lfs_fs_prepmove<S>(lfs: &mut super::lfs::Lfs<S>, id: u16, pair: Option<&[
 /// Translation docs: Rewrite superblock when needssuperblock is set (older minor version on disk).
 ///
 /// C: lfs.c:4916-4953
-pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_fs_desuperblock<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
     crate::lfs_trace!("desuperblock: start");
     use crate::dir::commit::lfs_dir_commit;
     use crate::dir::fetch::lfs_dir_fetch;
@@ -98,7 +98,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
             tag: lfs_mktag(
                 LFS_TYPE_INLINESTRUCT,
                 0,
-                core::mem::size_of::<LfsSuperblock>() as u32,
+                core::mem::size_of::<LfsSuperblock>(),
             ),
             buffer: superblock.as_bytes(),
         }];
@@ -148,7 +148,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_fs_demove<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
     crate::lfs_trace!("demove: start");
     use crate::dir::commit::lfs_dir_commit;
     use crate::dir::fetch::lfs_dir_fetch;
@@ -315,7 +315,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 /// Two passes: pass 0 for half-orphans, pass 1 for full-orphans.
 ///
 /// C: lfs.c:4991-5120
-pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(), Error> {
+pub fn lfs_fs_deorphan<S>(lfs: &mut super::lfs::Lfs<S>, powerloss: bool) -> Result<(), Error> {
     crate::lfs_trace!("deorphan: start powerloss={}", powerloss);
     use crate::dir::LfsMdir;
     use crate::dir::commit::lfs_dir_orphaningcommit;
@@ -452,7 +452,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
 /// demove, and deorphan in sequence.
 ///
 /// C: lfs.c:5122-5140
-pub fn lfs_fs_forceconsistency(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_fs_forceconsistency<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
     crate::lfs_trace!("forceconsistency: start");
     let err = lfs_fs_desuperblock(lfs);
     crate::lfs_trace!("forceconsistency: after desuperblock err={:?}", err);

@@ -1,5 +1,8 @@
 //! attr. Per lfs.c attr_.
 
+use core::cmp;
+
+use crate::Storage;
 use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
@@ -10,7 +13,6 @@ use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::LFS_TYPE_USERATTR;
 use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_size};
 use crate::types::lfs_size_t;
-use crate::util::lfs_min;
 
 /// Per lfs.c lfs_getattr_ (lines 4107-4135)
 ///
@@ -51,7 +53,7 @@ use crate::util::lfs_min;
 ///     return lfs_tag_size(tag);
 /// }
 /// ```
-pub fn lfs_getattr_<S>(
+pub async fn lfs_getattr_<S: Storage>(
     lfs: &mut Lfs<S>,
     path: &str,
     r#type: u8,
@@ -69,14 +71,14 @@ pub fn lfs_getattr_<S>(
     };
 
     let mut path_ptr = path;
-    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
+    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None).await?;
 
     let mut id = lfs_tag_id(tag);
     if id == 0x3ff {
         id = 0;
         lfs_dir_fetch(lfs, &mut cwd, lfs.root)?;
     }
-    let size = lfs_min(buffer.len() as u32, lfs.attr_max);
+    let size = cmp::min(buffer.len(), lfs.attr_max as usize);
     let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size);
     let tag = lfs_dir_get(lfs, &cwd, lfs_mktag(0x7ff, 0x3ff, 0), gtag, buffer).map_err(|err| {
         if err == Error::NoEntry {
@@ -118,12 +120,12 @@ pub fn lfs_getattr_<S>(
 /// }
 /// #endif
 /// ```
-pub fn lfs_commitattr<S>(
+pub async  fn lfs_commitattr<S: Storage>(
     lfs: &mut Lfs<S>,
     path: &str,
     r#type: u8,
     buffer: &[u8],
-    size: lfs_size_t,
+    size: usize,
 ) -> Result<(), Error> {
     let mut cwd = LfsMdir {
         pair: [0, 0],
@@ -137,7 +139,7 @@ pub fn lfs_commitattr<S>(
     };
 
     let mut path_ptr = path;
-    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
+    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None).await?;
 
     let mut id = lfs_tag_id(tag);
     if id == 0x3ff {
@@ -169,17 +171,17 @@ pub fn lfs_commitattr<S>(
 /// }
 /// #endif
 /// ```
-pub fn lfs_setattr_<S>(
+pub async  fn lfs_setattr_<S: Storage>(
     lfs: &mut Lfs<S>,
     path: &str,
     r#type: u8,
     buffer: &[u8],
-    size: lfs_size_t,
+    size: usize,
 ) -> Result<(), Error> {
-    if size > lfs.attr_max {
+    if size > lfs.attr_max as usize {
         return crate::lfs_err!(Err(Error::NoSpace));
     }
-    lfs_commitattr(lfs, path, r#type, buffer, size)
+    lfs_commitattr(lfs, path, r#type, buffer, size).await
 }
 
 /// Per lfs.c lfs_removeattr_ (lines 4176-4196)

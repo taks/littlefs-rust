@@ -1,6 +1,7 @@
 //! Block allocator. Per lfs.c lfs_alloc, lfs_alloc_scan, lfs_alloc_lookahead, etc.
 
 use core::cell::UnsafeCell;
+use core::cmp;
 
 use crate::Storage;
 use crate::error::Error;
@@ -105,7 +106,6 @@ pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Erro
 /// ```
 pub async  fn lfs_alloc_scan<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Error> {
     use crate::fs::traverse::lfs_fs_traverse_;
-    use crate::util::lfs_min;
 
     crate::lfs_trace!("alloc_scan: start");
     unsafe {
@@ -116,7 +116,7 @@ pub async  fn lfs_alloc_scan<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Error> 
         lfs.lookahead.next = 0;
         // note we limit the lookahead buffer to at most the amount of blocks
         // checkpointed, this prevents the math in lfs_alloc from underflowing
-        lfs.lookahead.size = lfs_min(
+        lfs.lookahead.size = cmp::min(
             8 * cfg.lookahead_buffer.unwrap().len() as u32,
             lfs.lookahead.ckpoint,
         );
@@ -199,7 +199,7 @@ pub async  fn lfs_alloc_scan<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Error> 
 /// }
 /// #endif
 /// ```
-pub fn lfs_alloc<S>(lfs: &mut Lfs<S>, block: *mut lfs_block_t) -> Result<(), Error> {
+pub async  fn lfs_alloc<S: Storage>(lfs: &mut Lfs<S>, block: *mut lfs_block_t) -> Result<(), Error> {
     unsafe {
         let buf = lfs.lookahead.buffer.as_ref();
 
@@ -248,7 +248,7 @@ pub fn lfs_alloc<S>(lfs: &mut Lfs<S>, block: *mut lfs_block_t) -> Result<(), Err
             // No blocks in our lookahead buffer, we need to scan the filesystem for
             // unused blocks in the next lookahead window.
             crate::lfs_pass_err!(
-                lfs_alloc_scan(lfs),
+                lfs_alloc_scan(lfs).await,
                 "lfs_alloc NOSPC: alloc_scan start={} next={}",
                 lfs.lookahead.start,
                 lfs.lookahead.next

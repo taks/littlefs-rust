@@ -114,8 +114,8 @@ pub fn lfs_remove<S>(lfs: &mut Lfs<S>, path: &str) -> Result<(), Error> {
 
 /// Rename or move a file or directory. Per lfs.h lfs_rename (lfs.c:6227-6231).
 #[inline]
-pub fn lfs_rename<S>(lfs: &mut Lfs<S>, oldpath: &str, newpath: &str) -> Result<(), Error> {
-    crate::fs::rename::lfs_rename_(lfs, oldpath, newpath)
+pub async  fn lfs_rename<S: Storage>(lfs: &mut Lfs<S>, oldpath: &str, newpath: &str) -> Result<(), Error> {
+    crate::fs::rename::lfs_rename_(lfs, oldpath, newpath).await
 }
 
 /// Find info about a file or directory. Per lfs.h lfs_stat (lfs.c:6263-6267).
@@ -126,25 +126,25 @@ pub fn lfs_stat(lfs: &mut Lfs<S>, path: &str, info: &mut LfsInfo) -> Result<(), 
 
 /// Get a custom attribute. Per lfs.h lfs_getattr (lfs.c:6090-6105).
 #[inline]
-pub fn lfs_getattr<S>(
+pub async  fn lfs_getattr<S: Storage>(
     lfs: &mut Lfs<S>,
     path: &str,
     r#type: u8,
     buffer: &mut [u8],
 ) -> Result<lfs_size_t, Error> {
-    crate::fs::attr::lfs_getattr_(lfs, path, r#type, buffer)
+    crate::fs::attr::lfs_getattr_(lfs, path, r#type, buffer).await
 }
 
 /// Set custom attributes. Per lfs.h lfs_setattr (lfs.c:6471-6475).
 #[inline]
-pub fn lfs_setattr<S>(
+pub async  fn lfs_setattr<S: Storage>(
     lfs: &mut Lfs<S>,
     path: &str,
     r#type: u8,
     buffer: &[u8],
-    size: lfs_size_t,
+    size: usize,
 ) -> Result<(), Error> {
-    crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer, size)
+    crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer, size).await
 }
 
 /// Remove a custom attribute. Per lfs.h lfs_removeattr (lfs.c:6487-6491).
@@ -231,7 +231,7 @@ pub fn lfs_file_truncate<S>(
 
 /// Return the position of the file. Per lfs.h lfs_file_tell.
 #[inline]
-pub fn lfs_file_tell<S>(_lfs: &mut Lfs<S>, file: &LfsFile) -> lfs_soff_t {
+pub fn lfs_file_tell<S>(_lfs: &mut Lfs<S>, file: &LfsFile) -> lfs_off_t {
     crate::file::ops::lfs_file_tell_(core::ptr::null(), file)
 }
 
@@ -243,7 +243,7 @@ pub fn lfs_file_rewind<S>(lfs: &mut Lfs<S>, file: &mut LfsFile) -> Result<(), Er
 
 /// Return the size of the file. Per lfs.h lfs_file_size (lfs.c:6495-6499).
 #[inline]
-pub fn lfs_file_size<S>(lfs: &mut Lfs<S>, file: &LfsFile) -> lfs_soff_t {
+pub fn lfs_file_size<S>(lfs: &mut Lfs<S>, file: &LfsFile) -> lfs_off_t {
     crate::file::ops::lfs_file_size_(lfs, file)
 }
 
@@ -255,8 +255,8 @@ pub fn lfs_mkdir<S>(lfs: &mut Lfs<S>, path: &str) -> Result<(), Error> {
 
 /// Open a directory. Per lfs.h lfs_dir_open (lfs.c:6511-6515).
 #[inline]
-pub fn lfs_dir_open<S>(lfs: &mut Lfs<S>, dir: &mut LfsDir, path: &str) -> Result<(), Error> {
-    crate::dir::open::lfs_dir_open_(lfs, dir, path)
+pub async  fn lfs_dir_open<S: Storage>(lfs: &mut Lfs<S>, dir: &mut LfsDir, path: &str) -> Result<(), Error> {
+    crate::dir::open::lfs_dir_open_(lfs, dir, path).await
 }
 
 /// Close a directory. Per lfs.h lfs_dir_close.
@@ -267,7 +267,7 @@ pub fn lfs_dir_close<S>(lfs: &mut Lfs<S>, dir: &mut LfsDir) -> Result<(), Error>
 
 /// Read an entry in the directory. Per lfs.h lfs_dir_read.
 #[inline]
-pub fn lfs_dir_read<S>(
+pub fn lfs_dir_read<S: Storage>(
     lfs: &mut Lfs<S>,
     dir: &mut LfsDir,
     info: &mut LfsInfo,
@@ -301,8 +301,8 @@ pub fn lfs_fs_stat<S>(lfs: &mut Lfs<S>, fsinfo: &mut LfsFsinfo) -> Result<(), Er
 
 /// Find the current size of the filesystem. Per lfs.h lfs_fs_size (lfs.c:6449-6453).
 #[inline]
-pub fn lfs_fs_size<S>(lfs: &mut Lfs<S>) -> Result<lfs_size_t, Error> {
-    crate::fs::stat::lfs_fs_size_(lfs)
+pub async fn lfs_fs_size<S: Storage>(lfs: &mut Lfs<S>) -> Result<lfs_size_t, Error> {
+    crate::fs::stat::lfs_fs_size_(lfs).await
 }
 
 /// Callback type for lfs_fs_traverse. Per lfs.h int (*cb)(void*, lfs_block_t).
@@ -325,8 +325,8 @@ pub fn lfs_fs_mkconsistent<S>(lfs: &mut Lfs<S>) -> Result<(), Error> {
 
 /// Attempt any janitorial work. Per lfs.h lfs_fs_gc (lfs.c:6495-6499).
 #[inline]
-pub fn lfs_fs_gc<S>(lfs: &mut Lfs<S>) -> Result<(), Error> {
-    crate::fs::consistent::lfs_fs_gc_(lfs)
+pub async fn lfs_fs_gc<S: Storage>(lfs: &mut Lfs<S>) -> Result<(), Error> {
+    crate::fs::consistent::lfs_fs_gc_(lfs).await
 }
 
 /// Force consistency (deorphan, demove, desuperblock). For testing.

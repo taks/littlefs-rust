@@ -2,7 +2,7 @@
 
 use core::cmp;
 
-use crate::Lfs;
+use crate::{Lfs, Storage};
 use crate::dir::LfsMdir;
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::error::Error;
@@ -123,7 +123,7 @@ pub fn lfs_fs_mkconsistent_<S>(lfs: &mut Lfs<S>) -> Result<(), Error> {
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_gc_<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
+pub async fn lfs_fs_gc_<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_scan;
     use crate::dir::commit::lfs_dir_commit;
     use crate::util::lfs_pair_isnull;
@@ -176,7 +176,7 @@ pub fn lfs_fs_gc_<S>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), Error> {
         let block_count = lfs_ref.block_count;
         if lfs_ref.lookahead.size < cmp::min(8 * lookahead_size, block_count) {
             crate::lfs_trace!("lfs_fs_gc: alloc_scan start");
-            let err = lfs_alloc_scan(lfs);
+            let err = lfs_alloc_scan(lfs).await;
             crate::lfs_trace!("lfs_fs_gc: alloc_scan done err={:?}", err);
             crate::lfs_pass_err!(err)?;
         }

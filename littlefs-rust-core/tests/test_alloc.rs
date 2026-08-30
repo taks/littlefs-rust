@@ -407,7 +407,7 @@ fn test_alloc_exhaustion(#[values(false, true)] infer_bc: bool) {
     assert_ok!(lfs_mount(lfs, &mount_cfg.config));
     assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_RDONLY));
     let fsize = lfs_file_size(lfs, file);
-    assert!(fsize >= exhaustion.len() as i32);
+    assert!(fsize >= exhaustion.len() as u32);
     let mut buf = [0u8; 16];
     let n = lfs_file_read(lfs, file, &mut buf[..exhaustion.len()]);
     assert_eq!(n, Ok(exhaustion.len() as u32));
@@ -519,7 +519,7 @@ fn test_alloc_exhaustion_wraparound(#[values(false, true)] infer_bc: bool) {
     assert_ok!(lfs_mount(lfs, &mount_cfg.config));
     assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_RDONLY));
     let fsize = lfs_file_size(lfs, file);
-    assert!(fsize >= exhaustion.len() as i32);
+    assert!(fsize >= exhaustion.len() as u32);
     let mut buf = [0u8; 16];
     let n = lfs_file_read(lfs, file, &mut buf[..exhaustion.len()]);
     assert_eq!(n, Ok(exhaustion.len() as u32));
@@ -621,7 +621,7 @@ fn test_alloc_two_files_ctz() {
     init_logger();
     let mut env = default_config(48);
     init_context(&mut env);
-    let block_size = env.config.block_size;
+    let block_size = env.config.block_size as usize;
 
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, &env.config));
@@ -646,7 +646,7 @@ fn test_alloc_two_files_ctz() {
     }
     assert_ok!(lfs_file_close(lfs, file));
 
-    filesize = filesize - (3 * block_size as usize);
+    filesize -= 3 * block_size;
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -715,7 +715,7 @@ fn test_alloc_bad_blocks_body() {
     let mut env = config_badblock(128);
     init_badblock_context(&mut env);
 
-    let block_size = env.config.block_size;
+    let block_size = env.config.block_size as usize;
 
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, &env.config));
@@ -748,7 +748,7 @@ fn test_alloc_bad_blocks_body() {
     }
     assert_ok!(lfs_file_close(lfs, file));
 
-    filesize = filesize - (3 * block_size as usize);
+    filesize -= 3 * block_size;
 
     assert_ok!(lfs_file_open(
         lfs,
@@ -939,7 +939,7 @@ fn test_alloc_chained_dir_exhaustion() {
         }
         let filesize = lfs_file_size(lfs, file);
         assert!(filesize > 0, "need positive file size to truncate");
-        let new_size = (filesize - blah.len() as i32).max(0) as u32;
+        let new_size = filesize - blah.len() as u32;
         assert_ok!(lfs_file_truncate(lfs, file, new_size));
         assert_ok!(lfs_file_sync(lfs, file));
     }

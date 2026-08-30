@@ -63,7 +63,7 @@ pub fn lfs_fs_pred<S>(
             return Err(Error::Corrupt);
         }
 
-        if lfs_pair_cmp(&pdir.tail, pair) == 0 {
+        if !lfs_pair_cmp(&pdir.tail, pair) {
             if !have_fetched {
                 // Matched before any fetch: tail [0,1] == pair (root).
                 // The root has no predecessor.
@@ -119,14 +119,14 @@ pub async fn lfs_fs_parent_match<S: Storage>(
         lfs,
         None,
         unsafe { &mut *lfs.rcache.get() },
-        unsafe { lfs.cfg.as_ref().block_size },
+        unsafe { lfs.cfg.as_ref().block_size as usize },
         disk.block,
-        disk.off,
+        disk.off as usize,
         child.as_mut_bytes(),
     ).await?;
 
     lfs_pair_fromle32(&mut child);
-    if lfs_pair_cmp(&child, &find.pair) == 0 {
+    if !lfs_pair_cmp(&child, &find.pair) {
         Ok(core::cmp::Ordering::Equal)
     } else {
         Ok(core::cmp::Ordering::Less)

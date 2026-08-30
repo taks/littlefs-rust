@@ -188,7 +188,7 @@ pub async fn lfs_fs_traverse_<S: Storage>(
                     raw[0],
                     raw[1],
                     cb,
-                )?;
+                ).await?;
             } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
                 #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
                 for i in 0..2 {

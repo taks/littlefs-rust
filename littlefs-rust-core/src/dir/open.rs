@@ -16,7 +16,7 @@ use crate::lfs_info::LfsInfo;
 use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE3_DIR};
 use crate::tag::{lfs_mktag, lfs_tag_id, lfs_tag_type3};
 use crate::types::lfs_off_t;
-use crate::util::{lfs_min, lfs_pair_cmp, lfs_pair_fromle32};
+use crate::util::{lfs_pair_cmp, lfs_pair_fromle32};
 
 /// Per lfs.c lfs_dir_open_ (lines 2721-2763)
 ///
@@ -66,10 +66,10 @@ use crate::util::{lfs_min, lfs_pair_cmp, lfs_pair_fromle32};
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_dir_open_<S>(lfs: &mut crate::fs::Lfs<S>, dir: &mut LfsDir, path: &str) -> Result<(), Error> {
+pub async fn lfs_dir_open_<S: Storage>(lfs: &mut crate::fs::Lfs<S>, dir: &mut LfsDir, path: &str) -> Result<(), Error> {
     let mut path_ptr = path;
 
-    let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None)?;
+    let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None).await?;
 
     if (lfs_tag_type3(tag)) != LFS_TYPE3_DIR {
         return Err(Error::NotDir);
@@ -279,7 +279,7 @@ pub fn lfs_dir_seek_<S>(
     let mut off = off - dir.pos;
 
     // skip superblock entry
-    dir.id = if off > 0 && lfs_pair_cmp(&dir.head, &lfs.root) == 0 {
+    dir.id = if off > 0 && !lfs_pair_cmp(&dir.head, &lfs.root) {
         1
     } else {
         0
@@ -294,7 +294,7 @@ pub fn lfs_dir_seek_<S>(
             lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
             dir.id = 0;
         }
-        let diff = lfs_min((dir.m.count - dir.id) as u32, off);
+        let diff = cmp::min((dir.m.count - dir.id) as u32, off);
         dir.id += diff as u16;
         dir.pos += diff;
         off -= diff;

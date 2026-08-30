@@ -2,6 +2,7 @@
 
 use zerocopy::IntoBytes;
 
+use crate::Storage;
 use crate::error::Error;
 use crate::fs::traverse::lfs_fs_traverse_;
 use crate::types::lfs_size_t;
@@ -26,8 +27,8 @@ use crate::types::lfs_size_t;
 ///     return lfs_dir_getinfo(lfs, &cwd, lfs_tag_id(tag), info);
 /// }
 /// ```
-pub fn lfs_stat_(
-    lfs: &mut super::lfs::Lfs,
+pub async fn lfs_stat_<S: Storage>(
+    lfs: &mut super::lfs::Lfs<S>,
     path: &str,
     info: &mut crate::lfs_info::LfsInfo,
 ) -> Result<(), Error> {
@@ -40,7 +41,7 @@ pub fn lfs_stat_(
         let mut cwd = core::mem::zeroed::<crate::dir::LfsMdir>();
         let mut path_ptr = path;
 
-        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
+        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None).await?;
 
         if path_ptr.contains('/') && lfs_tag_type3(tag) != LFS_TYPE3_DIR {
             return Err(Error::NotDir);
@@ -94,8 +95,8 @@ pub fn lfs_stat_(
 ///     return 0;
 /// }
 /// ```
-pub fn lfs_fs_stat_(
-    lfs: &mut super::lfs::Lfs,
+pub fn lfs_fs_stat_<S>(
+    lfs: &mut super::lfs::Lfs<S>,
     fsinfo: &mut crate::lfs_info::LfsFsinfo,
 ) -> Result<(), Error> {
     use crate::dir::fetch::lfs_dir_fetch;
@@ -129,7 +130,7 @@ pub fn lfs_fs_stat_(
             lfs_mktag(
                 LFS_TYPE_INLINESTRUCT,
                 0,
-                core::mem::size_of::<LfsSuperblock>() as u32,
+                core::mem::size_of::<LfsSuperblock>(),
             ),
             superblock.as_mut_bytes(),
         )?;
@@ -168,7 +169,7 @@ pub fn lfs_fs_stat_(
 ///     return size;
 /// }
 /// ```
-pub fn lfs_fs_size_(lfs: &mut super::lfs::Lfs) -> Result<lfs_size_t, Error> {
+pub async  fn lfs_fs_size_<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<lfs_size_t, Error> {
     let mut size: lfs_size_t = 0;
     lfs_fs_traverse_(
         lfs,
@@ -177,7 +178,7 @@ pub fn lfs_fs_size_(lfs: &mut super::lfs::Lfs) -> Result<lfs_size_t, Error> {
             Ok(())
         },
         false,
-    )?;
+    ).await?;
 
     Ok(size)
 }

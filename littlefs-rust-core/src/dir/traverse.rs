@@ -85,7 +85,7 @@ pub fn lfs_dir_getslice(
     dir: &LfsMdir,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
-    goff: lfs_off_t,
+    goff: usize,
     gbuffer: &mut [u8],
 ) -> Result<lfs_tag_t, Error> {
     use crate::bd::bd::lfs_bd_read;
@@ -115,7 +115,7 @@ pub fn lfs_dir_getslice(
             unsafe { &mut *lfs.rcache.get() },
             4,
             dir.pair[0],
-            off,
+            off as usize,
             ntag_buf.as_mut_bytes(),
         )?;
 
@@ -139,7 +139,7 @@ pub fn lfs_dir_getslice(
             if lfs_tag_isdelete(tag) {
                 return Err(Error::NoEntry);
             }
-            let diff = core::cmp::min(lfs_tag_size(tag), gbuffer.len() as u32);
+            let diff = core::cmp::min(lfs_tag_size(tag) as usize, gbuffer.len());
             let buf = &mut gbuffer[..diff as usize];
             lfs_bd_read(
                 lfs,
@@ -147,10 +147,10 @@ pub fn lfs_dir_getslice(
                 unsafe { &mut *lfs.rcache.get() },
                 diff,
                 dir.pair[0],
-                off + 4 + goff,
+                off as usize + 4 + goff,
                 buf,
             )?;
-            if !gbuffer.is_empty() && diff < gbuffer.len() as u32 {
+            if !gbuffer.is_empty() && diff < gbuffer.len() {
                 gbuffer[(diff as usize)..].fill(0);
             }
             return Ok((tag as i32).wrapping_add(gdiff) as u32);
@@ -218,7 +218,7 @@ pub fn lfs_dir_getread(
     hint: lfs_size_t,
     gmask: lfs_tag_t,
     gtag: lfs_tag_t,
-    off: lfs_off_t,
+    off: usize,
     buffer: &mut [u8],
 ) -> Result<(), Error> {
     use crate::types::LFS_BLOCK_INLINE;
@@ -227,56 +227,52 @@ pub fn lfs_dir_getread(
     let cfg = unsafe { lfs.cfg.as_ref() };
 
     let mut off = off;
-    let mut size = buffer.len() as u32;
     let mut data = buffer;
 
-    if off + size > cfg.block_size {
+    if off + data.len() > cfg.block_size as usize {
         return crate::lfs_err!(Err(Error::Corrupt));
     }
 
-    while size > 0 {
-        let mut diff = size as usize;
+    while !data.is_empty() {
+        let mut diff = data.len();
 
         if let Some(pcache) = pcache
             && pcache.block == LFS_BLOCK_INLINE
             && off < pcache.off + pcache.size
         {
             if off >= pcache.off {
-                diff = core::cmp::min(diff, (pcache.size - (off - pcache.off)) as usize);
+                diff = core::cmp::min(diff, pcache.size - (off - pcache.off));
                 unsafe {
                     data[..diff].copy_from_slice(
-                        &pcache.buffer.as_ref()
-                            [((off - pcache.off) as usize)..((off - pcache.off) as usize + diff)],
+                        &pcache.buffer.as_ref()[(off - pcache.off)..((off - pcache.off) + diff)],
                     );
                 };
 
                 data = &mut data[diff..];
-                off += diff as u32;
-                size -= diff as u32;
+                off += diff;
                 continue;
             }
-            diff = core::cmp::min(diff, (pcache.off - off) as usize);
+            diff = core::cmp::min(diff, pcache.off - off);
         }
 
         if rcache.block == LFS_BLOCK_INLINE && off < rcache.off + rcache.size && off >= rcache.off {
-            let src = unsafe { &rcache.buffer.as_ref()[((off - rcache.off) as usize)..] };
+            let src = unsafe { &rcache.buffer.as_ref()[(off - rcache.off)..] };
             diff = core::cmp::min(diff, src.len());
             data[..diff].copy_from_slice(&src[..diff]);
 
             data = &mut data[diff..];
-            off += diff as u32;
-            size -= diff as u32;
+            off += diff;
             continue;
         }
 
         rcache.block = LFS_BLOCK_INLINE;
-        rcache.off = lfs_aligndown(off, cfg.read_size);
+        rcache.off = lfs_aligndown(off, cfg.read_size as usize);
         rcache.size = core::cmp::min(
-            lfs_alignup(off + hint, cfg.read_size),
-            rcache.buffer.len() as u32,
+            lfs_alignup(off + hint as usize, cfg.read_size as usize),
+            rcache.buffer.len(),
         );
         let _res = lfs_dir_getslice(lfs, dir, gmask, gtag, rcache.off, unsafe {
-            &mut rcache.buffer.as_mut()[..rcache.size as usize]
+            &mut rcache.buffer.as_mut()[..rcache.size]
         })?;
     }
     Ok(())
@@ -715,9 +711,9 @@ pub fn lfs_dir_traverse(
                             lfs,
                             None,
                             unsafe { &mut *lfs.rcache.get() },
-                            core::mem::size_of::<lfs_tag_t>() as u32,
+                            core::mem::size_of::<lfs_tag_t>(),
                             dir.pair[0],
-                            off,
+                            off as usize,
                             tag_raw.as_mut_bytes(),
                         )?;
 
@@ -894,7 +890,7 @@ pub fn lfs_dir_traverse(
                                 crate::lfs_type::lfs_type::LFS_TYPE_USERATTR
                                     .wrapping_add(u16::from(a.type_)),
                                 crate::tag::lfs_tag_id(tag) as u32 + diff as u32,
-                                a.buffer.len() as u32,
+                                a.buffer.len(),
                             );
                             res = dispatch_tag(cb, data, userattr_tag, a.buffer, diff)?;
                             if res != 0 {

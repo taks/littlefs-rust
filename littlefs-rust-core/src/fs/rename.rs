@@ -2,6 +2,7 @@
 
 use zerocopy::IntoBytes;
 
+use crate::Storage;
 use crate::dir::commit::{lfs_dir_commit, lfs_dir_drop};
 use crate::dir::fetch::lfs_dir_fetch;
 use crate::dir::find::lfs_dir_find;
@@ -207,7 +208,7 @@ use crate::util::{
 ///     return lfs_tag_size(tag);
 /// }
 /// ```
-pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> Result<(), Error> {
+pub async fn lfs_rename_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, oldpath: &str, newpath: &str) -> Result<(), Error> {
     lfs_fs_forceconsistency(lfs)?;
 
     unsafe {
@@ -222,7 +223,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
             tail: [lfs.root[0], lfs.root[1]],
         };
         let mut oldpath_ptr = oldpath;
-        let oldtag = lfs_dir_find(lfs, &mut oldcwd, &mut oldpath_ptr, &mut None)?;
+        let oldtag = lfs_dir_find(lfs, &mut oldcwd, &mut oldpath_ptr, &mut None).await?;
         if lfs_tag_id(oldtag) == 0x3ff {
             return Err(Error::Invalid);
         }
@@ -251,7 +252,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
             };
         }
 
-        let samepair = lfs_pair_cmp(&oldcwd.pair, &newcwd.pair) == 0;
+        let samepair = !lfs_pair_cmp(&oldcwd.pair, &newcwd.pair);
         let mut newoldid = lfs_tag_id(oldtag);
 
         let mut prevdir = LfsMlist {
@@ -265,7 +266,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
             if lfs_path_isdir(newpath_slice) && (lfs_tag_type3(oldtag)) != LFS_TYPE3_DIR {
                 return crate::lfs_err!(Err(Error::NotDir));
             }
-            let nlen = lfs_path_namelen(newpath_slice);
+            let nlen = lfs_path_namelen(newpath_slice) as u32;
             if nlen > lfs.name_max {
                 return crate::lfs_err!(Err(Error::NameTooLong));
             }
@@ -328,7 +329,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
                 buffer: newpath_ptr.as_bytes(),
             },
             lfs_mattr {
-                tag: lfs_mktag(LFS_FROM_MOVE, newid as u32, lfs_tag_id(oldtag) as u32),
+                tag: lfs_mktag(LFS_FROM_MOVE, newid as u32, lfs_tag_id(oldtag) as usize),
                 buffer: oldcwd.as_bytes(),
             },
             lfs_mattr {
