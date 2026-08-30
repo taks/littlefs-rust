@@ -111,10 +111,7 @@ fn test_seek_read(#[case] count: u32, #[case] skip: u32) {
     assert_eq!(n, Ok(KITTY.len() as u32));
     assert_eq!(&buf[..KITTY.len()], KITTY);
 
-    assert_eq!(
-        lfs_file_size(lfs, file),
-        (count * KITTY.len() as u32)
-    );
+    assert_eq!(lfs_file_size(lfs, file), (count * KITTY.len() as u32));
     assert_eq!(
         lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR),
         Ok(count * KITTY.len() as u32)
@@ -192,10 +189,7 @@ fn test_seek_write(#[case] count: u32, #[case] skip: u32) {
     assert_eq!(n, Ok(KITTY.len() as u32));
     assert_eq!(&buf[..KITTY.len()], KITTY);
 
-    assert_eq!(
-        lfs_file_size(lfs, file),
-        (count * KITTY.len() as u32)
-    );
+    assert_eq!(lfs_file_size(lfs, file), (count * KITTY.len() as u32));
     assert_eq!(
         lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR),
         Ok(count * KITTY.len() as u32)
@@ -516,10 +510,7 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
     let size = KITTY.len() as i64;
     let hole_offset = (count as i64 + skip as i64) * size;
 
-    assert_eq!(
-        lfs_file_size(lfs, file),
-        (count * KITTY.len() as u32)
-    );
+    assert_eq!(lfs_file_size(lfs, file), (count * KITTY.len() as u32));
     assert_eq!(
         lfs_file_seek(lfs, file, hole_offset as i32, LFS_SEEK_SET,),
         Ok(hole_offset as u32)
@@ -979,7 +970,9 @@ fn test_seek_overflow() {
         lfs_file_seek(
             lfs,
             file,
-            LFS_FILE_MAX.wrapping_sub(size as i32).wrapping_add(LFS_FILE_MAX),
+            LFS_FILE_MAX
+                .wrapping_sub(size as i32)
+                .wrapping_add(LFS_FILE_MAX),
             LFS_SEEK_END,
         ),
         Err(Error::Invalid)
