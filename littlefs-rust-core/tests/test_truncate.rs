@@ -343,7 +343,7 @@ fn test_truncate_reentrant_write(#[case] small_size: u32) {
             let open_err = littlefs_rust_core::lfs_file_open(lfs_ptr, file, path, LFS_O_RDONLY);
             if open_err.is_ok() {
                 let sz = littlefs_rust_core::lfs_file_size(lfs_ptr, file);
-                if sz == 0 || sz == LARGE as i32 || sz == medium as i32 || sz == small_size as i32 {
+                if sz == 0 || sz == LARGE as u32 || sz == medium as u32 || sz == small_size as u32 {
                     let mut buf = [0u8; 16];
                     let mut j: u32 = 0;
                     while j < sz as u32 {

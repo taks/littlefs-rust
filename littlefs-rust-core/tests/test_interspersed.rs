@@ -365,7 +365,6 @@ fn test_interspersed_reentrant_files(
     for i in 0..size {
         for j in 0..files {
             let file_sz = lfs_file_size(lfs, &file_handles[j]);
-            assert!(file_sz >= 0);
             if (file_sz as usize) <= i {
                 let byte = [ALPHAS[j]];
                 let n = lfs_file_write(lfs, &mut file_handles[j], &byte);

@@ -602,7 +602,7 @@ fn test_files_many_power_loss() {
             let bytes = content.as_bytes();
             assert_eq!(bytes.len(), 7);
             let sz = littlefs_rust_core::lfs_file_size(lfs, file);
-            if sz != bytes.len() as i32 {
+            if sz != bytes.len() as u32 {
                 let n = littlefs_rust_core::lfs_file_write(lfs, file, bytes)?;
                 assert_eq!(n, bytes.len() as u32);
             }

@@ -706,7 +706,7 @@ fn test_seek_reentrant_write(#[case] count: u32) {
         if open_err.is_ok() {
             let sz = littlefs_rust_core::lfs_file_size(lfs, file);
             if sz != 0 {
-                assert_eq!(sz, (count * 11) as i32);
+                assert_eq!(sz, (count * 11) as u32);
                 for _ in 0..count {
                     let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11])?;
                     if n != 11 {
@@ -738,7 +738,7 @@ fn test_seek_reentrant_write(#[case] count: u32) {
 
         assert_eq!(
             littlefs_rust_core::lfs_file_size(lfs, file),
-            (count * 11) as i32
+            (count * 11) as u32
         );
 
         let mut off: u32 = 0;
@@ -792,7 +792,7 @@ fn test_seek_reentrant_write(#[case] count: u32) {
         littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDWR)?;
         assert_eq!(
             littlefs_rust_core::lfs_file_size(lfs, file),
-            (count * 11) as i32
+            (count * 11) as u32
         );
         for _ in 0..count {
             let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11])?;
