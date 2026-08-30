@@ -1541,8 +1541,8 @@ pub fn lfs_file_truncate_(
 ///     return file->pos;
 /// }
 /// ```
-pub fn lfs_file_tell_(_lfs: *const core::ffi::c_void, file: &LfsFile) -> crate::types::lfs_soff_t {
-    file.pos as crate::types::lfs_soff_t
+pub fn lfs_file_tell_(_lfs: *const core::ffi::c_void, file: &LfsFile) -> crate::types::lfs_off_t {
+    file.pos
 }
 
 /// Per lfs.c lfs_file_rewind_ (lines 3840-3850)

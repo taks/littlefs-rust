@@ -100,7 +100,7 @@ fn test_files_large(
     // read
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    assert_eq!(lfs_file_size(lfs, file), size as i32);
+    assert_eq!(lfs_file_size(lfs, file), size);
     verify_prng_file(lfs, file, size, chunk_size, 1);
     // Final read past EOF returns 0
     let mut buf = [0u8; 1024];
@@ -149,7 +149,7 @@ fn test_files_rewrite(
     // read SIZE1
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    assert_eq!(lfs_file_size(lfs, file), size1 as i32);
+    assert_eq!(lfs_file_size(lfs, file), size1);
     verify_prng_file(lfs, file, size1, chunk_size, 1);
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
@@ -164,7 +164,7 @@ fn test_files_rewrite(
     // read: first SIZE2 = PRNG(2), then SIZE2..SIZE1 (if size1 > size2) = PRNG(1) from offset SIZE2
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    assert_eq!(lfs_file_size(lfs, file), size1.max(size2) as i32);
+    assert_eq!(lfs_file_size(lfs, file), size1.max(size2));
     verify_prng_file(lfs, file, size2, chunk_size, 2);
     if size1 > size2 {
         let mut prng = 1u32;
@@ -224,7 +224,7 @@ fn test_files_append(
     // read: SIZE1 + SIZE2, first PRNG(1) then PRNG(2)
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    assert_eq!(lfs_file_size(lfs, file), (size1 + size2) as i32);
+    assert_eq!(lfs_file_size(lfs, file), size1 + size2);
     verify_prng_file(lfs, file, size1, chunk_size, 1);
     verify_prng_file(lfs, file, size2, chunk_size, 2);
     assert_ok!(lfs_file_close(lfs, file));
@@ -276,7 +276,7 @@ fn test_files_truncate(
     // read SIZE2
     assert_ok!(lfs_mount(lfs, &env.config));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    assert_eq!(lfs_file_size(lfs, file), size2 as i32);
+    assert_eq!(lfs_file_size(lfs, file), size2);
     verify_prng_file(lfs, file, size2, chunk_size, 2);
     let mut buf = [0u8; 1024];
     let n = lfs_file_read(lfs, file, &mut buf[..chunk_size as usize]);
@@ -330,7 +330,7 @@ fn test_files_reentrant_write(
         let open_err = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY);
         if open_err.is_ok() {
             let sz = littlefs_rust_core::lfs_file_size(lfs, file);
-            assert!(sz == 0 || sz == size as i32, "size must be 0 or SIZE");
+            assert!(sz == 0 || sz == size, "size must be 0 or SIZE");
             littlefs_rust_core::lfs_file_close(lfs, file)?;
         } else {
             assert_eq!(open_err, Err(Error::NoEntry));
@@ -357,7 +357,7 @@ fn test_files_reentrant_write(
             return Ok(());
         }
         let sz = littlefs_rust_core::lfs_file_size(lfs, file);
-        if sz == size as i32 {
+        if sz == size {
             verify_prng_file(lfs, file, size, chunk_size, 1);
         }
         littlefs_rust_core::lfs_file_close(lfs, file)?;
@@ -409,7 +409,7 @@ fn test_files_reentrant_write_sync(
         let open_err = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY);
         if open_err.is_ok() {
             let sz = littlefs_rust_core::lfs_file_size(lfs, file);
-            assert!(sz <= size as i32);
+            assert!(sz <= size);
             let mut prng = 1u32;
             let mut buf = [0u8; 1024];
             let mut i: u32 = 0;
@@ -469,7 +469,7 @@ fn test_files_reentrant_write_sync(
             return Ok(());
         }
         let sz = littlefs_rust_core::lfs_file_size(lfs, file);
-        if sz == size as i32 {
+        if sz == size {
             verify_prng_file(lfs, file, size, chunk_size, 1);
         }
         littlefs_rust_core::lfs_file_close(lfs, file)?;
