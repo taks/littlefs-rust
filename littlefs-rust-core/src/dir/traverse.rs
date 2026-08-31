@@ -1003,9 +1003,7 @@ pub fn lfs_dir_traverse_test_cb(
 ) -> Result<i32, Error> {
     use crate::tag::lfs_tag_type3;
 
-    let Some(out) = (unsafe { (p as *mut TraverseTestOut).as_mut() }) else {
-        return Ok(0);
-    };
+    let out = unsafe { &mut *p };
 
     if out.call_count as usize >= 8 {
         return Ok(0);
