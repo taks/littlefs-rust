@@ -434,12 +434,23 @@ struct LfsDirTraverseStack<'a, S> {
     disk: crate::tag::lfs_diskoff,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub(crate) enum LfsDirTraverseStackCb<S> {
     TraverseFilter(*mut lfs_tag_t),
     CommitCommit(*mut Lfs<S>, *mut LfsCommit),
     CommitSize(*mut lfs_size_t),
     Test(*mut TraverseTestOut),
+}
+
+impl<S> Clone for LfsDirTraverseStackCb<S> {
+    fn clone(&self) -> Self {
+        match self {
+            Self::TraverseFilter(arg0) => Self::TraverseFilter(arg0.clone()),
+            Self::CommitCommit(arg0, arg1) => Self::CommitCommit(arg0.clone(), arg1.clone()),
+            Self::CommitSize(arg0) => Self::CommitSize(arg0.clone()),
+            Self::Test(arg0) => Self::Test(arg0.clone()),
+        }
+    }
 }
 
 /// Per lfs.c lfs_dir_traverse (lines 912-1105)
@@ -645,7 +656,7 @@ pub(crate) enum LfsDirTraverseStackCb<S> {
 /// Helper: single place where the traverse callback is invoked.
 /// C: `res = cb(data, tag + LFS_MKTAG(0, diff, 0), buffer);`
 #[inline(always)]
-fn dispatch_tag<S>(
+async fn dispatch_tag<S: Storage>(
     cb: LfsDirTraverseStackCb<S>,
     tag: lfs_tag_t,
     buffer: &[u8],
@@ -656,7 +667,7 @@ fn dispatch_tag<S>(
     match cb {
         LfsDirTraverseStackCb::TraverseFilter(x) => lfs_dir_traverse_filter(x, out_tag, buffer),
         LfsDirTraverseStackCb::CommitCommit(lfs, commit) => {
-            lfs_dir_commit_commit(lfs, commit, out_tag, buffer)
+            lfs_dir_commit_commit(lfs, commit, out_tag, buffer).await
         }
         LfsDirTraverseStackCb::CommitSize(x) => lfs_dir_commit_size(x, out_tag, buffer),
         LfsDirTraverseStackCb::Test(x) => lfs_dir_traverse_test_cb(x, out_tag, buffer),
@@ -797,7 +808,7 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                         begin,
                         end,
                         diff,
-                        cb,
+                        cb: cb.clone(),
                         tag,
                         buffer,
                         disk,
@@ -866,7 +877,7 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                                 begin,
                                 end,
                                 diff,
-                                cb,
+                                cb: cb.clone(),
                                 tag: noop_tag,
                                 buffer: &[],
                                 disk,
@@ -907,7 +918,7 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                                 crate::tag::lfs_tag_id(tag) as u32 + diff as u32,
                                 a.buffer.len(),
                             );
-                            res = dispatch_tag(cb, userattr_tag, a.buffer, diff)?;
+                            res = dispatch_tag(cb.clone(), userattr_tag, a.buffer, diff).await?;
                             if res != 0 {
                                 break;
                             }
@@ -928,7 +939,7 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                             Some(ref d) => d.as_bytes(),
                             None => buffer,
                         };
-                        res = dispatch_tag(cb, tag, actual_buffer, diff)?;
+                        res = dispatch_tag(cb.clone(), tag, actual_buffer, diff).await?;
                         if res != 0 {
                             if sp > 0 {
                                 crate::lfs_trace!(
@@ -962,7 +973,7 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                 begin = frame.begin;
                 end = frame.end;
                 diff = frame.diff;
-                cb = frame.cb;
+                cb = frame.cb.clone();
                 disk = frame.disk;
                 // Per C: when filter marks redundant it sets *filtertag = NOOP. We pop and
                 // dispatch that NOOP (emit nothing). The attr that triggered redundancy is

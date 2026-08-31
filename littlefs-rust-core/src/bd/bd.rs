@@ -5,7 +5,7 @@ use core::cmp;
 use crate::bd::LfsCache;
 use crate::error::Error;
 use crate::fs::Lfs;
-use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t};
+use crate::types::{lfs_block_t, lfs_size_t};
 use crate::util::{lfs_aligndown, lfs_alignup};
 use crate::{Storage, lfs_pass_err};
 

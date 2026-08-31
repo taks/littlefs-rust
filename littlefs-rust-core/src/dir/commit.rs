@@ -739,7 +739,7 @@ pub fn lfs_dir_commit_size(
 ///     return lfs_dir_commitattr(commit->lfs, commit->commit, tag, buffer);
 /// }
 /// ```
-async fn lfs_dir_commit_commit<S: Storage>(
+pub(crate) async fn lfs_dir_commit_commit<S: Storage>(
     lfs: *mut Lfs<S>,
     commit: *mut LfsCommit,
     tag: lfs_tag_t,

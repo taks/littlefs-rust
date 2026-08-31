@@ -24,6 +24,7 @@ use crate::tag::{
 };
 use crate::types::{LFS_BLOCK_NULL, lfs_block_t, lfs_stag_t, lfs_tag_t};
 use crate::util::{lfs_pair_swap, lfs_scmp};
+use core::marker::PhantomData;
 use core::{cmp, mem};
 
 /// Per lfs.c lfs_dir_fetchmatch (lines 1107-1386)
@@ -652,6 +653,19 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
     Err(Error::Corrupt)
 }
 
+struct NoneFuture<T>(PhantomData<T>);
+
+impl<T> Future for NoneFuture<T> {
+    type Output = T;
+
+    fn poll(
+        self: core::pin::Pin<&mut Self>,
+        _cx: &mut core::task::Context<'_>,
+    ) -> core::task::Poll<Self::Output> {
+        unreachable!()
+    }
+}
+
 /// Per lfs.c lfs_dir_fetch (lines 1387-1393)
 ///
 /// C:
@@ -669,7 +683,16 @@ pub async fn lfs_dir_fetch<S: Storage>(
     dir: &mut LfsMdir,
     pair: [lfs_block_t; 2],
 ) -> Result<(), Error> {
-    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, &mut None, None).await;
+    let res = lfs_dir_fetchmatch(
+        lfs,
+        dir,
+        pair,
+        0xffff_ffff,
+        0xffff_ffff,
+        &mut None,
+        Option::<fn(lfs_tag_t, &lfs_diskoff) -> NoneFuture<Result<core::cmp::Ordering, Error>>>::None.as_ref(),
+    )
+    .await;
     if let Err(e) = res { Err(e) } else { Ok(()) }
 }
 
