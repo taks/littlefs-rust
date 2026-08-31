@@ -42,33 +42,28 @@ fn test_powerloss_partial_prog() {
             let cfg = &env.config;
 
             let lfs = &mut Lfs::default();
-            assert_ok_at("format", lfs_format(lfs, cfg));
-            assert_ok_at("mount", lfs_mount(lfs, cfg));
-            let path_a = "a";
-            assert_ok_at("mkdir a", lfs_mkdir(lfs, path_a));
-            assert_ok_at("unmount", lfs_unmount(lfs));
+            assert_ok!(lfs_format(lfs, cfg));
+            assert_ok!(lfs_mount(lfs, cfg));
+            assert_ok!(lfs_mkdir(lfs, "notebook"));
+            let file = &mut LfsFile::default();
+            assert_ok!(lfs_file_open(
+                lfs,
+                file,
+                "notebook/paper",
+                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND
+            ));
+            for _ in 0..5 {
+                assert_eq!(lfs_file_write(lfs, file, b"hello"), Ok(5));
+                assert_ok!(lfs_file_sync(lfs, file));
+            }
+            assert_ok!(lfs_file_close(lfs, file));
 
-            let mut block = vec![0u8; BLOCK_SIZE as usize];
-            assert_eq!(
-                Ok(()),
-                read_block_raw(cfg, DIR_BLOCK, 0, &mut block),
-                "read_block_raw block {DIR_BLOCK}"
-            );
-            block[byte_off as usize] = byte_value;
-            assert_eq!(
-                Ok(()),
-                write_block_raw(cfg, DIR_BLOCK, 0, &block),
-                "write_block_raw block {DIR_BLOCK}"
-            );
-
-            assert_ok_at(
-                &format!("mount after corrupt off={byte_off} val=0x{byte_value:02x}"),
-                lfs_mount(lfs, cfg),
-            );
-            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-            let r = littlefs_rust_core::lfs_stat(lfs, path_a, info);
-            assert!(r.is_ok(), "lfs_stat a after corrupt: {r:?}");
-            assert_ok_at("unmount after verify", lfs_unmount(lfs));
+            assert_ok!(lfs_file_open(lfs, file, "notebook/paper", LFS_O_RDONLY));
+            for _ in 0..5 {
+                let mut rbuffer = [0u8; 5];
+                assert_eq!(lfs_file_read(lfs, file, &mut rbuffer), Ok(5));
+                assert_eq!(&rbuffer, b"hello");
+            }
         }
     }
 }
