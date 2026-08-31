@@ -123,7 +123,8 @@ pub async fn lfs_fs_grow_<S: Storage>(
             core::mem::size_of::<LfsSuperblock>(),
         ),
         superblock.as_mut_bytes(),
-    ).await?;
+    )
+    .await?;
 
     lfs_superblock_fromle32(&mut superblock);
     superblock.block_count = lfs.block_count;

@@ -25,18 +25,18 @@ pub trait Storage {
     const BLOCK_CYCLES: isize = -1;
 
     /// Read `buf.len()` bytes starting at `offset` within `block`.
-    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error>;
+    async fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error>;
 
     /// Write `data` starting at `offset` within `block`.
     ///
     /// The block must have been erased before writing.
-    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error>;
+    async fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error>;
 
     /// Erase `block`, resetting all bytes to the erased state (typically `0xFF`).
-    fn erase(&mut self, block: u32) -> Result<(), Error>;
+    async fn erase(&mut self, block: u32) -> Result<(), Error>;
 
     /// Flush pending writes. The default implementation is a no-op.
-    fn sync(&mut self) -> Result<(), Error> {
+    async fn sync(&mut self) -> Result<(), Error> {
         Ok(())
     }
 }
@@ -44,30 +44,30 @@ pub trait Storage {
 #[repr(transparent)]
 pub(crate) struct SS<S: Storage>(pub S);
 
-impl<'a, S: Storage> littlefs_rust_core::Storage for SS<S> {
-    fn read(
+impl<S: Storage> littlefs_rust_core::Storage for SS<S> {
+    async fn read(
         &mut self,
         block: u32,
         offset: u32,
         buf: &mut [u8],
     ) -> Result<(), littlefs_rust_core::error::Error> {
-        self.0.read(block, offset, buf)
+        self.0.read(block, offset, buf).await
     }
 
-    fn write(
+    async fn write(
         &mut self,
         block: u32,
         offset: u32,
         data: &[u8],
     ) -> Result<(), littlefs_rust_core::error::Error> {
-        self.0.write(block, offset, data)
+        self.0.write(block, offset, data).await
     }
 
-    fn erase(&mut self, block: u32) -> Result<(), littlefs_rust_core::error::Error> {
-        self.0.erase(block)
+    async fn erase(&mut self, block: u32) -> Result<(), littlefs_rust_core::error::Error> {
+        self.0.erase(block).await
     }
 
-    fn sync(&mut self) -> Result<(), littlefs_rust_core::error::Error> {
-        self.0.sync()
+    async fn sync(&mut self) -> Result<(), littlefs_rust_core::error::Error> {
+        self.0.sync().await
     }
 }

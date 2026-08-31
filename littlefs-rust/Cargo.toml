@@ -18,6 +18,8 @@ path = "src/lib.rs"
 littlefs-rust-core = { version = "0.1", path = "../littlefs-rust-core", default-features = false}
 bitflags = "2"
 
+embassy-futures = { version = "0.1" }
+
 [dev-dependencies]
 divan = { version = "5.0.1", package = "codspeed-divan-compat" }
 env_logger = "0.10"

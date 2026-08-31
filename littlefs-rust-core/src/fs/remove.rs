@@ -142,7 +142,8 @@ pub async fn lfs_remove_<S: Storage>(
                 lfs_mktag(0x700, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_STRUCT, lfs_tag_id(tag) as u32, 8),
                 pair.as_mut_bytes(),
-            ).await?;
+            )
+            .await?;
             lfs_pair_fromle32(&mut pair);
 
             lfs_dir_fetch(lfs, &mut dir.m, pair).await?;

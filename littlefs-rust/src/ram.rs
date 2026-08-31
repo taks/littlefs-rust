@@ -51,7 +51,7 @@ impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> Storage
     const BLOCK_SIZE: usize = BLOCK_SIZE as usize;
     const BLOCK_COUNT: usize = BLOCK_COUNT as usize;
 
-    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
+    async fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
         let start = self.offset(block, offset);
         let end = start + buf.len();
         if end > self.data.len() {
@@ -61,7 +61,7 @@ impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> Storage
         Ok(())
     }
 
-    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
+    async fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
         let start = self.offset(block, offset);
         let end = start + data.len();
         if end > self.data.len() {
@@ -71,7 +71,7 @@ impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> Storage
         Ok(())
     }
 
-    fn erase(&mut self, block: u32) -> Result<(), Error> {
+    async fn erase(&mut self, block: u32) -> Result<(), Error> {
         let start = self.offset(block, 0);
         let end = start + BLOCK_SIZE as usize;
         if end > self.data.len() {

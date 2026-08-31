@@ -86,11 +86,7 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
 /// Wire `config.context` to point at `inner.storage`. Must be called after
 /// `inner` is at its final address (i.e., inside the `RefCell`).
 fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
-    inner.config.context = unsafe {
-        core::mem::transmute(
-            &mut inner.storage as *mut SS<S> as *mut dyn littlefs_rust_core::Storage,
-        )
-    };
+    inner.config.context = unsafe { core::mem::transmute(&mut inner.storage as *mut SS<S>) };
     inner.config.read_buffer = Some(NonNull::from_mut(&mut inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_mut(&mut inner._prog_buf));
     inner.config.lookahead_buffer = Some(NonNull::from_mut(&mut inner._lookahead_buf));
@@ -103,20 +99,20 @@ impl<S: Storage> Filesystem<S> {
     ///
     /// This erases any existing data. The storage can be mounted afterwards
     /// with [`Filesystem::mount`].
-    pub fn format(storage: &mut S, config: &Config) -> Result<(), Error> {
+    pub async fn format(storage: &mut S, config: &Config) -> Result<(), Error> {
         let mut inner = build_inner_borrowed(storage, config);
         wire_context_borrowed(&mut inner);
-        littlefs_rust_core::lfs_format(&mut inner.lfs, &inner.config)
+        littlefs_rust_core::lfs_format(&mut inner.lfs, &inner.config).await
     }
 
     /// Mount an existing filesystem. Takes ownership of the storage.
     ///
     /// On failure the storage is returned alongside the error so the caller
     /// can retry (e.g. format + mount).
-    pub fn mount(storage: S, config: Config) -> Result<Self, (Error, S)> {
+    pub async fn mount(storage: S, config: Config) -> Result<Self, (Error, S)> {
         let mut inner = Box::new(build_inner(storage, &config));
         wire_context(&mut inner);
-        let rc = littlefs_rust_core::lfs_mount(&mut inner.lfs, &inner.config);
+        let rc = littlefs_rust_core::lfs_mount(&mut inner.lfs, &inner.config).await;
         if let Err(err) = rc {
             return Err((err, inner.storage.0));
         }
@@ -192,29 +188,29 @@ impl<S: Storage> Filesystem<S> {
     // ── Path operations ─────────────────────────────────────────────────
 
     /// Create a directory. Fails if it already exists.
-    pub fn mkdir(&self, path: &str) -> Result<(), Error> {
+    pub async fn mkdir(&self, path: &str) -> Result<(), Error> {
         let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_mkdir(&mut inner.lfs, path)
+        littlefs_rust_core::lfs_mkdir(&mut inner.lfs, path).await
     }
 
     /// Remove a file or empty directory.
-    pub fn remove(&self, path: &str) -> Result<(), Error> {
+    pub async fn remove(&self, path: &str) -> Result<(), Error> {
         let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_remove(&mut inner.lfs, path)
+        littlefs_rust_core::lfs_remove(&mut inner.lfs, path).await
     }
 
     /// Rename or move a file or directory.
-    pub fn rename(&self, from: &str, to: &str) -> Result<(), Error> {
+    pub async fn rename(&self, from: &str, to: &str) -> Result<(), Error> {
         let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_rename(&mut inner.lfs, from, to)
+        littlefs_rust_core::lfs_rename(&mut inner.lfs, from, to).await
     }
 
     /// Get metadata for a file or directory.
-    pub fn stat(&self, path: &str) -> Result<Metadata, Error> {
+    pub async fn stat(&self, path: &str) -> Result<Metadata, Error> {
         let mut info = unsafe { core::mem::zeroed::<LfsInfo>() };
         {
             let mut inner = self.inner.borrow_mut();
-            littlefs_rust_core::lfs_stat(&mut inner.lfs, path, &mut info)?;
+            littlefs_rust_core::lfs_stat(&mut inner.lfs, path, &mut info).await?;
         }
         let entry = dir_entry_from_info(&info);
         Ok(Metadata {
@@ -225,8 +221,8 @@ impl<S: Storage> Filesystem<S> {
     }
 
     /// Returns `true` if `path` exists.
-    pub fn exists(&self, path: &str) -> bool {
-        self.stat(path).is_ok()
+    pub async fn exists(&self, path: &str) -> bool {
+        self.stat(path).await.is_ok()
     }
 
     // ── Directory listing ───────────────────────────────────────────────
@@ -246,15 +242,15 @@ impl<S: Storage> Filesystem<S> {
     // ── FS-level ────────────────────────────────────────────────────────
 
     /// Return the number of allocated blocks.
-    pub fn fs_size(&self) -> Result<u32, Error> {
+    pub async fn fs_size(&self) -> Result<u32, Error> {
         let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_fs_size(&mut inner.lfs)
+        littlefs_rust_core::lfs_fs_size(&mut inner.lfs).await
     }
 
     /// Run garbage collection to reclaim unused blocks.
-    pub fn gc(&mut self) -> Result<(), Error> {
+    pub async fn gc(&mut self) -> Result<(), Error> {
         let mut inner = self.inner.borrow_mut();
-        littlefs_rust_core::lfs_fs_gc(&mut inner.lfs)
+        littlefs_rust_core::lfs_fs_gc(&mut inner.lfs).await
     }
 }
 
@@ -272,8 +268,8 @@ impl<S: Storage> Drop for Filesystem<S> {
 // ── format helper (borrows storage instead of taking ownership) ─────────────
 
 struct BorrowedFsInner<'a, S: Storage> {
-    lfs: Lfs,
-    config: LfsConfig,
+    lfs: Lfs<SS<S>>,
+    config: LfsConfig<SS<S>>,
     storage: &'a mut SS<S>,
     _read_buf: Vec<u8>,
     _prog_buf: Vec<u8>,
@@ -322,9 +318,7 @@ fn build_inner_borrowed<'a, S: Storage>(
 }
 
 fn wire_context_borrowed<'a, S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
-    inner.config.context = unsafe {
-        core::mem::transmute(inner.storage as *mut SS<S> as *mut dyn littlefs_rust_core::Storage)
-    };
+    inner.config.context = unsafe { core::mem::transmute(inner.storage as *mut SS<S>) };
     inner.config.read_buffer = Some(NonNull::from_ref(&inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_ref(&inner._prog_buf));
     inner.config.lookahead_buffer = Some(NonNull::from_ref(&inner._lookahead_buf));
