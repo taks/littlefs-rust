@@ -4,7 +4,9 @@ use core::cmp;
 
 use zerocopy::IntoBytes;
 
-use crate::{Storage, borrow_unchecked::borrow_unchecked, error::Error};
+use crate::{
+    Storage, borrow_unchecked::borrow_unchecked, error::Error, tag::lfs_diskoff, types::lfs_tag_t,
+};
 
 /// Per lfs.c lfs_tortoise_t and lfs_tortoise_detectcycles (lines 4464-4480)
 #[repr(C)]
@@ -261,6 +263,10 @@ pub async fn lfs_mount_<S: Storage>(
             }
 
             let dir_tail = dir.tail;
+            let cb = async |tag: lfs_tag_t, disk: &lfs_diskoff| {
+                lfs_dir_find_match(&find_match, tag, disk).await
+            };
+
             let tag = lfs_dir_fetchmatch(
                 lfs,
                 &mut dir,
@@ -268,7 +274,7 @@ pub async fn lfs_mount_<S: Storage>(
                 lfs_mktag(0x7ff, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
                 &mut None,
-                Some(&|tag, disk| lfs_dir_find_match(&find_match, tag, disk)),
+                Some(&cb),
             )
             .await;
 
@@ -292,7 +298,8 @@ pub async fn lfs_mount_<S: Storage>(
                         core::mem::size_of::<LfsSuperblock>(),
                     ),
                     superblock.as_mut_bytes(),
-                ).await;
+                )
+                .await;
                 if let Err(err) = sbtag {
                     err_inner = Err(err);
                     break;
