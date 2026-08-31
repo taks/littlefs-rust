@@ -8,7 +8,6 @@ mod assert;
 mod context;
 mod ram;
 mod snapshot;
-mod tests;
 
 #[allow(unused)]
 pub use assert::{assert_block_has_magic, assert_blocks_0_and_1_have_magic};
