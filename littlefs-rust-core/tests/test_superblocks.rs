@@ -67,7 +67,7 @@ fn test_traverse_attrs_callback_order() {
     let mut out = littlefs_rust_core::TraverseTestOut::default();
 
     assert_ok!(unsafe {
-        littlefs_rust_core::test_traverse_format_attrs(lfs, &env.config, &mut out as *mut _)
+        littlefs_rust_core::test_traverse_format_attrs(lfs, &env.config, &mut out)
     });
 
     assert_eq!(out.call_count, 3);
@@ -88,7 +88,7 @@ fn test_traverse_filter_gets_superblock_after_push() {
         littlefs_rust_core::test_traverse_filter_gets_superblock_after_push(
             lfs,
             &env.config,
-            &mut out as *mut _,
+            &mut out,
         )
     });
 
