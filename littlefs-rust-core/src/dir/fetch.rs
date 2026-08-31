@@ -320,7 +320,7 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
     fmask: lfs_tag_t,
     ftag: lfs_tag_t,
     id: &mut Option<&mut u16>,
-    cb: Option<&impl AsyncFn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
+    cb: Option<impl AsyncFn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
 ) -> Result<lfs_tag_t, Error> {
     let cfg = unsafe { lfs.cfg.as_ref() };
 
@@ -541,7 +541,7 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
             }
 
             if (fmask & tag) == (fmask & ftag)
-                && let Some(cb) = cb
+                && let Some(ref cb) = cb
             {
                 let diskoff = crate::tag::lfs_diskoff {
                     block: dir.pair[0],

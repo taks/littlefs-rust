@@ -9,19 +9,29 @@ use crate::{error::Error, types::lfs_size_t};
 
 pub trait Storage {
     /// Read `buf.len()` bytes starting at `offset` within `block`.
-    async fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error>;
+    fn read(
+        &mut self,
+        block: u32,
+        offset: u32,
+        buf: &mut [u8],
+    ) -> impl Future<Output = Result<(), Error>>;
 
     /// Write `data` starting at `offset` within `block`.
     ///
     /// The block must have been erased before writing.
-    async fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error>;
+    fn write(
+        &mut self,
+        block: u32,
+        offset: u32,
+        data: &[u8],
+    ) -> impl Future<Output = Result<(), Error>>;
 
     /// Erase `block`, resetting all bytes to the erased state (typically `0xFF`).
-    async fn erase(&mut self, block: u32) -> Result<(), Error>;
+    fn erase(&mut self, block: u32) -> impl Future<Output = Result<(), Error>>;
 
     /// Flush pending writes. The default implementation is a no-op.
-    async fn sync(&mut self) -> Result<(), Error> {
-        Ok(())
+    fn sync(&mut self) -> impl Future<Output = Result<(), Error>> {
+        core::future::ready(Ok(()))
     }
 }
 
