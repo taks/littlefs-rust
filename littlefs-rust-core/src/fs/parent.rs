@@ -2,7 +2,7 @@
 
 use zerocopy::IntoBytes;
 
-use crate::{Storage, error::Error, lfs_pass_err};
+use crate::{Storage, error::Error, lfs_pass_err, tag::lfs_diskoff, types::lfs_tag_t};
 
 /// Per lfs.c lfs_fs_pred (lines 4796-4833)
 ///
@@ -196,6 +196,9 @@ pub async fn lfs_fs_parent<S: Storage>(
             lfs,
             pair: [(*pair)[0], (*pair)[1]],
         };
+        let cb =
+            async |_: lfs_tag_t, disk: &lfs_diskoff| lfs_fs_parent_match(&find_match, disk).await;
+
         let tag = lfs_dir_fetchmatch(
             lfs,
             parent,
@@ -203,7 +206,7 @@ pub async fn lfs_fs_parent<S: Storage>(
             lfs_mktag(0x7ff, 0, 0x3ff),
             lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
             &mut None,
-            Some(&|_, disk| lfs_fs_parent_match(&find_match, disk)),
+            Some(&cb),
         )
         .await;
 
