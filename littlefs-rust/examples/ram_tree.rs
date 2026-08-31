@@ -2,26 +2,31 @@
 
 use littlefs_rust::{Config, Filesystem, RamStorage};
 
-fn main() {
+async fn main() {
     let mut storage = RamStorage::<512, 128>::new();
     let config = Config::new(512, 128);
 
-    Filesystem::format(&mut storage, &config).expect("format failed");
+    Filesystem::format(&mut storage, &config)
+        .await
+        .expect("format failed");
     let fs = Filesystem::mount(storage, config)
+        .await
         .map_err(|(e, _)| e)
         .expect("mount failed");
 
     // Build a small directory tree with some files.
-    fs.mkdir("/docs").expect("mkdir docs");
-    fs.mkdir("/docs/drafts").expect("mkdir drafts");
+    fs.mkdir("/docs").await.expect("mkdir docs");
+    fs.mkdir("/docs/drafts").await.expect("mkdir drafts");
     fs.write_file("/docs/readme.txt", b"Read me")
+        .await
         .expect("write readme");
     fs.write_file("/docs/drafts/notes.txt", b"Draft notes")
+        .await
         .expect("write notes");
 
     // list_dir returns an iterator of DirEntry with name, type, and size.
     println!("/ contents:");
-    for entry in fs.list_dir("/").expect("list /") {
+    for entry in fs.list_dir("/").await.expect("list /") {
         println!(
             "  {} ({:?}, {} bytes)",
             entry.name, entry.file_type, entry.size
@@ -29,7 +34,7 @@ fn main() {
     }
 
     println!("\n/docs contents:");
-    for entry in fs.list_dir("/docs").expect("list /docs") {
+    for entry in fs.list_dir("/docs").await.expect("list /docs") {
         println!(
             "  {} ({:?}, {} bytes)",
             entry.name, entry.file_type, entry.size
