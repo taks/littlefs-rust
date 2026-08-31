@@ -16,8 +16,8 @@ use crate::metadata::{DirEntry, Metadata};
 use crate::storage::{SS, Storage};
 
 pub(crate) struct FsInner<S: Storage> {
-    pub(crate) lfs: Lfs,
-    pub(crate) config: LfsConfig,
+    pub(crate) lfs: Lfs<SS<S>>,
+    pub(crate) config: LfsConfig<SS<S>>,
     pub(crate) storage: SS<S>,
     _read_buf: Vec<u8>,
     _prog_buf: Vec<u8>,
@@ -153,33 +153,35 @@ impl<S: Storage> Filesystem<S> {
     ///
     /// Common combinations: `READ`, `WRITE | CREATE | TRUNC`,
     /// `WRITE | CREATE | APPEND`.
-    pub fn open(&self, path: &str, flags: OpenFlags) -> Result<File<'_, S>, Error> {
-        File::open(self, path, flags)
+    pub async fn open(&self, path: &str, flags: OpenFlags) -> Result<File<'_, S>, Error> {
+        File::open(self, path, flags).await
     }
 
     // ── Convenience file I/O ────────────────────────────────────────────
 
     /// Read an entire file into a `Vec<u8>`.
-    pub fn read_to_vec(&self, path: &str) -> Result<Vec<u8>, Error> {
-        let mut file = self.open(path, OpenFlags::READ)?;
+    pub async fn read_to_vec(&self, path: &str) -> Result<Vec<u8>, Error> {
+        let mut file = self.open(path, OpenFlags::READ).await?;
         let size = file.size() as usize;
         let mut buf = vec![0u8; size];
         if size > 0 {
-            let n = file.read(&mut buf)?;
+            let n = file.read(&mut buf).await?;
             buf.truncate(n as usize);
         }
         Ok(buf)
     }
 
     /// Write `data` to a file, creating or truncating it.
-    pub fn write_file(&self, path: &str, data: &[u8]) -> Result<(), Error> {
-        let mut file = self.open(
-            path,
-            OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::TRUNC,
-        )?;
+    pub async fn write_file(&self, path: &str, data: &[u8]) -> Result<(), Error> {
+        let mut file = self
+            .open(
+                path,
+                OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::TRUNC,
+            )
+            .await?;
         let mut offset = 0;
         while offset < data.len() {
-            let n = file.write(&data[offset..])? as usize;
+            let n = file.write(&data[offset..]).await? as usize;
             offset += n;
         }
         Ok(())
@@ -229,13 +231,13 @@ impl<S: Storage> Filesystem<S> {
 
     /// Open a directory for iteration. The returned [`ReadDir`] is an
     /// [`Iterator`] that skips `.` and `..` entries.
-    pub fn read_dir(&self, path: &str) -> Result<ReadDir<'_, S>, Error> {
-        ReadDir::open(self, path)
+    pub async fn read_dir(&self, path: &str) -> Result<ReadDir<'_, S>, Error> {
+        ReadDir::open(self, path).await
     }
 
     /// Collect all entries in a directory into a `Vec`.
-    pub fn list_dir(&self, path: &str) -> Result<Vec<DirEntry>, Error> {
-        let dir = self.read_dir(path)?;
+    pub async fn list_dir(&self, path: &str) -> Result<Vec<DirEntry>, Error> {
+        let dir = self.read_dir(path).await?;
         dir.collect()
     }
 

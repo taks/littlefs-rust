@@ -35,10 +35,10 @@ fn test_mount_unformatted_fails() {
 }
 
 #[test]
-fn test_drop_unmounts() {
+async fn test_drop_unmounts() {
     let mut storage = RamStorage::new();
     let config = Config::new(512, 128);
-    Filesystem::format(&mut storage, &config).unwrap();
+    Filesystem::format(&mut storage, &config).await.unwrap();
     {
         let _fs = Filesystem::mount(storage, config)
             .map_err(|(e, _)| e)
