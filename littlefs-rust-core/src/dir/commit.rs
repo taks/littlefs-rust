@@ -9,18 +9,13 @@ use zerocopy::{FromBytes, IntoBytes, TryFromBytes};
 use crate::Storage;
 use crate::dir::fetch::lfs_dir_getgstate;
 use crate::dir::lfs_fcrc::lfs_fcrc_tole32;
+use crate::dir::traverse::LfsDirTraverseStackCb;
 use crate::dir::{LfsCommit, LfsFcrc, LfsMdir};
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::fs::stat::lfs_fs_size_;
 use crate::lfs_type::lfs_type::LFS_TYPE_FCRC;
-use crate::types::{lfs_block_t, lfs_off_t, lfs_tag_t};
-
-#[allow(non_camel_case_types)]
-struct LfsDirCommitCommit<'a, S> {
-    lfs: &'a mut Lfs<S>,
-    commit: &'a mut LfsCommit,
-}
+use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
 
 /// Per lfs.c lfs_dir_commitprog (lines 1604-1618)
 ///
@@ -445,7 +440,8 @@ pub async fn lfs_dir_commitcrc<S: Storage>(
         commit.begin as usize,
         (off1 - commit.begin) as usize,
         &mut crc,
-    ).await?;
+    )
+    .await?;
 
     if crc != crc1 {
         return crate::lfs_err!(Err(Error::Corrupt));
@@ -654,7 +650,7 @@ pub async fn lfs_dir_drop<S: Storage>(
 ///     return 0;
 /// }
 /// ```
-pub async  fn lfs_dir_split<'a, S: Storage>(
+pub async fn lfs_dir_split<'a, S: Storage>(
     lfs: &mut Lfs<S>,
     dir: &mut LfsMdir,
     attrs: &[crate::tag::lfs_mattr<'a>],
@@ -723,14 +719,12 @@ pub async  fn lfs_dir_split<'a, S: Storage>(
 /// }
 /// ```
 pub fn lfs_dir_commit_size(
-    p: *mut core::ffi::c_void,
+    size: *mut lfs_size_t,
     tag: lfs_tag_t,
     _buffer: &[u8],
 ) -> Result<i32, Error> {
     use crate::tag::lfs_tag_dsize;
-    use crate::types::lfs_size_t;
     unsafe {
-        let size = p as *mut lfs_size_t;
         *size += lfs_tag_dsize(tag);
     }
     Ok(0)
@@ -746,7 +740,8 @@ pub fn lfs_dir_commit_size(
 /// }
 /// ```
 async fn lfs_dir_commit_commit<S: Storage>(
-    p: *mut core::ffi::c_void,
+    lfs: *mut Lfs<S>,
+    commit: *mut LfsCommit,
     tag: lfs_tag_t,
     buffer: &[u8],
 ) -> Result<i32, Error> {
@@ -770,8 +765,11 @@ async fn lfs_dir_commit_commit<S: Storage>(
         );
     }
     unsafe {
-        let commit = &mut *(p as *mut LfsDirCommitCommit<'_, S>);
-        lfs_dir_commitattr(commit.lfs, commit.commit, tag, buffer).await.map(|_| 0)
+        let lfs = &mut *lfs;
+        let commit = &mut *commit;
+        lfs_dir_commitattr(lfs, commit, tag, buffer)
+            .await
+            .map(|_| 0)
     }
 }
 
@@ -1102,15 +1100,11 @@ pub async fn lfs_dir_compact<'a, S: Storage>(
             }
             return crate::lfs_pass_err!(Err(err));
         }
-        let err = unsafe {
+        let err = {
             let lfs = UnsafeCell::new(&mut *lfs);
-            let mut commit_commit = LfsDirCommitCommit {
-                lfs: *lfs.get(),
-                commit: &mut commit,
-            };
 
             lfs_dir_traverse(
-                *lfs.get(),
+                unsafe { *lfs.get() },
                 source,
                 0,
                 0xffff_ffff,
@@ -1120,9 +1114,9 @@ pub async fn lfs_dir_compact<'a, S: Storage>(
                 begin,
                 end,
                 -(begin as i16),
-                lfs_dir_commit_commit,
-                &mut commit_commit as *mut _ as *mut core::ffi::c_void,
-            ).await
+                LfsDirTraverseStackCb::CommitCommit(unsafe { *lfs.get() }, &mut commit),
+            )
+            .await
         };
         if let Err(err) = err {
             if err == Error::Corrupt {
@@ -1170,7 +1164,8 @@ pub async fn lfs_dir_compact<'a, S: Storage>(
                     8,
                 ),
                 dir.tail.as_bytes(),
-            ).await;
+            )
+            .await;
             lfs_pair_fromle32(&mut dir.tail);
             if let Err(err) = err {
                 if err == Error::Corrupt {
@@ -1231,7 +1226,8 @@ pub async fn lfs_dir_compact<'a, S: Storage>(
                     core::mem::size_of::<crate::lfs_gstate::LfsGstate>(),
                 ),
                 delta.as_bytes(),
-            ).await;
+            )
+            .await;
             if let Err(err) = err {
                 if err == Error::Corrupt {
                     relocated = true;
@@ -1470,8 +1466,7 @@ pub async fn lfs_dir_splittingcompact<'a, S: Storage>(
                 split,
                 end_val,
                 -(split as i16),
-                lfs_dir_commit_size_raw,
-                &mut size_ptr as *mut _ as *mut core::ffi::c_void,
+                LfsDirTraverseStackCb::CommitSize(&mut size_ptr),
             )
             .await?;
 
@@ -1549,14 +1544,6 @@ pub async fn lfs_dir_splittingcompact<'a, S: Storage>(
     }
 
     lfs_dir_compact(lfs, dir, attrs, source, begin, end_val).await
-}
-
-fn lfs_dir_commit_size_raw(
-    p: *mut core::ffi::c_void,
-    tag: lfs_tag_t,
-    buffer: &[u8],
-) -> Result<i32, Error> {
-    lfs_dir_commit_size(p, tag, buffer)
 }
 
 /// Per lfs.c lfs_dir_relocatingcommit (lines 2234-2406)
@@ -1811,10 +1798,6 @@ pub async fn lfs_dir_relocatingcommit<'a, S: Storage>(
         lfs_pair_tole32(&mut dir.tail);
         let err = {
             let lfs = UnsafeCell::new(&mut *lfs);
-            let mut commit_commit = LfsDirCommitCommit {
-                lfs: unsafe { *lfs.get() },
-                commit: &mut commit,
-            };
             lfs_dir_traverse(
                 unsafe { *lfs.get() },
                 dir,
@@ -1826,8 +1809,7 @@ pub async fn lfs_dir_relocatingcommit<'a, S: Storage>(
                 0,
                 0,
                 0,
-                lfs_dir_commit_commit,
-                &mut commit_commit as *mut _ as *mut core::ffi::c_void,
+                LfsDirTraverseStackCb::CommitCommit(unsafe { *lfs.get() }, &mut commit),
             )
             .await
         };
@@ -2259,7 +2241,8 @@ pub async fn lfs_dir_orphaningcommit<'a, S: Storage>(
             ];
 
             state = {
-                let state = lfs_dir_relocatingcommit(lfs, &mut pdir, &ppair, &relocate_attrs, None).await;
+                let state =
+                    lfs_dir_relocatingcommit(lfs, &mut pdir, &ppair, &relocate_attrs, None).await;
                 lfs_pair_fromle32(&mut ldir.pair);
 
                 state?

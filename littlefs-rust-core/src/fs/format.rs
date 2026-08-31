@@ -10,6 +10,7 @@ use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_alloc;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
+use crate::dir::traverse::LfsDirTraverseStackCb;
 use crate::error::Error;
 use crate::fs::init::{lfs_deinit, lfs_init};
 use crate::lfs_superblock::LfsSuperblock;
@@ -95,7 +96,7 @@ use crate::types::LFS_DISK_VERSION;
 ///     lfs_size_t period;
 /// };
 /// ```
-pub async  fn lfs_format_<S: Storage>(
+pub async fn lfs_format_<S: Storage>(
     lfs: &mut super::lfs::Lfs<S>,
     cfg: &crate::lfs_config::LfsConfig<S>,
 ) -> Result<(), Error> {
@@ -198,14 +199,14 @@ pub async  fn lfs_format_<S: Storage>(
 /// # Safety
 /// Caller must ensure `lfs` points to valid (e.g. zeroed) `Lfs`, `cfg` to valid `LfsConfig`,
 /// and `out` to valid `TraverseTestOut` for the duration of the call.
-pub async  unsafe fn test_traverse_format_attrs<S: Storage>(
+pub async unsafe fn test_traverse_format_attrs<S: Storage>(
     lfs: &mut super::lfs::Lfs<S>,
     cfg: &crate::lfs_config::LfsConfig<S>,
     out: *mut crate::dir::traverse::TraverseTestOut,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
     use crate::dir::commit::lfs_dir_alloc;
-    use crate::dir::traverse::{lfs_dir_traverse, lfs_dir_traverse_test_cb};
+    use crate::dir::traverse::lfs_dir_traverse;
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK};
     use crate::tag::lfs_mktag;
@@ -283,9 +284,9 @@ pub async  unsafe fn test_traverse_format_attrs<S: Storage>(
             0,
             0,
             0,
-            lfs_dir_traverse_test_cb,
-            out as *mut core::ffi::c_void,
-        ).await;
+            LfsDirTraverseStackCb::Test(out),
+        )
+        .await;
         if let Err(err) = err {
             let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(Err(err));
@@ -305,11 +306,11 @@ pub async  unsafe fn test_traverse_format_attrs<S: Storage>(
 pub async unsafe fn test_traverse_filter_gets_superblock_after_push<S: Storage>(
     lfs: &mut super::lfs::Lfs<S>,
     cfg: &crate::lfs_config::LfsConfig<S>,
-    out: *mut crate::dir::traverse::TraverseTestOut,
+    out: &mut crate::dir::traverse::TraverseTestOut,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
     use crate::dir::commit::lfs_dir_alloc;
-    use crate::dir::traverse::{lfs_dir_traverse, lfs_dir_traverse_test_cb};
+    use crate::dir::traverse::lfs_dir_traverse;
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::lfs_type::lfs_type::{
         LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_NAME, LFS_TYPE_SUPERBLOCK,
@@ -389,9 +390,9 @@ pub async unsafe fn test_traverse_filter_gets_superblock_after_push<S: Storage>(
             0,
             1,
             0,
-            lfs_dir_traverse_test_cb,
-            out as *mut core::ffi::c_void,
-        ).await;
+            LfsDirTraverseStackCb::Test(out),
+        )
+        .await;
         if let Err(err) = err {
             let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(Err(err));
@@ -494,7 +495,8 @@ pub async unsafe fn test_format_minimal_superblock<S: Storage>(
         &mut commit,
         lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
         magic,
-    ).await;
+    )
+    .await;
     if err.is_err() {
         let _ = lfs_deinit(lfs);
         return crate::lfs_pass_err!(err);

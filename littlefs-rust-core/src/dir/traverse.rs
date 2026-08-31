@@ -4,10 +4,11 @@ use zerocopy::{IntoBytes, TryFromBytes};
 
 use crate::bd::LfsCache;
 use crate::borrow_unchecked::borrow_unchecked;
-use crate::dir::LfsMdir;
+use crate::dir::commit::{lfs_dir_commit_commit, lfs_dir_commit_size};
+use crate::dir::{LfsCommit, LfsMdir};
 use crate::error::Error;
 use crate::types::{lfs_off_t, lfs_size_t, lfs_stag_t, lfs_tag_t};
-use crate::{LfsAttr, Storage};
+use crate::{Lfs, LfsAttr, Storage};
 
 /// Per lfs.c lfs_dir_getslice (lines 719-784)
 ///
@@ -347,14 +348,13 @@ pub async fn lfs_dir_getread<S: Storage>(
 /// };
 /// ```
 pub fn lfs_dir_traverse_filter(
-    p: *mut core::ffi::c_void,
+    filtertag: *mut lfs_tag_t,
     tag: lfs_tag_t,
     _buffer: &[u8],
 ) -> Result<i32, Error> {
     use crate::lfs_type::lfs_type::{LFS_FROM_NOOP, LFS_TYPE_DELETE, LFS_TYPE_SPLICE};
     use crate::tag::{lfs_mktag, lfs_tag_id, lfs_tag_isdelete, lfs_tag_splice, lfs_tag_type1};
 
-    let filtertag = p as *mut lfs_tag_t;
     let ft = unsafe { *filtertag };
     crate::lfs_trace!(
         "traverse_filter: tag=0x{:08x} ft=0x{:08x} mask_check tag&0x100={}",
@@ -415,7 +415,7 @@ const EMPTY_ATTRS: &[crate::tag::lfs_mattr] = &[];
 /// C has .buffer = buffer; we must store it for attr-backed tags (e.g. SUPERBLOCK).
 /// When the filter marks redundant (returns 1, sets tag=NOOP), we store the tag we were
 /// processing so it still gets committed when we pop.
-struct LfsDirTraverseStack<'a> {
+struct LfsDirTraverseStack<'a, S> {
     dir: &'a LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
@@ -428,12 +428,18 @@ struct LfsDirTraverseStack<'a> {
     end: u16,
     diff: i16,
 
-    cb: fn(*mut core::ffi::c_void, lfs_tag_t, &[u8]) -> Result<i32, Error>,
-    data: *mut core::ffi::c_void,
-
+    cb: LfsDirTraverseStackCb<S>,
     tag: lfs_tag_t,
     buffer: &'a [u8],
     disk: crate::tag::lfs_diskoff,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum LfsDirTraverseStackCb<S> {
+    TraverseFilter(*mut lfs_tag_t),
+    CommitCommit(*mut Lfs<S>, *mut LfsCommit),
+    CommitSize(*mut lfs_size_t),
+    Test(*mut TraverseTestOut),
 }
 
 /// Per lfs.c lfs_dir_traverse (lines 912-1105)
@@ -639,16 +645,23 @@ struct LfsDirTraverseStack<'a> {
 /// Helper: single place where the traverse callback is invoked.
 /// C: `res = cb(data, tag + LFS_MKTAG(0, diff, 0), buffer);`
 #[inline(always)]
-fn dispatch_tag(
-    cb: fn(*mut core::ffi::c_void, lfs_tag_t, &[u8]) -> Result<i32, Error>,
-    data: *mut core::ffi::c_void,
+fn dispatch_tag<S>(
+    cb: LfsDirTraverseStackCb<S>,
     tag: lfs_tag_t,
     buffer: &[u8],
     diff: i16,
 ) -> Result<i32, Error> {
     use crate::tag::lfs_mktag;
     let out_tag = tag.wrapping_add(lfs_mktag(0, diff as u32, 0));
-    cb(data, out_tag, buffer)
+    match cb {
+        LfsDirTraverseStackCb::TraverseFilter(x) => lfs_dir_traverse_filter(x, out_tag, buffer),
+        LfsDirTraverseStackCb::CommitCommit(lfs, commit) => {
+            lfs_dir_commit_commit(lfs, commit, out_tag, buffer)
+        }
+        LfsDirTraverseStackCb::CommitSize(x) => lfs_dir_commit_size(x, out_tag, buffer),
+        LfsDirTraverseStackCb::Test(x) => lfs_dir_traverse_test_cb(x, out_tag, buffer),
+    }
+    // cb(data, out_tag, buffer)
 }
 
 #[allow(clippy::type_complexity)]
@@ -663,15 +676,16 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
     begin: u16,
     end: u16,
     diff: i16,
-    cb: fn(*mut core::ffi::c_void, lfs_tag_t, &[u8]) -> Result<i32, Error>,
-    data: *mut core::ffi::c_void,
+    cb: LfsDirTraverseStackCb<S>,
+    // cb: fn(*mut core::ffi::c_void, lfs_tag_t, &[u8]) -> Result<i32, Error>,
+    // data: *mut core::ffi::c_void,
 ) -> Result<i32, Error> {
     use crate::bd::bd::lfs_bd_read;
     use crate::lfs_type::lfs_type::LFS_FROM_NOOP;
     use crate::tag::{lfs_mktag, lfs_tag_dsize, lfs_tag_type3};
     use crate::types::lfs_tag_t;
 
-    let mut stack: [core::mem::MaybeUninit<LfsDirTraverseStack>; LFS_DIR_TRAVERSE_DEPTH - 1] =
+    let mut stack: [core::mem::MaybeUninit<LfsDirTraverseStack<S>>; LFS_DIR_TRAVERSE_DEPTH - 1] =
         core::array::from_fn(|_| core::mem::MaybeUninit::uninit());
     let mut sp: usize = 0;
     let mut res: i32 = 0;
@@ -686,7 +700,6 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
     let mut end = end;
     let mut diff = diff;
     let mut cb = cb;
-    let mut data = data;
     let mut use_empty_attrs = false;
 
     let mut disk = crate::tag::lfs_diskoff { block: 0, off: 0 };
@@ -785,7 +798,6 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                         end,
                         diff,
                         cb,
-                        data,
                         tag,
                         buffer,
                         disk,
@@ -798,10 +810,9 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                     begin = 0;
                     end = 0;
                     diff = 0;
-                    cb = lfs_dir_traverse_filter;
-                    data = unsafe {
-                        &mut (*stack[sp - 1].as_mut_ptr()).tag as *mut _ as *mut core::ffi::c_void
-                    };
+                    cb = LfsDirTraverseStackCb::TraverseFilter(unsafe {
+                        &mut (*stack[sp - 1].as_mut_ptr()).tag
+                    });
                     phase = TraversePhase::GetNextTag;
                 } else {
                     phase = TraversePhase::ProcessTag {
@@ -832,7 +843,7 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                     if type3 == LFS_FROM_NOOP {
                         phase = TraversePhase::GetNextTag;
                     } else if type3 == crate::lfs_type::lfs_type::LFS_FROM_MOVE {
-                        if core::ptr::eq(cb as *const (), lfs_dir_traverse_filter as *const ()) {
+                        if matches!(cb, LfsDirTraverseStackCb::TraverseFilter(_)) {
                             phase = TraversePhase::GetNextTag;
                         } else {
                             // Recurse into move: traverse source dir, process only tag with fromid.
@@ -856,7 +867,6 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                                 end,
                                 diff,
                                 cb,
-                                data,
                                 tag: noop_tag,
                                 buffer: &[],
                                 disk,
@@ -897,7 +907,7 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                                 crate::tag::lfs_tag_id(tag) as u32 + diff as u32,
                                 a.buffer.len(),
                             );
-                            res = dispatch_tag(cb, data, userattr_tag, a.buffer, diff)?;
+                            res = dispatch_tag(cb, userattr_tag, a.buffer, diff)?;
                             if res != 0 {
                                 break;
                             }
@@ -918,7 +928,7 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                             Some(ref d) => d.as_bytes(),
                             None => buffer,
                         };
-                        res = dispatch_tag(cb, data, tag, actual_buffer, diff)?;
+                        res = dispatch_tag(cb, tag, actual_buffer, diff)?;
                         if res != 0 {
                             if sp > 0 {
                                 crate::lfs_trace!(
@@ -953,7 +963,6 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
                 end = frame.end;
                 diff = frame.diff;
                 cb = frame.cb;
-                data = frame.data;
                 disk = frame.disk;
                 // Per C: when filter marks redundant it sets *filtertag = NOOP. We pop and
                 // dispatch that NOOP (emit nothing). The attr that triggered redundancy is
@@ -993,15 +1002,13 @@ pub struct TraverseTestOut {
 }
 
 pub fn lfs_dir_traverse_test_cb(
-    p: *mut core::ffi::c_void,
+    p: *mut TraverseTestOut,
     tag: lfs_tag_t,
     buffer: &[u8],
 ) -> Result<i32, Error> {
     use crate::tag::lfs_tag_type3;
 
-    let Some(out) = (unsafe { (p as *mut TraverseTestOut).as_mut() }) else {
-        return Ok(0);
-    };
+    let out = unsafe { &mut *p };
 
     if out.call_count as usize >= 8 {
         return Ok(0);
