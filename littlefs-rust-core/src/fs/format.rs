@@ -9,6 +9,7 @@ use crate::dir::LfsMdir;
 use crate::dir::commit::lfs_dir_alloc;
 use crate::dir::commit::lfs_dir_commit;
 use crate::dir::fetch::lfs_dir_fetch;
+use crate::dir::traverse::LfsDirTraverseStackCb;
 use crate::error::Error;
 use crate::fs::init::{lfs_deinit, lfs_init};
 use crate::lfs_superblock::LfsSuperblock;
@@ -200,11 +201,11 @@ pub fn lfs_format_(
 pub unsafe fn test_traverse_format_attrs(
     lfs: &mut super::lfs::Lfs,
     cfg: &crate::lfs_config::LfsConfig,
-    out: *mut crate::dir::traverse::TraverseTestOut,
+    out: &mut crate::dir::traverse::TraverseTestOut,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
     use crate::dir::commit::lfs_dir_alloc;
-    use crate::dir::traverse::{lfs_dir_traverse, lfs_dir_traverse_test_cb};
+    use crate::dir::traverse::lfs_dir_traverse;
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK};
     use crate::tag::lfs_mktag;
@@ -282,8 +283,7 @@ pub unsafe fn test_traverse_format_attrs(
             0,
             0,
             0,
-            lfs_dir_traverse_test_cb,
-            out as *mut core::ffi::c_void,
+            LfsDirTraverseStackCb::Test(out),
         );
         if let Err(err) = err {
             let _ = lfs_deinit(lfs);
@@ -304,11 +304,11 @@ pub unsafe fn test_traverse_format_attrs(
 pub unsafe fn test_traverse_filter_gets_superblock_after_push(
     lfs: &mut super::lfs::Lfs,
     cfg: &crate::lfs_config::LfsConfig,
-    out: *mut crate::dir::traverse::TraverseTestOut,
+    out: &mut crate::dir::traverse::TraverseTestOut,
 ) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_ckpoint;
     use crate::dir::commit::lfs_dir_alloc;
-    use crate::dir::traverse::{lfs_dir_traverse, lfs_dir_traverse_test_cb};
+    use crate::dir::traverse::lfs_dir_traverse;
     use crate::fs::init::{lfs_deinit, lfs_init};
     use crate::lfs_type::lfs_type::{
         LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_NAME, LFS_TYPE_SUPERBLOCK,
@@ -388,8 +388,7 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
             0,
             1,
             0,
-            lfs_dir_traverse_test_cb,
-            out as *mut core::ffi::c_void,
+            LfsDirTraverseStackCb::Test(out),
         );
         if let Err(err) = err {
             let _ = lfs_deinit(lfs);
