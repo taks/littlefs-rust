@@ -87,7 +87,10 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
 /// `inner` is at its final address (i.e., inside the `RefCell`).
 fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
     inner.config.context = unsafe {
-        core::mem::transmute(&mut inner.storage as *mut SS<S> as *mut dyn littlefs_rust_core::Storage)
+        core::mem::transmute::<
+            *mut dyn littlefs_rust_core::Storage,
+            core::option::Option<core::ptr::NonNull<dyn littlefs_rust_core::Storage>>,
+        >(&mut inner.storage as *mut SS<S> as *mut dyn littlefs_rust_core::Storage)
     };
     inner.config.read_buffer = Some(NonNull::from_mut(&mut inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_mut(&mut inner._prog_buf));
@@ -312,16 +315,19 @@ fn build_inner_borrowed<'a, S: Storage>(
     BorrowedFsInner {
         lfs: Lfs::default(),
         config: lfs_config,
-        storage: unsafe { core::mem::transmute(storage) },
+        storage: unsafe { core::mem::transmute::<&mut S, &mut SS<S>>(storage) },
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     }
 }
 
-fn wire_context_borrowed<'a, S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
+fn wire_context_borrowed<S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
     inner.config.context = unsafe {
-        core::mem::transmute(inner.storage as *mut SS<S> as *mut dyn littlefs_rust_core::Storage)
+        core::mem::transmute::<
+            *mut dyn littlefs_rust_core::Storage,
+            core::option::Option<core::ptr::NonNull<dyn littlefs_rust_core::Storage>>,
+        >(inner.storage as *mut SS<S> as *mut dyn littlefs_rust_core::Storage)
     };
     inner.config.read_buffer = Some(NonNull::from_ref(&inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_ref(&inner._prog_buf));

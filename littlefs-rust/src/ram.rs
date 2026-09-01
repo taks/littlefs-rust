@@ -4,7 +4,6 @@ use littlefs_rust_core::error::Error;
 
 use crate::Storage;
 
-
 /// In-memory block device for testing and examples.
 ///
 /// Simulates flash: erased blocks are `0xFF`, writes overwrite bytes, and
@@ -51,7 +50,6 @@ impl<const BLOCK_SIZE: u32, const BLOCK_COUNT: u32> Storage
     const WRITE_SIZE: usize = 1;
     const BLOCK_SIZE: usize = BLOCK_SIZE as usize;
     const BLOCK_COUNT: usize = BLOCK_COUNT as usize;
-
 
     fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
         let start = self.offset(block, offset);

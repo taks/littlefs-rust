@@ -231,7 +231,7 @@ pub fn lfs_bd_read(
             rcache.off,
             rcache.size
         );
-        let data_ = unsafe { &mut rcache.buffer.as_mut()[..rcache.size as usize] };
+        let data_ = unsafe { &mut rcache.buffer.as_mut()[..rcache.size] };
         let err = unsafe { lfs.cfg.as_ref().context.unwrap_unchecked().as_mut() }.read(
             rcache.block,
             rcache.off as u32,
