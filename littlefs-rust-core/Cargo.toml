@@ -35,7 +35,6 @@ defmt = ["dep:defmt"]
 
 # LittleFS compile-time flags (match C -DLFS_*)
 readonly = []      # Omit all write operations
-no_malloc = []     # lfs_file_open disabled; use lfs_file_opencfg only
 multiversion = []  # disk_version in config, lfs_fs_disk_version*
 shrink = []        # lfs_shrink_checkblock, shrink in lfs_fs_grow_
 migrate = []       # v1->v2 migration (defer)

@@ -154,6 +154,7 @@ pub fn lfs_removeattr(lfs: &mut Lfs, path: &str, r#type: u8) -> Result<(), Error
 }
 
 /// Open a file. Per lfs.h lfs_file_open (lfs.c:6140-6146).
+#[cfg(feature = "alloc")]
 #[inline]
 pub fn lfs_file_open(
     lfs: &mut Lfs,

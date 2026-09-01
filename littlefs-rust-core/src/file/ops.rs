@@ -406,8 +406,11 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
 /// C: Wrapper that calls opencfg with default config.
 /// Static defaults for lfs_file_open (no opencfg). C uses the same;
 /// a stack-local would make file.cfg a dangling pointer after return.
+#[cfg(feature = "alloc")]
 static mut BUFFER: [u8; 0] = [];
+#[cfg(feature = "alloc")]
 static mut ATTRS: [LfsAttr; 0] = [];
+#[cfg(feature = "alloc")]
 #[allow(clippy::deref_addrof)]
 static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
     buffer: unsafe { &mut *(&raw mut BUFFER) },
@@ -415,7 +418,7 @@ static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
     // attr_count: 0,
 };
 
-#[allow(clippy::deref_addrof)]
+#[cfg(feature = "alloc")]
 pub fn lfs_file_open_(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,
