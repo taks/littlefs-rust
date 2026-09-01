@@ -419,6 +419,7 @@ static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
 };
 
 #[cfg(feature = "alloc")]
+#[expect(clippy::deref_addrof)]
 pub fn lfs_file_open_(
     lfs: &mut crate::fs::Lfs,
     file: &mut LfsFile,

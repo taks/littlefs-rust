@@ -1,8 +1,6 @@
 //! Block device config. Per lfs.h struct lfs_config.
 //! Callbacks use raw function pointers for C-compatible layout.
 
-#![allow(non_camel_case_types)]
-
 use core::ptr::NonNull;
 
 use crate::{error::Error, types::lfs_size_t};
