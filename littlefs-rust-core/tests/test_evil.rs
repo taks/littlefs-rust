@@ -211,7 +211,7 @@ fn evil_invalid_file_pointer(size: u32) {
         size: size.to_le(),
     };
     let attrs = [lfs_mattr {
-        tag: lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>() as u32),
+        tag: lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>()),
         buffer: fake_ctz.as_bytes(),
     }];
     assert_ok!(lfs_dir_commit(lfs, mdir, &attrs));
@@ -305,12 +305,12 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
         lfs,
         mdir,
         lfs_mktag(0x700, 0x3ff, 0),
-        lfs_mktag(LFS_TYPE_STRUCT, 1, core::mem::size_of::<LfsCtz>() as u32),
+        lfs_mktag(LFS_TYPE_STRUCT, 1, core::mem::size_of::<LfsCtz>()),
         ctz.as_mut_bytes(),
     );
     assert_eq!(
         tag,
-        Ok(lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>() as u32) as u32)
+        Ok(lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>()) as u32)
     );
     lfs_ctz_fromle32(&mut ctz);
 
@@ -454,20 +454,12 @@ unsafe fn evil_mdir_loop2() {
         lfs,
         mdir,
         lfs_mktag(0x7ff, 0x3ff, 0),
-        lfs_mktag(
-            LFS_TYPE_DIRSTRUCT,
-            1,
-            core::mem::size_of::<[u32; 2]>() as u32,
-        ),
+        lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()),
         child_pair.as_mut_bytes(),
     );
     assert_eq!(
         tag,
-        Ok(lfs_mktag(
-            LFS_TYPE_DIRSTRUCT,
-            1,
-            core::mem::size_of::<[u32; 2]>() as u32
-        ) as u32)
+        Ok(lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()) as u32)
     );
     lfs_pair_fromle32(&mut child_pair);
 
@@ -517,20 +509,12 @@ unsafe fn evil_mdir_loop_child() {
         lfs,
         mdir,
         lfs_mktag(0x7ff, 0x3ff, 0),
-        lfs_mktag(
-            LFS_TYPE_DIRSTRUCT,
-            1,
-            core::mem::size_of::<[u32; 2]>() as u32,
-        ),
+        lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()),
         child_pair.as_mut_bytes(),
     );
     assert_eq!(
         tag,
-        Ok(lfs_mktag(
-            LFS_TYPE_DIRSTRUCT,
-            1,
-            core::mem::size_of::<[u32; 2]>() as u32
-        ) as u32)
+        Ok(lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()) as u32)
     );
     lfs_pair_fromle32(&mut child_pair);
 

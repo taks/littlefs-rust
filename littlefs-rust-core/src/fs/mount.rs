@@ -248,7 +248,6 @@ pub fn lfs_mount_(
         let find_match = LfsDirFindMatch {
             lfs: lfs as *mut _,
             name: magic,
-            size: 8,
         };
 
         let mut err_inner = Ok(());
@@ -289,7 +288,7 @@ pub fn lfs_mount_(
                     lfs_mktag(
                         LFS_TYPE_INLINESTRUCT,
                         0,
-                        core::mem::size_of::<LfsSuperblock>() as u32,
+                        core::mem::size_of::<LfsSuperblock>(),
                     ),
                     superblock.as_mut_bytes(),
                 );

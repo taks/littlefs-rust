@@ -1,6 +1,7 @@
 //! Block allocator. Per lfs.c lfs_alloc, lfs_alloc_scan, lfs_alloc_lookahead, etc.
 
 use core::cell::UnsafeCell;
+use core::cmp;
 
 use crate::error::Error;
 use crate::fs::Lfs;
@@ -104,7 +105,6 @@ pub fn lfs_alloc_lookahead(lfs: &mut Lfs, block: lfs_block_t) -> Result<(), Erro
 /// ```
 pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
     use crate::fs::traverse::lfs_fs_traverse_;
-    use crate::util::lfs_min;
 
     crate::lfs_trace!("alloc_scan: start");
     unsafe {
@@ -115,7 +115,7 @@ pub fn lfs_alloc_scan(lfs: &mut Lfs) -> Result<(), Error> {
         lfs.lookahead.next = 0;
         // note we limit the lookahead buffer to at most the amount of blocks
         // checkpointed, this prevents the math in lfs_alloc from underflowing
-        lfs.lookahead.size = lfs_min(
+        lfs.lookahead.size = cmp::min(
             8 * cfg.lookahead_buffer.unwrap().len() as u32,
             lfs.lookahead.ckpoint,
         );

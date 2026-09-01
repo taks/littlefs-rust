@@ -115,7 +115,7 @@ pub fn lfs_gstate_needssuperblock(a: &LfsGstate) -> bool {
 /// ```
 #[inline(always)]
 pub fn lfs_gstate_hasmovehere(a: &LfsGstate, pair: &[lfs_block_t; 2]) -> bool {
-    lfs_tag_type1(a.tag) != 0 && lfs_pair_cmp(&a.pair, pair) == 0
+    lfs_tag_type1(a.tag) != 0 && !lfs_pair_cmp(&a.pair, pair)
 }
 
 /// Per lfs.c lfs_gstate_fromle32 (lines 442-446)

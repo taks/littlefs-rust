@@ -98,7 +98,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
             tag: lfs_mktag(
                 LFS_TYPE_INLINESTRUCT,
                 0,
-                core::mem::size_of::<LfsSuperblock>() as u32,
+                core::mem::size_of::<LfsSuperblock>(),
             ),
             buffer: superblock.as_bytes(),
         }];

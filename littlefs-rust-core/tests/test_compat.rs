@@ -57,7 +57,7 @@ fn test_compat_major_incompat() {
         tag: lfs_mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
-            core::mem::size_of::<LfsSuperblock>() as u32,
+            core::mem::size_of::<LfsSuperblock>(),
         ),
         buffer: superblock.as_bytes(),
     }];
@@ -107,7 +107,7 @@ fn test_compat_minor_incompat() {
         tag: lfs_mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
-            core::mem::size_of::<LfsSuperblock>() as u32,
+            core::mem::size_of::<LfsSuperblock>(),
         ),
         buffer: superblock.as_bytes(),
     }];
@@ -173,7 +173,7 @@ fn test_compat_minor_bump() {
         tag: lfs_mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
-            core::mem::size_of::<LfsSuperblock>() as u32,
+            core::mem::size_of::<LfsSuperblock>(),
         ),
         buffer: superblock.as_bytes(),
     }];

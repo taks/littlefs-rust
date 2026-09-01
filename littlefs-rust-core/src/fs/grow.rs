@@ -115,7 +115,7 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
         lfs_mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
-            core::mem::size_of::<LfsSuperblock>() as u32,
+            core::mem::size_of::<LfsSuperblock>(),
         ),
         superblock.as_mut_bytes(),
     )?;

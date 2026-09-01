@@ -142,7 +142,7 @@ pub fn lfs_setattr(
     path: &str,
     r#type: u8,
     buffer: &[u8],
-    size: lfs_size_t,
+    size: usize,
 ) -> Result<(), Error> {
     crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer, size)
 }
@@ -227,7 +227,7 @@ pub fn lfs_file_truncate(lfs: &mut Lfs, file: &mut LfsFile, size: lfs_off_t) -> 
 
 /// Return the position of the file. Per lfs.h lfs_file_tell.
 #[inline]
-pub fn lfs_file_tell(_lfs: &mut Lfs, file: &LfsFile) -> lfs_soff_t {
+pub fn lfs_file_tell(_lfs: &mut Lfs, file: &LfsFile) -> lfs_off_t {
     crate::file::ops::lfs_file_tell_(core::ptr::null(), file)
 }
 
@@ -239,7 +239,7 @@ pub fn lfs_file_rewind(lfs: &mut Lfs, file: &mut LfsFile) -> Result<(), Error> {
 
 /// Return the size of the file. Per lfs.h lfs_file_size (lfs.c:6495-6499).
 #[inline]
-pub fn lfs_file_size(lfs: &mut Lfs, file: &LfsFile) -> lfs_soff_t {
+pub fn lfs_file_size(lfs: &mut Lfs, file: &LfsFile) -> u32 {
     crate::file::ops::lfs_file_size_(lfs, file)
 }
 

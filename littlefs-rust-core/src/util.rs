@@ -1,19 +1,6 @@
 //! Utility functions. Per lfs_util.h static inline and lfs.c small type-level utils.
 
-use crate::types::{lfs_block_t, lfs_size_t};
-
-/// Per lfs_util.h lfs_min (lines 133-135)
-///
-/// C:
-/// ```c
-/// static inline uint32_t lfs_min(uint32_t a, uint32_t b) {
-///     return (a < b) ? a : b;
-/// }
-/// ```
-#[inline(always)]
-pub fn lfs_min(a: u32, b: u32) -> u32 {
-    if a < b { a } else { b }
-}
+use crate::types::lfs_block_t;
 
 /// Per lfs_util.h lfs_aligndown (lines 138-140)
 ///
@@ -24,7 +11,7 @@ pub fn lfs_min(a: u32, b: u32) -> u32 {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_aligndown(a: u32, alignment: u32) -> u32 {
+pub fn lfs_aligndown(a: usize, alignment: usize) -> usize {
     a - (a % alignment)
 }
 
@@ -37,7 +24,7 @@ pub fn lfs_aligndown(a: u32, alignment: u32) -> u32 {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_alignup(a: u32, alignment: u32) -> u32 {
+pub fn lfs_alignup(a: usize, alignment: usize) -> usize {
     lfs_aligndown(a + alignment - 1, alignment)
 }
 
@@ -136,8 +123,8 @@ pub fn lfs_strcspn(p: &[u8], c: u8) -> usize {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_path_namelen(path: &[u8]) -> u32 {
-    path.iter().position(|&b| b == b'/').unwrap_or(path.len()) as lfs_size_t
+pub fn lfs_path_namelen(path: &[u8]) -> usize {
+    path.iter().position(|&b| b == b'/').unwrap_or(path.len())
 }
 
 /// Per lfs.c lfs_path_islast (lines 293-296)
@@ -151,7 +138,7 @@ pub fn lfs_path_namelen(path: &[u8]) -> u32 {
 /// ```
 #[inline(always)]
 pub fn lfs_path_islast(path: &[u8]) -> bool {
-    let namelen = lfs_path_namelen(path) as usize;
+    let namelen = lfs_path_namelen(path);
     let rest = path.get(namelen..).unwrap_or(&[]);
     rest.iter().all(|&b| b == b'/')
 }
@@ -166,7 +153,7 @@ pub fn lfs_path_islast(path: &[u8]) -> bool {
 /// ```
 #[inline(always)]
 pub fn lfs_path_isdir(path: &[u8]) -> bool {
-    let namelen = lfs_path_namelen(path) as usize;
+    let namelen = lfs_path_namelen(path);
     path.get(namelen).is_some_and(|&b| b != 0)
 }
 
@@ -239,12 +226,8 @@ pub fn lfs_pair_isnull(pair: &[lfs_block_t; 2]) -> bool {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_pair_cmp(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> i32 {
-    let eq = paira[0] == pairb[0]
-        || paira[1] == pairb[1]
-        || paira[0] == pairb[1]
-        || paira[1] == pairb[0];
-    if eq { 0 } else { 1 }
+pub fn lfs_pair_cmp(paira: &[lfs_block_t; 2], pairb: &[lfs_block_t; 2]) -> bool {
+    !(paira[0] == pairb[0] || paira[1] == pairb[1] || paira[0] == pairb[1] || paira[1] == pairb[0])
 }
 
 /// Per lfs.c lfs_pair_issync (lines 319-324)

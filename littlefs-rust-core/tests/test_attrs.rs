@@ -70,7 +70,7 @@ fn test_attrs_get_set() {
     assert_ok!(lfs_setattr(lfs, "hello", b'B', b"eee", 3));
 
     let oversized = vec![0u8; ATTR_MAX + 1];
-    let err = lfs_setattr(lfs, "hello", b'A', &oversized, (ATTR_MAX + 1) as u32);
+    let err = lfs_setattr(lfs, "hello", b'A', &oversized, ATTR_MAX + 1);
     assert_err!(Error::NoSpace, err);
 
     assert_ok!(lfs_setattr(lfs, "hello", b'B', b"fffffffff", 9));

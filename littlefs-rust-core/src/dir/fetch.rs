@@ -387,9 +387,9 @@ pub fn lfs_dir_fetchmatch(
                 lfs,
                 None,
                 unsafe { &mut *lfs.rcache.get() },
-                cfg.block_size,
+                cfg.block_size as usize,
                 dir.pair[0],
-                off,
+                off as usize,
                 &mut tag_buf,
             );
             if let Err(err) = err {
@@ -418,9 +418,9 @@ pub fn lfs_dir_fetchmatch(
                     lfs,
                     None,
                     unsafe { &mut *lfs.rcache.get() },
-                    cfg.block_size,
+                    cfg.block_size as usize,
                     dir.pair[0],
-                    off + 4,
+                    (off + 4) as usize,
                     &mut dcrc_buf,
                 );
                 if let Err(err) = err {
@@ -459,8 +459,8 @@ pub fn lfs_dir_fetchmatch(
                 unsafe { &mut *lfs.rcache.get() },
                 cfg.block_size,
                 dir.pair[0],
-                off + 4,
-                entry_size,
+                (off + 4) as usize,
+                entry_size as usize,
                 &mut crc_val,
             );
             if let Err(err) = err {
@@ -493,15 +493,15 @@ pub fn lfs_dir_fetchmatch(
             } else if (lfs_tag_type1(tag)) == LFS_TYPE_TAIL {
                 tempsplit = (lfs_tag_chunk(tag) & 1) != 0;
 
-                let mut tail_buf = [0u8; 8];
+                let mut tail_buf = [0u32; 2];
                 let err = lfs_bd_read(
                     lfs,
                     None,
                     unsafe { &mut *lfs.rcache.get() },
-                    cfg.block_size,
+                    cfg.block_size as usize,
                     dir.pair[0],
-                    off + 4,
-                    &mut tail_buf,
+                    (off + 4) as usize,
+                    tail_buf.as_mut_bytes(),
                 );
                 if let Err(err) = err {
                     if err == Error::Corrupt {
@@ -509,17 +509,16 @@ pub fn lfs_dir_fetchmatch(
                     }
                     return Err(err);
                 }
-                temptail[0] = u32::from_le_bytes(tail_buf[0..4].try_into().unwrap());
-                temptail[1] = u32::from_le_bytes(tail_buf[4..8].try_into().unwrap());
+                temptail = tail_buf;
             } else if lfs_tag_type3(tag) == LFS_TYPE_FCRC {
                 let mut fcrc_buf: LfsFcrc = unsafe { core::mem::zeroed() };
                 let err = lfs_bd_read(
                     lfs,
                     None,
                     unsafe { &mut *lfs.rcache.get() },
-                    cfg.block_size,
+                    cfg.block_size as usize,
                     dir.pair[0],
-                    off + 4,
+                    (off + 4) as usize,
                     fcrc_buf.as_mut_bytes(),
                 );
                 if let Err(err) = err {
@@ -579,8 +578,8 @@ pub fn lfs_dir_fetchmatch(
                 unsafe { &mut *lfs.rcache.get() },
                 cfg.block_size,
                 dir.pair[0],
-                dir.off,
-                fcrc.size,
+                dir.off as usize,
+                fcrc.size as usize,
                 &mut fcrc_,
             );
             if let Err(err) = err
@@ -704,7 +703,7 @@ pub fn lfs_dir_getgstate(
         crate::tag::lfs_mktag(
             crate::lfs_type::lfs_type::LFS_TYPE_MOVESTATE,
             0,
-            core::mem::size_of::<LfsGstate>() as u32,
+            core::mem::size_of::<LfsGstate>(),
         ),
         temp.as_mut_bytes(),
     );
@@ -773,7 +772,7 @@ pub fn lfs_dir_getinfo(
     }
 
     // C: lfs.c:1422-1426
-    let name_max = lfs.name_max;
+    let name_max = lfs.name_max as usize;
     let tag = lfs_dir_get(
         lfs,
         dir,
@@ -790,7 +789,7 @@ pub fn lfs_dir_getinfo(
         lfs,
         dir,
         lfs_mktag(0x700, 0x3ff, 0),
-        lfs_mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>() as u32),
+        lfs_mktag(LFS_TYPE_STRUCT, id as u32, mem::size_of::<LfsCtz>()),
         ctz.as_mut_bytes(),
     )?;
 
