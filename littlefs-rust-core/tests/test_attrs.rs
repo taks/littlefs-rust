@@ -5,27 +5,27 @@
 
 mod common;
 
-use common::{LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, default_config, init_context, init_logger};
+use common::{
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, config_with_geometry, init_context,
+    init_logger,
+};
 use littlefs_rust_core::{
-    Lfs, LfsAttr, LfsFile, LfsFileConfig, error::Error, lfs_file_close, lfs_file_open,
+    Lfs, LfsAttr, LfsConfig, LfsFile, LfsFileConfig, error::Error, lfs_file_close, lfs_file_open,
     lfs_file_opencfg, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_getattr,
     lfs_mkdir, lfs_mount, lfs_removeattr, lfs_setattr, lfs_unmount,
 };
+use littlefs_rust_test_macro::littlefs_test;
 use zerocopy::IntoBytes;
 
 /// attr_max from config; tests use ATTR_MAX+1 for NOSPC check.
 const ATTR_MAX: usize = 1022;
 
 // --- test_attrs_get_set ---
-#[test]
-fn test_attrs_get_set() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[littlefs_test]
+fn test_attrs_get_set(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "hello"));
     let file = &mut LfsFile::default();
@@ -40,7 +40,7 @@ fn test_attrs_get_set() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let mut buffer = [0u8; 1024];
 
     assert_ok!(lfs_setattr(lfs, "hello", b'A', b"aaaa", 4));
@@ -76,7 +76,7 @@ fn test_attrs_get_set() {
     assert_ok!(lfs_setattr(lfs, "hello", b'B', b"fffffffff", 9));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..13]);
     assert_eq!(n, Ok(9));
     assert_eq!(&buffer[4..13], b"fffffffff");
@@ -91,15 +91,11 @@ fn test_attrs_get_set() {
 }
 
 // --- test_attrs_get_set_root ---
-#[test]
-fn test_attrs_get_set_root() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[littlefs_test]
+fn test_attrs_get_set_root(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "hello"));
     let file = &mut LfsFile::default();
@@ -114,7 +110,7 @@ fn test_attrs_get_set_root() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let mut buffer = [0u8; 1024];
 
     assert_ok!(lfs_setattr(lfs, "/", b'A', b"aaaa", 4));
@@ -136,7 +132,7 @@ fn test_attrs_get_set_root() {
     assert_ok!(lfs_setattr(lfs, "/", b'B', b"fffffffff", 9));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let mut buffer = [0u8; 1024];
     let n = lfs_getattr(lfs, "/", b'A', &mut buffer[..4]);
     assert_eq!(n, Ok(4));
@@ -155,15 +151,11 @@ fn test_attrs_get_set_root() {
 
 // --- test_attrs_get_set_file ---
 // Uses lfs_file_opencfg with attrs: WRONLY writes attrs on close, RDONLY reads on open.
-#[test]
-fn test_attrs_get_set_file() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[littlefs_test]
+fn test_attrs_get_set_file(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "hello"));
     let file = &mut LfsFile::default();
@@ -178,7 +170,7 @@ fn test_attrs_get_set_file() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let mut buffer = [0u8; 1024];
     buffer[0..4].copy_from_slice(b"aaaa");
     buffer[4..10].copy_from_slice(b"bbbbbb");
@@ -198,7 +190,7 @@ fn test_attrs_get_set_file() {
             buffer: &mut buffer[10..15],
         },
     ];
-    let mut cfg = LfsFileConfig {
+    let mut fcfg = LfsFileConfig {
         buffer: &mut [],
         attrs: &mut attrs,
     };
@@ -208,7 +200,7 @@ fn test_attrs_get_set_file() {
         file,
         "hello/hello",
         LFS_O_WRONLY,
-        &mut cfg,
+        &mut fcfg,
     ));
     assert_ok!(lfs_file_close(lfs, file));
 
@@ -249,7 +241,7 @@ fn test_attrs_get_set_file() {
 
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, "hello/hello", LFS_O_RDONLY));
     let n = lfs_file_read(lfs, file, &mut buffer[..32]);
@@ -261,15 +253,11 @@ fn test_attrs_get_set_file() {
 
 // --- test_attrs_deferred_file ---
 // Uses lfs_file_opencfg with deferred attrs (synced on file_sync).
-#[test]
-fn test_attrs_deferred_file() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[littlefs_test]
+fn test_attrs_deferred_file(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "hello"));
     let file = &mut LfsFile::default();
@@ -284,7 +272,7 @@ fn test_attrs_deferred_file() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_setattr(lfs, "hello/hello", b'B', b"fffffffff", 9));
     assert_ok!(lfs_setattr(lfs, "hello/hello", b'C', b"ccccc", 5));
 
