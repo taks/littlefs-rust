@@ -14,7 +14,7 @@ use crate::lfs_gstate::{lfs_gstate_hasmove, lfs_gstate_hasorphans};
 use crate::lfs_type::lfs_type::{
     LFS_FROM_MOVE, LFS_TYPE_CREATE, LFS_TYPE_DELETE, LFS_TYPE_STRUCT, LFS_TYPE3_DIR,
 };
-use crate::tag::{lfs_mattr, lfs_mktag, lfs_mktag_if, lfs_tag_id, lfs_tag_type3};
+use crate::tag::{LfsMattr, lfs_mktag, lfs_mktag_if, lfs_tag_id, lfs_tag_type3};
 use crate::types::lfs_block_t;
 use crate::util::{
     lfs_pair_cmp, lfs_pair_fromle32, lfs_path_isdir, lfs_path_islast, lfs_path_namelen,
@@ -310,7 +310,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
 
         let nlen = lfs_path_namelen(newpath_slice);
         let attrs = [
-            lfs_mattr {
+            LfsMattr {
                 tag: lfs_mktag_if(
                     prevtag != Err(Error::NoEntry),
                     LFS_TYPE_DELETE,
@@ -319,19 +319,19 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
                 ),
                 buffer: &[],
             },
-            lfs_mattr {
+            LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, newid as u32, 0),
                 buffer: &[],
             },
-            lfs_mattr {
+            LfsMattr {
                 tag: lfs_mktag(lfs_tag_type3(oldtag), newid as u32, nlen),
                 buffer: newpath_ptr.as_bytes(),
             },
-            lfs_mattr {
+            LfsMattr {
                 tag: lfs_mktag(LFS_FROM_MOVE, newid as u32, lfs_tag_id(oldtag) as usize),
                 buffer: oldcwd.as_bytes(),
             },
-            lfs_mattr {
+            LfsMattr {
                 tag: lfs_mktag_if(samepair, LFS_TYPE_DELETE, newoldid as u32, 0),
                 buffer: &[],
             },
@@ -342,7 +342,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
 
         if !samepair && lfs_gstate_hasmove(&lfs.gstate) {
             lfs_fs_prepmove(lfs, 0x3ff, None);
-            let attrs2 = [lfs_mattr {
+            let attrs2 = [LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_DELETE, lfs_tag_id(oldtag) as u32, 0),
                 buffer: &[],
             }];

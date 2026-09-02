@@ -12,7 +12,7 @@ use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_preporphans};
 use crate::lfs_type::lfs_type::{
     LFS_TYPE_CREATE, LFS_TYPE_DIRSTRUCT, LFS_TYPE_SOFTTAIL, LFS_TYPE3_DIR,
 };
-use crate::tag::{lfs_mattr, lfs_mktag, lfs_mktag_if};
+use crate::tag::{LfsMattr, lfs_mktag, lfs_mktag_if};
 use crate::util::{lfs_pair_fromle32, lfs_pair_tole32, lfs_path_islast, lfs_path_namelen};
 
 /// Per lfs.c lfs_mkdir_ (lines 2625-2719)
@@ -156,7 +156,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
         }
 
         lfs_pair_tole32(&mut pred.tail);
-        let attrs1 = [lfs_mattr {
+        let attrs1 = [LfsMattr {
             tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
             buffer: pred.tail.as_bytes(),
         }];
@@ -172,7 +172,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
             lfs.mlist = &cwd as *const _ as *mut _;
 
             lfs_pair_tole32(&mut dir.pair);
-            let attrs2 = [lfs_mattr {
+            let attrs2 = [LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
                 buffer: dir.pair.as_bytes(),
             }];
@@ -187,19 +187,19 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
 
         lfs_pair_tole32(&mut dir.pair);
         let attrs3 = [
-            lfs_mattr {
+            LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, id as u32, 0),
                 buffer: &[],
             },
-            lfs_mattr {
+            LfsMattr {
                 tag: lfs_mktag(LFS_TYPE3_DIR, id as u32, nlen),
                 buffer: path_ptr.as_bytes(),
             },
-            lfs_mattr {
+            LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_DIRSTRUCT, id as u32, 8),
                 buffer: dir.pair.as_bytes(),
             },
-            lfs_mattr {
+            LfsMattr {
                 tag: lfs_mktag_if(!cwd.m.split, LFS_TYPE_SOFTTAIL, 0x3ff, 8),
                 buffer: dir.pair.as_bytes(),
             },

@@ -9,7 +9,7 @@ use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_fromle32, lfs_superblock_tole32};
 use crate::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
-use crate::tag::{lfs_mattr, lfs_mktag};
+use crate::tag::{LfsMattr, lfs_mktag};
 use crate::types::lfs_size_t;
 
 /// Translation docs: Grow or shrink the filesystem to a new block_count.
@@ -125,7 +125,7 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
 
     lfs_superblock_tole32(&mut superblock);
     // C: lfs_dir_commit(lfs, &root, LFS_MKATTRS({tag, &superblock}))
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: tag as u32,
         buffer: superblock.as_bytes(),
     }];

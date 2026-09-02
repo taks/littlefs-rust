@@ -405,7 +405,7 @@ enum TraversePhase<'a> {
 }
 
 /// Empty attrs slice for LFS_FROM_MOVE recursion (we traverse source dir from disk only).
-const EMPTY_ATTRS: &[crate::tag::lfs_mattr] = &[];
+const EMPTY_ATTRS: &[crate::tag::LfsMattr] = &[];
 
 /// Stack frame for lfs_dir_traverse recursion. Per lfs.c struct lfs_dir_traverse.
 /// C has .buffer = buffer; we must store it for attr-backed tags (e.g. SUPERBLOCK).
@@ -666,7 +666,7 @@ pub fn lfs_dir_traverse(
     dir: &LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
-    attrs_slice: &[crate::tag::lfs_mattr],
+    attrs_slice: &[crate::tag::LfsMattr],
     tmask: lfs_tag_t,
     ttag: lfs_tag_t,
     begin: u16,

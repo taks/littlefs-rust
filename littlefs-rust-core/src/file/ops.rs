@@ -252,15 +252,15 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
         }
         lfs_alloc_ckpoint(lfs);
         let attrs = [
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, file.id as u32, 0),
                 buffer: &[],
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE3_REG, file.id as u32, nlen),
                 buffer: path_ptr.as_bytes(),
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0),
                 buffer: &[],
             },
@@ -912,11 +912,11 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
         };
 
         let attrs = [
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(type_, file.id as u32, size),
                 buffer,
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_FROM_USERATTRS,
                     file.id as u32,

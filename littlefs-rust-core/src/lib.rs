@@ -76,7 +76,7 @@ pub use crate::fs::superblock::lfs_fs_prepmove;
 #[doc(hidden)]
 pub use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_tole32};
 #[doc(hidden)]
-pub use crate::tag::{lfs_mattr, lfs_mktag};
+pub use crate::tag::{LfsMattr, lfs_mktag};
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_soff_t};
 #[doc(hidden)]
 pub use crate::util::{lfs_pair_fromle32, lfs_pair_tole32};
