@@ -11,9 +11,9 @@ use littlefs_rust_core::LfsFile;
 use littlefs_rust_core::lfs_type::OpenFlags;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
-    LFS_DISK_VERSION, Lfs, LfsFsinfo, LfsMdir, LfsSuperblock, error::Error, lfs_dir_commit,
-    lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mattr, lfs_mktag, lfs_mount, lfs_superblock_tole32,
-    lfs_unmount,
+    LFS_DISK_VERSION, Lfs, LfsFsinfo, LfsMattr, LfsMdir, LfsSuperblock, error::Error,
+    lfs_dir_commit, lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mktag, lfs_mount,
+    lfs_superblock_tole32, lfs_unmount,
 };
 use zerocopy::IntoBytes;
 
@@ -53,7 +53,7 @@ fn test_compat_major_incompat() {
         attr_max: lfs.attr_max,
     };
     lfs_superblock_tole32(&mut superblock);
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
@@ -103,7 +103,7 @@ fn test_compat_minor_incompat() {
         attr_max: lfs.attr_max,
     };
     lfs_superblock_tole32(&mut superblock);
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
@@ -169,7 +169,7 @@ fn test_compat_minor_bump() {
         attr_max: lfs.attr_max,
     };
     lfs_superblock_tole32(&mut superblock);
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
