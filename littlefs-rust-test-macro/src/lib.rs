@@ -1,3 +1,5 @@
+#![allow(clippy::single_match)]
+
 use syn::{FnArg, ItemFn, punctuated::Punctuated, token::Comma};
 
 #[proc_macro_attribute]
