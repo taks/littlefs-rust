@@ -10,11 +10,14 @@ use common::{
     clone_config_with_block_count, config_badblock, config_with_geometry, default_config,
     init_badblock_context, init_context, init_logger, run_with_timeout,
 };
+#[cfg(test)]
+use littlefs_rust_core::LfsConfig;
 use littlefs_rust_core::{
     Lfs, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_size, lfs_file_sync, lfs_file_truncate, lfs_file_write, lfs_format, lfs_fs_gc,
     lfs_mkdir, lfs_mount, lfs_remove, lfs_stat, lfs_unmount,
 };
+use littlefs_rust_test_macro::littlefs_test;
 use rstest::rstest;
 
 const FILES: u32 = 3;
@@ -31,31 +34,28 @@ fn compact_thresh_u32(val: i32) -> u32 {
 ///
 /// Create breakfast dir, open 3 files in parallel, write SIZE bytes to each (optional GC),
 /// close, unmount, remount, read and verify.
-#[rstest]
+#[littlefs_test]
 fn test_alloc_parallel(
+    cfg: &mut LfsConfig,
     #[values(false, true)] gc: bool,
     #[values(-1, 0, 256)] compact_thresh_val: i32,
     #[values(false, true)] infer_bc: bool,
 ) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
-    let block_size = env.config.block_size;
-    let block_count = env.config.block_count;
+    let block_size = cfg.block_size;
+    let block_count = cfg.block_count;
     let size: usize = ((block_size - 8) as usize * (block_count - 6) as usize) / FILES as usize;
 
-    env.config.compact_thresh = compact_thresh_u32(compact_thresh_val);
+    cfg.compact_thresh = compact_thresh_u32(compact_thresh_val);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
-    let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
-    assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+    cfg.block_count = if infer_bc { 0 } else { block_count };
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_mkdir(lfs, "breakfast"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let mut files: [LfsFile; 3] = Default::default();
     for n in 0..FILES {
         let path = &format!(
@@ -85,7 +85,7 @@ fn test_alloc_parallel(
     }
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     for n in 0..FILES {
         let path = &format!(
             "breakfast/{}",
