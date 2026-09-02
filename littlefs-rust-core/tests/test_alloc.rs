@@ -38,7 +38,6 @@ fn compact_thresh_u32(val: i32) -> u32 {
 fn test_alloc_parallel(
     cfg: &mut LfsConfig,
     #[values(false, true)] gc: bool,
-    #[values(-1, 0, 256)] compact_thresh_val: i32,
     #[values(false, true)] infer_bc: bool,
 ) {
     let block_size = cfg.block_size;
@@ -46,17 +45,18 @@ fn test_alloc_parallel(
     let size: usize = ((block_size - 8) as usize * (block_count - 6) as usize) / FILES as usize;
 
     for compact_thresh in [u32::MAX, 0, block_size / 2] {
+        let mut cfg = cfg.clone();
         cfg.compact_thresh = compact_thresh;
 
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_format(lfs, &cfg));
 
         cfg.block_count = if infer_bc { 0 } else { block_count };
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, &cfg));
         assert_ok!(lfs_mkdir(lfs, "breakfast"));
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, &cfg));
         let mut files: [LfsFile; 3] = Default::default();
         for n in 0..FILES {
             let path = &format!(
@@ -86,7 +86,7 @@ fn test_alloc_parallel(
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, &cfg));
         for n in 0..FILES {
             let path = &format!(
                 "breakfast/{}",
