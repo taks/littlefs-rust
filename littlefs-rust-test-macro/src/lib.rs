@@ -42,10 +42,18 @@ pub fn littlefs_test(
         fn #f_ident(#args) {
             init_logger();
 
-            let mut env = default_config(128);
-            init_context(&mut env);
+            for (_, block_size) in [
+                (16, 512),
+                (1, 512),
+                (0, 512),
+                (1, 4096),
+                (4096, 32768)] {
 
-            #call_fn(&mut env.config, #args_);
+                let mut env = config_with_geometry(block_size, 128);
+                init_context(&mut env);
+
+                #call_fn(&mut env.config, #args_);
+            }
         }
 
         #[cfg(test)]
