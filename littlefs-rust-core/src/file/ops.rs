@@ -411,7 +411,7 @@ static mut BUFFER: [u8; 0] = [];
 #[cfg(feature = "alloc")]
 static mut ATTRS: [LfsAttr; 0] = [];
 #[cfg(feature = "alloc")]
-#[allow(clippy::deref_addrof)]
+#[expect(clippy::deref_addrof)]
 static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
     buffer: unsafe { &mut *(&raw mut BUFFER) },
     attrs: unsafe { &mut *(&raw mut ATTRS) },

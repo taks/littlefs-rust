@@ -1704,7 +1704,7 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
     assert_ok!(lfs_format(lfs, &env.config));
     assert_ok!(lfs_mount(lfs, &env.config));
 
-    #[allow(invalid_from_utf8_unchecked)]
+    #[expect(invalid_from_utf8_unchecked)]
     let root = unsafe { str::from_utf8_unchecked(&[0xff]) };
     assert_ok!(lfs_mkdir(lfs, root));
     let mut child_paths: Vec<Vec<u8>> = Vec::with_capacity(6);

@@ -3,8 +3,6 @@
 //! Bad-block handling: single, region, alternating corruption, and superblock corruption.
 //! All cases require block_cycles == -1 (no FS-level wear leveling).
 
-#![allow(clippy::needless_range_loop)]
-
 mod common;
 
 use common::{
