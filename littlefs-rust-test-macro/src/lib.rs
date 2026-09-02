@@ -42,14 +42,16 @@ pub fn littlefs_test(
         fn #f_ident(#args) {
             init_logger();
 
-            for (_, block_size) in [
+            for (size, block_size) in [
                 (16, 512),
                 (1, 512),
-                (0, 512),
+                (512, 512),
                 (1, 4096),
                 (4096, 32768)] {
 
                 let mut env = config_with_geometry(block_size, 128);
+                env.config.read_size = size;
+                env.config.prog_size = size;
                 init_context(&mut env);
 
                 #call_fn(&mut env.config, #args_);
