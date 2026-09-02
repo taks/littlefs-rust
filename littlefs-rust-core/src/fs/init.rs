@@ -185,7 +185,6 @@ use crate::util::lfs_npw2;
 ///     return err;
 /// }
 /// ```
-#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn lfs_init(lfs: &mut Lfs, cfg: &crate::lfs_config::LfsConfig) -> Result<(), Error> {
     unsafe {
         // check that bool is a truthy-preserving type (C: (bool)0x80000000)

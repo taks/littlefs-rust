@@ -1776,7 +1776,7 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
             );
         }
     }
-    #[allow(invalid_from_utf8_unchecked)]
+    #[expect(invalid_from_utf8_unchecked)]
     let new_root = unsafe { str::from_utf8_unchecked(&[0xff, 0xff]) };
     assert_ok!(lfs_mkdir(lfs, new_root));
     for (n, fp) in full_paths.iter().enumerate() {
@@ -2054,7 +2054,7 @@ fn test_paths_nonutf8() {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, &env.config));
     assert_ok!(lfs_mount(lfs, &env.config));
-    #[allow(invalid_from_utf8_unchecked)]
+    #[expect(invalid_from_utf8_unchecked)]
     let name = unsafe { str::from_utf8_unchecked(b"foo\xff\xfe\xfdbar") };
     assert_ok!(lfs_mkdir(lfs, name));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };

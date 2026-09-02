@@ -769,7 +769,6 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                 };
                 lfs_cache_drop(lfs, &mut *lfs.rcache.get());
 
-                #[allow(clippy::while_immutable_condition)] // file.pos updated by flushedwrite
                 while file.pos < file.ctz.size {
                     let mut data: u8 = 0;
                     let _res = lfs_file_flushedread(lfs, &mut orig, data.as_mut_bytes())?;
@@ -1300,7 +1299,6 @@ pub fn lfs_file_write_(
         let pos = file.pos;
         file.pos = file.ctz.size;
         let zero: u8 = 0;
-        #[allow(clippy::while_immutable_condition)] // pos mutated via raw ptr in flushedwrite
         while file.pos < pos {
             let _res = lfs_file_flushedwrite(lfs, file, zero.as_bytes())?;
         }
@@ -1523,7 +1521,6 @@ pub fn lfs_file_truncate_(
         let _res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_END)?;
 
         let zero = [0u8];
-        #[allow(clippy::while_immutable_condition)] // file.pos updated by lfs_file_write_
         while file.pos < size {
             let _res = lfs_file_write_(lfs, file, &zero)?;
         }
