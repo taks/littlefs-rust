@@ -8,7 +8,7 @@ pub fn littlefs_test(
     let mut input_fn = syn::parse_macro_input!(input as ItemFn);
 
     let f_name = format!("{}_", input_fn.sig.ident);
-    let ident = syn::Ident::new(&f_name, proc_macro2::Span::call_site());
+    let f_ident = syn::Ident::new(&f_name, proc_macro2::Span::call_site());
     // dbg!(ident);
     let call_fn = input_fn.sig.ident.clone();
 
@@ -39,7 +39,7 @@ pub fn littlefs_test(
 
     quote::quote! {
         #[rstest::rstest]
-        fn #ident(#args) {
+        fn #f_ident(#args) {
             init_logger();
 
             let mut env = default_config(128);
