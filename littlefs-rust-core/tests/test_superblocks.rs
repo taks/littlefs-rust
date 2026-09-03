@@ -9,17 +9,20 @@ mod common;
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_superblock_magic,
-    clone_config_with_block_count, default_config, init_context,
+    clone_config_with_block_count, config_with_geometry, default_config, init_context,
 };
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;
 use littlefs_rust_core::{
-    Lfs, LfsFile, LfsFsinfo, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
-    lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_mount, lfs_remove, lfs_stat, lfs_unmount,
+    Lfs, LfsConfig, LfsFile, LfsFsinfo, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
+    lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_mount, lfs_remove, lfs_stat,
+    lfs_unmount,
 };
+use littlefs_rust_test_macro::littlefs_test;
 use rstest::rstest;
+use std::cmp;
 
-use crate::common::init_logger;
+use crate::common::{init_logger, read_block_raw};
 
 // --- test_superblocks_format ---
 // Upstream: lfs_format(&lfs, cfg) => 0
@@ -46,15 +49,16 @@ fn test_superblocks_mount() {
 
 // --- test_superblocks_magic ---
 // Upstream: format, then raw read to verify "littlefs" at MAGIC_OFFSET in both blocks.
-#[test]
-fn test_superblocks_magic() {
-    common::init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[littlefs_test]
+fn test_superblocks_magic(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
-    assert_superblock_magic(&env.config);
+    let mut magic = vec![0u8; cmp::max(16, cfg.read_size as usize)];
+    assert_ok!(read_block_raw(cfg, 0, 0, &mut magic));
+    assert_eq!(&magic[8..16], b"littlefs");
+    assert_ok!(read_block_raw(cfg, 1, 0, &mut magic));
+    assert_eq!(&magic[8..16], b"littlefs");
 }
 
 // --- test_traverse_attrs_callback_order ---
