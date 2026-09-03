@@ -6,13 +6,14 @@ mod common;
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
     LFS_FILE_MAX, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_RDWR, LFS_O_WRONLY, LFS_SEEK_CUR,
-    LFS_SEEK_END, LFS_SEEK_SET, default_config, init_context,
+    LFS_SEEK_END, LFS_SEEK_SET, config_with_geometry, default_config, init_context, init_logger,
 };
 use littlefs_rust_core::{
-    Lfs, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_rewind,
-    lfs_file_seek, lfs_file_size, lfs_file_sync, lfs_file_tell, lfs_file_write, lfs_format,
-    lfs_mount, lfs_unmount,
+    Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
+    lfs_file_rewind, lfs_file_seek, lfs_file_size, lfs_file_sync, lfs_file_tell, lfs_file_write,
+    lfs_format, lfs_mount, lfs_unmount,
 };
+use littlefs_rust_test_macro::littlefs_test;
 use rstest::rstest;
 
 const KITTY: &[u8] = b"kittycatcat";
@@ -24,20 +25,17 @@ const PORCUPINE: &[u8] = b"porcupineee";
 
 /// Upstream: [cases.test_seek_read]
 /// defines = [{COUNT=132, SKIP=4}, {COUNT=132, SKIP=128}, ...]
-#[rstest]
+#[littlefs_test]
 #[case(132, 4)]
 #[case(132, 128)]
 #[case(200, 10)]
 #[case(200, 100)]
 #[case(4, 1)]
 #[case(4, 2)]
-fn test_seek_read(#[case] count: u32, #[case] skip: u32) {
-    let mut env = default_config(256);
-    init_context(&mut env);
-
+fn test_seek_read(cfg: &mut LfsConfig, #[case] count: u32, #[case] skip: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "kitty";
     let file = &mut LfsFile::default();
@@ -54,7 +52,7 @@ fn test_seek_read(#[case] count: u32, #[case] skip: u32) {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
 
     let mut buf = [0u8; 32];
