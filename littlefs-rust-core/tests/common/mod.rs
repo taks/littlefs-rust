@@ -457,29 +457,6 @@ macro_rules! assert_err {
     }};
 }
 
-/// Check if block has "littlefs" at offset 8 or 12 (layout varies by commit path).
-fn block_has_magic(config: &LfsConfig, block: u32) -> bool {
-    let mut buf = [0u8; 24];
-    let err = unsafe { config.context.unwrap().as_mut().read(block, 0, &mut buf) };
-    if err.is_err() {
-        return false;
-    }
-    &buf[8..16] == MAGIC || &buf[12..20] == MAGIC
-}
-
-/// Assert "littlefs" in blocks 0 and 1 (at offset 8 or 12 depending on commit path).
-/// Both blocks must have magic per upstream.
-pub fn assert_superblock_magic(config: &LfsConfig) {
-    let has_0 = block_has_magic(config, 0);
-    let has_1 = block_has_magic(config, 1);
-    assert!(
-        has_0 && has_1,
-        "both blocks 0 and 1 must have MAGIC: block 0={} block 1={}",
-        has_0,
-        has_1
-    );
-}
-
 /// Invoke config read callback for raw block access (e.g. test_superblocks_magic).
 pub fn read_block_raw(
     config: &LfsConfig,

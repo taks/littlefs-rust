@@ -8,8 +8,8 @@ mod common;
 #[cfg(feature = "slow_tests")]
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
-    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, assert_superblock_magic,
-    clone_config_with_block_count, config_with_geometry, default_config, init_context,
+    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, clone_config_with_block_count,
+    config_with_geometry, default_config, init_context,
 };
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;
@@ -266,39 +266,40 @@ fn test_superblocks_expand() {
 
 /// Upstream: [cases.test_superblocks_magic_expand]
 /// Same as expand + magic check after.
-#[test]
-fn test_superblocks_magic_expand() {
-    common::init_logger();
-    for &block_cycles in &[32i32, 33, 1] {
-        for &n in &[10u32, 100, 1000] {
-            let mut env = default_config(128);
-            init_context(&mut env);
-            env.config.block_cycles = block_cycles;
+#[littlefs_test]
+fn test_superblocks_magic_expand(
+    cfg: &mut LfsConfig,
+    #[values(32, 33, 1)] block_cycles: i32,
+    #[values(10, 100, 1000)] n: u32,
+) {
+    cfg.block_cycles = block_cycles;
 
-            let lfs = &mut Lfs::default();
-            assert_ok!(lfs_format(lfs, &env.config));
-            assert_ok!(lfs_mount(lfs, &env.config));
+    let lfs = &mut Lfs::default();
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
-            let dummy = "dummy";
-            for _ in 0..n {
-                let file = &mut LfsFile::default();
-                assert_ok!(lfs_file_open(
-                    lfs,
-                    file,
-                    dummy,
-                    LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-                ));
-                assert_ok!(lfs_file_close(lfs, file));
-                let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-                assert_ok!(lfs_stat(lfs, dummy, info));
-                assert_eq!(info.type_, LFS_TYPE_REG as u8);
-                assert_ok!(lfs_remove(lfs, dummy));
-            }
-            assert_ok!(lfs_unmount(lfs));
-
-            assert_superblock_magic(&env.config);
-        }
+    let dummy = "dummy";
+    for _ in 0..n {
+        let file = &mut LfsFile::default();
+        assert_ok!(lfs_file_open(
+            lfs,
+            file,
+            dummy,
+            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+        ));
+        assert_ok!(lfs_file_close(lfs, file));
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_ok!(lfs_stat(lfs, dummy, info));
+        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_ok!(lfs_remove(lfs, dummy));
     }
+    assert_ok!(lfs_unmount(lfs));
+
+    let mut magic = vec![0u8; cmp::max(16, cfg.read_size as usize)];
+    assert_ok!(read_block_raw(cfg, 0, 0, &mut magic));
+    assert_eq!(&magic[8..16], b"littlefs");
+    assert_ok!(read_block_raw(cfg, 1, 0, &mut magic));
+    assert_eq!(&magic[8..16], b"littlefs");
 }
 
 /// Upstream: [cases.test_superblocks_expand_power_cycle]
