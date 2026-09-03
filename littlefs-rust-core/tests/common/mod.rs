@@ -6,6 +6,7 @@
 #![allow(dead_code)]
 
 pub mod dump;
+pub mod emubd;
 pub mod powerloss;
 
 use core::cell::RefCell;
