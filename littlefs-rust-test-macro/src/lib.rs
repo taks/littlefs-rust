@@ -13,7 +13,7 @@ pub fn littlefs_test(
     let f_ident = syn::Ident::new(&f_name, proc_macro2::Span::call_site());
     // dbg!(ident);
     let call_fn = input_fn.sig.ident.clone();
-    let attrs = input_fn.attrs.clone();
+    let attrs = std::mem::take(&mut input_fn.attrs);
 
     let args: Punctuated<FnArg, Comma> = input_fn.sig.inputs.clone().into_iter().skip(1).collect();
     let args_ = args
@@ -39,7 +39,6 @@ pub fn littlefs_test(
             _ => {}
         };
     }
-    input_fn.attrs.clear();
 
     quote::quote! {
         #[rstest::rstest]
