@@ -26,7 +26,7 @@ pub trait Storage {
 /// Per lfs.h struct lfs_config.
 /// Layout matches C for potential FFI. Callbacks use Option to allow null.
 #[repr(C)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LfsConfig {
     pub context: Option<NonNull<dyn Storage>>,
     pub read_size: lfs_size_t,
