@@ -1,4 +1,4 @@
-use std::{ops::Deref, ptr::NonNull, rc::Rc};
+use std::{ops::Deref, rc::Rc};
 
 use littlefs_rust_core::{Storage, error::Error};
 
@@ -32,6 +32,8 @@ struct EmubdConfig {
 
     pub badblock_behavior: BadblockBehavior,
     pub powerloss_behavior: PowerLossBehavior,
+
+    pub powerloss_cb: dyn Fn() -> (),
 }
 
 struct Emubd<'a> {
@@ -40,8 +42,9 @@ struct Emubd<'a> {
     readed: usize,
     proged: usize,
     erased: usize,
+    power_cycles: u32,
 
-    ooo_block: Option<u32>,
+    ooo_block: Option<usize>,
     ooo_data: Option<Rc<EmubdBlock>>,
 
     cfg: &'a EmubdConfig,
@@ -77,6 +80,31 @@ impl<'d> Emubd<'d> {
             std::mem::transmute(block.deref())
         }
     }
+
+    fn powerloss(&mut self) -> Result<(), Error> {
+        let mut ooo_data = None;
+
+        // emulate out-of-order writes?
+        if self.cfg.powerloss_behavior == PowerLossBehavior::Ooo
+            && let Some(block) = self.ooo_block
+        {
+            // since writes between syncs are allowed to be out-of-order, it
+            // shouldn't hurt to restore the first write on powerloss, right?
+            ooo_data = std::mem::replace(&mut self.blocks[block], self.ooo_data.clone());
+        }
+
+        // simulate power loss
+        (self.cfg.powerloss_cb)();
+
+        // if we continue, undo out-of-order write emulation
+        if self.cfg.powerloss_behavior == PowerLossBehavior::Ooo
+            && let Some(block) = self.ooo_block
+        {
+            self.blocks[block] = ooo_data;
+        }
+
+        Ok(())
+    }
 }
 
 impl Storage for Emubd<'_> {
@@ -108,6 +136,49 @@ impl Storage for Emubd<'_> {
     }
 
     fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
+        // check if write is valid
+        assert!(block < self.cfg.erase_count);
+        assert!(offset % self.cfg.prog_size == 0);
+        assert!(data.len() % self.cfg.prog_size as usize == 0);
+        assert!(offset + data.len() as u32 <= self.cfg.erase_size);
+
+        // get the block
+        let b = self.mutblock(block as usize);
+
+        // block bad?
+        if self.cfg.erase_cycles > 0 && b.wear >= self.cfg.erase_cycles {
+            match self.cfg.badblock_behavior {
+                BadblockBehavior::Prog => return Err(Error::Corrupt),
+                BadblockBehavior::ProgNoop | BadblockBehavior::EraseNoop => return Ok(()),
+                _ => (),
+            };
+        }
+
+        // were we erased properly?
+        if let Some(v) = self.cfg.erase_value {
+            assert!(
+                b.data
+                    .iter()
+                    .skip(offset as usize)
+                    .take(data.len())
+                    .all(|&x| x == v)
+            );
+        }
+
+        // prog data
+        b.data[(offset as usize)..(offset as usize + data.len())].copy_from_slice(data);
+
+        // track progs
+        self.proged += data.len();
+
+        // lose power?
+        if self.power_cycles > 0 {
+            self.power_cycles -= 1;
+            if self.power_cycles == 0 {
+                self.powerloss()?;
+            }
+        }
+
         todo!()
     }
 
@@ -116,7 +187,7 @@ impl Storage for Emubd<'_> {
 
         // emulate out-of-order writes? save first write
         if self.cfg.powerloss_behavior == PowerLossBehavior::Ooo && self.ooo_block.is_none() {
-            self.ooo_block = Some(block);
+            self.ooo_block = Some(block as usize);
             self.ooo_data = self.blocks[block as usize].as_ref().map(|x| x.clone());
         }
 
@@ -124,17 +195,35 @@ impl Storage for Emubd<'_> {
         let b = self.mutblock(block as usize);
 
         // block bad?
-        if self.cfg.erase_cycles > 0 && b.wear >= self.cfg.erase_cycles {
-            if self.cfg.badblock_behavior == BadblockBehavior::Prog {
-                return Err(Error::Corrupt);
-            } else if self.cfg.badblock_behavior == BadblockBehavior::ProgNoop
-                || self.cfg.badblock_behavior == BadblockBehavior::EraseNoop
-            {
-                return Ok(());
+        if self.cfg.erase_cycles > 0 {
+            if b.wear >= self.cfg.erase_cycles {
+                match self.cfg.badblock_behavior {
+                    BadblockBehavior::Erase => return Err(Error::Corrupt),
+                    BadblockBehavior::EraseNoop => return Ok(()),
+                    _ => (),
+                };
+            } else {
+                b.wear += 1;
             }
         }
 
-        todo!()
+        // emulate an erase value?
+        if let Some(e) = self.cfg.erase_value {
+            b.data.fill(e);
+        }
+
+        // track erases
+        self.erased += self.cfg.erase_size as usize;
+
+        // lose power?
+        if self.power_cycles > 0 {
+            self.power_cycles -= 1;
+            if self.power_cycles == 0 {
+                self.powerloss()?;
+            }
+        }
+
+        Ok(())
     }
 
     fn sync(&mut self) -> Result<(), Error> {
