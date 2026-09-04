@@ -7,7 +7,6 @@
 mod common;
 
 use common::{default_config, init_context, init_logger};
-use littlefs_rust_core::LfsFile;
 use littlefs_rust_core::lfs_type::OpenFlags;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
@@ -15,6 +14,10 @@ use littlefs_rust_core::{
     lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mattr, lfs_mktag, lfs_mount, lfs_superblock_tole32,
     lfs_unmount,
 };
+use littlefs_rust_core::{
+    LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
+};
+use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
 
 /// Upstream: [cases.test_compat_major_incompat]
@@ -120,15 +123,8 @@ fn test_compat_minor_incompat() {
 /// Upstream: [cases.test_compat_minor_bump]
 ///
 /// Downgrade minor version in superblock, mount works, write triggers minor bump.
-#[test]
-fn test_compat_minor_bump() {
-    use littlefs_rust_core::{lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write};
-
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_compat_minor_bump(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));

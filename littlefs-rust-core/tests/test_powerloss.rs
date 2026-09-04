@@ -16,7 +16,9 @@ use common::{
     read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsDir, LfsFile, error::Error, lfs_dir_close, lfs_dir_open, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_unmount,
+    Lfs, LfsConfig, LfsDir, LfsFile, error::Error, lfs_dir_close, lfs_dir_open, lfs_file_close,
+    lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
+    lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 
@@ -71,8 +73,7 @@ fn test_powerloss_only_rev(cfg: &LfsConfig) {
     let block_size = cfg.block_size as usize;
     let mut block_buf = vec![0u8; block_size];
     let _ = unsafe {
-        cfg
-            .context
+        cfg.context
             .unwrap()
             .as_mut()
             .read(pair[1], 0, &mut block_buf)
@@ -81,13 +82,7 @@ fn test_powerloss_only_rev(cfg: &LfsConfig) {
     block_buf[0..4].copy_from_slice(&(rev + 1).to_le_bytes());
 
     let _ = unsafe { cfg.context.unwrap().as_mut().erase(pair[1]) };
-    let _ = unsafe {
-        cfg
-            .context
-            .unwrap()
-            .as_mut()
-            .write(pair[1], 0, &block_buf)
-    };
+    let _ = unsafe { cfg.context.unwrap().as_mut().write(pair[1], 0, &block_buf) };
 
     assert_ok!(lfs_mount(lfs, cfg));
 
