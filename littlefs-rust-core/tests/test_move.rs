@@ -925,23 +925,47 @@ fn test_reentrant_dir(cfg: &mut LfsConfig) {
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
     assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
-    // lfs_dir_read(&lfs, &dir, &info) => 1;
-    // assert(strcmp(info.name, "..") == 0);
-    // assert(info.type == LFS_TYPE_DIR);
-    // lfs_dir_read(&lfs, &dir, &info) => 0;
-    // lfs_dir_close(&lfs, &dir) => 0;
-    // lfs_dir_open(&lfs, &dir, "d") => 0;
-    // lfs_dir_read(&lfs, &dir, &info) => 1;
-    // assert(strcmp(info.name, ".") == 0);
-    // assert(info.type == LFS_TYPE_DIR);
-    // lfs_dir_read(&lfs, &dir, &info) => 1;
-    // assert(strcmp(info.name, "..") == 0);
-    // assert(info.type == LFS_TYPE_DIR);
-    // lfs_dir_read(&lfs, &dir, &info) => 1;
-    // assert(strcmp(info.name, "hi") == 0);
-    // assert(info.type == LFS_TYPE_DIR);
-    // lfs_dir_read(&lfs, &dir, &info) => 0;
-    // lfs_dir_close(&lfs, &dir) => 0;
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(&info.name[..2], b"..");
+    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_ok!(lfs_dir_close(lfs, dir));
+
+    assert_ok!(lfs_dir_open(lfs, dir, "d"));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(&info.name[..1], b".");
+    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(&info.name[..2], b"..");
+    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(&info.name[..2], b"hi");
+    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_ok!(lfs_dir_close(lfs, dir));
+
+    assert_eq!(lfs_dir_open(lfs, dir, "a/hi"), Err(Error::NoEntry));
+    assert_eq!(lfs_dir_open(lfs, dir, "b/hi"), Err(Error::NoEntry));
+    assert_eq!(lfs_dir_open(lfs, dir, "c/hi"), Err(Error::NoEntry));
+    assert_ok!(lfs_dir_open(lfs, dir, "d/hi"));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(&info.name[..1], b".");
+    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(&info.name[..2], b"..");
+    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(&info.name[..7], b"bonjour");
+    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(&info.name[..4], b"hola");
+    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(&info.name[..5], b"ohayo");
+    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_ok!(lfs_dir_close(lfs, dir));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 // --- Missing upstream stubs ---
