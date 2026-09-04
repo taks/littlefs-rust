@@ -1,4 +1,4 @@
-use std::{ops::Deref, rc::Rc};
+use std::{fmt::Debug, ops::Deref, rc::Rc};
 
 use littlefs_rust_core::{Storage, error::Error};
 
@@ -37,6 +37,22 @@ pub struct EmubdConfig<'d> {
     pub powerloss_behavior: PowerLossBehavior,
 
     pub powerloss_cb: &'d dyn Fn() -> (),
+}
+
+impl Debug for EmubdConfig<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EmubdConfig")
+            .field("read_size", &self.read_size)
+            .field("prog_size", &self.prog_size)
+            .field("erase_size", &self.erase_size)
+            .field("erase_count", &self.erase_count)
+            .field("erase_value", &self.erase_value)
+            .field("erase_cycles", &self.erase_cycles)
+            .field("badblock_behavior", &self.badblock_behavior)
+            .field("power_cycles", &self.power_cycles)
+            .field("powerloss_behavior", &self.powerloss_behavior)
+            .finish()
+    }
 }
 
 pub struct Emubd<'a> {
