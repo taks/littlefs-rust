@@ -40,10 +40,10 @@ pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConf
     test(cfg);
 }
 
-pub fn run_powerloss_linear(mut cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig) -> ()) {
+pub fn run_powerloss_linear(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig) -> ()) {
     let mut i = 1;
 
-    let powerloss_cb = || panic!();
+    let powerloss_cb = || panic!("powerloss");
 
     let bdcfg = EmubdConfig {
         read_size: cfg.read_size,
@@ -59,11 +59,22 @@ pub fn run_powerloss_linear(mut cfg: &mut LfsConfig, mut test: impl FnMut(&mut L
     };
 
     let mut context = Emubd::new(unsafe { core::mem::transmute(&bdcfg) });
+    cfg.context = Some(NonNull::from_mut(&mut context));
 
     loop {
-        let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+        if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
             test(cfg);
-        }));
+        })) {
+            if let Some(s) = (&*err).downcast_ref::<&str>()
+                && *s == "powerloss"
+            {
+            } else {
+                std::panic::resume_unwind(err);
+            }
+        } else {
+            break;
+        }
+
         i += 1;
         context.power_cycles = i;
     }
