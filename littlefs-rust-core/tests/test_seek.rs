@@ -791,14 +791,11 @@ fn test_seek_reentrant_write(cfg: &mut LfsConfig, #[case] count: u32) {
 }
 
 /// Upstream: [cases.test_seek_filemax]
-#[test]
-fn test_seek_filemax() {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_seek_filemax(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "kitty";
     let file = &mut LfsFile::default();
@@ -831,14 +828,11 @@ fn test_seek_filemax() {
 }
 
 /// Upstream: [cases.test_seek_underflow]
-#[test]
-fn test_seek_underflow() {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_seek_underflow(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "kitty";
     let file = &mut LfsFile::default();

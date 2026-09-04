@@ -65,7 +65,7 @@ pub fn lfs_test(
 
             init_logger();
 
-            for (size, block_size) in [
+            for (size_, block_size) in [
                 (16, 512),
                 (1, 512),
                 (512, 512),
@@ -77,8 +77,8 @@ pub fn lfs_test(
                 let lookahead_buf = vec![0u8; block_size as usize];
                 let mut cfg = LfsConfig {
                     context: None,
-                    read_size: size,
-                    prog_size: size,
+                    read_size: size_,
+                    prog_size: size_,
                     block_size,
                     block_count: 128,
                     block_cycles: -1,

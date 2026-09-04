@@ -12,10 +12,11 @@ use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, default_config
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_file_size;
 use littlefs_rust_core::{
-    Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close,
-    lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mount, lfs_remove,
-    lfs_unmount,
+    Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
+    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format,
+    lfs_mount, lfs_remove, lfs_unmount,
 };
+use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
 
 const ALPHAS: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
@@ -29,14 +30,15 @@ const LFS_TYPE_REG: u8 = 0x01;
 /// Open FILES files ("a","b",...), write SIZE bytes to each in round-robin
 /// (1 byte per iteration), close all. Verify directory listing (FILES + 2
 /// for . and ..). Check each file has SIZE bytes, read back first 10 bytes.
-#[rstest]
-fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] files: usize) {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_interspersed_files(
+    cfg: &LfsConfig,
+    #[values(10, 100)] size: usize,
+    #[values(4, 10, 26)] files: usize,
+) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
