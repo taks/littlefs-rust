@@ -45,7 +45,7 @@ pub struct Emubd<'a> {
     readed: usize,
     proged: usize,
     erased: usize,
-    power_cycles: u32,
+    pub power_cycles: u32,
 
     ooo_block: Option<usize>,
     ooo_data: Option<Rc<EmubdBlock>>,

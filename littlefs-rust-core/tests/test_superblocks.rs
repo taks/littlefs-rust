@@ -9,7 +9,7 @@ mod common;
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, clone_config_with_block_count,
-    config_with_geometry, default_config, init_context,
+    default_config, init_context,
 };
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;

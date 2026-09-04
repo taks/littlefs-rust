@@ -4,7 +4,7 @@ use syn::{FnArg, ItemFn, punctuated::Punctuated, token::Comma};
 
 #[proc_macro_attribute]
 pub fn littlefs_test(
-    _attr: proc_macro::TokenStream,
+    attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
     let mut input_fn = syn::parse_macro_input!(input as ItemFn);
@@ -39,6 +39,22 @@ pub fn littlefs_test(
             _ => {}
         };
     }
+
+    let reentrant = if attr.is_empty() {
+        false
+    } else {
+        let attr = syn::parse_macro_input!(attr as syn::Ident);
+        attr.to_string() == "reentrant"
+    };
+    let reentrant = if reentrant {
+        quote::quote! {
+            run_powerloss_liner(&mut cfg, |cfg| {
+                #call_fn(cfg, #args_);
+            });
+        }
+    } else {
+        quote::quote! {}
+    };
 
     quote::quote! {
         #[rstest::rstest]
@@ -81,6 +97,8 @@ pub fn littlefs_test(
                 run_powerloss_none(&mut cfg, |cfg| {
                     #call_fn(cfg, #args_);
                 });
+
+                #reentrant
             }
         }
 

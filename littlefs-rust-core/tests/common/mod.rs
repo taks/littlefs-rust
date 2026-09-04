@@ -40,6 +40,30 @@ pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConf
     test(cfg);
 }
 
+pub fn run_powerloss_liner(mut cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig) -> ()) {
+    let bdcfg = EmubdConfig {
+        read_size: cfg.read_size,
+        prog_size: cfg.prog_size,
+        erase_size: cfg.block_size,
+        erase_count: cfg.block_count,
+        erase_value: Some(0xFF),
+        erase_cycles: 0,
+        badblock_behavior: BadblockBehavior::Prog,
+        power_cycles: 0,
+        powerloss_behavior: PowerLossBehavior::Noop,
+        powerloss_cb: &|| panic!("powerloss"),
+    };
+
+    let mut context = Emubd::new(unsafe { core::mem::transmute(&bdcfg) });
+
+    let mut i = 1;
+    loop {
+        test(&mut cfg);
+        i += 1;
+        context.power_cycles = i;
+    }
+}
+
 /// Magic string "littlefs" in superblock blocks. Per lfs.h.
 /// Layout: [rev 4][CREATE tag 4]["littlefs" 8] — C format_and_dump shows magic at 8
 pub const MAGIC: &[u8; 8] = b"littlefs";
