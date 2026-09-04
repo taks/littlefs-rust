@@ -44,6 +44,9 @@ pub fn littlefs_test(
         #[rstest::rstest]
         #(#attrs)*
         fn #f_ident(#args) {
+            use std::ptr::NonNull;
+            use common::run_powerloss_none;
+
             init_logger();
 
             for (size, block_size) in [
@@ -53,12 +56,31 @@ pub fn littlefs_test(
                 (1, 4096),
                 (4096, 32768)] {
 
-                let mut env = config_with_geometry(block_size, 128);
-                env.config.read_size = size;
-                env.config.prog_size = size;
-                init_context(&mut env);
+                let read_buf = vec![0u8; block_size as usize];
+                let prog_buf = vec![0u8; block_size as usize];
+                let lookahead_buf = vec![0u8; block_size as usize];
+                let mut cfg = LfsConfig {
+                    context: None,
+                    read_size: size,
+                    prog_size: size,
+                    block_size,
+                    block_count: 128,
+                    block_cycles: -1,
+                    cache_size: block_size,
+                    compact_thresh: u32::MAX,
+                    read_buffer: Some(NonNull::from_ref(&read_buf)),
+                    prog_buffer: Some(NonNull::from_ref(&prog_buf)),
+                    lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
+                    name_max: 255,
+                    file_max: 2_147_483_647,
+                    attr_max: 1022,
+                    metadata_max: 0,
+                    inline_max: 0,
+                };
 
-                #call_fn(&mut env.config, #args_);
+                run_powerloss_none(&mut cfg, |cfg| {
+                    #call_fn(cfg, #args_);
+                });
             }
         }
 
