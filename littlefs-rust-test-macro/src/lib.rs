@@ -48,7 +48,7 @@ pub fn littlefs_test(
     };
     let reentrant = if reentrant {
         quote::quote! {
-            run_powerloss_liner(&mut cfg, |cfg| {
+            run_powerloss_linear(&mut cfg, |cfg| {
                 #call_fn(cfg, #args_);
             });
         }
@@ -61,7 +61,7 @@ pub fn littlefs_test(
         #(#attrs)*
         fn #f_ident(#args) {
             use std::ptr::NonNull;
-            use common::{run_powerloss_none, run_powerloss_liner};
+            use common::{run_powerloss_none, run_powerloss_linear};
 
             init_logger();
 

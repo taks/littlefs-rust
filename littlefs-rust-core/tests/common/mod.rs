@@ -11,7 +11,7 @@ pub mod powerloss;
 
 use core::cell::RefCell;
 use littlefs_rust_core::{LfsConfig, Storage, error::Error, lfs_type::OpenFlags};
-use std::ptr::NonNull;
+use std::{panic::AssertUnwindSafe, ptr::NonNull};
 
 use crate::common::emubd::{BadblockBehavior, Emubd, EmubdConfig, PowerLossBehavior};
 
@@ -40,7 +40,11 @@ pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConf
     test(cfg);
 }
 
-pub fn run_powerloss_liner(mut cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig) -> ()) {
+pub fn run_powerloss_linear(mut cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig) -> ()) {
+    let mut i = 1;
+
+    let powerloss_cb = || panic!();
+
     let bdcfg = EmubdConfig {
         read_size: cfg.read_size,
         prog_size: cfg.prog_size,
@@ -49,16 +53,17 @@ pub fn run_powerloss_liner(mut cfg: &mut LfsConfig, mut test: impl FnMut(&mut Lf
         erase_value: Some(0xFF),
         erase_cycles: 0,
         badblock_behavior: BadblockBehavior::Prog,
-        power_cycles: 0,
+        power_cycles: i,
         powerloss_behavior: PowerLossBehavior::Noop,
-        powerloss_cb: &|| panic!("powerloss"),
+        powerloss_cb: &powerloss_cb,
     };
 
     let mut context = Emubd::new(unsafe { core::mem::transmute(&bdcfg) });
 
-    let mut i = 1;
     loop {
-        test(&mut cfg);
+        let result = std::panic::catch_unwind(AssertUnwindSafe(|| {
+            test(cfg);
+        }));
         i += 1;
         context.power_cycles = i;
     }

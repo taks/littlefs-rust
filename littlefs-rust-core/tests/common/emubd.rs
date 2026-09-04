@@ -38,6 +38,7 @@ pub struct EmubdConfig<'d> {
 
     pub powerloss_cb: &'d dyn Fn() -> (),
 }
+impl std::panic::RefUnwindSafe for EmubdConfig<'_> {}
 
 impl Debug for EmubdConfig<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
