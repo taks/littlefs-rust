@@ -13,10 +13,14 @@ use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_
 use common::{
     LFS_O_CREAT, LFS_O_WRONLY, config_with_cache, default_config, init_context, init_logger,
 };
+#[cfg(test)]
+use littlefs_rust_core::LfsConfig;
 use littlefs_rust_core::{
     Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_write, lfs_format, lfs_mkdir,
     lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
+#[cfg(feature = "slow_tests")]
+use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
 
 #[allow(dead_code)]
@@ -200,67 +204,45 @@ fn test_relocations_nonreentrant_renames(
 
 // --- test_relocations_reentrant ---
 // mkdir/remove cycles with power-loss; verify FS consistent after each.
-#[rstest]
+#[lfs_test(reentrant)]
 #[case(6, 1, 20)]
 #[case(26, 1, 20)]
 #[case(3, 3, 20)]
 #[cfg(feature = "slow_tests")]
-#[ignore = "bug: power-loss iteration returns Error::Io for some cases"]
-fn test_relocations_reentrant(#[case] files: usize, #[case] depth: usize, #[case] cycles: usize) {
+// #[ignore = "bug: power-loss iteration returns Error::Io for some cases"]
+fn test_relocations_reentrant(
+    cfg: &mut LfsConfig,
+    #[case] files: usize,
+    #[case] depth: usize,
+    #[case] cycles: usize,
+) {
     if depth == 3 {
         return; // guard: DEPTH==3 && CACHE_SIZE!=64
     }
-    init_logger();
-    let block_count = 128u32;
-    let mut env = powerloss_config(block_count);
-    init_powerloss_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    let snapshot = env.snapshot();
+    let err = littlefs_rust_core::lfs_mount(lfs, cfg);
+    if err.is_err() {
+        assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
+        assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
+    }
 
-    let result = run_powerloss_linear(
-        &mut env,
-        &snapshot,
-        block_count,
-        |lfs_ptr, config| {
-            lfs_mount(lfs_ptr, config)?;
+    for _ in 0..cycles {
+        for i in 0..files {
+            use littlefs_rust_core::error::Error;
 
-            for _ in 0..cycles {
-                for i in 0..files {
-                    let path = &format!("{}", (b'a' + i as u8) as char);
-                    let err = lfs_mkdir(lfs_ptr, path);
-                    if err.is_err() {
-                        let _ = lfs_unmount(lfs_ptr);
-                        return err;
-                    }
-                }
-                for i in 0..files {
-                    let path = &format!("{}", (b'a' + i as u8) as char);
-                    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-                    let err = lfs_stat(lfs_ptr, path, info);
-                    if err.is_err() {
-                        let _ = lfs_unmount(lfs_ptr);
-                        return err;
-                    }
-                    let err = lfs_remove(lfs_ptr, path);
-                    if err.is_err() {
-                        let _ = lfs_unmount(lfs_ptr);
-                        return err;
-                    }
-                }
-            }
-            lfs_unmount(lfs_ptr)?;
+            let path = &format!("{}", (b'a' + i as u8) as char);
+            assert!(matches!(lfs_mkdir(lfs, path), Ok(()) | Err(Error::Exists)));
+        }
+        for i in 0..files {
+            let path = &format!("{}", (b'a' + i as u8) as char);
+            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+            assert_ok!(lfs_stat(lfs, path, info));
 
-            Ok(())
-        },
-        |lfs_ptr, config| {
-            lfs_mount(lfs_ptr, config)?;
-            let _ = lfs_unmount(lfs_ptr);
-            Ok(())
-        },
-    );
-    result.expect("test_relocations_reentrant should complete");
+            assert_ok!(lfs_remove(lfs, path));
+        }
+    }
+    assert_ok!(lfs_unmount(lfs));
 }
 
 // --- test_relocations_reentrant_renames ---
