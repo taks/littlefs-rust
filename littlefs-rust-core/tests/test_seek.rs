@@ -2,8 +2,6 @@
 
 mod common;
 
-#[cfg(feature = "slow_tests")]
-use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
     LFS_FILE_MAX, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_RDWR, LFS_O_WRONLY, LFS_SEEK_CUR,
     LFS_SEEK_END, LFS_SEEK_SET, default_config, init_context, init_logger,
@@ -661,7 +659,7 @@ fn test_seek_inline_write(#[case] size: u32) {
 
 /// Upstream: [cases.test_seek_reentrant_write]
 /// defines.COUNT = [4, 64, 128], POWERLOSS_BEHAVIOR = [NOOP, OOO]
-#[littlefs_test]
+#[littlefs_test(reentrant)]
 #[case(4)]
 #[case(64)]
 #[case(128)]
@@ -709,9 +707,10 @@ fn test_seek_reentrant_write(cfg: &mut LfsConfig, #[case] count: u32) {
 
     if littlefs_rust_core::lfs_file_size(lfs, file) == 0 {
         for _ in 0..count {
-            let n = littlefs_rust_core::lfs_file_write(lfs, file, KITTY)?;
-
-            assert_eq!(n, KITTY.len() as u32);
+            assert_eq!(
+                littlefs_rust_core::lfs_file_write(lfs, file, KITTY),
+                Ok(KITTY.len() as u32)
+            );
         }
     }
     assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file));
@@ -748,42 +747,47 @@ fn test_seek_reentrant_write(cfg: &mut LfsConfig, #[case] count: u32) {
                 Ok(DOGGO.len() as u32)
             );
 
-            let seek_res = littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET)?;
-            if seek_res != pos {
-                return Err(Error::Invalid);
-            }
-            let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11])?;
-            if n != 11 {
-                return Err(Error::Invalid);
-            }
+            assert_eq!(
+                littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET),
+                Ok(pos)
+            );
+
+            assert_eq!(
+                littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11]),
+                Ok(11)
+            );
             assert_eq!(&buf[..11], DOGGO);
-            littlefs_rust_core::lfs_file_sync(lfs, file)?;
-            let seek_res = littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET)?;
-            if seek_res != pos {
-                return Err(Error::Invalid);
-            }
-            let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11])?;
-            if n != 11 {
-                return Err(Error::Invalid);
-            }
+            assert_ok!(littlefs_rust_core::lfs_file_sync(lfs, file));
+            assert_eq!(
+                littlefs_rust_core::lfs_file_seek(lfs, file, pos as i32, LFS_SEEK_SET),
+                Ok(pos)
+            );
+
+            assert_eq!(
+                littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11]),
+                Ok(11)
+            );
             assert_eq!(&buf[..11], DOGGO);
         }
     }
 
-    littlefs_rust_core::lfs_file_close(lfs, file)?;
+    assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file));
 
-    littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDWR)?;
+    assert_ok!(littlefs_rust_core::lfs_file_open(
+        lfs, file, path, LFS_O_RDWR
+    ));
     assert_eq!(littlefs_rust_core::lfs_file_size(lfs, file), count * 11);
     for _ in 0..count {
-        let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11])?;
-        if n != 11 {
-            return Err(Error::Invalid);
-        }
+        assert_eq!(
+            littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..11]),
+            Ok(11)
+        );
+
         assert_eq!(&buf[..11], DOGGO);
     }
-    littlefs_rust_core::lfs_file_close(lfs, file)?;
+    assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file));
 
-    littlefs_rust_core::lfs_unmount(lfs)?;
+    assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_seek_filemax]

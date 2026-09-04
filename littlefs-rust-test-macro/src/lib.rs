@@ -61,7 +61,7 @@ pub fn littlefs_test(
         #(#attrs)*
         fn #f_ident(#args) {
             use std::ptr::NonNull;
-            use common::run_powerloss_none;
+            use common::{run_powerloss_none, run_powerloss_liner};
 
             init_logger();
 
