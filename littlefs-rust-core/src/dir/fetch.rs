@@ -10,7 +10,7 @@ use crate::dir::lfs_fcrc::lfs_fcrc_fromle32;
 use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::file::lfs_ctz::{LfsCtz, lfs_ctz_fromle32};
-use crate::lfs_err;
+use crate::lfs_error;
 use crate::lfs_gstate::LfsGstate;
 use crate::lfs_gstate::{lfs_gstate_fromle32, lfs_gstate_hasmovehere, lfs_gstate_xor};
 use crate::lfs_info::LfsInfo;
@@ -642,8 +642,7 @@ pub fn lfs_dir_fetchmatch(
         }
     }
 
-    #[cfg(feature = "log")]
-    log::err!(
+    lfs_error!(
         "Corrupted dir pair at {{0x{:08x}, 0x{:08x}}}",
         dir.pair[0],
         dir.pair[1]
