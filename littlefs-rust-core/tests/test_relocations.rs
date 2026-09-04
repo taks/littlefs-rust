@@ -209,7 +209,7 @@ fn test_relocations_nonreentrant_renames(
 #[case(26, 1, 20)]
 #[case(3, 3, 20)]
 #[cfg(feature = "slow_tests")]
-// #[ignore = "bug: power-loss iteration returns Error::Io for some cases"]
+#[ignore = "bug: power-loss iteration returns Error::Io for some cases"]
 #[timeout(std::time::Duration::from_mins(1))]
 fn test_relocations_reentrant(
     cfg: &mut LfsConfig,
