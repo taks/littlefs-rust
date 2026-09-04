@@ -14,15 +14,17 @@ use common::{
     init_wear_leveling_context,
     powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
 };
+use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE3_DIR;
 use littlefs_rust_core::{
-    Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close,
-    lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_remove,
-    lfs_rename, lfs_stat, lfs_unmount,
+    Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
+    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
+    lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_core::{
     error::Error,
     lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG},
 };
+use littlefs_rust_test_macro::lfs_test;
 
 // --- test_move_nop ---
 // Rename to self is legal
@@ -864,49 +866,33 @@ fn test_move_dir_after_corrupt() {
 
 // --- test_reentrant_dir ---
 // Power-loss at cross-dir dir rename points; verify FS consistent after each.
-#[test]
-fn test_reentrant_dir() {
-    init_logger();
-    let mut env = powerloss_config(128);
-    init_powerloss_context(&mut env);
-
+#[lfs_test(reentrant)]
+fn test_reentrant_dir(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    let err = littlefs_rust_core::lfs_mount(lfs, cfg);
+    if err.is_err() {
+        assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
+        assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
+    }
+
     assert_ok!(lfs_mkdir(lfs, "a"));
     assert_ok!(lfs_mkdir(lfs, "b"));
     assert_ok!(lfs_mkdir(lfs, "c"));
     assert_ok!(lfs_mkdir(lfs, "d"));
-    assert_ok!(lfs_mkdir(lfs, "a/hi"));
-    assert_ok!(lfs_mkdir(lfs, "a/hi/hola"));
     assert_ok!(lfs_unmount(lfs));
 
-    let snapshot = env.snapshot();
-    let path_src = "a/hi";
-    let path_dst = "c/hi";
+    loop {
+        assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
+        let mut count = 0;
+        let mut info = LfsInfo::default();
+        if lfs_stat(lfs, "a/hi", &mut info).is_ok() {
+            assert_eq!(&info.name[..2], b"hi");
+            assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+            count += 1;
+        }
 
-    let result = run_powerloss_linear(
-        &mut env,
-        &snapshot,
-        128,
-        |lfs_ptr, config| {
-            lfs_mount(lfs_ptr, config)?;
-
-            let err = lfs_rename(lfs_ptr, path_src, path_dst);
-            if let Err(err) = err {
-                let _ = lfs_unmount(lfs_ptr);
-                return Err(err);
-            }
-            lfs_unmount(lfs_ptr)?;
-            Ok(())
-        },
-        |lfs_ptr, config| {
-            lfs_mount(lfs_ptr, config)?;
-            let _ = lfs_unmount(lfs_ptr);
-            Ok(())
-        },
-    );
-    result.expect("test_reentrant_dir should complete");
+        unimplemented!()
+    }
 }
 
 // --- Missing upstream stubs ---

@@ -12,6 +12,16 @@ pub struct LfsInfo {
     pub name: [u8; 256], // LFS_NAME_MAX+1
 }
 
+impl Default for LfsInfo {
+    fn default() -> Self {
+        Self {
+            type_: 0,
+            size: 0,
+            name: [0u8; _],
+        }
+    }
+}
+
 /// Per lfs.h struct lfs_fsinfo
 #[repr(C)]
 pub struct LfsFsinfo {
