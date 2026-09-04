@@ -22,7 +22,7 @@ pub enum PowerLossBehavior {
     Ooo,
 }
 
-struct EmubdConfig {
+pub struct EmubdConfig {
     pub read_size: u32,
     pub prog_size: u32,
     pub erase_size: u32,
@@ -31,12 +31,13 @@ struct EmubdConfig {
     pub erase_cycles: u32,
 
     pub badblock_behavior: BadblockBehavior,
+    pub power_cycles: u32,
     pub powerloss_behavior: PowerLossBehavior,
 
     pub powerloss_cb: dyn Fn() -> (),
 }
 
-struct Emubd<'a> {
+pub struct Emubd<'a> {
     blocks: Vec<Option<Rc<EmubdBlock>>>,
 
     readed: usize,
@@ -51,6 +52,19 @@ struct Emubd<'a> {
 }
 
 impl<'d> Emubd<'d> {
+    fn new(bdcfg: &'d EmubdConfig) -> Self {
+        Self {
+            blocks: vec![None; bdcfg.erase_count as usize],
+            readed: 0,
+            proged: 0,
+            erased: 0,
+            power_cycles: bdcfg.power_cycles,
+            ooo_block: None,
+            ooo_data: None,
+            cfg: bdcfg,
+        }
+    }
+
     fn mutblock<'a>(&mut self, block: usize) -> &'a mut EmubdBlock {
         let block = &mut self.blocks[block];
         let block = if let Some(b) = block {
