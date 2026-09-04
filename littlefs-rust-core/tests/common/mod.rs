@@ -44,7 +44,7 @@ pub fn run_powerloss_linear(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsCo
     for powerloss_behavior in [PowerLossBehavior::Noop, PowerLossBehavior::Ooo] {
         let mut i = 1;
 
-        let powerloss_cb = || panic!("powerloss");
+        let powerloss_cb = || panic!("powerloss_{}", i);
 
         let bdcfg = EmubdConfig {
             read_size: cfg.read_size,
@@ -66,8 +66,8 @@ pub fn run_powerloss_linear(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsCo
             if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
                 test(cfg);
             })) {
-                if let Some(s) = (&*err).downcast_ref::<&str>()
-                    && *s == "powerloss"
+                if let Some(s) = (&*err).downcast_ref::<String>()
+                    && s.starts_with("powerloss_")
                 {
                 } else {
                     std::panic::resume_unwind(err);
