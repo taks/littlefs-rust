@@ -44,7 +44,7 @@ pub fn lfs_test(
         false
     } else {
         let attr = syn::parse_macro_input!(attr as syn::Ident);
-        attr.to_string() == "reentrant"
+        attr == "reentrant"
     };
     let reentrant = if reentrant {
         quote::quote! {

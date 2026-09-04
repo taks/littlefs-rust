@@ -7,9 +7,11 @@ use common::{
     init_context,
 };
 use littlefs_rust_core::{
-    Lfs, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_seek, lfs_file_size,
-    lfs_file_tell, lfs_file_truncate, lfs_file_write, lfs_format, lfs_mount, lfs_unmount,
+    Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_seek,
+    lfs_file_size, lfs_file_tell, lfs_file_truncate, lfs_file_write, lfs_format, lfs_mount,
+    lfs_unmount,
 };
+use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
 use std::cmp::min;
 
@@ -239,17 +241,14 @@ fn test_truncate_write_read() {
 }
 
 /// Upstream: [cases.test_truncate_write]
-#[rstest]
+#[lfs_test]
 #[case(31, 32)]
 #[case(32, 512)]
 #[case(2048, 8192)]
-fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
-    let mut env = default_config(512);
-    init_context(&mut env);
-
+fn test_truncate_write(cfg: &mut LfsConfig, #[case] medium: u32, #[case] large: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "baldywrite";
     let file = &mut LfsFile::default();
@@ -268,7 +267,7 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
     assert_eq!(lfs_file_size(lfs, file), large);
 
@@ -287,7 +286,7 @@ fn test_truncate_write(#[case] medium: u32, #[case] large: u32) {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), medium);
 

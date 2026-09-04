@@ -36,7 +36,7 @@ pub struct EmubdConfig<'d> {
     pub power_cycles: u32,
     pub powerloss_behavior: PowerLossBehavior,
 
-    pub powerloss_cb: &'d dyn Fn() -> (),
+    pub powerloss_cb: &'d dyn Fn(),
 }
 impl std::panic::RefUnwindSafe for EmubdConfig<'_> {}
 
@@ -143,8 +143,8 @@ impl<'d> Emubd<'d> {
 impl Storage for Emubd<'_> {
     fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
         assert!(block < self.cfg.erase_count);
-        assert!(offset % self.cfg.read_size == 0);
-        assert!(buf.len() % self.cfg.read_size as usize == 0);
+        assert!(offset.is_multiple_of(self.cfg.read_size));
+        assert!(buf.len().is_multiple_of(self.cfg.read_size as usize));
         assert!(offset + buf.len() as u32 <= self.cfg.erase_size);
 
         if let Some(b) = self.blocks[block as usize].as_mut() {
@@ -171,8 +171,8 @@ impl Storage for Emubd<'_> {
     fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
         // check if write is valid
         assert!(block < self.cfg.erase_count);
-        assert!(offset % self.cfg.prog_size == 0);
-        assert!(data.len() % self.cfg.prog_size as usize == 0);
+        assert!(offset.is_multiple_of(self.cfg.prog_size));
+        assert!(data.len().is_multiple_of(self.cfg.prog_size as usize));
         assert!(offset + data.len() as u32 <= self.cfg.erase_size);
 
         // get the block

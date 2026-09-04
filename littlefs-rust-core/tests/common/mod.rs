@@ -20,7 +20,7 @@ pub fn init_logger() {
     let _ = env_logger::try_init();
 }
 
-pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig) -> ()) {
+pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig)) {
     let bdcfg = EmubdConfig {
         read_size: cfg.read_size,
         prog_size: cfg.prog_size,
@@ -34,13 +34,14 @@ pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConf
         powerloss_cb: &|| {},
     };
 
-    let mut context = Emubd::new(unsafe { core::mem::transmute(&bdcfg) });
+    let mut context =
+        Emubd::new(unsafe { core::mem::transmute::<&EmubdConfig<'_>, &EmubdConfig<'_>>(&bdcfg) });
     cfg.context = Some(NonNull::from_mut(&mut context));
 
     test(cfg);
 }
 
-pub fn run_powerloss_linear(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig) -> ()) {
+pub fn run_powerloss_linear(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig)) {
     for powerloss_behavior in [PowerLossBehavior::Noop, PowerLossBehavior::Ooo] {
         let mut i = 1;
 
@@ -59,14 +60,16 @@ pub fn run_powerloss_linear(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsCo
             powerloss_cb: &powerloss_cb,
         };
 
-        let mut context = Emubd::new(unsafe { core::mem::transmute(&bdcfg) });
+        let mut context = Emubd::new(unsafe {
+            core::mem::transmute::<&EmubdConfig<'_>, &EmubdConfig<'_>>(&bdcfg)
+        });
         cfg.context = Some(NonNull::from_mut(&mut context));
 
         loop {
             if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
                 test(cfg);
             })) {
-                if let Some(s) = (&*err).downcast_ref::<String>()
+                if let Some(s) = (*err).downcast_ref::<String>()
                     && s.starts_with("powerloss_")
                 {
                 } else {
@@ -499,13 +502,6 @@ macro_rules! assert_ok {
         let result = $result;
         assert!(result.is_ok(), "expected ok, got {:?}", result);
     }};
-}
-
-/// Panic if result is not 0, with step name for debugging.
-pub fn assert_ok_at(step: &str, result: Result<(), Error>) {
-    if result.is_err() {
-        panic!("{} failed: {:?} (expected 0)", step, result);
-    }
 }
 
 /// Panic if actual is not expected error code.
