@@ -8,6 +8,7 @@ use crate::{
 
 /// Per lfs.h typedef struct lfs_dir
 #[repr(C)]
+#[derive(Default)]
 pub struct LfsDir {
     pub next: *mut LfsDir,
     pub id: u16,
