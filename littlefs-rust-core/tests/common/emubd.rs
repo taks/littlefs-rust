@@ -18,11 +18,13 @@ pub enum BadblockBehavior {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PowerLossBehavior {
+    /// Progs are atomic
     Noop,
+    /// Blocks are written out-of-order
     Ooo,
 }
 
-pub struct EmubdConfig {
+pub struct EmubdConfig<'d> {
     pub read_size: u32,
     pub prog_size: u32,
     pub erase_size: u32,
@@ -34,7 +36,7 @@ pub struct EmubdConfig {
     pub power_cycles: u32,
     pub powerloss_behavior: PowerLossBehavior,
 
-    pub powerloss_cb: dyn Fn() -> (),
+    pub powerloss_cb: &'d dyn Fn() -> (),
 }
 
 pub struct Emubd<'a> {
@@ -48,11 +50,11 @@ pub struct Emubd<'a> {
     ooo_block: Option<usize>,
     ooo_data: Option<Rc<EmubdBlock>>,
 
-    cfg: &'a EmubdConfig,
+    cfg: &'a EmubdConfig<'a>,
 }
 
 impl<'d> Emubd<'d> {
-    fn new(bdcfg: &'d EmubdConfig) -> Self {
+    pub fn new(bdcfg: &'d EmubdConfig) -> Self {
         Self {
             blocks: vec![None; bdcfg.erase_count as usize],
             readed: 0,

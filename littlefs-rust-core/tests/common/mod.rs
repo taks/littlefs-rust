@@ -13,11 +13,31 @@ use core::cell::RefCell;
 use littlefs_rust_core::{LfsConfig, Storage, error::Error, lfs_type::OpenFlags};
 use std::ptr::NonNull;
 
-use crate::common::emubd::EmubdConfig;
+use crate::common::emubd::{BadblockBehavior, Emubd, EmubdConfig, PowerLossBehavior};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
     let _ = env_logger::try_init();
+}
+
+pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig) -> ()) {
+    let bdcfg = EmubdConfig {
+        read_size: cfg.read_size,
+        prog_size: cfg.prog_size,
+        erase_size: cfg.block_size,
+        erase_count: cfg.block_count,
+        erase_value: Some(0xFF),
+        erase_cycles: 0,
+        badblock_behavior: BadblockBehavior::Prog,
+        power_cycles: 0,
+        powerloss_behavior: PowerLossBehavior::Noop,
+        powerloss_cb: &|| {},
+    };
+
+    let mut context = Emubd::new(unsafe { core::mem::transmute(&bdcfg) });
+    cfg.context = Some(NonNull::from_mut(&mut context));
+
+    test(cfg);
 }
 
 /// Magic string "littlefs" in superblock blocks. Per lfs.h.
