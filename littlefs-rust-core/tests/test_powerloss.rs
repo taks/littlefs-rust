@@ -16,21 +16,17 @@ use common::{
     read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::{
-    Lfs, LfsDir, LfsFile, error::Error, lfs_dir_close, lfs_dir_open, lfs_file_close, lfs_file_open,
-    lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_unmount,
+    Lfs, LfsConfig, LfsDir, LfsFile, error::Error, lfs_dir_close, lfs_dir_open, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_unmount,
 };
+use littlefs_rust_test_macro::lfs_test;
 
 // --- test_powerloss_only_rev ---
 // Upstream: write rev+1 to one block of dir pair; mount picks higher rev, read/write still works.
-#[test]
-fn test_powerloss_only_rev() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_powerloss_only_rev(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path_nb = "notebook";
     let path_paper = "notebook/paper";
@@ -63,7 +59,7 @@ fn test_powerloss_only_rev() {
     assert_ok!(lfs_unmount(lfs));
 
     // Get dir pair and rev from a fresh mount, then corrupt rev
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok!(lfs_dir_open(lfs, dir, path_nb));
     let pair = dir.m.pair;
@@ -72,10 +68,10 @@ fn test_powerloss_only_rev() {
     assert_ok!(lfs_unmount(lfs));
 
     // Partial write: rev+1 in block
-    let block_size = env.config.block_size as usize;
+    let block_size = cfg.block_size as usize;
     let mut block_buf = vec![0u8; block_size];
     let _ = unsafe {
-        env.config
+        cfg
             .context
             .unwrap()
             .as_mut()
@@ -84,16 +80,16 @@ fn test_powerloss_only_rev() {
 
     block_buf[0..4].copy_from_slice(&(rev + 1).to_le_bytes());
 
-    let _ = unsafe { env.config.context.unwrap().as_mut().erase(pair[1]) };
+    let _ = unsafe { cfg.context.unwrap().as_mut().erase(pair[1]) };
     let _ = unsafe {
-        env.config
+        cfg
             .context
             .unwrap()
             .as_mut()
             .write(pair[1], 0, &block_buf)
     };
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY));

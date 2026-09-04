@@ -123,17 +123,15 @@ fn test_interspersed_files(
 /// Create FILES files with SIZE bytes each. Open "zzz", write one byte
 /// and sync, remove one of the FILES-lettered files, repeat. After removing
 /// all, verify "zzz" has FILES bytes and directory listing is correct.
-#[rstest]
+#[lfs_test]
 fn test_interspersed_remove_files(
+    cfg: &LfsConfig,
     #[values(10, 100)] size: usize,
     #[values(4, 10, 26)] files: usize,
 ) {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     // Create FILES files with SIZE bytes each
     for j in 0..files {
@@ -155,7 +153,7 @@ fn test_interspersed_remove_files(
     assert_ok!(lfs_unmount(lfs));
 
     // Remount, open "zzz", interleave writes+syncs with removes
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let zzz_path = "zzz";
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
