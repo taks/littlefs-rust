@@ -4,14 +4,14 @@ mod common;
 
 use common::{
     LFS_FILE_MAX, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_RDWR, LFS_O_WRONLY, LFS_SEEK_CUR,
-    LFS_SEEK_END, LFS_SEEK_SET, default_config, init_context, init_logger,
+    LFS_SEEK_END, LFS_SEEK_SET, default_config, init_context,
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_rewind, lfs_file_seek, lfs_file_size, lfs_file_sync, lfs_file_tell, lfs_file_write,
     lfs_format, lfs_mount, lfs_unmount,
 };
-use littlefs_rust_test_macro::littlefs_test;
+use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
 
 const KITTY: &[u8] = b"kittycatcat";
@@ -23,7 +23,7 @@ const PORCUPINE: &[u8] = b"porcupineee";
 
 /// Upstream: [cases.test_seek_read]
 /// defines = [{COUNT=132, SKIP=4}, {COUNT=132, SKIP=128}, ...]
-#[littlefs_test]
+#[lfs_test]
 #[case(132, 4)]
 #[case(132, 128)]
 #[case(200, 10)]
@@ -659,7 +659,7 @@ fn test_seek_inline_write(#[case] size: u32) {
 
 /// Upstream: [cases.test_seek_reentrant_write]
 /// defines.COUNT = [4, 64, 128], POWERLOSS_BEHAVIOR = [NOOP, OOO]
-#[littlefs_test(reentrant)]
+#[lfs_test(reentrant)]
 #[case(4)]
 #[case(64)]
 #[case(128)]

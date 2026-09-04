@@ -3,7 +3,7 @@
 use syn::{FnArg, ItemFn, punctuated::Punctuated, token::Comma};
 
 #[proc_macro_attribute]
-pub fn littlefs_test(
+pub fn lfs_test(
     attr: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
@@ -61,7 +61,7 @@ pub fn littlefs_test(
         #(#attrs)*
         fn #f_ident(#args) {
             use std::ptr::NonNull;
-            use common::{run_powerloss_none, run_powerloss_linear};
+            use common::{init_logger, run_powerloss_none, run_powerloss_linear};
 
             init_logger();
 

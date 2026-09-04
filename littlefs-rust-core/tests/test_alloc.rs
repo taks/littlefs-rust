@@ -17,7 +17,7 @@ use littlefs_rust_core::{
     lfs_file_size, lfs_file_sync, lfs_file_truncate, lfs_file_write, lfs_format, lfs_fs_gc,
     lfs_mkdir, lfs_mount, lfs_remove, lfs_stat, lfs_unmount,
 };
-use littlefs_rust_test_macro::littlefs_test;
+use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
 
 const FILES: u32 = 3;
@@ -34,7 +34,7 @@ fn compact_thresh_u32(val: i32) -> u32 {
 ///
 /// Create breakfast dir, open 3 files in parallel, write SIZE bytes to each (optional GC),
 /// close, unmount, remount, read and verify.
-#[littlefs_test]
+#[lfs_test]
 fn test_alloc_parallel(
     cfg: &mut LfsConfig,
     #[values(false, true)] gc: bool,

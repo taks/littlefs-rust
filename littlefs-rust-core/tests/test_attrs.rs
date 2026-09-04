@@ -11,14 +11,14 @@ use littlefs_rust_core::{
     lfs_file_opencfg, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_getattr,
     lfs_mkdir, lfs_mount, lfs_removeattr, lfs_setattr, lfs_unmount,
 };
-use littlefs_rust_test_macro::littlefs_test;
+use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
 
 /// attr_max from config; tests use ATTR_MAX+1 for NOSPC check.
 const ATTR_MAX: usize = 1022;
 
 // --- test_attrs_get_set ---
-#[littlefs_test]
+#[lfs_test]
 fn test_attrs_get_set(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
@@ -88,7 +88,7 @@ fn test_attrs_get_set(cfg: &mut LfsConfig) {
 }
 
 // --- test_attrs_get_set_root ---
-#[littlefs_test]
+#[lfs_test]
 fn test_attrs_get_set_root(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
@@ -148,7 +148,7 @@ fn test_attrs_get_set_root(cfg: &mut LfsConfig) {
 
 // --- test_attrs_get_set_file ---
 // Uses lfs_file_opencfg with attrs: WRONLY writes attrs on close, RDONLY reads on open.
-#[littlefs_test]
+#[lfs_test]
 fn test_attrs_get_set_file(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
@@ -250,7 +250,7 @@ fn test_attrs_get_set_file(cfg: &mut LfsConfig) {
 
 // --- test_attrs_deferred_file ---
 // Uses lfs_file_opencfg with deferred attrs (synced on file_sync).
-#[littlefs_test]
+#[lfs_test]
 fn test_attrs_deferred_file(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));

@@ -18,7 +18,7 @@ use littlefs_rust_core::{
     lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_mount, lfs_remove, lfs_stat,
     lfs_unmount,
 };
-use littlefs_rust_test_macro::littlefs_test;
+use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
 use std::cmp;
 
@@ -49,7 +49,7 @@ fn test_superblocks_mount() {
 
 // --- test_superblocks_magic ---
 // Upstream: format, then raw read to verify "littlefs" at MAGIC_OFFSET in both blocks.
-#[littlefs_test]
+#[lfs_test]
 fn test_superblocks_magic(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
@@ -266,7 +266,7 @@ fn test_superblocks_expand() {
 
 /// Upstream: [cases.test_superblocks_magic_expand]
 /// Same as expand + magic check after.
-#[littlefs_test]
+#[lfs_test]
 fn test_superblocks_magic_expand(
     cfg: &mut LfsConfig,
     #[values(32, 33, 1)] block_cycles: i32,
