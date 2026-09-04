@@ -41,42 +41,44 @@ pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConf
 }
 
 pub fn run_powerloss_linear(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig) -> ()) {
-    let mut i = 1;
+    for powerloss_behavior in [PowerLossBehavior::Noop, PowerLossBehavior::Ooo] {
+        let mut i = 1;
 
-    let powerloss_cb = || panic!("powerloss");
+        let powerloss_cb = || panic!("powerloss");
 
-    let bdcfg = EmubdConfig {
-        read_size: cfg.read_size,
-        prog_size: cfg.prog_size,
-        erase_size: cfg.block_size,
-        erase_count: cfg.block_count,
-        erase_value: Some(0xFF),
-        erase_cycles: 0,
-        badblock_behavior: BadblockBehavior::Prog,
-        power_cycles: i,
-        powerloss_behavior: PowerLossBehavior::Noop,
-        powerloss_cb: &powerloss_cb,
-    };
+        let bdcfg = EmubdConfig {
+            read_size: cfg.read_size,
+            prog_size: cfg.prog_size,
+            erase_size: cfg.block_size,
+            erase_count: cfg.block_count,
+            erase_value: Some(0xFF),
+            erase_cycles: 0,
+            badblock_behavior: BadblockBehavior::Prog,
+            power_cycles: i,
+            powerloss_behavior,
+            powerloss_cb: &powerloss_cb,
+        };
 
-    let mut context = Emubd::new(unsafe { core::mem::transmute(&bdcfg) });
-    cfg.context = Some(NonNull::from_mut(&mut context));
+        let mut context = Emubd::new(unsafe { core::mem::transmute(&bdcfg) });
+        cfg.context = Some(NonNull::from_mut(&mut context));
 
-    loop {
-        if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
-            test(cfg);
-        })) {
-            if let Some(s) = (&*err).downcast_ref::<&str>()
-                && *s == "powerloss"
-            {
+        loop {
+            if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
+                test(cfg);
+            })) {
+                if let Some(s) = (&*err).downcast_ref::<&str>()
+                    && *s == "powerloss"
+                {
+                } else {
+                    std::panic::resume_unwind(err);
+                }
             } else {
-                std::panic::resume_unwind(err);
+                break;
             }
-        } else {
-            break;
-        }
 
-        i += 1;
-        context.power_cycles = i;
+            i += 1;
+            context.power_cycles = i;
+        }
     }
 }
 
