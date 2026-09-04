@@ -8,6 +8,8 @@
 
 mod common;
 
+use std::assert_matches;
+
 use common::{
     LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, config_with_wear_leveling, corrupt_block,
     default_config, dir_block, dir_entry_names, dir_pair, init_context, init_logger,
@@ -875,24 +877,71 @@ fn test_reentrant_dir(cfg: &mut LfsConfig) {
         assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
     }
 
-    assert_ok!(lfs_mkdir(lfs, "a"));
-    assert_ok!(lfs_mkdir(lfs, "b"));
-    assert_ok!(lfs_mkdir(lfs, "c"));
-    assert_ok!(lfs_mkdir(lfs, "d"));
+    let dirs = ["a", "b", "c", "d"];
+    for dir in dirs {
+        assert_matches!(lfs_mkdir(lfs, dir), Ok(()) | Err(Error::Exists));
+    }
     assert_ok!(lfs_unmount(lfs));
 
     loop {
         assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
         let mut count = 0;
         let mut info = LfsInfo::default();
-        if lfs_stat(lfs, "a/hi", &mut info).is_ok() {
-            assert_eq!(&info.name[..2], b"hi");
-            assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
-            count += 1;
+        for dir in dirs {
+            if lfs_stat(lfs, &format!("{}/hi", dir), &mut info).is_ok() {
+                assert_eq!(&info.name[..2], b"hi");
+                assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+                count += 1;
+            }
         }
+        assert!(count <= 1);
+        assert_ok!(lfs_unmount(lfs));
 
-        unimplemented!()
+        assert_ok!(lfs_mount(lfs, cfg));
+        if lfs_stat(lfs, "a/hi", &mut info).is_ok() {
+            assert_ok!(lfs_rename(lfs, "a/hi", "b/hi"));
+        } else if lfs_stat(lfs, "b/hi", &mut info).is_ok() {
+            assert_ok!(lfs_rename(lfs, "b/hi", "c/hi"));
+        } else if lfs_stat(lfs, "c/hi", &mut info).is_ok() {
+            assert_ok!(lfs_rename(lfs, "c/hi", "d/hi"));
+        } else if lfs_stat(lfs, "d/hi", &mut info).is_ok() {
+            assert_ok!(lfs_unmount(lfs));
+            break; // success
+        } else {
+            // create dir and rename for atomicity
+            assert_matches!(lfs_mkdir(lfs, "temp"), Ok(()) | Err(Error::Exists));
+            assert_matches!(lfs_mkdir(lfs, "temp/hola"), Ok(()) | Err(Error::Exists));
+            assert_matches!(lfs_mkdir(lfs, "temp/bonjour"), Ok(()) | Err(Error::Exists));
+            assert_matches!(lfs_mkdir(lfs, "temp/ohayo"), Ok(()) | Err(Error::Exists));
+            assert_ok!(lfs_rename(lfs, "temp", "a/hi"));
+        }
+        assert_ok!(lfs_unmount(lfs));
     }
+
+    lfs_mount(&lfs, cfg) => 0;
+    lfs_dir_t dir;
+    struct lfs_info info;
+    lfs_dir_open(&lfs, &dir, "a") => 0;
+    lfs_dir_read(&lfs, &dir, &info) => 1;
+    assert(strcmp(info.name, ".") == 0);
+    assert(info.type == LFS_TYPE_DIR);
+    lfs_dir_read(&lfs, &dir, &info) => 1;
+    assert(strcmp(info.name, "..") == 0);
+    assert(info.type == LFS_TYPE_DIR);
+    lfs_dir_read(&lfs, &dir, &info) => 0;
+    lfs_dir_close(&lfs, &dir) => 0;
+    lfs_dir_open(&lfs, &dir, "d") => 0;
+    lfs_dir_read(&lfs, &dir, &info) => 1;
+    assert(strcmp(info.name, ".") == 0);
+    assert(info.type == LFS_TYPE_DIR);
+    lfs_dir_read(&lfs, &dir, &info) => 1;
+    assert(strcmp(info.name, "..") == 0);
+    assert(info.type == LFS_TYPE_DIR);
+    lfs_dir_read(&lfs, &dir, &info) => 1;
+    assert(strcmp(info.name, "hi") == 0);
+    assert(info.type == LFS_TYPE_DIR);
+    lfs_dir_read(&lfs, &dir, &info) => 0;
+    lfs_dir_close(&lfs, &dir) => 0;
 }
 
 // --- Missing upstream stubs ---

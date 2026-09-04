@@ -492,7 +492,7 @@ where
     result
 }
 
-/// Panic if result is not 0.
+/// Panic if result is not Ok.
 #[macro_export]
 macro_rules! assert_ok {
     ($result:expr) => {{
