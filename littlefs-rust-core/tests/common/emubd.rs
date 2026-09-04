@@ -195,7 +195,7 @@ impl Storage for Emubd<'_> {
             }
         }
 
-        todo!()
+        Ok(())
     }
 
     fn erase(&mut self, block: u32) -> Result<(), Error> {
