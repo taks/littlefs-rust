@@ -14,10 +14,9 @@ use common::{
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG};
 use littlefs_rust_core::{
-    Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_dir_rewind,
-    lfs_dir_seek, lfs_dir_tell, lfs_file_close, lfs_file_open, lfs_format, lfs_mkdir, lfs_mount,
-    lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
+    Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_dir_rewind, lfs_dir_seek, lfs_dir_tell, lfs_file_close, lfs_file_open, lfs_format, lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
+use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
 
 /// Root path: "/" null-terminated.
@@ -815,16 +814,13 @@ fn test_dirs_recursive_remove() {
 /// defines.N = 10, if = 'N < BLOCK_COUNT/2'
 /// Create N dirs under prickly-pear/. Nested loop: open dir, iterate to j, remove dir k, iterate rest,
 /// close, recreate k, unmount. Requires lfs_dir_seek.
-#[test]
-fn test_dirs_remove_read() {
-    init_logger();
+#[lfs_test]
+fn test_dirs_remove_read(cfg: &LfsConfig) {
     const N: usize = 10;
-    let mut env = default_config(256);
-    init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "prickly-pear"));
     for i in 0..N {
@@ -845,7 +841,7 @@ fn test_dirs_remove_read() {
             assert_ok!(lfs_mkdir(lfs, &format!("prickly-pear/cactus{k:03}")));
         }
         assert_ok!(lfs_unmount(lfs));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, cfg));
     }
 
     assert_ok!(lfs_unmount(lfs));

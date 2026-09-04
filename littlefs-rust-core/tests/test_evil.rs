@@ -11,7 +11,6 @@ use common::{
     read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::error::Error;
-use littlefs_rust_core::lfs_mattr;
 use littlefs_rust_core::lfs_type::lfs_type::*;
 use littlefs_rust_core::{
     Lfs, LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMdir, lfs_ctz_fromle32, lfs_deinit, lfs_dir_commit,
@@ -19,6 +18,8 @@ use littlefs_rust_core::{
     lfs_file_write, lfs_format, lfs_fs_prepmove, lfs_init, lfs_mkdir, lfs_mktag, lfs_mount,
     lfs_pair_fromle32, lfs_stat, lfs_unmount,
 };
+use littlefs_rust_core::{LfsConfig, lfs_mattr};
+use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
 
 const BLOCK_SIZE: u32 = 512;
@@ -74,18 +75,8 @@ unsafe fn evil_invalid_tail_pointer(tail_type: u16, invalset: u32) {
 /// Format, create "dir_here", commit a DIRSTRUCT tag with invalid pair.
 /// Mount succeeds, stat works, but dir_open/stat-child/file_open fail
 /// with Error::Corrupt.
-#[test]
-fn test_evil_invalid_dir_pointer() {
-    for &invalset in &[0x3u32, 0x1, 0x2] {
-        evil_invalid_dir_pointer(invalset);
-    }
-}
-
-fn evil_invalid_dir_pointer(invalset: u32) {
-    let mut env = default_config(BLOCK_COUNT);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_evil_invalid_dir_pointer(cfg: &mut LfsConfig, #[values(0x3u32, 0x1, 0x2)] invalset: u32) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
