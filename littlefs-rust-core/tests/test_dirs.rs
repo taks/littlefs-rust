@@ -6,6 +6,11 @@
 mod common;
 
 #[cfg(feature = "slow_tests")]
+use std::assert_matches;
+#[cfg(feature = "slow_tests")]
+use std::ffi::CStr;
+
+#[cfg(feature = "slow_tests")]
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, default_config, dir_entry_names,
@@ -281,120 +286,70 @@ fn test_dirs_many_rename_append() {
 
 /// Upstream: [cases.test_dirs_many_reentrant]
 /// defines.N = [5, 11], BLOCK_COUNT >= 4*N, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
-#[lfs_test]
+#[lfs_test(reentrant)]
 #[cfg(feature = "slow_tests")]
-#[ignore = "bug: power-loss iteration returns LFS_ERR_CORRUPT (-84)"]
+// #[ignore = "bug: power-loss iteration returns LFS_ERR_CORRUPT (-84)"]
 fn test_dirs_many_reentrant(cfg: &LfsConfig, #[values(5, 11)] n: usize) {
-    init_logger();
+    let lfs = &mut Lfs::default();
 
-    let err = lfs_mount(lfs_ptr, config);
+    let err = littlefs_rust_core::lfs_mount(lfs, cfg);
     if err.is_err() {
-        let _ = lfs_format(lfs_ptr, config);
-        lfs_mount(lfs_ptr, config)?;
+        assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
+        assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
     }
 
     for i in 0..n {
         let path = &format!("hi{i:03}");
-        let err = lfs_mkdir(lfs_ptr, path);
-        if err.is_err() && err != Err(Error::Exists) {
-            return err;
-        }
+        assert_matches!(lfs_mkdir(lfs, path), Ok(()) | Err(Error::Exists));
     }
     for i in 0..n {
         let path = &format!("hello{i:03}");
-        let err = lfs_remove(lfs_ptr, path);
-        if err.is_err() && err != Err(Error::NoEntry) {
-            return err;
-        }
+        assert_matches!(lfs_remove(lfs, path), Err(Error::NoEntry));
     }
 
-    let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    if lfs_dir_open(lfs_ptr, dir, ROOT_PATH).is_err() {
-        return Err(Error::Invalid);
-    }
-    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    let _ = lfs_dir_read(lfs_ptr, dir, info);
-    let _ = lfs_dir_read(lfs_ptr, dir, info);
+    let dir = &mut LfsDir::default();
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
+    let info = &mut LfsInfo::default();
+    let _ = lfs_dir_read(lfs, dir, info);
+    let _ = lfs_dir_read(lfs, dir, info);
     for i in 0..n {
         let expected = format!("hi{i:03}");
-        let r = lfs_dir_read(lfs_ptr, dir, info);
-        if r != Ok(true) {
-            let _ = lfs_dir_close(lfs_ptr, dir);
-            return Err(if let Err(r) = r { r } else { Error::Invalid });
-        }
-        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-        let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-        if name != expected {
-            let _ = lfs_dir_close(lfs_ptr, dir);
-            return Err(Error::Invalid);
-        }
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        let name = CStr::from_bytes_until_nul(&info.name).unwrap().to_str().unwrap();
+        assert_eq!(name, expected);
     }
-    if lfs_dir_read(lfs_ptr, dir, info).is_err() {
-        let _ = lfs_dir_close(lfs_ptr, dir);
-        return Err(Error::Invalid);
-    }
-    if lfs_dir_close(lfs_ptr, dir).is_err() {
-        return Err(Error::Invalid);
-    }
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_ok!(lfs_dir_close(lfs, dir));
 
     for i in 0..n {
         let old = &format!("hi{i:03}");
         let new = &format!("hello{i:03}");
-        if lfs_rename(lfs_ptr, old, new).is_err() {
-            return Err(Error::Invalid);
-        }
+        assert_ok!(lfs_rename(lfs, old, new));
     }
 
-    if lfs_dir_open(lfs_ptr, dir, ROOT_PATH).is_err() {
-        return Err(Error::Invalid);
-    }
-    let _ = lfs_dir_read(lfs_ptr, dir, info);
-    let _ = lfs_dir_read(lfs_ptr, dir, info);
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
+    let _ = lfs_dir_read(lfs, dir, info);
+    let _ = lfs_dir_read(lfs, dir, info);
     for i in 0..n {
         let expected = format!("hello{i:03}");
-        let r = lfs_dir_read(lfs_ptr, dir, info);
-        if r != Ok(true) {
-            let _ = lfs_dir_close(lfs_ptr, dir);
-            return Err(if let Err(r) = r { r } else { Error::Invalid });
-        }
-        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-        let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-        if name != expected {
-            let _ = lfs_dir_close(lfs_ptr, dir);
-            return Err(Error::Invalid);
-        }
+        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        let name = CStr::from_bytes_until_nul(&info.name).unwrap().to_str().unwrap();
+        assert_eq!(name, expected);
     }
-    if lfs_dir_read(lfs_ptr, dir, info).is_err() {
-        let _ = lfs_dir_close(lfs_ptr, dir);
-        return Err(Error::Invalid);
-    }
-    if lfs_dir_close(lfs_ptr, dir).is_err() {
-        return Err(Error::Invalid);
-    }
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_ok!(lfs_dir_close(lfs, dir));
 
     for i in 0..n {
         let path = &format!("hello{i:03}");
-        if lfs_remove(lfs_ptr, path).is_err() {
-            return Err(Error::Invalid);
-        }
+        assert_ok!(lfs_remove(lfs, path));
     }
 
-    if lfs_dir_open(lfs_ptr, dir, ROOT_PATH).is_err() {
-        return Err(Error::Invalid);
-    }
-    let _ = lfs_dir_read(lfs_ptr, dir, info);
-    let _ = lfs_dir_read(lfs_ptr, dir, info);
-    if lfs_dir_read(lfs_ptr, dir, info).is_err() {
-        let _ = lfs_dir_close(lfs_ptr, dir);
-        return Err(Error::Invalid);
-    }
-    if lfs_dir_close(lfs_ptr, dir).is_err() {
-        return Err(Error::Invalid);
-    }
-
-    if lfs_unmount(lfs_ptr).is_err() {
-        return Err(Error::Invalid);
-    }
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
+    let _ = lfs_dir_read(lfs, dir, info);
+    let _ = lfs_dir_read(lfs, dir, info);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_ok!(lfs_dir_close(lfs, dir));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_dirs_file_creation]
