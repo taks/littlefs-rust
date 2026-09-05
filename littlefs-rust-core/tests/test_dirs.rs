@@ -407,16 +407,13 @@ fn test_dirs_file_creation(cfg: &LfsConfig) {
 /// Upstream: [cases.test_dirs_file_removal]
 /// defines.N = range(3, 100, 11), if = 'N < BLOCK_COUNT/2'
 /// Create N files, verify present, remove all, verify empty.
-#[test]
-fn test_dirs_file_removal() {
+#[lfs_test]
+fn test_dirs_file_removal(cfg: &LfsConfig) {
     init_logger();
     for n in [3usize, 14, 25, 36, 47, 58, 69, 80, 91] {
-        let mut env = default_config(128);
-        init_context(&mut env);
-
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &env.config));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
 
         for i in 0..n {
             let path = &format!("removeme{i:03}");
@@ -426,8 +423,8 @@ fn test_dirs_file_removal() {
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &env.config));
-        let names = dir_entry_names(lfs, &env.config, "/").expect("dir_entry_names");
+        assert_ok!(lfs_mount(lfs, cfg));
+        let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
         let mut names_sorted = names.clone();
         names_sorted.sort();
         let mut expected: Vec<String> = (0..n).map(|i| format!("removeme{i:03}")).collect();
@@ -435,15 +432,15 @@ fn test_dirs_file_removal() {
         assert_eq!(names_sorted, expected, "N={n} before removal");
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, cfg));
         for i in 0..n {
             let path = &format!("removeme{i:03}");
             assert_ok!(lfs_remove(lfs, path));
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &env.config));
-        let names = dir_entry_names(lfs, &env.config, "/").expect("dir_entry_names");
+        assert_ok!(lfs_mount(lfs, cfg));
+        let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
         assert!(names.is_empty(), "N={n} after removal: {names:?}");
         assert_ok!(lfs_unmount(lfs));
     }
@@ -452,16 +449,13 @@ fn test_dirs_file_removal() {
 /// Upstream: [cases.test_dirs_file_rename]
 /// defines.N = range(3, 100, 11), if = 'N < BLOCK_COUNT/2'
 /// Create N files test000.., rename to tedd000.., verify.
-#[test]
-fn test_dirs_file_rename() {
+#[lfs_test]
+fn test_dirs_file_rename(cfg: &LfsConfig) {
     init_logger();
     for n in [3usize, 14, 25, 36, 47, 58, 69, 80, 91] {
-        let mut env = default_config(128);
-        init_context(&mut env);
-
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &env.config));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
 
         for i in 0..n {
             let path = &format!("test{i:03}");
@@ -471,8 +465,8 @@ fn test_dirs_file_rename() {
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &env.config));
-        let names = dir_entry_names(lfs, &env.config, "/").expect("dir_entry_names");
+        assert_ok!(lfs_mount(lfs, cfg));
+        let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
         let mut names_sorted = names.clone();
         names_sorted.sort();
         let mut expected: Vec<String> = (0..n).map(|i| format!("test{i:03}")).collect();
@@ -480,7 +474,7 @@ fn test_dirs_file_rename() {
         assert_eq!(names_sorted, expected, "N={n} before rename");
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, cfg));
         for i in 0..n {
             let old = &format!("test{i:03}");
             let new = &format!("tedd{i:03}");
@@ -488,8 +482,8 @@ fn test_dirs_file_rename() {
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &env.config));
-        let names = dir_entry_names(lfs, &env.config, "/").expect("dir_entry_names");
+        assert_ok!(lfs_mount(lfs, cfg));
+        let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
         let mut names_sorted = names.clone();
         names_sorted.sort();
         let mut expected: Vec<String> = (0..n).map(|i| format!("tedd{i:03}")).collect();
