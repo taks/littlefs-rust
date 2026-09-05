@@ -678,13 +678,10 @@ pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
 /// Mirrors upstream test_move.toml corruption: find last non-erased (0xff) byte,
 /// then set bytes [off-3..off] to 0x00 (BLOCK_SIZE & 0xff for BLOCK_SIZE=512).
 /// Must be called while FS is unmounted.
-pub fn corrupt_block(env: &mut TestEnv, block: u32) {
+pub fn corrupt_block(cfg: &LfsConfig, block: u32) {
     let block_size = BLOCK_SIZE as usize;
     let mut buffer = vec![0u8; block_size];
-    assert_eq!(
-        read_block_raw(&env.config as &LfsConfig, block, 0, &mut buffer),
-        Ok(())
-    );
+    assert_ok!(read_block_raw(cfg, block, 0, &mut buffer));
 
     let mut off = block_size as i32 - 1;
     while off >= 0 && buffer[off as usize] == 0xff {
@@ -695,8 +692,8 @@ pub fn corrupt_block(env: &mut TestEnv, block: u32) {
     let start = (off - 3) as usize;
     buffer[start..start + 3].fill(0x00);
 
-    env.ram.erase(block);
-    env.ram.prog(block, 0, &buffer);
+    assert_ok!(erase_block_raw(cfg, block));
+    assert_ok!(write_block_raw(cfg, block, 0, &buffer));
 }
 
 /// Build test environment with the given block_count and inline_max.

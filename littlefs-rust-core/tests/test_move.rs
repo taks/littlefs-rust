@@ -446,15 +446,11 @@ fn test_move_create_delete_different() {
 
 // Upstream: test_move_file_corrupt_source
 // Corrupt source dir after rename; rename should stick.
-#[test]
-fn test_move_file_corrupt_source() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_file_corrupt_source(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_mkdir(lfs, "a"));
     assert_ok!(lfs_mkdir(lfs, "b"));
     assert_ok!(lfs_mkdir(lfs, "c"));
@@ -473,17 +469,17 @@ fn test_move_file_corrupt_source() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hello", "c/hello"));
 
     let ablock = dir_block(lfs, "a");
     assert_ok!(lfs_unmount(lfs));
-    corrupt_block(&mut env, ablock);
+    corrupt_block(cfg, ablock);
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let a_names = dir_entry_names(lfs, &env.config, "a").unwrap();
+    assert_ok!(lfs_mount(lfs, cfg));
+    let a_names = dir_entry_names(lfs, cfg, "a").unwrap();
     assert_eq!(a_names.len(), 0);
-    let c_names = dir_entry_names(lfs, &env.config, "c").unwrap();
+    let c_names = dir_entry_names(lfs, cfg, "c").unwrap();
     assert_eq!(c_names.len(), 1);
     assert_eq!(c_names[0], "hello");
 
@@ -513,15 +509,11 @@ fn test_move_file_corrupt_source() {
 
 // Upstream: test_move_file_corrupt_source_dest
 // Corrupt both source and dest dirs; rename should roll back.
-#[test]
-fn test_move_file_corrupt_source_dest() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_file_corrupt_source_dest(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_mkdir(lfs, "a"));
     assert_ok!(lfs_mkdir(lfs, "b"));
     assert_ok!(lfs_mkdir(lfs, "c"));
@@ -540,25 +532,25 @@ fn test_move_file_corrupt_source_dest() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hello", "c/hello"));
 
     let ablock = dir_block(lfs, "a");
     let cblock = dir_block(lfs, "c");
     assert_ok!(lfs_unmount(lfs));
-    corrupt_block(&mut env, ablock);
-    corrupt_block(&mut env, cblock);
+    corrupt_block(cfg, ablock);
+    corrupt_block(cfg, cblock);
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let a_names = dir_entry_names(lfs, &env.config, "a").unwrap();
+    assert_ok!(lfs_mount(lfs, cfg));
+    let a_names = dir_entry_names(lfs, cfg, "a").unwrap();
     assert_eq!(a_names.len(), 1);
     assert_eq!(a_names[0], "hello");
-    let c_names = dir_entry_names(lfs, &env.config, "c").unwrap();
+    let c_names = dir_entry_names(lfs, cfg, "c").unwrap();
     assert_eq!(c_names.len(), 0);
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok!(lfs_stat(lfs, "a/hello", info));
-    assert_eq!({ info.size }, 5 + 8 + 6);
+    assert_eq!(info.size, 5 + 8 + 6);
 
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "c/hello", info));
@@ -582,15 +574,11 @@ fn test_move_file_corrupt_source_dest() {
 
 // Upstream: test_move_file_after_corrupt
 // Corrupt both, then redo rename; rename should succeed.
-#[test]
-fn test_move_file_after_corrupt() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_file_after_corrupt(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_mkdir(lfs, "a"));
     assert_ok!(lfs_mkdir(lfs, "b"));
     assert_ok!(lfs_mkdir(lfs, "c"));
@@ -609,29 +597,29 @@ fn test_move_file_after_corrupt() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hello", "c/hello"));
 
     let ablock = dir_block(lfs, "a");
     let cblock = dir_block(lfs, "c");
     assert_ok!(lfs_unmount(lfs));
-    corrupt_block(&mut env, ablock);
-    corrupt_block(&mut env, cblock);
+    corrupt_block(cfg, ablock);
+    corrupt_block(cfg, cblock);
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hello", "c/hello"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let a_names = dir_entry_names(lfs, &env.config, "a").unwrap();
+    assert_ok!(lfs_mount(lfs, cfg));
+    let a_names = dir_entry_names(lfs, cfg, "a").unwrap();
     assert_eq!(a_names.len(), 0);
-    let c_names = dir_entry_names(lfs, &env.config, "c").unwrap();
+    let c_names = dir_entry_names(lfs, cfg, "c").unwrap();
     assert_eq!(c_names.len(), 1);
     assert_eq!(c_names[0], "hello");
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok!(lfs_stat(lfs, "c/hello", info));
-    assert_eq!({ info.size }, 5 + 8 + 6);
+    assert_eq!(info.size, 5 + 8 + 6);
 
     assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hello", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hello", info));
@@ -707,15 +695,11 @@ fn test_move_reentrant_file() {
 
 // Upstream: test_move_dir_corrupt_source
 // Corrupt source dir after dir rename; rename should stick.
-#[test]
-fn test_move_dir_corrupt_source() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_dir_corrupt_source(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_mkdir(lfs, "a"));
     assert_ok!(lfs_mkdir(lfs, "b"));
     assert_ok!(lfs_mkdir(lfs, "c"));
@@ -726,17 +710,17 @@ fn test_move_dir_corrupt_source() {
     assert_ok!(lfs_mkdir(lfs, "a/hi/ohayo"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hi", "c/hi"));
 
     let ablock = dir_block(lfs, "a");
     assert_ok!(lfs_unmount(lfs));
-    corrupt_block(&mut env, ablock);
+    corrupt_block(cfg, ablock);
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let a_names = dir_entry_names(lfs, &env.config, "a").unwrap();
+    assert_ok!(lfs_mount(lfs, cfg));
+    let a_names = dir_entry_names(lfs, cfg, "a").unwrap();
     assert_eq!(a_names.len(), 0);
-    let c_names = dir_entry_names(lfs, &env.config, "c").unwrap();
+    let c_names = dir_entry_names(lfs, cfg, "c").unwrap();
     assert_eq!(c_names.len(), 1);
     assert_eq!(c_names[0], "hi");
 
@@ -747,7 +731,7 @@ fn test_move_dir_corrupt_source() {
     assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hi", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
 
-    let hi_names = dir_entry_names(lfs, &env.config, "c/hi").unwrap();
+    let hi_names = dir_entry_names(lfs, cfg, "c/hi").unwrap();
     assert!(hi_names.contains(&"hola".to_string()));
     assert!(hi_names.contains(&"bonjour".to_string()));
     assert!(hi_names.contains(&"ohayo".to_string()));
@@ -758,15 +742,11 @@ fn test_move_dir_corrupt_source() {
 
 // Upstream: test_move_dir_corrupt_source_dest
 // Corrupt both source and dest; dir rename should roll back.
-#[test]
-fn test_move_dir_corrupt_source_dest() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_dir_corrupt_source_dest(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_mkdir(lfs, "a"));
     assert_ok!(lfs_mkdir(lfs, "b"));
     assert_ok!(lfs_mkdir(lfs, "c"));
@@ -777,20 +757,20 @@ fn test_move_dir_corrupt_source_dest() {
     assert_ok!(lfs_mkdir(lfs, "a/hi/ohayo"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hi", "c/hi"));
 
     let ablock = dir_block(lfs, "a");
     let cblock = dir_block(lfs, "c");
     assert_ok!(lfs_unmount(lfs));
-    corrupt_block(&mut env, ablock);
-    corrupt_block(&mut env, cblock);
+    corrupt_block(cfg, ablock);
+    corrupt_block(cfg, cblock);
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let a_names = dir_entry_names(lfs, &env.config, "a").unwrap();
+    assert_ok!(lfs_mount(lfs, cfg));
+    let a_names = dir_entry_names(lfs, cfg, "a").unwrap();
     assert_eq!(a_names.len(), 1);
     assert_eq!(a_names[0], "hi");
-    let c_names = dir_entry_names(lfs, &env.config, "c").unwrap();
+    let c_names = dir_entry_names(lfs, cfg, "c").unwrap();
     assert_eq!(c_names.len(), 0);
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -800,7 +780,7 @@ fn test_move_dir_corrupt_source_dest() {
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "c/hi", info));
 
-    let hi_names = dir_entry_names(lfs, &env.config, "a/hi").unwrap();
+    let hi_names = dir_entry_names(lfs, cfg, "a/hi").unwrap();
     assert!(hi_names.contains(&"hola".to_string()));
     assert!(hi_names.contains(&"bonjour".to_string()));
     assert!(hi_names.contains(&"ohayo".to_string()));
@@ -811,15 +791,11 @@ fn test_move_dir_corrupt_source_dest() {
 
 // Upstream: test_move_dir_after_corrupt
 // Corrupt both, then redo dir rename; rename should succeed.
-#[test]
-fn test_move_dir_after_corrupt() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_dir_after_corrupt(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_mkdir(lfs, "a"));
     assert_ok!(lfs_mkdir(lfs, "b"));
     assert_ok!(lfs_mkdir(lfs, "c"));
@@ -830,23 +806,23 @@ fn test_move_dir_after_corrupt() {
     assert_ok!(lfs_mkdir(lfs, "a/hi/ohayo"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hi", "c/hi"));
 
     let ablock = dir_block(lfs, "a");
     let cblock = dir_block(lfs, "c");
     assert_ok!(lfs_unmount(lfs));
-    corrupt_block(&mut env, ablock);
-    corrupt_block(&mut env, cblock);
+    corrupt_block(cfg, ablock);
+    corrupt_block(cfg, cblock);
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hi", "c/hi"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let a_names = dir_entry_names(lfs, &env.config, "a").unwrap();
+    assert_ok!(lfs_mount(lfs, cfg));
+    let a_names = dir_entry_names(lfs, cfg, "a").unwrap();
     assert_eq!(a_names.len(), 0);
-    let c_names = dir_entry_names(lfs, &env.config, "c").unwrap();
+    let c_names = dir_entry_names(lfs, cfg, "c").unwrap();
     assert_eq!(c_names.len(), 1);
     assert_eq!(c_names[0], "hi");
 
@@ -857,7 +833,7 @@ fn test_move_dir_after_corrupt() {
     assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hi", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
 
-    let hi_names = dir_entry_names(lfs, &env.config, "c/hi").unwrap();
+    let hi_names = dir_entry_names(lfs, cfg, "c/hi").unwrap();
     assert!(hi_names.contains(&"hola".to_string()));
     assert!(hi_names.contains(&"bonjour".to_string()));
     assert!(hi_names.contains(&"ohayo".to_string()));
