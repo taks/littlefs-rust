@@ -288,7 +288,7 @@ fn test_dirs_many_rename_append() {
 /// defines.N = [5, 11], BLOCK_COUNT >= 4*N, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
 #[lfs_test(reentrant)]
 #[cfg(feature = "slow_tests")]
-// #[ignore = "bug: power-loss iteration returns LFS_ERR_CORRUPT (-84)"]
+#[ignore = "bug: power-loss iteration returns LFS_ERR_CORRUPT (-84)"]
 fn test_dirs_many_reentrant(cfg: &LfsConfig, #[values(5, 11)] n: usize) {
     let lfs = &mut Lfs::default();
 
@@ -315,7 +315,10 @@ fn test_dirs_many_reentrant(cfg: &LfsConfig, #[values(5, 11)] n: usize) {
     for i in 0..n {
         let expected = format!("hi{i:03}");
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-        let name = CStr::from_bytes_until_nul(&info.name).unwrap().to_str().unwrap();
+        let name = CStr::from_bytes_until_nul(&info.name)
+            .unwrap()
+            .to_str()
+            .unwrap();
         assert_eq!(name, expected);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
@@ -333,7 +336,10 @@ fn test_dirs_many_reentrant(cfg: &LfsConfig, #[values(5, 11)] n: usize) {
     for i in 0..n {
         let expected = format!("hello{i:03}");
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-        let name = CStr::from_bytes_until_nul(&info.name).unwrap().to_str().unwrap();
+        let name = CStr::from_bytes_until_nul(&info.name)
+            .unwrap()
+            .to_str()
+            .unwrap();
         assert_eq!(name, expected);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));

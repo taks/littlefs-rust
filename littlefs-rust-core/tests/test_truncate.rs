@@ -245,7 +245,7 @@ fn test_truncate_write_read() {
 #[case(31, 32)]
 #[case(32, 512)]
 #[case(2048, 8192)]
-fn test_truncate_write(cfg: &mut LfsConfig, #[case] medium: u32, #[case] large: u32) {
+fn test_truncate_write(cfg: &LfsConfig, #[case] medium: u32, #[case] large: u32) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));

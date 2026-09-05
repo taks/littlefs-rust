@@ -6,7 +6,6 @@
 
 mod common;
 
-use common::{default_config, init_context, init_logger};
 use littlefs_rust_core::lfs_type::OpenFlags;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
@@ -23,16 +22,11 @@ use zerocopy::IntoBytes;
 /// Upstream: [cases.test_compat_major_incompat]
 ///
 /// Bump major version in superblock, verify mount rejects with LFS_ERR_INVAL.
-#[test]
-fn test_compat_major_incompat() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-    let cfg = &env.config;
-
-    let mut lfs = Lfs::default();
-    assert_ok!(lfs_format(&mut lfs, cfg));
-    assert_ok!(lfs_mount(&mut lfs, cfg));
+#[lfs_test]
+fn test_compat_major_incompat(cfg: &LfsConfig) {
+    let lfs = &mut Lfs::default();
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let mut mdir = LfsMdir {
         pair: [0, 0],
@@ -45,7 +39,7 @@ fn test_compat_major_incompat() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(&mut lfs, &mut mdir, root_pair));
+    assert_ok!(lfs_dir_fetch(lfs, &mut mdir, root_pair));
 
     let mut superblock = LfsSuperblock {
         version: LFS_DISK_VERSION + 0x0001_0000,
@@ -64,22 +58,17 @@ fn test_compat_major_incompat() {
         ),
         buffer: superblock.as_bytes(),
     }];
-    assert_ok!(lfs_dir_commit(&mut lfs, &mut mdir, &attrs));
-    assert_ok!(lfs_unmount(&mut lfs));
+    assert_ok!(lfs_dir_commit(lfs, &mut mdir, &attrs));
+    assert_ok!(lfs_unmount(lfs));
 
-    assert_err!(Error::Invalid, lfs_mount(&mut lfs, cfg));
+    assert_err!(Error::Invalid, lfs_mount(lfs, cfg));
 }
 
 /// Upstream: [cases.test_compat_minor_incompat]
 ///
 /// Bump minor version in superblock beyond what we support, verify mount rejects.
-#[test]
-fn test_compat_minor_incompat() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_compat_minor_incompat(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));

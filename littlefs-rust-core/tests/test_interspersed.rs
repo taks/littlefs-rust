@@ -8,7 +8,7 @@ mod common;
 
 #[cfg(feature = "slow_tests")]
 use common::LFS_O_APPEND;
-use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, default_config, init_context};
+use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY};
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_file_size;
 use littlefs_rust_core::{
@@ -17,7 +17,6 @@ use littlefs_rust_core::{
     lfs_mount, lfs_remove, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
-use rstest::rstest;
 
 const ALPHAS: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 const LFS_TYPE_DIR: u8 = 0x02;
@@ -220,14 +219,11 @@ fn test_interspersed_remove_files(
 /// while all three are still open. Write another SIZE/2 bytes to all three
 /// (including removed "f"). Close all. Verify directory: "e" and "g"
 /// present, "f" absent. Read "e" and "g", verify SIZE bytes.
-#[rstest]
-fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_interspersed_remove_inconveniently(cfg: &LfsConfig, #[values(10, 100)] size: usize) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let mut files: [LfsFile; 3] = Default::default();
 
@@ -332,22 +328,20 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
 /// Power-loss test. Mount-or-format. Open FILES files for append. Write
 /// SIZE bytes per file with sync after each byte when size <= i. Close.
 /// Verify directory and read 10 bytes from each.
-#[rstest]
+#[lfs_test(reentrant)]
 #[cfg(feature = "slow_tests")]
 fn test_interspersed_reentrant_files(
+    cfg: &LfsConfig,
     #[values(10, 100)] size: usize,
     #[values(4, 10, 26)] files: usize,
 ) {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
 
     // Mount-or-format
-    let err = lfs_mount(lfs, &env.config);
+    let err = lfs_mount(lfs, cfg);
     if err.is_err() {
-        assert_ok!(lfs_format(lfs, &env.config));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
     }
 
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
