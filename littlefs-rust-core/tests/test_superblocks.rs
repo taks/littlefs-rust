@@ -63,9 +63,7 @@ fn test_traverse_attrs_callback_order(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     let mut out = littlefs_rust_core::TraverseTestOut::default();
 
-    assert_ok!(unsafe {
-        littlefs_rust_core::test_traverse_format_attrs(lfs, cfg, &mut out)
-    });
+    assert_ok!(unsafe { littlefs_rust_core::test_traverse_format_attrs(lfs, cfg, &mut out) });
 
     assert_eq!(out.call_count, 3);
     assert_eq!(out.tags[1], 0x0ff, "second callback should be SUPERBLOCK");
