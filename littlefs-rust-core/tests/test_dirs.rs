@@ -174,7 +174,6 @@ fn test_dirs_many_removal(#[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize)
 ///
 /// Create N dirs test000.., rename to tedd000.., verify.
 #[lfs_test]
-#[ignore = "TODO FIX"]
 fn test_dirs_many_rename(cfg: &LfsConfig, #[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize) {
     if n >= cfg.block_count as usize / 2 {
         return;

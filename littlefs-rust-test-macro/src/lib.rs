@@ -75,12 +75,15 @@ pub fn lfs_test(
                 let read_buf = vec![0u8; block_size as usize];
                 let prog_buf = vec![0u8; block_size as usize];
                 let lookahead_buf = vec![0u8; block_size as usize];
+                let erase_count = 1024 * 1024 / block_size;
+                let block_count = erase_count;  // / std::cmp::max(block_size/erase_size, 1);
+
                 let mut cfg = LfsConfig {
                     context: None,
                     read_size: size_,
                     prog_size: size_,
                     block_size,
-                    block_count: 128,
+                    block_count,
                     block_cycles: -1,
                     cache_size: block_size,
                     compact_thresh: u32::MAX,
