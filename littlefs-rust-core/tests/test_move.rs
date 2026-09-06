@@ -30,15 +30,11 @@ use littlefs_rust_test_macro::lfs_test;
 
 // --- test_move_nop ---
 // Rename to self is legal
-#[test]
-fn test_move_nop() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_nop(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let hi = "hi";
     assert_ok!(lfs_mkdir(lfs, hi));
@@ -134,15 +130,11 @@ fn test_move_file() {
 
 // --- test_move_dir ---
 // Cross-dir rename a/hi -> c/hi
-#[test]
-fn test_move_dir() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_dir(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "a"));
     assert_ok!(lfs_mkdir(lfs, "b"));
@@ -154,12 +146,12 @@ fn test_move_dir() {
     assert_ok!(lfs_mkdir(lfs, "a/hi/ohayo"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hi", "c/hi"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let names = dir_entry_names(lfs, &env.config, "c/hi").unwrap();
+    assert_ok!(lfs_mount(lfs, cfg));
+    let names = dir_entry_names(lfs, cfg, "c/hi").unwrap();
     assert!(names.contains(&"bonjour".to_string()));
     assert!(names.contains(&"hola".to_string()));
     assert!(names.contains(&"ohayo".to_string()));

@@ -679,7 +679,7 @@ pub fn dir_pair(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> [u32; 2] {
 /// then set bytes [off-3..off] to 0x00 (BLOCK_SIZE & 0xff for BLOCK_SIZE=512).
 /// Must be called while FS is unmounted.
 pub fn corrupt_block(cfg: &LfsConfig, block: u32) {
-    let block_size = BLOCK_SIZE as usize;
+    let block_size = cfg.block_size as usize;
     let mut buffer = vec![0u8; block_size];
     assert_ok!(read_block_raw(cfg, block, 0, &mut buffer));
 

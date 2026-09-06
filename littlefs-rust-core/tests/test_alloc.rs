@@ -422,15 +422,11 @@ fn test_alloc_exhaustion(#[values(false, true)] infer_bc: bool) {
 /// if = 'ERASE_SIZE == 512', defines.ERASE_COUNT = 1024
 ///
 /// Create dir with files, verify stat. (Geometry-specific; uses default_config.)
-#[test]
-fn test_alloc_split_dir() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_alloc_split_dir(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "d"));
     for i in 0..8 {
@@ -617,16 +613,13 @@ fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
 
 // --- test_alloc_two_files_ctz ---
 // Reproduces dir corruption: pacman fill+shrink, ghost fill to NOSPC, GC, read pacman.
-#[test]
-fn test_alloc_two_files_ctz() {
-    init_logger();
-    let mut env = default_config(48);
-    init_context(&mut env);
-    let block_size = env.config.block_size as usize;
+#[lfs_test]
+fn test_alloc_two_files_ctz(cfg: &LfsConfig) {
+    let block_size = cfg.block_size as usize;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -663,7 +656,7 @@ fn test_alloc_two_files_ctz() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -682,7 +675,7 @@ fn test_alloc_two_files_ctz() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, "pacman", LFS_O_RDONLY));
     let open_head = file.ctz.head;
     assert_eq!(

@@ -58,15 +58,13 @@ fn test_superblocks_magic(cfg: &mut LfsConfig) {
 
 // --- test_traverse_attrs_callback_order ---
 // Unit test (in integration harness): traverse with tmask=0 passes SUPERBLOCK correctly.
-#[test]
-fn test_traverse_attrs_callback_order() {
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_traverse_attrs_callback_order(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     let mut out = littlefs_rust_core::TraverseTestOut::default();
 
     assert_ok!(unsafe {
-        littlefs_rust_core::test_traverse_format_attrs(lfs, &env.config, &mut out)
+        littlefs_rust_core::test_traverse_format_attrs(lfs, cfg, &mut out)
     });
 
     assert_eq!(out.call_count, 3);

@@ -118,20 +118,17 @@ fn test_seek_read(cfg: &mut LfsConfig, #[case] count: u32, #[case] skip: u32) {
 }
 
 /// Upstream: [cases.test_seek_write]
-#[rstest]
+#[lfs_test]
 #[case(132, 4)]
 #[case(132, 128)]
 #[case(200, 10)]
 #[case(200, 100)]
 #[case(4, 1)]
 #[case(4, 2)]
-fn test_seek_write(#[case] count: u32, #[case] skip: u32) {
-    let mut env = default_config(256);
-    init_context(&mut env);
-
+fn test_seek_write(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "kitty";
     let file = &mut LfsFile::default();
@@ -148,7 +145,7 @@ fn test_seek_write(#[case] count: u32, #[case] skip: u32) {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
 
     let mut buf = [0u8; 32];
@@ -197,15 +194,13 @@ fn test_seek_write(#[case] count: u32, #[case] skip: u32) {
 
 /// Upstream: [cases.test_seek_boundary_read]
 /// defines.COUNT = 132
-#[test]
-fn test_seek_boundary_read() {
+#[lfs_test]
+fn test_seek_boundary_read(cfg: &LfsConfig) {
     const COUNT: u32 = 132;
-    let mut env = default_config(256);
-    init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "kitty";
     let file = &mut LfsFile::default();
@@ -222,7 +217,7 @@ fn test_seek_boundary_read() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
 
     let size = KITTY.len() as i64;
@@ -470,20 +465,17 @@ fn test_seek_boundary_write() {
 }
 
 /// Upstream: [cases.test_seek_out_of_bounds]
-#[rstest]
+#[lfs_test]
 #[case(132, 4)]
 #[case(132, 128)]
 #[case(200, 10)]
 #[case(200, 100)]
 #[case(4, 2)]
 #[case(4, 3)]
-fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
-    let mut env = default_config(256);
-    init_context(&mut env);
-
+fn test_seek_out_of_bounds(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "kitty";
     let file = &mut LfsFile::default();
@@ -500,7 +492,7 @@ fn test_seek_out_of_bounds(#[case] count: u32, #[case] skip: u32) {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
 
     let size = KITTY.len() as i64;
