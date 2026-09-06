@@ -69,15 +69,11 @@ fn test_dirs_root() {
 
 // --- test_dirs_one_mkdir ---
 // Upstream: [cases.test_dirs_one_mkdir] mkdir("d0"), stat, dir_read
-#[test]
-fn test_dirs_one_mkdir() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_dirs_one_mkdir(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "d0";
     assert_ok!(lfs_mkdir(lfs, path));
@@ -88,7 +84,7 @@ fn test_dirs_one_mkdir() {
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "d0");
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
-    let names = dir_entry_names(lfs, &env.config, "/").expect("dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
     assert_eq!(names.len(), 1);
     assert_eq!(names[0], "d0");
 
