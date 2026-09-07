@@ -14,9 +14,7 @@ use common::{
     LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, config_with_wear_leveling, corrupt_block,
     default_config, dir_block, dir_entry_names, dir_pair, init_context, init_logger,
     init_wear_leveling_context,
-    powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
 };
-use littlefs_rust_core::{error::Error::Exists, lfs_type::lfs_type::LFS_TYPE3_DIR};
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
     lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
@@ -26,6 +24,7 @@ use littlefs_rust_core::{
     error::Error,
     lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG},
 };
+use littlefs_rust_core::{error::Error::Exists, lfs_type::lfs_type::LFS_TYPE3_DIR};
 use littlefs_rust_test_macro::lfs_test;
 
 // --- test_move_nop ---
@@ -637,20 +636,20 @@ fn test_move_reentrant_file(cfg: &LfsConfig) {
     }
     let dirs = ["a", "b", "c", "d"];
     for dir in dirs {
-        assert_matches!(lfs_mkdir(lfs, dir), Ok(()) | Err(Error(Exists)));
+        assert_matches!(lfs_mkdir(lfs, dir), Ok(()) | Err(Error::Exists));
     }
-    assert_ok!(lfs_umount(lfs));
+    assert_ok!(lfs_unmount(lfs));
 
     loop {
-        assert_ok!(lfs_mount(&lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
         // there should never exist _2_ hello files
         let mut count = 0;
         let info = &mut LfsInfo::default();
         for dir in dirs {
-            if (lfs_stat(&lfs, format!("{}/hello", dir), &info) == 0) {
-                assert!(strcmp(info.name, "hello") == 0);
-                assert!(info.type_ == LFS_TYPE_REG as usize);
-                assert!(info.size == 5+8+6 || info.size == 0);
+            if lfs_stat(lfs, &format!("{}/hello", dir), info).is_ok() {
+                assert_eq!(&info.name[..5], b"hello");
+                assert_eq!(info.type_, LFS_TYPE_REG as u8);
+                assert!(info.size == 5 + 8 + 6 || info.size == 0);
                 count += 1;
             }
         }
@@ -658,70 +657,78 @@ fn test_move_reentrant_file(cfg: &LfsConfig) {
         assert!(count <= 1);
         assert_ok!(lfs_unmount(lfs));
 
-        lfs_mount(&lfs, cfg) => 0;
-        if (lfs_stat(&lfs, "a/hello", &info) == 0 && info.size > 0) {
-            lfs_rename(&lfs, "a/hello", "b/hello") => 0;
-        } else if (lfs_stat(&lfs, "b/hello", &info) == 0) {
-            lfs_rename(&lfs, "b/hello", "c/hello") => 0;
-        } else if (lfs_stat(&lfs, "c/hello", &info) == 0) {
-            lfs_rename(&lfs, "c/hello", "d/hello") => 0;
-        } else if (lfs_stat(&lfs, "d/hello", &info) == 0) {
+        assert_ok!(lfs_mount(lfs, cfg));
+
+        if lfs_stat(lfs, "a/hello", info).is_ok() && info.size > 0 {
+            assert_ok!(lfs_rename(lfs, "a/hello", "b/hello"));
+        } else if lfs_stat(lfs, "b/hello", info).is_ok() {
+            assert_ok!(lfs_rename(lfs, "b/hello", "c/hello"));
+        } else if lfs_stat(lfs, "c/hello", info).is_ok() {
+            assert_ok!(lfs_rename(lfs, "c/hello", "d/hello"));
+        } else if lfs_stat(lfs, "d/hello", info).is_ok() {
             // success
-            lfs_unmount(&lfs) => 0;
+            assert_ok!(lfs_unmount(lfs));
             break;
         } else {
             // create file
-            lfs_file_t file;
-            lfs_file_open(&lfs, &file, "a/hello",
-                    LFS_O_WRONLY | LFS_O_CREAT) => 0;
-            lfs_file_write(&lfs, &file, "hola\n", 5) => 5;
-            lfs_file_write(&lfs, &file, "bonjour\n", 8) => 8;
-            lfs_file_write(&lfs, &file, "ohayo\n", 6) => 6;
-            lfs_file_close(&lfs, &file) => 0;
+            let file = &mut LfsFile::default();
+            assert_ok!(lfs_file_open(
+                lfs,
+                file,
+                "a/hello",
+                LFS_O_WRONLY | LFS_O_CREAT
+            ));
+            assert_eq!(lfs_file_write(lfs, file, b"hola\n"), Ok(5));
+            assert_eq!(lfs_file_write(lfs, file, b"bonjour\n"), Ok(8));
+            assert_eq!(lfs_file_write(lfs, file, b"ohayo\n"), Ok(6));
+            assert_ok!(lfs_file_close(lfs, file));
         }
-        lfs_unmount(&lfs) => 0;
+        assert_ok!(lfs_unmount(lfs));
     }
 
-    lfs_mount(&lfs, cfg) => 0;
-    lfs_dir_t dir;
-    struct lfs_info info;
-    lfs_dir_open(&lfs, &dir, "a") => 0;
-    lfs_dir_read(&lfs, &dir, &info) => 1;
-    assert(strcmp(info.name, ".") == 0);
-    assert(info.type == LFS_TYPE_DIR);
-    lfs_dir_read(&lfs, &dir, &info) => 1;
-    assert(strcmp(info.name, "..") == 0);
-    assert(info.type == LFS_TYPE_DIR);
-    lfs_dir_read(&lfs, &dir, &info) => 0;
-    lfs_dir_close(&lfs, &dir) => 0;
-    lfs_dir_open(&lfs, &dir, "d") => 0;
-    lfs_dir_read(&lfs, &dir, &info) => 1;
-    assert(strcmp(info.name, ".") == 0);
-    assert(info.type == LFS_TYPE_DIR);
-    lfs_dir_read(&lfs, &dir, &info) => 1;
-    assert(strcmp(info.name, "..") == 0);
-    assert(info.type == LFS_TYPE_DIR);
-    lfs_dir_read(&lfs, &dir, &info) => 1;
-    assert(strcmp(info.name, "hello") == 0);
-    assert(info.type == LFS_TYPE_REG);
-    assert(info.size == 5+8+6);
-    lfs_dir_read(&lfs, &dir, &info) => 0;
-    lfs_dir_close(&lfs, &dir) => 0;
+    assert_ok!(lfs_mount(lfs, cfg));
+    let dir = &mut LfsDir::default();
+    let info = &mut LfsInfo::default();
+    assert_ok!(lfs_dir_open(lfs, dir, "a"));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_ok!(lfs_dir_close(lfs, dir));
+    assert_ok!(lfs_dir_open(lfs, dir, "d"));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(&info.name[..5], b"hello");
+    assert_eq!(info.type_, LFS_TYPE_REG as u8);
+    assert_eq!(info.size, 5 + 8 + 6);
+    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_ok!(lfs_dir_close(lfs, dir));
 
-    lfs_file_t file;
-    lfs_file_open(&lfs, &file, "a/hello", LFS_O_RDONLY) => LFS_ERR_NOENT;
-    lfs_file_open(&lfs, &file, "b/hello", LFS_O_RDONLY) => LFS_ERR_NOENT;
-    lfs_file_open(&lfs, &file, "c/hello", LFS_O_RDONLY) => LFS_ERR_NOENT;
-    lfs_file_open(&lfs, &file, "d/hello", LFS_O_RDONLY) => 0;
-    uint8_t buffer[1024];
-    lfs_file_read(&lfs, &file, buffer, 5) => 5;
-    memcmp(buffer, "hola\n", 5) => 0;
-    lfs_file_read(&lfs, &file, buffer, 8) => 8;
-    memcmp(buffer, "bonjour\n", 8) => 0;
-    lfs_file_read(&lfs, &file, buffer, 6) => 6;
-    memcmp(buffer, "ohayo\n", 6) => 0;
-    lfs_file_close(&lfs, &file) => 0;
-    lfs_unmount(&lfs) => 0;
+    let file = &mut LfsFile::default();
+
+    assert_eq!(
+        lfs_file_open(lfs, file, "a/hello", LFS_O_RDONLY),
+        Err(Error::NoEntry)
+    );
+    assert_eq!(
+        lfs_file_open(lfs, file, "b/hello", LFS_O_RDONLY),
+        Err(Error::NoEntry)
+    );
+    assert_eq!(
+        lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY),
+        Err(Error::NoEntry)
+    );
+    assert_ok!(lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY));
+    let mut buffer = [0u8; 1024];
+    assert_eq!(lfs_file_read(lfs, file, &mut buffer[..5]), Ok(5));
+    assert_eq!(&buffer[..5], b"hola\n");
+
+    assert_eq!(lfs_file_read(lfs, file, &mut buffer[..8]), Ok(8));
+    assert_eq!(&buffer[..8], b"bonjour\n");
+    assert_eq!(lfs_file_read(lfs, file, &mut buffer[..6]), Ok(6));
+    assert_eq!(&buffer[..6], b"ohayo\n");
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 // Upstream: test_move_dir_corrupt_source
