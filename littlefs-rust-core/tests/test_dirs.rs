@@ -9,8 +9,7 @@ mod common;
 use std::{assert_matches, ffi::CStr};
 
 use common::{
-    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, default_config, dir_entry_names,
-    init_context, init_logger,
+    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, dir_entry_names,
 };
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG};
@@ -20,7 +19,6 @@ use littlefs_rust_core::{
     lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
-use rstest::rstest;
 
 /// Root path: "/" null-terminated.
 static ROOT_PATH: &str = "/"; // [b'/', 0];
@@ -386,7 +384,6 @@ fn test_dirs_file_creation(cfg: &LfsConfig) {
 /// Create N files, verify present, remove all, verify empty.
 #[lfs_test]
 fn test_dirs_file_removal(cfg: &LfsConfig) {
-    init_logger();
     for n in [3usize, 14, 25, 36, 47, 58, 69, 80, 91] {
         let lfs = &mut Lfs::default();
         assert_ok!(lfs_format(lfs, cfg));
@@ -428,7 +425,6 @@ fn test_dirs_file_removal(cfg: &LfsConfig) {
 /// Create N files test000.., rename to tedd000.., verify.
 #[lfs_test]
 fn test_dirs_file_rename(cfg: &LfsConfig) {
-    init_logger();
     for n in [3usize, 14, 25, 36, 47, 58, 69, 80, 91] {
         let lfs = &mut Lfs::default();
         assert_ok!(lfs_format(lfs, cfg));

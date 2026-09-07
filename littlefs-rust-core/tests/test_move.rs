@@ -394,15 +394,11 @@ fn test_move_create_delete_delete_same() {
 
 // --- test_move_create_delete_different ---
 // Cross-dir rename with overwrite
-#[test]
-fn test_move_create_delete_different() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_create_delete_different(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "dir.1"));
     assert_ok!(lfs_mkdir(lfs, "dir.2"));
@@ -429,7 +425,7 @@ fn test_move_create_delete_different() {
 
     assert_ok!(lfs_rename(lfs, "dir.1/1.move_me", "dir.2/1.move_me"));
 
-    let names = dir_entry_names(lfs, &env.config, "dir.2").unwrap();
+    let names = dir_entry_names(lfs, cfg, "dir.2").unwrap();
     assert!(names.contains(&"1.move_me".to_string()));
     assert_ok!(lfs_unmount(lfs));
 }

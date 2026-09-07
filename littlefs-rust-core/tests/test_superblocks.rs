@@ -9,7 +9,7 @@ mod common;
 use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, clone_config_with_block_count,
-    default_config, init_context,
+    default_config, init_context, read_block_raw,
 };
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;
@@ -21,8 +21,6 @@ use littlefs_rust_core::{
 use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
 use std::cmp;
-
-use crate::common::{init_logger, read_block_raw};
 
 // --- test_superblocks_format ---
 // Upstream: lfs_format(&lfs, cfg) => 0
@@ -295,22 +293,18 @@ fn test_superblocks_magic_expand(
 
 /// Upstream: [cases.test_superblocks_expand_power_cycle]
 /// Same as expand but unmount/remount after each iteration.
-#[test]
-fn test_superblocks_expand_power_cycle() {
-    init_logger();
-
+#[lfs_test]
+fn test_superblocks_expand_power_cycle(cfg: &mut LfsConfig) {
     for &block_cycles in &[32i32, 33, 1] {
         for &n in &[10u32, 100, 1000] {
-            let mut env = default_config(128);
-            init_context(&mut env);
-            env.config.block_cycles = block_cycles;
+            cfg.block_cycles = block_cycles;
 
             let lfs = &mut Lfs::default();
-            assert_ok!(lfs_format(lfs, &env.config));
+            assert_ok!(lfs_format(lfs, cfg));
 
             let dummy = "dummy";
             for i in 0..n {
-                assert_ok!(lfs_mount(lfs, &env.config));
+                assert_ok!(lfs_mount(lfs, cfg));
                 let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
                 let err = lfs_stat(lfs, dummy, info);
                 assert!(
@@ -336,7 +330,7 @@ fn test_superblocks_expand_power_cycle() {
                 assert_ok!(lfs_unmount(lfs));
             }
 
-            assert_ok!(lfs_mount(lfs, &env.config));
+            assert_ok!(lfs_mount(lfs, cfg));
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_ok!(lfs_stat(lfs, dummy, info));
             assert_eq!(info.type_, LFS_TYPE_REG as u8);
@@ -357,51 +351,43 @@ fn test_superblocks_reentrant_expand(cfg: &mut LfsConfig, #[values(2, 1)] block_
 
     let dummy = "dummy";
 
-    let err = lfs_mount(lfs_ptr, config);
+    let err = lfs_mount(lfs, cfg);
     if err.is_err() {
-        lfs_format(lfs_ptr, config)?;
-        lfs_mount(lfs_ptr, config)?;
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
     }
     for i in 0..N {
-        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        let err = lfs_stat(lfs_ptr, dummy, info);
+        let info = &mut LfsInfo::default();
+        let err = lfs_stat(lfs, dummy, info);
+        assert!(err.is_ok() || (err == Err(Error::NoEntry) && i == 0));
         if err.is_ok() {
-            if info.type_ == LFS_TYPE_REG as u8 {
-                let e = lfs_remove(lfs_ptr, dummy);
-                if e.is_err() {
-                    let _ = lfs_unmount(lfs_ptr);
-                    return e;
-                }
-            }
-        } else if err != Err(Error::NoEntry) || i != 0 {
-            let _ = lfs_unmount(lfs_ptr);
-            #[allow(clippy::unnecessary_unwrap)]
-            return Err(err.unwrap_err());
+            assert_eq!(&info.name[..5], dummy.as_bytes());
+            assert_eq!(info.type_, LFS_TYPE_REG as u8);
+            assert_ok!(lfs_remove(lfs, dummy));
         }
         let file = &mut LfsFile::default();
-        let e = lfs_file_open(
-            lfs_ptr,
+        assert_ok!(lfs_file_open(
+            lfs,
             file,
             dummy,
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        );
-        if e.is_err() {
-            let _ = lfs_unmount(lfs_ptr);
-            return e;
-        }
-        let e = lfs_file_close(lfs_ptr, file);
-        if e.is_err() {
-            let _ = lfs_unmount(lfs_ptr);
-            return e;
-        }
-        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        let e = lfs_stat(lfs_ptr, dummy, info);
-        if e.is_err() {
-            let _ = lfs_unmount(lfs_ptr);
-            return e;
-        }
+        ));
+        assert_ok!(lfs_file_close(lfs, file));
+
+        let info = &mut LfsInfo::default();
+        assert_ok!(lfs_stat(lfs, dummy, info));
+        assert_eq!(&info.name[..5], dummy.as_bytes());
+        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_ok!(lfs_unmount(lfs));
     }
-    lfs_unmount(lfs_ptr)?;
+
+    // one last check after power-cycle
+    assert_ok!(lfs_mount(lfs, cfg));
+    let info = &mut LfsInfo::default();
+    assert_ok!(lfs_stat(lfs, dummy, info));
+    assert_eq!(&info.name[..5], dummy.as_bytes());
+    assert_eq!(info.type_, LFS_TYPE_REG as u8);
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_superblocks_unknown_blocks]

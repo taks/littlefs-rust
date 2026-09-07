@@ -32,16 +32,13 @@ const COUNT: usize = 10;
 /// defines.ITERATIONS = 20, COUNT = 10, BLOCK_CYCLES = [8, 1]
 ///
 /// Fill FS, create many files in child dir. Triggers split when metadata overflows.
-#[rstest]
-fn test_relocations_dangling_split_dir(#[values(8, 1)] block_cycles: i32) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-    env.config.block_cycles = block_cycles;
+#[lfs_test]
+fn test_relocations_dangling_split_dir(cfg: &mut LfsConfig, #[values(8, 1)] block_cycles: i32) {
+    cfg.block_cycles = block_cycles;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "d0"));
     for i in 0..COUNT {
