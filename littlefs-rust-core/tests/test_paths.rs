@@ -12,7 +12,8 @@ use littlefs_rust_core::{
     Lfs, LfsDir, LfsInfo, error::Error, lfs_dir_close, lfs_dir_open, lfs_format, lfs_mkdir,
     lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
-use littlefs_rust_core::{LfsFile, lfs_file_close, lfs_file_open};
+use littlefs_rust_core::{LfsConfig, LfsFile, LfsFileConfig, lfs_file_close, lfs_file_open};
+use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
 
 use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY};
@@ -32,15 +33,11 @@ const PATHS: &[&str] = &[
 ];
 
 // --- test_paths_simple_dirs ---
-#[test]
-fn test_paths_simple_dirs() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_paths_simple_dirs(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let coffee = "coffee";
     assert_ok!(lfs_mkdir(lfs, coffee));
@@ -58,15 +55,11 @@ fn test_paths_simple_dirs() {
 }
 
 // --- test_paths_simple_files ---
-#[test]
-fn test_paths_simple_files() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_paths_simple_files(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let coffee = "coffee";
     assert_ok!(lfs_mkdir(lfs, coffee));
@@ -218,16 +211,13 @@ fn test_paths_root() {
 
 // --- Deferred edge-case tests (per roadmap 07a) ---
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_redundant_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
     let create_paths = &[
@@ -311,16 +301,13 @@ fn test_paths_redundant_slashes(#[case] dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
     if dir_mode {
