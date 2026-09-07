@@ -27,15 +27,11 @@ static ROOT_PATH: &str = "/"; // [b'/', 0];
 
 // --- test_dirs_root ---
 // Upstream: dir_open("/"), dir_read returns ".", "..", then 0
-#[test]
-fn test_dirs_root() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_dirs_root(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
@@ -132,19 +128,15 @@ fn test_dirs_many_creation(
 /// defines.N = range(3, 100, 11), if = 'N < BLOCK_COUNT/2'
 ///
 /// Create N dirs removeme000.., verify, remove all, verify empty.
-#[rstest]
-fn test_dirs_many_removal(#[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize) {
-    init_logger();
-    let block_count = 256u32;
-    if n >= block_count as usize / 2 {
+#[lfs_test]
+fn test_dirs_many_removal(cfg: &LfsConfig, #[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize) {
+    if n >= cfg.block_count as usize / 2 {
         return;
     }
-    let mut env = default_config(block_count);
-    init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     for i in 0..n {
         let path = &format!("removeme{i:03}");
@@ -155,7 +147,7 @@ fn test_dirs_many_removal(#[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize)
         assert_ok!(lfs_remove(lfs, path));
     }
 
-    let names = dir_entry_names(lfs, &env.config, "/").expect("dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
     assert!(names.is_empty());
 
     assert_ok!(lfs_unmount(lfs));
@@ -559,15 +551,11 @@ fn test_dirs_file_reentrant(cfg: &LfsConfig, #[values(5, 25)] n: usize) {
 
 /// Upstream: [cases.test_dirs_nested]
 /// Create dirs, files, rename chains, cross-dir renames, then cleanup.
-#[test]
-fn test_dirs_nested() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_dirs_nested(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "potato"));
     let file = &mut LfsFile::default();
@@ -583,7 +571,7 @@ fn test_dirs_nested() {
     assert_ok!(lfs_mkdir(lfs, "potato/sweet"));
     assert_ok!(lfs_mkdir(lfs, "potato/fried"));
 
-    let names = dir_entry_names(lfs, &env.config, "potato").expect("potato dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "potato").expect("potato dir_entry_names");
     let mut names_sorted = names.clone();
     names_sorted.sort();
     assert_eq!(names_sorted, vec!["baked", "fried", "sweet"]);
@@ -612,7 +600,7 @@ fn test_dirs_nested() {
     assert_ok!(lfs_remove(lfs, "hotpotato/sweet"));
     assert_ok!(lfs_remove(lfs, "hotpotato"));
 
-    let names = dir_entry_names(lfs, &env.config, "/").expect("root dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "/").expect("root dir_entry_names");
     assert_eq!(names, vec!["burito"]);
 
     assert_ok!(lfs_unmount(lfs));
@@ -621,16 +609,11 @@ fn test_dirs_nested() {
 /// Upstream: [cases.test_dirs_recursive_remove]
 /// defines.N = [10, 100], if = 'N < BLOCK_COUNT/2'
 /// Create parent dir with N subdirs, remove children during dir iteration, then parent.
-#[rstest]
-fn test_dirs_recursive_remove(#[values(10, 100)] n: usize) {
-    init_logger();
-
-    let mut env = default_config(256);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_dirs_recursive_remove(cfg: &LfsConfig, #[values(10, 100)] n: usize) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "prickly-pear"));
     for i in 0..n {
@@ -638,8 +621,7 @@ fn test_dirs_recursive_remove(#[values(10, 100)] n: usize) {
         assert_ok!(lfs_mkdir(lfs, path));
     }
 
-    let names =
-        dir_entry_names(lfs, &env.config, "prickly-pear").expect("prickly-pear dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "prickly-pear").expect("prickly-pear dir_entry_names");
     assert_eq!(names.len(), n, "N={n} subdir count");
 
     assert_err!(Error::NotEmpty, lfs_remove(lfs, "prickly-pear"));
@@ -666,7 +648,7 @@ fn test_dirs_recursive_remove(#[values(10, 100)] n: usize) {
     assert_ok!(lfs_remove(lfs, "prickly-pear"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_err!(Error::NoEntry, lfs_stat(lfs, "prickly-pear", info));
     assert_ok!(lfs_unmount(lfs));
@@ -711,15 +693,11 @@ fn test_dirs_remove_read(cfg: &LfsConfig) {
 
 /// Upstream: [cases.test_dirs_other_errors]
 /// Tests various error conditions for dirs and files.
-#[test]
-fn test_dirs_other_errors() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_dirs_other_errors(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "potato"));
     let file = &mut LfsFile::default();
@@ -806,15 +784,15 @@ fn test_dirs_other_errors() {
         lfs_file_open(lfs, file, "/", LFS_O_WRONLY | LFS_O_CREAT),
     );
 
-    let names = dir_entry_names(lfs, &env.config, "/").expect("root listing");
+    let names = dir_entry_names(lfs, cfg, "/").expect("root listing");
     let mut names_sorted = names.clone();
     names_sorted.sort();
     assert_eq!(names_sorted, vec!["burito", "potato", "tacoto"]);
 
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let names = dir_entry_names(lfs, &env.config, "/").expect("root listing after remount");
+    assert_ok!(lfs_mount(lfs, cfg));
+    let names = dir_entry_names(lfs, cfg, "/").expect("root listing after remount");
     let mut names_sorted = names.clone();
     names_sorted.sort();
     assert_eq!(names_sorted, vec!["burito", "potato", "tacoto"]);
@@ -875,52 +853,46 @@ fn test_dirs_seek(cfg: &LfsConfig) {
 /// Upstream: [cases.test_dirs_toot_seek]
 /// defines.COUNT = [4, 128, 132]
 /// Same as seek but on root directory.
-#[test]
-fn test_dirs_toot_seek() {
-    init_logger();
-    for count in [4usize, 128, 132] {
-        let mut env = default_config(512);
-        init_context(&mut env);
+#[lfs_test]
+fn test_dirs_toot_seek(cfg: &LfsConfig, #[values(4, 128, 132)] count: usize) {
+    let lfs = &mut Lfs::default();
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
-        let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &env.config));
-        assert_ok!(lfs_mount(lfs, &env.config));
-
-        for i in 0..count {
-            let path = &format!("entry{i:03}");
-            let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
-        }
-
-        let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
-        assert_ok!(lfs_dir_rewind(lfs, dir));
-        let pos0 = lfs_dir_tell(lfs, dir);
-        assert!(pos0 >= 0, "tell after rewind");
-
-        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        let mut n = 0usize;
-        while lfs_dir_read(lfs, dir, info) == Ok(true) {
-            n += 1;
-        }
-        assert_eq!(n, count + 2, "COUNT={count}: . and .. plus {count} entries");
-
-        assert_ok!(lfs_dir_rewind(lfs, dir));
-        let half = (count + 2) / 2;
-        assert_ok!(lfs_dir_seek(lfs, dir, half as u32));
-        let _pos_half = lfs_dir_tell(lfs, dir);
-
-        assert_ok!(lfs_dir_rewind(lfs, dir));
-        let pos_rewind = lfs_dir_tell(lfs, dir);
-        assert_eq!(pos_rewind, pos0, "tell after rewind matches initial");
-
-        assert_ok!(lfs_dir_close(lfs, dir));
-        assert_ok!(lfs_unmount(lfs));
+    for i in 0..count {
+        let path = &format!("entry{i:03}");
+        let file = &mut LfsFile::default();
+        assert_ok!(lfs_file_open(
+            lfs,
+            file,
+            path,
+            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+        ));
+        assert_ok!(lfs_file_close(lfs, file));
     }
+
+    let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
+    assert_ok!(lfs_dir_rewind(lfs, dir));
+    let pos0 = lfs_dir_tell(lfs, dir);
+    assert!(pos0 >= 0, "tell after rewind");
+
+    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+    let mut n = 0usize;
+    while lfs_dir_read(lfs, dir, info) == Ok(true) {
+        n += 1;
+    }
+    assert_eq!(n, count + 2, "COUNT={count}: . and .. plus {count} entries");
+
+    assert_ok!(lfs_dir_rewind(lfs, dir));
+    let half = (count + 2) / 2;
+    assert_ok!(lfs_dir_seek(lfs, dir, half as u32));
+    let _pos_half = lfs_dir_tell(lfs, dir);
+
+    assert_ok!(lfs_dir_rewind(lfs, dir));
+    let pos_rewind = lfs_dir_tell(lfs, dir);
+    assert_eq!(pos_rewind, pos0, "tell after rewind matches initial");
+
+    assert_ok!(lfs_dir_close(lfs, dir));
+    assert_ok!(lfs_unmount(lfs));
 }

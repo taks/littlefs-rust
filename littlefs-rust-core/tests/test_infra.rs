@@ -6,10 +6,10 @@ mod common;
 
 use common::{
     BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, config_badblock_with_behavior,
-    config_with_wear_leveling, default_config, init_badblock_context, init_context,
-    init_wear_leveling_context, test_prng, verify_prng_file, write_block_raw, write_prng_file,
+    config_with_wear_leveling, init_badblock_context, init_wear_leveling_context, test_prng,
+    verify_prng_file, write_block_raw, write_prng_file,
 };
-use littlefs_rust_core::{Lfs, LfsFile, error::Error};
+use littlefs_rust_core::{Lfs, LfsConfig, LfsFile, error::Error};
 
 // ── PRNG tests ──────────────────────────────────────────────────────────────
 
@@ -239,14 +239,11 @@ fn test_wear_leveling_bd_set_wear() {
 // ── Write/verify PRNG file test ─────────────────────────────────────────────
 
 /// Round-trip test: write PRNG data to a file, close, reopen, verify.
-#[test]
-fn test_write_verify_prng_file() {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_write_verify_prng_file(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(littlefs_rust_core::lfs_format(lfs, &env.config));
-    assert_ok!(littlefs_rust_core::lfs_mount(lfs, &env.config));
+    assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
+    assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
 
     let path = "prng_test";
     let file = &mut LfsFile::default();
@@ -263,7 +260,7 @@ fn test_write_verify_prng_file() {
     assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
 
     // Remount and verify
-    assert_ok!(littlefs_rust_core::lfs_mount(lfs, &env.config));
+    assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
     assert_ok!(littlefs_rust_core::lfs_file_open(
         lfs,
         file,

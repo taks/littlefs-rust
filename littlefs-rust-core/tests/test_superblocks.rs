@@ -347,82 +347,80 @@ fn test_superblocks_expand_power_cycle() {
 
 /// Upstream: [cases.test_superblocks_reentrant_expand]
 /// BLOCK_CYCLES = [2, 1], N = 24, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
-#[test]
+#[rstest]
 #[cfg(feature = "slow_tests")]
-fn test_superblocks_reentrant_expand() {
+fn test_superblocks_reentrant_expand(#[values(2, 1)] block_cycles: i32) {
     const N: u32 = 24;
-    for &block_cycles in &[2i32, 1] {
-        let mut env = powerloss_config(128);
-        init_powerloss_context(&mut env);
-        env.config.block_cycles = block_cycles;
+    let mut env = powerloss_config(128);
+    init_powerloss_context(&mut env);
+    env.config.block_cycles = block_cycles;
 
-        let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &env.config));
-        assert_ok!(lfs_mount(lfs, &env.config));
-        assert_ok!(lfs_unmount(lfs));
-        let snapshot = env.snapshot();
+    let lfs = &mut Lfs::default();
+    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_unmount(lfs));
+    let snapshot = env.snapshot();
 
-        let dummy = "dummy";
-        let result = run_powerloss_linear(
-            &mut env,
-            &snapshot,
-            3000,
-            |lfs_ptr, config| {
-                let err = lfs_mount(lfs_ptr, config);
-                if err.is_err() {
-                    lfs_format(lfs_ptr, config)?;
-                    lfs_mount(lfs_ptr, config)?;
-                }
-                for i in 0..N {
-                    let info =
-                        &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-                    let err = lfs_stat(lfs_ptr, dummy, info);
-                    if err.is_ok() {
-                        if info.type_ == LFS_TYPE_REG as u8 {
-                            let e = lfs_remove(lfs_ptr, dummy);
-                            if e.is_err() {
-                                let _ = lfs_unmount(lfs_ptr);
-                                return e;
-                            }
+    let dummy = "dummy";
+    let result = run_powerloss_linear(
+        &mut env,
+        &snapshot,
+        3000,
+        |lfs_ptr, config| {
+            let err = lfs_mount(lfs_ptr, config);
+            if err.is_err() {
+                lfs_format(lfs_ptr, config)?;
+                lfs_mount(lfs_ptr, config)?;
+            }
+            for i in 0..N {
+                let info =
+                    &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+                let err = lfs_stat(lfs_ptr, dummy, info);
+                if err.is_ok() {
+                    if info.type_ == LFS_TYPE_REG as u8 {
+                        let e = lfs_remove(lfs_ptr, dummy);
+                        if e.is_err() {
+                            let _ = lfs_unmount(lfs_ptr);
+                            return e;
                         }
-                    } else if err != Err(Error::NoEntry) || i != 0 {
-                        let _ = lfs_unmount(lfs_ptr);
-                        #[allow(clippy::unnecessary_unwrap)]
-                        return Err(err.unwrap_err());
                     }
-                    let file = &mut LfsFile::default();
-                    let e = lfs_file_open(
-                        lfs_ptr,
-                        file,
-                        dummy,
-                        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-                    );
-                    if e.is_err() {
-                        let _ = lfs_unmount(lfs_ptr);
-                        return e;
-                    }
-                    let e = lfs_file_close(lfs_ptr, file);
-                    if e.is_err() {
-                        let _ = lfs_unmount(lfs_ptr);
-                        return e;
-                    }
-                    let info =
-                        &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-                    let e = lfs_stat(lfs_ptr, dummy, info);
-                    if e.is_err() {
-                        let _ = lfs_unmount(lfs_ptr);
-                        return e;
-                    }
+                } else if err != Err(Error::NoEntry) || i != 0 {
+                    let _ = lfs_unmount(lfs_ptr);
+                    #[allow(clippy::unnecessary_unwrap)]
+                    return Err(err.unwrap_err());
                 }
-                lfs_unmount(lfs_ptr)?;
-                Ok(())
-            },
-            |_, _| Ok(()),
-        );
-        result.unwrap_or_else(|_| {
-            panic!("test_superblocks_reentrant_expand block_cycles={block_cycles} should complete")
-        });
-    }
+                let file = &mut LfsFile::default();
+                let e = lfs_file_open(
+                    lfs_ptr,
+                    file,
+                    dummy,
+                    LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+                );
+                if e.is_err() {
+                    let _ = lfs_unmount(lfs_ptr);
+                    return e;
+                }
+                let e = lfs_file_close(lfs_ptr, file);
+                if e.is_err() {
+                    let _ = lfs_unmount(lfs_ptr);
+                    return e;
+                }
+                let info =
+                    &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+                let e = lfs_stat(lfs_ptr, dummy, info);
+                if e.is_err() {
+                    let _ = lfs_unmount(lfs_ptr);
+                    return e;
+                }
+            }
+            lfs_unmount(lfs_ptr)?;
+            Ok(())
+        },
+        |_, _| Ok(()),
+    );
+    result.unwrap_or_else(|_| {
+        panic!("test_superblocks_reentrant_expand block_cycles={block_cycles} should complete")
+    });
 }
 
 /// Upstream: [cases.test_superblocks_unknown_blocks]
