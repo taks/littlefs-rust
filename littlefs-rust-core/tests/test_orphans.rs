@@ -6,7 +6,8 @@
 mod common;
 
 #[cfg(feature = "slow_tests")]
-use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
+use std::assert_matches;
+
 #[cfg(feature = "slow_tests")]
 use common::test_prng;
 use common::{
@@ -25,23 +26,19 @@ use littlefs_rust_core::{
     lfs_fs_preporphans, lfs_fs_size, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32, lfs_remove,
     lfs_stat, lfs_unmount,
 };
+use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
 
 // --- test_orphans_mkconsistent_fresh ---
 // Minimal: format, mount, mkconsistent. No mkdir/remove. Sanity check.
-#[test]
-fn test_orphans_mkconsistent_fresh() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_mkconsistent_fresh(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
-    let lfs_ptr = lfs;
-    assert_ok!(lfs_fs_mkconsistent(lfs_ptr));
-    assert_ok!(lfs_unmount(lfs_ptr));
+    assert_ok!(lfs_fs_mkconsistent(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 // --- test_orphans_mkconsistent_no_orphans ---
@@ -348,8 +345,8 @@ fn test_orphans_reentrant(cfg: &LfsConfig) {
 
         let err = lfs_mount(lfs, cfg);
         if err.is_err() {
-            lfs_format(lfs, cfg)?;
-            lfs_mount(lfs, cfg)?;
+            assert_ok!(lfs_format(lfs, cfg));
+            assert_ok!(lfs_mount(lfs, cfg));
         }
 
         let mut prng: u32 = 1;
@@ -362,55 +359,37 @@ fn test_orphans_reentrant(cfg: &LfsConfig) {
             let full_path = "/".to_string() + &components.join("/");
 
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-            let res = lfs_stat(lfs_ptr, &full_path, info);
+            let res = lfs_stat(lfs, &full_path, info);
             if res == Err(Error::NoEntry) {
                 for d in 0..depth {
                     let sub = "/".to_string() + &components[..=d].join("/");
-                    let err = lfs_mkdir(lfs_ptr, &sub);
-                    if err.is_err() && err != Err(Error::Exists) {
-                        return err;
-                    }
+                    assert_matches!(lfs_mkdir(lfs, &sub), Ok(()) | Err (Error::Exists));
                 }
                 for d in 0..depth {
                     let sub = "/".to_string() + &components[..=d].join("/");
 
-                    lfs_stat(lfs_ptr, &sub, info)?;
+                    assert_ok!(lfs_stat(lfs, &sub, info));
 
                     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
                     let name = core::str::from_utf8(&info.name[..nul]).unwrap();
                     let expected = &components[d];
-                    if name != *expected {
-                        return Err(Error::Invalid);
-                    }
-                    if info.type_ != LFS_TYPE_DIR as u8 {
-                        return Err(Error::Invalid);
-                    }
+                    assert_eq!(name, *expected);
+                    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
                 }
-            } else if res.is_ok() {
+            } else {
                 let expected = &components[depth - 1];
                 let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
                 let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-                if name != *expected || info.type_ != LFS_TYPE_DIR as u8 {
-                    return Err(Error::Invalid);
-                }
+                assert_eq!(name, *expected);
+                assert_eq!(info.type_, LFS_TYPE_DIR as u8);
                 for d in (0..depth).rev() {
                     let sub = "/".to_string() + &components[..=d].join("/");
-                    let err = lfs_remove(lfs_ptr, &sub);
-                    if err.is_err() && err != Err(Error::NotEmpty) {
-                        return err;
-                    }
+                    assert_matches!(lfs_remove(lfs, &sub), Ok(()) | Err(Error::NotEmpty));
                 }
-                let r = lfs_stat(lfs_ptr, &full_path, info);
-                if r != Err(Error::NoEntry) {
-                    return Err(if let Err(r) = r { r } else { Error::Invalid });
-                }
-            } else {
-                return res;
+                assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
             }
         }
 
-        if lfs_unmount(lfs_ptr).is_err() {
-            return Err(Error::Invalid);
-        }
+        assert_ok!(lfs_unmount(lfs));
     }
 }
