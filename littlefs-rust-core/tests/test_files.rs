@@ -11,7 +11,7 @@ use common::{
     LFS_O_APPEND, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, advance_prng,
     config_with_inline_max, default_config, fs_with_hello, init_context,
     powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
-    verify_prng_file, verify_prng_file_with_state, write_prng_file, test_prng
+    test_prng, verify_prng_file, verify_prng_file_with_state, write_prng_file,
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
@@ -20,7 +20,6 @@ use littlefs_rust_core::{
 };
 use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
-
 
 /// Block count for tests with large files (SIZE up to 262144).
 const BLOCK_COUNT_LARGE: u32 = 1024;
@@ -329,7 +328,10 @@ fn test_files_reentrant_write(
         for b in &mut buffer[..chunk] {
             *b = (test_prng(&mut prng) & 0xFF) as u8;
         }
-        assert_eq!(lfs_file_write(lfs, file, &buffer[..chunk]), Ok(chunk as u32));
+        assert_eq!(
+            lfs_file_write(lfs, file, &buffer[..chunk]),
+            Ok(chunk as u32)
+        );
     }
     assert_ok!(lfs_file_close(lfs, file));
 
@@ -339,7 +341,10 @@ fn test_files_reentrant_write(
     prng = 1;
     for i in (0..size).step_by(chunk_size) {
         let chunk = std::cmp::min(chunk_size, (size - i) as usize);
-        assert_eq!(lfs_file_read(lfs, file, &mut buffer[..chunk]), Ok(chunk as u32));
+        assert_eq!(
+            lfs_file_read(lfs, file, &mut buffer[..chunk]),
+            Ok(chunk as u32)
+        );
         for b in &buffer[..chunk] {
             assert_eq!(*b, (test_prng(&mut prng) & 0xFF) as u8)
         }
@@ -546,59 +551,37 @@ fn test_files_many_power_cycle(cfg: &LfsConfig) {
 ///
 /// Reentrant creation of 300 files with power-loss simulation.
 /// Can take 30+ seconds due to iteration over power-loss points.
-#[test]
+#[lfs_test(reentrant)]
 #[cfg(feature = "slow_tests")]
-fn test_files_many_power_loss() {
+fn test_files_many_power_loss(cfg: &LfsConfig) {
     const N: usize = 300;
-    let mut env = powerloss_config(BLOCK_COUNT_MANY);
-    init_powerloss_context(&mut env);
-
-    let config_ptr = &env.config;
     let lfs = &mut Lfs::default();
 
-    assert_ok!(littlefs_rust_core::lfs_format(lfs, config_ptr));
-    assert_ok!(littlefs_rust_core::lfs_mount(lfs, config_ptr));
-    assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
-    let snapshot = env.snapshot();
-
-    let max_iter = 2000;
-
-    let op = |lfs: &mut Lfs, cfg: &LfsConfig| -> Result<(), Error> {
-        let err = littlefs_rust_core::lfs_mount(lfs, cfg);
-        if err.is_err() {
-            let _ = littlefs_rust_core::lfs_format(lfs, cfg);
-            littlefs_rust_core::lfs_mount(lfs, cfg)?;
+    let err = littlefs_rust_core::lfs_mount(lfs, cfg);
+    if err.is_err() {
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
+    }
+    for i in 0..N {
+        let path = &format!("file_{:03}", i);
+        let file = &mut LfsFile::default();
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
+        let content = format!("Hi {:03}\0", i);
+        let bytes = content.as_bytes();
+        let sz = lfs_file_size(lfs, file);
+        if sz != bytes.len() as u32 {
+            assert_eq!(lfs_file_write(lfs, file, bytes), Ok(bytes.len() as u32));
         }
-        for i in 0..N {
-            let path = &format!("file_{:03}", i);
-            let file = &mut LfsFile::default();
-            littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT)?;
-            let content = format!("Hi {:03}\0", i);
-            let bytes = content.as_bytes();
-            assert_eq!(bytes.len(), 7);
-            let sz = littlefs_rust_core::lfs_file_size(lfs, file);
-            if sz != bytes.len() as u32 {
-                let n = littlefs_rust_core::lfs_file_write(lfs, file, bytes)?;
-                assert_eq!(n, bytes.len() as u32);
-            }
-            littlefs_rust_core::lfs_file_close(lfs, file)?;
+        assert_ok!(lfs_file_close(lfs, file));
 
-            let rfile = &mut LfsFile::default();
-            littlefs_rust_core::lfs_file_open(lfs, rfile, path, LFS_O_RDONLY)?;
-            let mut buf = [0u8; 32];
-            let n = littlefs_rust_core::lfs_file_read(lfs, rfile, &mut buf[..7])?;
-            assert_eq!(n, 7);
-            assert_eq!(&buf[..7], bytes);
-            littlefs_rust_core::lfs_file_close(lfs, rfile)?;
-        }
-        littlefs_rust_core::lfs_unmount(lfs)?;
-        Ok(())
-    };
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+        let mut buf = [0u8; 7];
 
-    let verify = |_lfs: &mut Lfs, _cfg: &LfsConfig| -> Result<(), Error> { Ok(()) };
-
-    let result = run_powerloss_linear(&mut env, &snapshot, max_iter, op, verify);
-    result.expect("many_power_loss should eventually succeed");
+        assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(7));
+        assert_eq!(&buf, bytes);
+        assert_ok!(lfs_file_close(lfs, file));
+    }
+    assert_ok!(lfs_unmount(lfs));
 }
 
 // ── Rust-specific extras ────────────────────
