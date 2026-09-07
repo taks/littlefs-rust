@@ -267,11 +267,11 @@ pub fn lfs_dir_getread(
         }
 
         rcache.block = LFS_BLOCK_INLINE;
-        rcache.off = lfs_aligndown(off, cfg.read_size as usize);
+        rcache.off = lfs_aligndown(off as u32, cfg.read_size) as usize;
         rcache.size = core::cmp::min(
-            lfs_alignup(off + hint as usize, cfg.read_size as usize),
-            rcache.buffer.len(),
-        );
+            lfs_alignup(off as u32 + hint, cfg.read_size),
+            rcache.buffer.len() as u32,
+        ) as usize;
         let _res = lfs_dir_getslice(lfs, dir, gmask, gtag, rcache.off, unsafe {
             &mut rcache.buffer.as_mut()[..rcache.size]
         })?;

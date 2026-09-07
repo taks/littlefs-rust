@@ -322,7 +322,10 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
     let block_size = cfg.block_size as usize;
     let prog_size = cfg.prog_size as usize;
 
-    let end = lfs_alignup(cmp::min(commit.off as usize + 20, block_size), prog_size);
+    let end = lfs_alignup(
+        cmp::min(commit.off + 20, block_size as u32),
+        prog_size as u32,
+    ) as usize;
 
     let mut off1: lfs_off_t = 0;
     let mut crc1: u32 = 0;
@@ -535,8 +538,8 @@ pub fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), 
     let cfg = unsafe { lfs.cfg.as_ref() };
 
     if cfg.block_cycles > 0 {
-        let modulus = (cfg.block_cycles as usize + 1) | 1;
-        dir.rev = lfs_alignup(dir.rev as usize, modulus) as u32;
+        let modulus = (cfg.block_cycles as u32 + 1) | 1;
+        dir.rev = lfs_alignup(dir.rev, modulus);
     }
 
     dir.off = core::mem::size_of::<u32>() as u32;
@@ -1458,7 +1461,7 @@ pub fn lfs_dir_splittingcompact(
                 cfg.block_size
             };
             let max_space = effective_max - 40;
-            let half_block = lfs_alignup(effective_max as usize / 2, cfg.prog_size as usize) as u32;
+            let half_block = lfs_alignup(effective_max / 2, cfg.prog_size);
             crate::lfs_trace!(
                 "splittingcompact: split={} end_val={} size={} max_space={} half_block={} break={}",
                 split,
