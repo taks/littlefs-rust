@@ -10,6 +10,7 @@ use common::{
     verify_prng_file, write_block_raw, write_prng_file,
 };
 use littlefs_rust_core::{Lfs, LfsConfig, LfsFile, error::Error};
+use littlefs_rust_test_macro::lfs_test;
 
 // ── PRNG tests ──────────────────────────────────────────────────────────────
 

@@ -16,7 +16,7 @@ use common::{
     init_wear_leveling_context,
     powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
 };
-use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE3_DIR;
+use littlefs_rust_core::{error::Error::Exists, lfs_type::lfs_type::LFS_TYPE3_DIR};
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
     lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
@@ -59,15 +59,11 @@ fn test_move_nop(cfg: &LfsConfig) {
 
 // --- test_move_file ---
 // Cross-dir rename a/hello -> c/hello
-#[test]
-fn test_move_file() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_file(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "a"));
     assert_ok!(lfs_mkdir(lfs, "b"));
@@ -91,14 +87,14 @@ fn test_move_file() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hello", "c/hello"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let a_names = dir_entry_names(lfs, &env.config, "a").unwrap();
+    assert_ok!(lfs_mount(lfs, cfg));
+    let a_names = dir_entry_names(lfs, cfg, "a").unwrap();
     assert_eq!(a_names.len(), 0);
-    let c_names = dir_entry_names(lfs, &env.config, "c").unwrap();
+    let c_names = dir_entry_names(lfs, cfg, "c").unwrap();
     assert_eq!(c_names.len(), 1);
     assert_eq!(c_names[0], "hello");
 
@@ -160,15 +156,11 @@ fn test_move_dir(cfg: &LfsConfig) {
 
 // --- test_move_state_stealing ---
 // Chain a->b->c->d then remove b,c
-#[test]
-fn test_move_state_stealing() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_state_stealing(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "a"));
     assert_ok!(lfs_mkdir(lfs, "b"));
@@ -191,24 +183,24 @@ fn test_move_state_stealing() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "a/hello", "b/hello"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "b/hello", "c/hello"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_rename(lfs, "c/hello", "d/hello"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_remove(lfs, "b"));
     assert_ok!(lfs_remove(lfs, "c"));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY));
     let mut buf = [0u8; 32];
@@ -291,15 +283,11 @@ fn test_move_create_delete_same() {
 }
 
 // --- test_move_create_delete_delete_same ---
-#[test]
-fn test_move_create_delete_delete_same() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_create_delete_delete_same(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -639,54 +627,101 @@ fn test_move_file_after_corrupt(cfg: &LfsConfig) {
 
 // --- test_move_reentrant_file ---
 // Power-loss at rename points; verify FS consistent after each simulated power loss.
-#[test]
-fn test_move_reentrant_file() {
-    init_logger();
-    let mut env = powerloss_config(128);
-    init_powerloss_context(&mut env);
-
+#[lfs_test(reentrant)]
+fn test_move_reentrant_file(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
-    assert_ok!(lfs_mkdir(lfs, "dir.1"));
-    assert_ok!(lfs_mkdir(lfs, "dir.2"));
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "dir.1/1.move_me",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_unmount(lfs));
+    let err = lfs_mount(lfs, cfg);
+    if err.is_err() {
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
+    }
+    let dirs = ["a", "b", "c", "d"];
+    for dir in dirs {
+        assert_matches!(lfs_mkdir(lfs, dir), Ok(()) | Err(Error(Exists)));
+    }
+    assert_ok!(lfs_umount(lfs));
 
-    let snapshot = env.snapshot();
-    let path_src = "dir.1/1.move_me";
-    let path_dst = "dir.2/1.move_me";
-
-    let result = run_powerloss_linear(
-        &mut env,
-        &snapshot,
-        128,
-        |lfs_ptr, config| {
-            lfs_mount(lfs_ptr, config)?;
-
-            let err = lfs_rename(lfs_ptr, path_src, path_dst);
-            if let Err(err) = err {
-                let _ = lfs_unmount(lfs_ptr);
-                return Err(err);
+    loop {
+        assert_ok!(lfs_mount(&lfs, cfg));
+        // there should never exist _2_ hello files
+        let mut count = 0;
+        let info = &mut LfsInfo::default();
+        for dir in dirs {
+            if (lfs_stat(&lfs, format!("{}/hello", dir), &info) == 0) {
+                assert!(strcmp(info.name, "hello") == 0);
+                assert!(info.type_ == LFS_TYPE_REG as usize);
+                assert!(info.size == 5+8+6 || info.size == 0);
+                count += 1;
             }
-            lfs_unmount(lfs_ptr)?;
+        }
 
-            Ok(())
-        },
-        |lfs_ptr, config| {
-            lfs_mount(lfs_ptr, config)?;
-            let _ = lfs_unmount(lfs_ptr);
-            Ok(())
-        },
-    );
-    result.expect("test_move_reentrant_file should complete");
+        assert!(count <= 1);
+        assert_ok!(lfs_unmount(lfs));
+
+        lfs_mount(&lfs, cfg) => 0;
+        if (lfs_stat(&lfs, "a/hello", &info) == 0 && info.size > 0) {
+            lfs_rename(&lfs, "a/hello", "b/hello") => 0;
+        } else if (lfs_stat(&lfs, "b/hello", &info) == 0) {
+            lfs_rename(&lfs, "b/hello", "c/hello") => 0;
+        } else if (lfs_stat(&lfs, "c/hello", &info) == 0) {
+            lfs_rename(&lfs, "c/hello", "d/hello") => 0;
+        } else if (lfs_stat(&lfs, "d/hello", &info) == 0) {
+            // success
+            lfs_unmount(&lfs) => 0;
+            break;
+        } else {
+            // create file
+            lfs_file_t file;
+            lfs_file_open(&lfs, &file, "a/hello",
+                    LFS_O_WRONLY | LFS_O_CREAT) => 0;
+            lfs_file_write(&lfs, &file, "hola\n", 5) => 5;
+            lfs_file_write(&lfs, &file, "bonjour\n", 8) => 8;
+            lfs_file_write(&lfs, &file, "ohayo\n", 6) => 6;
+            lfs_file_close(&lfs, &file) => 0;
+        }
+        lfs_unmount(&lfs) => 0;
+    }
+
+    lfs_mount(&lfs, cfg) => 0;
+    lfs_dir_t dir;
+    struct lfs_info info;
+    lfs_dir_open(&lfs, &dir, "a") => 0;
+    lfs_dir_read(&lfs, &dir, &info) => 1;
+    assert(strcmp(info.name, ".") == 0);
+    assert(info.type == LFS_TYPE_DIR);
+    lfs_dir_read(&lfs, &dir, &info) => 1;
+    assert(strcmp(info.name, "..") == 0);
+    assert(info.type == LFS_TYPE_DIR);
+    lfs_dir_read(&lfs, &dir, &info) => 0;
+    lfs_dir_close(&lfs, &dir) => 0;
+    lfs_dir_open(&lfs, &dir, "d") => 0;
+    lfs_dir_read(&lfs, &dir, &info) => 1;
+    assert(strcmp(info.name, ".") == 0);
+    assert(info.type == LFS_TYPE_DIR);
+    lfs_dir_read(&lfs, &dir, &info) => 1;
+    assert(strcmp(info.name, "..") == 0);
+    assert(info.type == LFS_TYPE_DIR);
+    lfs_dir_read(&lfs, &dir, &info) => 1;
+    assert(strcmp(info.name, "hello") == 0);
+    assert(info.type == LFS_TYPE_REG);
+    assert(info.size == 5+8+6);
+    lfs_dir_read(&lfs, &dir, &info) => 0;
+    lfs_dir_close(&lfs, &dir) => 0;
+
+    lfs_file_t file;
+    lfs_file_open(&lfs, &file, "a/hello", LFS_O_RDONLY) => LFS_ERR_NOENT;
+    lfs_file_open(&lfs, &file, "b/hello", LFS_O_RDONLY) => LFS_ERR_NOENT;
+    lfs_file_open(&lfs, &file, "c/hello", LFS_O_RDONLY) => LFS_ERR_NOENT;
+    lfs_file_open(&lfs, &file, "d/hello", LFS_O_RDONLY) => 0;
+    uint8_t buffer[1024];
+    lfs_file_read(&lfs, &file, buffer, 5) => 5;
+    memcmp(buffer, "hola\n", 5) => 0;
+    lfs_file_read(&lfs, &file, buffer, 8) => 8;
+    memcmp(buffer, "bonjour\n", 8) => 0;
+    lfs_file_read(&lfs, &file, buffer, 6) => 6;
+    memcmp(buffer, "ohayo\n", 6) => 0;
+    lfs_file_close(&lfs, &file) => 0;
+    lfs_unmount(&lfs) => 0;
 }
 
 // Upstream: test_move_dir_corrupt_source
