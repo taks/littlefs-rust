@@ -5,24 +5,25 @@
 
 mod common;
 
+use std::assert_matches;
+
 use common::{
     LFS_O_APPEND, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, advance_prng,
     config_with_inline_max, default_config, fs_with_hello, init_context,
     powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
-    verify_prng_file, verify_prng_file_with_state, write_prng_file, write_prng_file_result,
+    verify_prng_file, verify_prng_file_with_state, write_prng_file, test_prng
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_rewind, lfs_file_seek, lfs_file_size, lfs_file_sync, lfs_file_tell, lfs_file_truncate,
     lfs_file_write, lfs_format, lfs_mount, lfs_type::OpenFlags, lfs_unmount,
 };
+use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
+
 
 /// Block count for tests with large files (SIZE up to 262144).
 const BLOCK_COUNT_LARGE: u32 = 1024;
-
-/// Block count for test_files_many with N=300 (needs dir space for 300 entries).
-const BLOCK_COUNT_MANY: u32 = 256;
 
 // ── Upstream Cases ──────────────────────────
 
@@ -293,81 +294,59 @@ fn test_files_truncate(
 ///
 /// Mount-or-format, check existing file (size 0 or SIZE), write SIZE PRNG(1),
 /// close, read back, verify. Power-loss retries until success.
-#[rstest]
+#[lfs_test(reentrant)]
 fn test_files_reentrant_write(
+    cfg: &mut LfsConfig,
     #[values(32, 0, 7, 2049)] size: u32,
-    #[values(31, 16, 65)] chunk_size: u32,
-    #[values(0, -1, 8)] inline_max: i32,
+    #[values(31, 16, 65)] chunk_size: usize,
+    #[values(0, u32::MAX, 8)] inline_max: u32,
 ) {
-    let mut env = powerloss_config(256);
-    init_powerloss_context(&mut env);
-    env.config.inline_max = if inline_max < 0 {
-        u32::MAX
-    } else {
-        inline_max as u32
-    };
-
-    let config_ptr = &env.config;
+    cfg.inline_max = inline_max;
     let lfs = &mut Lfs::default();
 
-    // Format and mount for initial snapshot
-    assert_ok!(littlefs_rust_core::lfs_format(lfs, config_ptr));
-    assert_ok!(littlefs_rust_core::lfs_mount(lfs, config_ptr));
-    assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
-    let snapshot = env.snapshot();
+    let err = lfs_mount(lfs, cfg);
+    if err.is_err() {
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
+    }
 
-    let max_iter = 5000;
+    let path = "avacado";
+    let file = &mut LfsFile::default();
+    let mut buffer = [0u8; 1024];
+    let err = lfs_file_open(lfs, file, path, LFS_O_RDONLY);
+    assert_matches!(err, Ok(()) | Err(Error::NoEntry));
+    if err.is_ok() {
+        let sz = lfs_file_size(lfs, file);
+        assert!(sz == 0 || sz == size, "size must be 0 or SIZE");
+        assert_ok!(lfs_file_close(lfs, file));
+    }
 
-    let op = |lfs: &mut Lfs, cfg: &LfsConfig| -> Result<(), Error> {
-        let err = littlefs_rust_core::lfs_mount(lfs, cfg);
-        if err.is_err() {
-            let _ = littlefs_rust_core::lfs_format(lfs, cfg);
-            littlefs_rust_core::lfs_mount(lfs, cfg)?;
+    // write
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
+    let mut prng: u32 = 1;
+    for i in (0..size).step_by(chunk_size) {
+        let chunk = std::cmp::min(chunk_size, (size - i) as usize);
+        for b in &mut buffer[..chunk] {
+            *b = (test_prng(&mut prng) & 0xFF) as u8;
         }
+        assert_eq!(lfs_file_write(lfs, file, &buffer[..chunk]), Ok(chunk as u32));
+    }
+    assert_ok!(lfs_file_close(lfs, file));
 
-        let path = "avacado";
-        let file = &mut LfsFile::default();
-        let open_err = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY);
-        if open_err.is_ok() {
-            let sz = littlefs_rust_core::lfs_file_size(lfs, file);
-            assert!(sz == 0 || sz == size, "size must be 0 or SIZE");
-            littlefs_rust_core::lfs_file_close(lfs, file)?;
-        } else {
-            assert_eq!(open_err, Err(Error::NoEntry));
+    // read
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_eq!(lfs_file_size(lfs, file), size);
+    prng = 1;
+    for i in (0..size).step_by(chunk_size) {
+        let chunk = std::cmp::min(chunk_size, (size - i) as usize);
+        assert_eq!(lfs_file_read(lfs, file, &mut buffer[..chunk]), Ok(chunk as u32));
+        for b in &buffer[..chunk] {
+            assert_eq!(*b, (test_prng(&mut prng) & 0xFF) as u8)
         }
-
-        littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT)?;
-        write_prng_file_result(lfs, file, size, chunk_size, 1)?;
-        littlefs_rust_core::lfs_file_close(lfs, file)?;
-        littlefs_rust_core::lfs_unmount(lfs)?;
-
-        Ok(())
-    };
-
-    let verify = |lfs: &mut Lfs, cfg: &LfsConfig| -> Result<(), Error> {
-        let remount = littlefs_rust_core::lfs_mount(lfs, cfg);
-        if remount.is_err() {
-            return Ok(());
-        }
-        let path = "avacado";
-        let file = &mut LfsFile::default();
-        let err = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY);
-        if err.is_err() {
-            let _ = littlefs_rust_core::lfs_unmount(lfs);
-            return Ok(());
-        }
-        let sz = littlefs_rust_core::lfs_file_size(lfs, file);
-        if sz == size {
-            verify_prng_file(lfs, file, size, chunk_size, 1);
-        }
-        littlefs_rust_core::lfs_file_close(lfs, file)?;
-        littlefs_rust_core::lfs_unmount(lfs)?;
-
-        Ok(())
-    };
-
-    let result = run_powerloss_linear(&mut env, &snapshot, max_iter, op, verify);
-    result.expect("reentrant write should eventually succeed");
+    }
+    assert_eq!(lfs_file_read(lfs, file, &mut buffer), Ok(0));
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_files_reentrant_write_sync]
@@ -486,15 +465,13 @@ fn test_files_reentrant_write_sync(
 /// defines.N = 300
 ///
 /// Create 300 files of 7 bytes ("Hi %03d"), read each back immediately, verify.
-#[test]
-fn test_files_many() {
+#[lfs_test]
+fn test_files_many(cfg: &LfsConfig) {
     const N: usize = 300;
-    let mut env = default_config(BLOCK_COUNT_MANY);
-    init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     for i in 0..N {
         let path = &format!("file_{:03}", i);
@@ -527,17 +504,15 @@ fn test_files_many() {
 /// defines.N = 300
 ///
 /// Create 300 files, unmount/remount after each. Verify on final mount.
-#[test]
-fn test_files_many_power_cycle() {
+#[lfs_test]
+fn test_files_many_power_cycle(cfg: &LfsConfig) {
     const N: usize = 300;
-    let mut env = default_config(BLOCK_COUNT_MANY);
-    init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
     for i in 0..N {
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, cfg));
         let path = &format!("file_{:03}", i);
         let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
@@ -554,7 +529,7 @@ fn test_files_many_power_cycle() {
         assert_ok!(lfs_file_close(lfs, file));
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, cfg));
         let rfile = &mut LfsFile::default();
         assert_ok!(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
         let mut buf = [0u8; 32];

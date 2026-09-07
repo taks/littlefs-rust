@@ -6,8 +6,8 @@
 mod common;
 
 use common::{
-    LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, default_config, erase_block_raw,
-    init_context, init_logger, read_block_raw, write_block_raw,
+    LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, erase_block_raw,
+    read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsDir, LfsFile, lfs_dir_close, lfs_dir_open, lfs_file_close, lfs_file_open,

@@ -92,25 +92,22 @@ fn test_dirs_one_mkdir(cfg: &LfsConfig) {
 /// defines.N = range(3, 100, 3), if = 'N < BLOCK_COUNT/2'
 ///
 /// Create N dirs dir000..dir{N-1}, unmount, mount, verify dir_read.
-#[rstest]
+#[lfs_test]
 fn test_dirs_many_creation(
+    cfg: &LfsConfig,
     #[values(
         3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69,
         72, 75, 78, 81, 84, 87, 90, 93, 96, 99
     )]
     n: usize,
 ) {
-    init_logger();
-    let block_count = 256u32;
-    if n >= block_count as usize / 2 {
+    if n >= cfg.block_count as usize / 2 {
         return;
     }
-    let mut env = default_config(block_count);
-    init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     for i in 0..n {
         let path = &format!("dir{i:03}");
@@ -118,7 +115,7 @@ fn test_dirs_many_creation(
         assert_ok!(err);
     }
 
-    let names = dir_entry_names(lfs, &env.config, "/").expect("dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
     assert_eq!(names.len(), n);
     let mut names_sorted = names.clone();
     names_sorted.sort();
