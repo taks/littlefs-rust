@@ -308,115 +308,114 @@ fn test_truncate_write(cfg: &LfsConfig, #[case] medium: u32, #[case] large: u32)
 
 /// Upstream: [cases.test_truncate_reentrant_write]
 #[rstest]
-#[case(4)]
-#[case(512)]
 #[cfg(feature = "slow_tests")]
-fn test_truncate_reentrant_write(#[case] small_size: u32) {
+fn test_truncate_reentrant_write(
+    #[values(4, 512)] small_size: u32,
+    #[values(0u32, 3, 4, 5, 31, 32, 33, 511, 512, 513, 1023, 1024, 1025)] medium_size: u32,
+) {
     const LARGE: u32 = 2048;
-    let medium_sizes = [0u32, 3, 4, 5, 31, 32, 33, 511, 512, 513, 1023, 1024, 1025];
-    for &medium in &medium_sizes {
-        use littlefs_rust_core::{LfsConfig, error::Error};
 
-        if medium >= LARGE || small_size > medium {
-            continue;
-        }
-        let mut env = common::powerloss::powerloss_config(512);
-        common::powerloss::init_powerloss_context(&mut env);
+    use littlefs_rust_core::{LfsConfig, error::Error};
 
-        let config_ptr = &env.config;
-        let lfs = &mut Lfs::default();
-        assert_ok!(littlefs_rust_core::lfs_format(lfs, config_ptr));
-        assert_ok!(littlefs_rust_core::lfs_mount(lfs, config_ptr));
-        assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
-        let snapshot = env.snapshot();
-
-        let op = |lfs_ptr: &mut Lfs, cfg: &LfsConfig| -> Result<(), Error> {
-            let err = littlefs_rust_core::lfs_mount(lfs_ptr, cfg);
-            if err.is_err() {
-                let _ = littlefs_rust_core::lfs_format(lfs_ptr, cfg);
-                littlefs_rust_core::lfs_mount(lfs_ptr, cfg)?;
-            }
-
-            let path = "baldy";
-            let file = &mut LfsFile::default();
-            let open_err = littlefs_rust_core::lfs_file_open(lfs_ptr, file, path, LFS_O_RDONLY);
-            if open_err.is_ok() {
-                let sz = littlefs_rust_core::lfs_file_size(lfs_ptr, file);
-                if sz == 0 || sz == LARGE || sz == medium || sz == small_size {
-                    let mut buf = [0u8; 16];
-                    let mut j: u32 = 0;
-                    while j < sz as u32 {
-                        let chunk = min(4, sz as u32 - j);
-                        let n = littlefs_rust_core::lfs_file_read(
-                            lfs_ptr,
-                            file,
-                            &mut buf[..chunk as usize],
-                        )?;
-                        if n != chunk as u32 {
-                            return Err(Error::Invalid);
-                        }
-                        let hay = &buf[..chunk as usize];
-                        if hay != &HAIR[..chunk as usize]
-                            && hay != &BALD[..chunk as usize]
-                            && hay != &COMB[..chunk as usize]
-                        {
-                            return Err(Error::Invalid);
-                        }
-                        j += chunk;
-                    }
-                }
-                littlefs_rust_core::lfs_file_close(lfs_ptr, file)?;
-            } else if open_err != Err(Error::NoEntry) {
-                return open_err;
-            }
-
-            littlefs_rust_core::lfs_file_open(
-                lfs_ptr,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-            )?;
-            let mut j: u32 = 0;
-            while j < LARGE {
-                let chunk = min(HAIR.len() as u32, LARGE - j);
-                let n = littlefs_rust_core::lfs_file_write(lfs_ptr, file, &HAIR[..chunk as usize])?;
-
-                assert_eq!(n, chunk);
-                j += chunk;
-            }
-            littlefs_rust_core::lfs_file_close(lfs_ptr, file)?;
-
-            littlefs_rust_core::lfs_file_open(lfs_ptr, file, path, LFS_O_RDWR)?;
-
-            littlefs_rust_core::lfs_file_truncate(lfs_ptr, file, medium)?;
-
-            let mut j: u32 = 0;
-            while j < medium {
-                let chunk = min(BALD.len() as u32, medium - j);
-                littlefs_rust_core::lfs_file_write(lfs_ptr, file, &BALD[..chunk as usize])?;
-
-                j += chunk;
-            }
-            littlefs_rust_core::lfs_file_close(lfs_ptr, file)?;
-
-            littlefs_rust_core::lfs_file_open(lfs_ptr, file, path, LFS_O_RDWR)?;
-            littlefs_rust_core::lfs_file_truncate(lfs_ptr, file, small_size)?;
-            let mut j: u32 = 0;
-            while j < small_size {
-                let chunk = min(COMB.len() as u32, small_size - j);
-                littlefs_rust_core::lfs_file_write(lfs_ptr, file, &COMB[..chunk as usize])?;
-                j += chunk;
-            }
-            littlefs_rust_core::lfs_file_close(lfs_ptr, file)?;
-
-            littlefs_rust_core::lfs_unmount(lfs_ptr)?;
-            Ok(())
-        };
-
-        let result =
-            common::powerloss::run_powerloss_linear(&mut env, &snapshot, 5000, op, |_, _| Ok(()));
-        result.expect("reentrant truncate write should eventually succeed");
+    if medium_size >= LARGE || small_size > medium_size {
+        return;
     }
+    let mut env = common::powerloss::powerloss_config(512);
+    common::powerloss::init_powerloss_context(&mut env);
+
+    let config_ptr = &env.config;
+    let lfs = &mut Lfs::default();
+    assert_ok!(littlefs_rust_core::lfs_format(lfs, config_ptr));
+    assert_ok!(littlefs_rust_core::lfs_mount(lfs, config_ptr));
+    assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
+    let snapshot = env.snapshot();
+
+    let op = |lfs_ptr: &mut Lfs, cfg: &LfsConfig| -> Result<(), Error> {
+        let err = littlefs_rust_core::lfs_mount(lfs_ptr, cfg);
+        if err.is_err() {
+            let _ = littlefs_rust_core::lfs_format(lfs_ptr, cfg);
+            littlefs_rust_core::lfs_mount(lfs_ptr, cfg)?;
+        }
+
+        let path = "baldy";
+        let file = &mut LfsFile::default();
+        let open_err = littlefs_rust_core::lfs_file_open(lfs_ptr, file, path, LFS_O_RDONLY);
+        if open_err.is_ok() {
+            let sz = littlefs_rust_core::lfs_file_size(lfs_ptr, file);
+            if sz == 0 || sz == LARGE || sz == medium_size || sz == small_size {
+                let mut buf = [0u8; 16];
+                let mut j: u32 = 0;
+                while j < sz as u32 {
+                    let chunk = min(4, sz as u32 - j);
+                    let n = littlefs_rust_core::lfs_file_read(
+                        lfs_ptr,
+                        file,
+                        &mut buf[..chunk as usize],
+                    )?;
+                    if n != chunk as u32 {
+                        return Err(Error::Invalid);
+                    }
+                    let hay = &buf[..chunk as usize];
+                    if hay != &HAIR[..chunk as usize]
+                        && hay != &BALD[..chunk as usize]
+                        && hay != &COMB[..chunk as usize]
+                    {
+                        return Err(Error::Invalid);
+                    }
+                    j += chunk;
+                }
+            }
+            littlefs_rust_core::lfs_file_close(lfs_ptr, file)?;
+        } else if open_err != Err(Error::NoEntry) {
+            return open_err;
+        }
+
+        littlefs_rust_core::lfs_file_open(
+            lfs_ptr,
+            file,
+            path,
+            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
+        )?;
+        let mut j: u32 = 0;
+        while j < LARGE {
+            let chunk = min(HAIR.len() as u32, LARGE - j);
+            let n = littlefs_rust_core::lfs_file_write(lfs_ptr, file, &HAIR[..chunk as usize])?;
+
+            assert_eq!(n, chunk);
+            j += chunk;
+        }
+        littlefs_rust_core::lfs_file_close(lfs_ptr, file)?;
+
+        littlefs_rust_core::lfs_file_open(lfs_ptr, file, path, LFS_O_RDWR)?;
+
+        littlefs_rust_core::lfs_file_truncate(lfs_ptr, file, medium_size)?;
+
+        let mut j: u32 = 0;
+        while j < medium_size {
+            let chunk = min(BALD.len() as u32, medium_size - j);
+            littlefs_rust_core::lfs_file_write(lfs_ptr, file, &BALD[..chunk as usize])?;
+
+            j += chunk;
+        }
+        littlefs_rust_core::lfs_file_close(lfs_ptr, file)?;
+
+        littlefs_rust_core::lfs_file_open(lfs_ptr, file, path, LFS_O_RDWR)?;
+        littlefs_rust_core::lfs_file_truncate(lfs_ptr, file, small_size)?;
+        let mut j: u32 = 0;
+        while j < small_size {
+            let chunk = min(COMB.len() as u32, small_size - j);
+            littlefs_rust_core::lfs_file_write(lfs_ptr, file, &COMB[..chunk as usize])?;
+            j += chunk;
+        }
+        littlefs_rust_core::lfs_file_close(lfs_ptr, file)?;
+
+        littlefs_rust_core::lfs_unmount(lfs_ptr)?;
+        Ok(())
+    };
+
+    let result =
+        common::powerloss::run_powerloss_linear(&mut env, &snapshot, 5000, op, |_, _| Ok(()));
+    result.expect("reentrant truncate write should eventually succeed");
 }
 
 /// Upstream: [cases.test_truncate_aggressive]

@@ -5,8 +5,6 @@
 
 mod common;
 
-#[cfg(feature = "slow_tests")]
-use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
 use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, clone_config_with_block_count,
     default_config, init_context, read_block_raw,
@@ -153,30 +151,16 @@ fn test_superblocks_mount_unknown_block_count() {
 
 /// Upstream: [cases.test_superblocks_reentrant_format]
 /// reentrant = true, POWERLOSS_BEHAVIOR = [NOOP, OOO]. Format under power-loss, then mount.
-#[test]
+#[lfs_test(reentrant)]
 #[cfg(feature = "slow_tests")]
-fn test_superblocks_reentrant_format() {
-    let mut env = powerloss_config(128);
-    init_powerloss_context(&mut env);
-    let snapshot = env.snapshot();
-
-    let result = run_powerloss_linear(
-        &mut env,
-        &snapshot,
-        500,
-        |lfs_ptr, config| {
-            let err = lfs_mount(lfs_ptr, config);
-            if err.is_err() {
-                lfs_format(lfs_ptr, config)?;
-
-                lfs_mount(lfs_ptr, config)?;
-            }
-            lfs_unmount(lfs_ptr)?;
-            Ok(())
-        },
-        |_, _| Ok(()),
-    );
-    result.expect("test_superblocks_reentrant_format should complete");
+fn test_superblocks_reentrant_format(cfg: &LfsConfig) {
+    let lfs = &mut Lfs::default();
+    let err = lfs_mount(lfs, cfg);
+    if err.is_err() {
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
+    }
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_superblocks_stat_tweaked]
