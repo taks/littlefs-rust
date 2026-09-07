@@ -258,7 +258,6 @@ fn test_superblocks_expand() {
 /// Upstream: [cases.test_superblocks_magic_expand]
 /// Same as expand + magic check after.
 #[lfs_test]
-#[ignore = "TODO FIX"]
 fn test_superblocks_magic_expand(
     cfg: &mut LfsConfig,
     #[values(32, 33, 1)] block_cycles: i32,
