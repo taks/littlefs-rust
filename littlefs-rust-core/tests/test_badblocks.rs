@@ -61,8 +61,8 @@ fn test_badblocks_single(
 
         for i in 1..10 {
             let mut buffer = [0u8; 1024];
-            for j in 0..NAMEMULT {
-                buffer[j] = b'0' + i as u8;
+            for b in buffer.iter_mut().take(NAMEMULT) {
+                *b = b'0' + i as u8;
             }
             buffer[NAMEMULT] = 0;
 
@@ -101,8 +101,8 @@ fn test_badblocks_single(
 
         for i in 1..10 {
             let mut buffer = [0u8; 1024];
-            for j in 0..NAMEMULT {
-                buffer[j] = b'0' + i as u8;
+            for b in buffer.iter_mut().take(NAMEMULT) {
+                *b = b'0' + i as u8;
             }
 
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
@@ -282,8 +282,8 @@ fn test_badblocks_superblocks(
 fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
     for i in 1..10 {
         let mut buffer = [0u8; 1024];
-        for j in 0..NAMEMULT {
-            buffer[j] = b'0' + i as u8;
+        for b in buffer.iter_mut().take(NAMEMULT) {
+            *b = b'0' + i as u8;
         }
         buffer[NAMEMULT] = 0;
 
@@ -318,8 +318,8 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
 fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
     for i in 1..10 {
         let mut buffer = [0u8; 1024];
-        for j in 0..NAMEMULT {
-            buffer[j] = b'0' + i as u8;
+        for b in buffer.iter_mut().take(NAMEMULT) {
+            *b = b'0' + i as u8;
         }
         buffer[NAMEMULT] = 0;
 
