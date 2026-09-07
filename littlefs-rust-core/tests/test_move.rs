@@ -16,15 +16,13 @@ use common::{
     init_wear_leveling_context,
 };
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
-    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
-    lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
-};
-use littlefs_rust_core::{
+    Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo,
     error::Error,
+    lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close, lfs_file_open, lfs_file_read,
+    lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat,
     lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG},
+    lfs_unmount,
 };
-use littlefs_rust_core::{error::Error::Exists, lfs_type::lfs_type::LFS_TYPE3_DIR};
 use littlefs_rust_test_macro::lfs_test;
 
 // --- test_move_nop ---
@@ -912,7 +910,7 @@ fn test_reentrant_dir(cfg: &mut LfsConfig) {
         for dir in dirs {
             if lfs_stat(lfs, &format!("{}/hi", dir), &mut info).is_ok() {
                 assert_eq!(&info.name[..2], b"hi");
-                assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+                assert_eq!(info.type_, LFS_TYPE_DIR as u8);
                 count += 1;
             }
         }
@@ -946,23 +944,23 @@ fn test_reentrant_dir(cfg: &mut LfsConfig) {
     assert_ok!(lfs_dir_open(lfs, dir, "a"));
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     assert_ok!(lfs_dir_open(lfs, dir, "d"));
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"hi");
-    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
@@ -972,19 +970,19 @@ fn test_reentrant_dir(cfg: &mut LfsConfig) {
     assert_ok!(lfs_dir_open(lfs, dir, "d/hi"));
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..7], b"bonjour");
-    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..4], b"hola");
-    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..5], b"ohayo");
-    assert_eq!(info.type_, LFS_TYPE3_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
     assert_ok!(lfs_unmount(lfs));

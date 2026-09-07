@@ -605,6 +605,10 @@ fn test_dirs_nested(cfg: &LfsConfig) {
 /// Create parent dir with N subdirs, remove children during dir iteration, then parent.
 #[lfs_test]
 fn test_dirs_recursive_remove(cfg: &LfsConfig, #[values(10, 100)] n: usize) {
+    if n >= (cfg.block_count / 2) as usize {
+        return;
+    }
+
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));

@@ -13,6 +13,8 @@ use common::{
     default_config, dir_block, erase_block_raw, init_context, init_logger, read_block_raw,
     write_block_raw,
 };
+#[cfg(feature = "slow_tests")]
+use littlefs_rust_core::LfsConfig;
 use littlefs_rust_core::error::Error;
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
@@ -334,98 +336,81 @@ fn test_orphans_mkconsistent_one_orphan() {
 
 /// Upstream: [cases.test_orphans_reentrant]
 /// FILES=[6,26], DEPTH=1; FILES=3,DEPTH=3 skipped when CACHE_SIZE!=64. reentrant, CYCLES=20.
-#[test]
+#[lfs_test(reentrant)]
 #[cfg(feature = "slow_tests")]
-fn test_orphans_reentrant() {
-    init_logger();
+fn test_orphans_reentrant(cfg: &LfsConfig) {
     const CYCLES: u32 = 20;
     const ALPHA: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
     for (files, depth) in [(6usize, 1usize), (26, 1)] {
-        if 2 * files >= 128 {
-            continue;
+
+        let lfs = &mut Lfs::default();
+
+        let err = lfs_mount(lfs, cfg);
+        if err.is_err() {
+            lfs_format(lfs, cfg)?;
+            lfs_mount(lfs, cfg)?;
         }
-        let mut env = powerloss_config(128);
-        init_powerloss_context(&mut env);
-        let snapshot = env.snapshot();
 
-        let result = run_powerloss_linear(
-            &mut env,
-            &snapshot,
-            2000,
-            |lfs_ptr, config| {
-                let err = lfs_mount(lfs_ptr, config);
-                if err.is_err() {
-                    lfs_format(lfs_ptr, config)?;
-                    lfs_mount(lfs_ptr, config)?;
-                }
+        let mut prng: u32 = 1;
+        for _ in 0..CYCLES {
+            let mut components = Vec::with_capacity(depth);
+            for _ in 0..depth {
+                let c = ALPHA[(test_prng(&mut prng) as usize) % files];
+                components.push((c as char).to_string());
+            }
+            let full_path = "/".to_string() + &components.join("/");
 
-                let mut prng: u32 = 1;
-                for _ in 0..CYCLES {
-                    let mut components = Vec::with_capacity(depth);
-                    for _ in 0..depth {
-                        let c = ALPHA[(test_prng(&mut prng) as usize) % files];
-                        components.push((c as char).to_string());
-                    }
-                    let full_path = "/".to_string() + &components.join("/");
-
-                    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-                    let res = lfs_stat(lfs_ptr, &full_path, info);
-                    if res == Err(Error::NoEntry) {
-                        for d in 0..depth {
-                            let sub = "/".to_string() + &components[..=d].join("/");
-                            let err = lfs_mkdir(lfs_ptr, &sub);
-                            if err.is_err() && err != Err(Error::Exists) {
-                                return err;
-                            }
-                        }
-                        for d in 0..depth {
-                            let sub = "/".to_string() + &components[..=d].join("/");
-
-                            lfs_stat(lfs_ptr, &sub, info)?;
-
-                            let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-                            let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-                            let expected = &components[d];
-                            if name != *expected {
-                                return Err(Error::Invalid);
-                            }
-                            if info.type_ != LFS_TYPE_DIR as u8 {
-                                return Err(Error::Invalid);
-                            }
-                        }
-                    } else if res.is_ok() {
-                        let expected = &components[depth - 1];
-                        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-                        let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-                        if name != *expected || info.type_ != LFS_TYPE_DIR as u8 {
-                            return Err(Error::Invalid);
-                        }
-                        for d in (0..depth).rev() {
-                            let sub = "/".to_string() + &components[..=d].join("/");
-                            let err = lfs_remove(lfs_ptr, &sub);
-                            if err.is_err() && err != Err(Error::NotEmpty) {
-                                return err;
-                            }
-                        }
-                        let r = lfs_stat(lfs_ptr, &full_path, info);
-                        if r != Err(Error::NoEntry) {
-                            return Err(if let Err(r) = r { r } else { Error::Invalid });
-                        }
-                    } else {
-                        return res;
+            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+            let res = lfs_stat(lfs_ptr, &full_path, info);
+            if res == Err(Error::NoEntry) {
+                for d in 0..depth {
+                    let sub = "/".to_string() + &components[..=d].join("/");
+                    let err = lfs_mkdir(lfs_ptr, &sub);
+                    if err.is_err() && err != Err(Error::Exists) {
+                        return err;
                     }
                 }
+                for d in 0..depth {
+                    let sub = "/".to_string() + &components[..=d].join("/");
 
-                if lfs_unmount(lfs_ptr).is_err() {
+                    lfs_stat(lfs_ptr, &sub, info)?;
+
+                    let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+                    let name = core::str::from_utf8(&info.name[..nul]).unwrap();
+                    let expected = &components[d];
+                    if name != *expected {
+                        return Err(Error::Invalid);
+                    }
+                    if info.type_ != LFS_TYPE_DIR as u8 {
+                        return Err(Error::Invalid);
+                    }
+                }
+            } else if res.is_ok() {
+                let expected = &components[depth - 1];
+                let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+                let name = core::str::from_utf8(&info.name[..nul]).unwrap();
+                if name != *expected || info.type_ != LFS_TYPE_DIR as u8 {
                     return Err(Error::Invalid);
                 }
-                Ok(())
-            },
-            |_, _| Ok(()),
-        );
-        result.unwrap_or_else(|_| {
-            panic!("test_orphans_reentrant FILES={files} DEPTH={depth} should complete")
-        });
+                for d in (0..depth).rev() {
+                    let sub = "/".to_string() + &components[..=d].join("/");
+                    let err = lfs_remove(lfs_ptr, &sub);
+                    if err.is_err() && err != Err(Error::NotEmpty) {
+                        return err;
+                    }
+                }
+                let r = lfs_stat(lfs_ptr, &full_path, info);
+                if r != Err(Error::NoEntry) {
+                    return Err(if let Err(r) = r { r } else { Error::Invalid });
+                }
+            } else {
+                return res;
+            }
+        }
+
+        if lfs_unmount(lfs_ptr).is_err() {
+            return Err(Error::Invalid);
+        }
     }
 }
