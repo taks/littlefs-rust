@@ -12,7 +12,7 @@ use crate::fs::parent::lfs_fs_pred;
 use crate::fs::superblock::{lfs_fs_forceconsistency, lfs_fs_preporphans};
 use crate::lfs_gstate::lfs_gstate_hasorphans;
 use crate::lfs_type::lfs_type::{LFS_TYPE_DELETE, LFS_TYPE_STRUCT, LFS_TYPE3_DIR};
-use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_type3};
+use crate::tag::{LfsMattr, lfs_mktag, lfs_tag_id, lfs_tag_type3};
 use crate::types::lfs_block_t;
 use crate::util::lfs_pair_fromle32;
 
@@ -154,7 +154,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
             lfs.mlist = &mut dir as *mut _;
         }
 
-        let attrs = [lfs_mattr {
+        let attrs = [LfsMattr {
             tag: lfs_mktag(LFS_TYPE_DELETE, lfs_tag_id(tag) as u32, 0),
             buffer: &[],
         }];

@@ -18,10 +18,10 @@ use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
 use littlefs_rust_core::{
-    Lfs, LfsInfo, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit, lfs_dir_fetch,
-    lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
-    lfs_fs_preporphans, lfs_fs_size, lfs_mattr, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32,
-    lfs_remove, lfs_stat, lfs_unmount,
+    Lfs, LfsInfo, LfsMattr, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit,
+    lfs_dir_fetch, lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
+    lfs_fs_preporphans, lfs_fs_size, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32, lfs_remove,
+    lfs_stat, lfs_unmount,
 };
 use zerocopy::IntoBytes;
 
@@ -242,7 +242,7 @@ fn test_orphans_one_orphan() {
     let root_pair: [u32; 2] = [0, 1];
     assert_ok!(lfs_dir_fetch(lfs_ptr, &mut mdir, root_pair));
     lfs_pair_tole32(&mut orphan.pair);
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
         buffer: orphan.pair.as_bytes(),
     }];
@@ -305,7 +305,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     let root_pair: [u32; 2] = [0, 1];
     assert_ok!(lfs_dir_fetch(lfs_ptr, &mut mdir, root_pair));
     lfs_pair_tole32(&mut orphan.pair);
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
         buffer: orphan.pair.as_bytes(),
     }];

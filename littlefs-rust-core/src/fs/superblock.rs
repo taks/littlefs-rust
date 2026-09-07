@@ -94,7 +94,7 @@ pub fn lfs_fs_desuperblock(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
         };
         lfs_superblock_tole32(&mut superblock);
 
-        let attrs = [crate::tag::lfs_mattr {
+        let attrs = [crate::tag::LfsMattr {
             tag: lfs_mktag(
                 LFS_TYPE_INLINESTRUCT,
                 0,
@@ -170,7 +170,7 @@ pub fn lfs_fs_demove(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
     let moveid = lfs_tag_id(lfs.gdisk.tag);
     lfs_fs_prepmove(lfs, 0x3ff, None);
 
-    let attrs = [crate::tag::lfs_mattr {
+    let attrs = [crate::tag::LfsMattr {
         tag: lfs_mktag(LFS_TYPE_DELETE, moveid as u32, 0),
         buffer: &[],
     }];
@@ -380,7 +380,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
 
                         lfs_pair_tole32(&mut pair);
                         let attrs = [
-                            crate::tag::lfs_mattr {
+                            crate::tag::LfsMattr {
                                 tag: lfs_mktag_if(
                                     moveid != 0x3ff,
                                     crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
@@ -389,7 +389,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
                                 ),
                                 buffer: &[],
                             },
-                            crate::tag::lfs_mattr {
+                            crate::tag::LfsMattr {
                                 tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
                                 buffer: pair.as_bytes(),
                             },
@@ -420,7 +420,7 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
 
                     let mut dir_tail = dir.tail;
                     lfs_pair_tole32(&mut dir_tail);
-                    let attrs = [crate::tag::lfs_mattr {
+                    let attrs = [crate::tag::LfsMattr {
                         tag: lfs_mktag(LFS_TYPE_TAIL + if dir.split { 1 } else { 0 }, 0x3ff, 8),
                         buffer: dir_tail.as_bytes(),
                     }];

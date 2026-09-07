@@ -10,7 +10,7 @@ use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::LFS_TYPE_USERATTR;
-use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_size};
+use crate::tag::{LfsMattr, lfs_mktag, lfs_tag_id, lfs_tag_size};
 use crate::types::lfs_size_t;
 
 /// Per lfs.c lfs_getattr_ (lines 4107-4135)
@@ -147,7 +147,7 @@ pub fn lfs_commitattr(
         lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
     }
 
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size),
         buffer,
     }];

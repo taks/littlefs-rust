@@ -190,10 +190,8 @@ pub fn lfs_fs_traverse_(
                     cb,
                 )?;
             } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
-                #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
-                for i in 0..2 {
-                    cb(raw[i])?;
-                }
+                cb(raw[0])?;
+                cb(raw[1])?;
             }
         }
     }

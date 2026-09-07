@@ -322,7 +322,10 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
     let block_size = cfg.block_size as usize;
     let prog_size = cfg.prog_size as usize;
 
-    let end = lfs_alignup(cmp::min(commit.off as usize + 20, block_size), prog_size);
+    let end = lfs_alignup(
+        cmp::min(commit.off + 20, block_size as u32),
+        prog_size as u32,
+    ) as usize;
 
     let mut off1: lfs_off_t = 0;
     let mut crc1: u32 = 0;
@@ -535,8 +538,8 @@ pub fn lfs_dir_alloc(lfs: &mut crate::fs::Lfs, dir: &mut LfsMdir) -> Result<(), 
     let cfg = unsafe { lfs.cfg.as_ref() };
 
     if cfg.block_cycles > 0 {
-        let modulus = (cfg.block_cycles as usize + 1) | 1;
-        dir.rev = lfs_alignup(dir.rev as usize, modulus) as u32;
+        let modulus = (cfg.block_cycles as u32 + 1) | 1;
+        dir.rev = lfs_alignup(dir.rev, modulus);
     }
 
     dir.off = core::mem::size_of::<u32>() as u32;
@@ -586,7 +589,7 @@ pub fn lfs_dir_drop(
     let tail_ref = tail;
     let mut tail_pair = tail_ref.tail;
     lfs_pair_tole32(&mut tail_pair);
-    let attrs = [crate::tag::lfs_mattr {
+    let attrs = [crate::tag::LfsMattr {
         tag: lfs_mktag(LFS_TYPE_TAIL + if tail_ref.split { 1 } else { 0 }, 0x3ff, 8),
         buffer: tail_pair.as_bytes(),
     }];
@@ -637,7 +640,7 @@ pub fn lfs_dir_drop(
 pub fn lfs_dir_split(
     lfs: &mut Lfs,
     dir: &mut LfsMdir,
-    attrs: &[crate::tag::lfs_mattr],
+    attrs: &[crate::tag::LfsMattr],
     source: &LfsMdir,
     split: u16,
     end: u16,
@@ -954,7 +957,7 @@ pub fn lfs_dir_needsrelocation(lfs: &Lfs, dir: &LfsMdir) -> bool {
 pub fn lfs_dir_compact(
     lfs: &mut Lfs,
     dir: &mut LfsMdir,
-    attrs_slice: &[crate::tag::lfs_mattr],
+    attrs_slice: &[crate::tag::LfsMattr],
     source: &LfsMdir,
     begin: u16,
     end: u16,
@@ -1417,7 +1420,7 @@ pub fn lfs_dir_compact(
 pub fn lfs_dir_splittingcompact(
     lfs: &mut Lfs,
     dir: &mut LfsMdir,
-    attrs: &[crate::tag::lfs_mattr],
+    attrs: &[crate::tag::LfsMattr],
     source: &LfsMdir,
     begin: u16,
     end: u16,
@@ -1458,7 +1461,7 @@ pub fn lfs_dir_splittingcompact(
                 cfg.block_size
             };
             let max_space = effective_max - 40;
-            let half_block = lfs_alignup(effective_max as usize / 2, cfg.prog_size as usize) as u32;
+            let half_block = lfs_alignup(effective_max / 2, cfg.prog_size);
             crate::lfs_trace!(
                 "splittingcompact: split={} end_val={} size={} max_space={} half_block={} break={}",
                 split,
@@ -1704,7 +1707,7 @@ pub fn lfs_dir_relocatingcommit(
     lfs: &mut Lfs,
     dir: &mut LfsMdir,
     pair: &[lfs_block_t; 2],
-    attrs: &[crate::tag::lfs_mattr],
+    attrs: &[crate::tag::LfsMattr],
     pdir: Option<&mut LfsMdir>,
 ) -> Result<i32, Error> {
     use crate::bd::bd::lfs_cache_drop;
@@ -1871,7 +1874,7 @@ fn relocatingcommit_fixmlist(
     lfs: &mut Lfs,
     dir: &mut LfsMdir,
     pair: &[lfs_block_t; 2],
-    attrs_slice: &[crate::tag::lfs_mattr],
+    attrs_slice: &[crate::tag::LfsMattr],
     state: i32,
 ) -> Result<i32, Error> {
     use crate::dir::fetch::lfs_dir_fetch;
@@ -2113,7 +2116,7 @@ fn relocatingcommit_fixmlist(
 pub fn lfs_dir_orphaningcommit(
     lfs: &mut crate::fs::Lfs,
     mut dir: NonNull<LfsMdir>,
-    attrs_slice: &[crate::tag::lfs_mattr],
+    attrs_slice: &[crate::tag::LfsMattr],
 ) -> Result<i32, Error> {
     use crate::error::LFS_OK_ORPHANED;
     use crate::util::{lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_tole32};
@@ -2135,7 +2138,7 @@ pub fn lfs_dir_orphaningcommit(
 
         let plpair = pdir.pair;
         lfs_pair_tole32(&mut dir.tail);
-        let tail_attrs = [crate::tag::lfs_mattr {
+        let tail_attrs = [crate::tag::LfsMattr {
             tag: crate::tag::lfs_mktag(
                 crate::lfs_type::lfs_type::LFS_TYPE_TAIL + if dir.split { 1 } else { 0 },
                 0x3ff,
@@ -2200,7 +2203,7 @@ pub fn lfs_dir_orphaningcommit(
             let ppair = [pdir.pair[0], pdir.pair[1]];
             lfs_pair_tole32(&mut ldir.pair);
             let relocate_attrs = [
-                crate::tag::lfs_mattr {
+                crate::tag::LfsMattr {
                     tag: crate::tag::lfs_mktag_if(
                         moveid != 0x3ff,
                         crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
@@ -2209,7 +2212,7 @@ pub fn lfs_dir_orphaningcommit(
                     ),
                     buffer: &[],
                 },
-                crate::tag::lfs_mattr {
+                crate::tag::LfsMattr {
                     tag: tag as lfs_tag_t,
                     buffer: ldir.pair.as_bytes(),
                 },
@@ -2254,7 +2257,7 @@ pub fn lfs_dir_orphaningcommit(
             lpair = pdir.pair;
             lfs_pair_tole32(&mut ldir.pair);
             let tail_attrs = [
-                crate::tag::lfs_mattr {
+                crate::tag::LfsMattr {
                     tag: crate::tag::lfs_mktag_if(
                         moveid != 0x3ff,
                         crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
@@ -2263,7 +2266,7 @@ pub fn lfs_dir_orphaningcommit(
                     ),
                     buffer: &[],
                 },
-                crate::tag::lfs_mattr {
+                crate::tag::LfsMattr {
                     tag: crate::tag::lfs_mktag(
                         crate::lfs_type::lfs_type::LFS_TYPE_TAIL + if pdir.split { 1 } else { 0 },
                         0x3ff,
@@ -2307,7 +2310,7 @@ pub fn lfs_dir_orphaningcommit(
 pub fn lfs_dir_commit(
     lfs: &mut crate::fs::Lfs,
     dir: &mut LfsMdir,
-    attrs_slice: &[crate::tag::lfs_mattr],
+    attrs_slice: &[crate::tag::LfsMattr],
 ) -> Result<(), Error> {
     use crate::error::LFS_OK_ORPHANED;
     use crate::fs::superblock::lfs_fs_deorphan;

@@ -10,6 +10,7 @@ use common::{
     LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, default_config, erase_block_raw, init_context,
     read_block_raw, write_block_raw,
 };
+use littlefs_rust_core::LfsMattr;
 use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::*;
 use littlefs_rust_core::{
@@ -58,7 +59,7 @@ unsafe fn evil_invalid_tail_pointer(tail_type: u16, invalset: u32) {
         if invalset & 0x1 != 0 { 0xcccccccc } else { 0 },
         if invalset & 0x2 != 0 { 0xcccccccc } else { 0 },
     ];
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(tail_type, 0x3ff, 8),
         buffer: invalid_pair.as_bytes(),
     }];
@@ -106,7 +107,7 @@ fn test_evil_invalid_dir_pointer(cfg: &mut LfsConfig, #[values(0x3u32, 0x1, 0x2)
         if invalset & 0x1 != 0 { 0xcccccccc } else { 0 },
         if invalset & 0x2 != 0 { 0xcccccccc } else { 0 },
     ];
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, 8),
         buffer: invalid_pair.as_bytes(),
     }];
@@ -201,7 +202,7 @@ fn evil_invalid_file_pointer(size: u32) {
         head: 0xcccccccc,
         size: size.to_le(),
     };
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>()),
         buffer: fake_ctz.as_bytes(),
     }];
@@ -403,7 +404,7 @@ unsafe fn evil_mdir_loop() {
     assert_ok!(lfs_dir_fetch(lfs, mdir, pair));
 
     let self_pair: [u32; 2] = [0, 1];
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: self_pair.as_bytes(),
     }];
@@ -457,7 +458,7 @@ unsafe fn evil_mdir_loop2() {
     // Corrupt child's tail to point at root
     assert_ok!(lfs_dir_fetch(lfs, mdir, child_pair));
     let root_ptr: [u32; 2] = [0, 1];
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: root_ptr.as_bytes(),
     }];
@@ -511,7 +512,7 @@ unsafe fn evil_mdir_loop_child() {
 
     // Corrupt child's tail to point at itself
     assert_ok!(lfs_dir_fetch(lfs, mdir, child_pair));
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: child_pair.as_bytes(),
     }];

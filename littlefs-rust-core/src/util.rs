@@ -11,7 +11,7 @@ use crate::types::lfs_block_t;
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_aligndown(a: usize, alignment: usize) -> usize {
+pub fn lfs_aligndown(a: u32, alignment: u32) -> u32 {
     a - (a % alignment)
 }
 
@@ -24,8 +24,8 @@ pub fn lfs_aligndown(a: usize, alignment: usize) -> usize {
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_alignup(a: usize, alignment: usize) -> usize {
-    lfs_aligndown(a + alignment - 1, alignment)
+pub fn lfs_alignup(a: u32, alignment: u32) -> u32 {
+    lfs_aligndown(a.wrapping_add(alignment).wrapping_sub(1), alignment)
 }
 
 /// Per lfs_util.h lfs_npw2 (lines 147-161) - smallest power of 2 >= a

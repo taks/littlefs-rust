@@ -148,15 +148,15 @@ pub fn lfs_format_(
 
         let magic = b"littlefs";
         let attrs = [
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, 0, 0),
                 buffer: &[],
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
                 buffer: magic,
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(
                     LFS_TYPE_INLINESTRUCT,
                     0,
@@ -254,15 +254,15 @@ pub unsafe fn test_traverse_format_attrs(
         crate::lfs_superblock::lfs_superblock_tole32(&mut superblock);
 
         let attrs = [
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, 0, 0),
                 buffer: &[],
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
                 buffer: magic,
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(
                     LFS_TYPE_INLINESTRUCT,
                     0,
@@ -359,15 +359,15 @@ pub unsafe fn test_traverse_filter_gets_superblock_after_push(
         crate::lfs_superblock::lfs_superblock_tole32(&mut superblock);
 
         let attrs = [
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, 0, 0),
                 buffer: &[],
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
                 buffer: magic,
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(
                     LFS_TYPE_INLINESTRUCT,
                     0,

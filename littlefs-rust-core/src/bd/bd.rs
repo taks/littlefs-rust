@@ -200,7 +200,7 @@ pub fn lfs_bd_read(
             && off.is_multiple_of(cfg.read_size as usize)
             && data.len() as u32 >= cfg.read_size
         {
-            diff = lfs_aligndown(diff, cfg.read_size as usize);
+            diff = lfs_aligndown(diff as u32, cfg.read_size) as usize;
             crate::lfs_trace!("bd_read block={} off={} size={}", block, off, diff);
             let data_ = data.split_at_mut(diff as _);
             lfs_pass_err!(
@@ -217,10 +217,10 @@ pub fn lfs_bd_read(
 
         crate::lfs_assert!(lfs.block_count == 0 || block < lfs.block_count);
         rcache.block = block;
-        rcache.off = lfs_aligndown(off, cfg.read_size as usize);
+        rcache.off = lfs_aligndown(off as u32, cfg.read_size) as usize;
         rcache.size = cmp::min(
             cmp::min(
-                lfs_alignup(off + hint, cfg.read_size as usize),
+                lfs_alignup((off + hint) as u32, cfg.read_size) as usize,
                 cfg.block_size as usize,
             ) - rcache.off,
             rcache.buffer.len(),
@@ -430,7 +430,7 @@ pub fn lfs_bd_flush(
 
     if pcache.block != crate::types::LFS_BLOCK_NULL && pcache.block != LFS_BLOCK_INLINE {
         crate::lfs_assert!(pcache.block < lfs.block_count);
-        let diff = lfs_alignup(pcache.size, cfg.prog_size as usize);
+        let diff = lfs_alignup(pcache.size as u32, cfg.prog_size) as usize;
         crate::lfs_trace!(
             "bd_prog block={} off={} size={}",
             pcache.block,
@@ -604,7 +604,7 @@ pub fn lfs_bd_prog(
         crate::lfs_assert!(pcache.block == crate::types::LFS_BLOCK_NULL);
 
         pcache.block = block;
-        pcache.off = lfs_aligndown(off, cfg.prog_size as usize);
+        pcache.off = lfs_aligndown(off as u32, cfg.prog_size) as usize;
         pcache.size = 0;
     }
 

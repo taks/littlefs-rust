@@ -252,15 +252,15 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
         }
         lfs_alloc_ckpoint(lfs);
         let attrs = [
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, file.id as u32, 0),
                 buffer: &[],
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE3_REG, file.id as u32, nlen),
                 buffer: path_ptr.as_bytes(),
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0),
                 buffer: &[],
             },
@@ -411,7 +411,7 @@ static mut BUFFER: [u8; 0] = [];
 #[cfg(feature = "alloc")]
 static mut ATTRS: [LfsAttr; 0] = [];
 #[cfg(feature = "alloc")]
-#[allow(clippy::deref_addrof)]
+#[expect(clippy::deref_addrof)]
 static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
     buffer: unsafe { &mut *(&raw mut BUFFER) },
     attrs: unsafe { &mut *(&raw mut ATTRS) },
@@ -769,7 +769,6 @@ pub fn lfs_file_flush(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
                 };
                 lfs_cache_drop(lfs, &mut *lfs.rcache.get());
 
-                #[allow(clippy::while_immutable_condition)] // file.pos updated by flushedwrite
                 while file.pos < file.ctz.size {
                     let mut data: u8 = 0;
                     let _res = lfs_file_flushedread(lfs, &mut orig, data.as_mut_bytes())?;
@@ -912,11 +911,11 @@ pub fn lfs_file_sync_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<()
         };
 
         let attrs = [
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(type_, file.id as u32, size),
                 buffer,
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_FROM_USERATTRS,
                     file.id as u32,
@@ -1300,7 +1299,6 @@ pub fn lfs_file_write_(
         let pos = file.pos;
         file.pos = file.ctz.size;
         let zero: u8 = 0;
-        #[allow(clippy::while_immutable_condition)] // pos mutated via raw ptr in flushedwrite
         while file.pos < pos {
             let _res = lfs_file_flushedwrite(lfs, file, zero.as_bytes())?;
         }
@@ -1523,7 +1521,6 @@ pub fn lfs_file_truncate_(
         let _res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_END)?;
 
         let zero = [0u8];
-        #[allow(clippy::while_immutable_condition)] // file.pos updated by lfs_file_write_
         while file.pos < size {
             let _res = lfs_file_write_(lfs, file, &zero)?;
         }
