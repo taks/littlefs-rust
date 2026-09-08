@@ -44,15 +44,11 @@ fn test_orphans_mkconsistent_fresh(cfg: &LfsConfig) {
 // --- test_orphans_mkconsistent_no_orphans ---
 // With lazy force_consistency, mkdir/remove run deorphan first. So preporphans(1)
 // gets cleared before the commit. Verify: mkconsistent clears (no-op) and persists.
-#[test]
-fn test_orphans_mkconsistent_no_orphans() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_mkconsistent_no_orphans(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
     assert_ok!(lfs_fs_preporphans(lfs_ptr, 1));
@@ -67,7 +63,7 @@ fn test_orphans_mkconsistent_no_orphans() {
     );
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, &env.config));
+    assert_ok!(lfs_mount(lfs_ptr, cfg));
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "persisted gstate has no orphans"
@@ -79,7 +75,7 @@ fn test_orphans_mkconsistent_no_orphans() {
     );
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, &env.config));
+    assert_ok!(lfs_mount(lfs_ptr, cfg));
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "after remount, gstate persisted to disk has no orphans"
@@ -89,15 +85,11 @@ fn test_orphans_mkconsistent_no_orphans() {
 
 // --- test_orphans_no_orphans ---
 // preporphans(+1), mkdir+remove clears via force_consistency, unmount
-#[test]
-fn test_orphans_no_orphans() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_no_orphans(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
     assert_ok!(lfs_fs_preporphans(lfs_ptr, 1));
@@ -135,13 +127,8 @@ fn test_orphans_nonreentrant() {
 
 /// Upstream: [cases.test_orphans_normal]
 /// if = 'PROG_SIZE <= 0x3fe'. Corrupt child's commit to create orphan, mkdir triggers deorphan, check lfs_fs_size.
-#[test]
-fn test_orphans_normal() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_orphans_normal(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -158,7 +145,7 @@ fn test_orphans_normal() {
     let block = dir_block(lfs_ptr, "parent/child");
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    let block_size = env.config.block_size as usize;
+    let block_size = cfg.block_size as usize;
     let mut buffer = vec![0u8; block_size];
     assert_eq!(read_block_raw(cfg, block, 0, &mut buffer), Ok(()));
 
@@ -168,7 +155,7 @@ fn test_orphans_normal() {
     }
     assert!(off >= 3, "block {block} has fewer than 4 written bytes");
     let start = (off - 3) as usize;
-    buffer[start..start + 3].fill(env.config.block_size as u8);
+    buffer[start..start + 3].fill(cfg.block_size as u8);
 
     assert_eq!(erase_block_raw(cfg, block), Ok(()));
     assert_eq!(write_block_raw(cfg, block, 0, &buffer), Ok(()));

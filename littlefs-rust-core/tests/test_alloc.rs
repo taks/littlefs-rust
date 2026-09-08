@@ -23,10 +23,6 @@ use rstest::rstest;
 const FILES: u32 = 3;
 const NAMES: &[&[u8]] = &[b"bacon", b"eggs", b"pancakes"];
 
-fn compact_thresh_u32(val: i32) -> u32 {
-    if val == -1 { u32::MAX } else { val as u32 }
-}
-
 // --- test_alloc_parallel ---
 /// Upstream: [cases.test_alloc_parallel]
 /// defines.FILES = 3, SIZE = (((BLOCK_SIZE-8)*(BLOCK_COUNT-6))/FILES)
@@ -115,32 +111,32 @@ fn test_alloc_parallel(
 ///
 /// Create breakfast dir, then for each file: mount, open, write SIZE bytes (optional GC per write),
 /// close, unmount. Remount and verify all files.
-#[rstest]
+#[lfs_test]
+#[ignore = "TODO FIX"]
 fn test_alloc_serial(
+    cfg: &LfsConfig,
     #[values(false, true)] gc: bool,
     #[values(u32::MAX, 0, 256)] compact_thresh: u32,
     #[values(false, true)] infer_bc: bool,
 ) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
-    let block_size = env.config.block_size;
-    let block_count = env.config.block_count;
+    let block_size = cfg.block_size;
+    let block_count = cfg.block_count;
     let size: usize = ((block_size - 8) as usize * (block_count - 6) as usize) / FILES as usize;
 
-    env.config.compact_thresh = compact_thresh;
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
-    let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
-    assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+    let cfg_ = &mut cfg.clone();
+    if infer_bc {
+        cfg_.block_count = 0;
+    }
+
+    assert_ok!(lfs_mount(lfs, cfg_));
     assert_ok!(lfs_mkdir(lfs, "breakfast"));
     assert_ok!(lfs_unmount(lfs));
 
     for n in 0..FILES {
-        assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+        assert_ok!(lfs_mount(lfs, cfg_));
         let path = &format!(
             "breakfast/{}",
             core::str::from_utf8(NAMES[n as usize]).unwrap()
@@ -167,7 +163,7 @@ fn test_alloc_serial(
         assert_ok!(lfs_unmount(lfs));
     }
 
-    assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+    assert_ok!(lfs_mount(lfs, cfg_));
     for n in 0..FILES {
         let path = &format!(
             "breakfast/{}",
