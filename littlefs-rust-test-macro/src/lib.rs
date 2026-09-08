@@ -77,7 +77,8 @@ pub fn lfs_test(
                 (1, 512),
                 (512, 512),
                 (1, 4096),
-                (4096, 32768)] {
+                (4096, 32768)
+            ] {
 
                 let read_buf = vec![0u8; block_size as usize];
                 let prog_buf = vec![0u8; block_size as usize];

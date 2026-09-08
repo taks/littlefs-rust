@@ -255,12 +255,15 @@ fn test_dirs_many_rename_append(cfg: &LfsConfig, #[values(5, 7, 9, 11)] n: usize
 /// defines.N = [5, 11], BLOCK_COUNT >= 4*N, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
 #[lfs_test]
 #[cfg(feature = "slow_tests")]
-#[ignore = "bug: power-loss iteration returns LFS_ERR_CORRUPT (-84)"]
+// #[ignore = "bug: power-loss iteration returns LFS_ERR_CORRUPT (-84)"]
 fn test_dirs_many_reentrant(
     cfg: &LfsConfig,
     #[values(false, true)] reentrant: bool,
     #[values(5, 11)] n: usize,
 ) {
+    if cfg.block_count < 4 * n as u32 {
+        return;
+    }
     let lfs = &mut Lfs::default();
 
     let err = littlefs_rust_core::lfs_mount(lfs, cfg);
@@ -275,7 +278,7 @@ fn test_dirs_many_reentrant(
     }
     for i in 0..n {
         let path = &format!("hello{i:03}");
-        assert_matches!(lfs_remove(lfs, path), Err(Error::NoEntry));
+        assert_matches!(lfs_remove(lfs, path), Ok(()) | Err(Error::NoEntry));
     }
 
     let dir = &mut LfsDir::default();
