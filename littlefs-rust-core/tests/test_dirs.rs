@@ -255,7 +255,6 @@ fn test_dirs_many_rename_append(cfg: &LfsConfig, #[values(5, 7, 9, 11)] n: usize
 /// defines.N = [5, 11], BLOCK_COUNT >= 4*N, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
 #[lfs_test]
 #[cfg(feature = "slow_tests")]
-// #[ignore = "bug: power-loss iteration returns LFS_ERR_CORRUPT (-84)"]
 fn test_dirs_many_reentrant(
     cfg: &LfsConfig,
     #[values(false, true)] reentrant: bool,
