@@ -12,7 +12,8 @@ use common::{
     init_logger,
 };
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mount, lfs_remove, lfs_unmount,
+    Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
+    lfs_format, lfs_mount, lfs_remove, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 
