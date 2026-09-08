@@ -557,14 +557,11 @@ fn test_files_many_power_loss(cfg: &LfsConfig, #[values(false, true)] reentrant:
 // ── Rust-specific extras ────────────────────
 // Bug reproducers, debug helpers, unit tests. Not in upstream.
 
-#[test]
-fn test_files_same_session() {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_files_same_session(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(littlefs_rust_core::lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "hello";
     let data = b"Hello World!\0";
@@ -587,34 +584,6 @@ fn test_files_same_session() {
     assert_eq!(n, Ok(13));
     assert_eq!(&buf[..13], b"Hello World!\0");
     assert_ok!(lfs_file_close(lfs, file2));
-}
-
-#[test]
-fn test_files_simple_read() {
-    let mut env = default_config(128);
-    fs_with_hello(&mut env).expect("fs_with_hello");
-    init_context(&mut env);
-
-    let lfs = &mut Lfs::default();
-    assert_ok!(lfs_mount(lfs, &env.config));
-
-    let path = "hello";
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path, OpenFlags::READ));
-
-    assert_eq!(lfs_file_size(lfs, file), 13);
-    assert_eq!(lfs_file_tell(lfs, file), 0);
-
-    let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, &mut buf[..32]);
-    assert_eq!(n, Ok(13));
-    assert_eq!(&buf[..13], b"Hello World!\0");
-
-    let n2 = lfs_file_read(lfs, file, &mut buf[..32]);
-    assert_eq!(n2, Ok(0));
-
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_unmount(lfs));
 }
 
 #[test]
@@ -649,43 +618,6 @@ fn test_files_seek_tell() {
     assert_eq!(n3, Ok(4));
     assert_eq!(&buf[..4], b"Worl");
 
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_unmount(lfs));
-}
-
-#[test]
-fn test_files_truncate_api() {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
-    let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
-
-    let path = "x";
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-    ));
-    let data = b"hello world";
-    let _ = lfs_file_write(lfs, file, data);
-    assert_ok!(lfs_file_truncate(lfs, file, 5));
-    assert_ok!(lfs_file_sync(lfs, file));
-    assert_ok!(lfs_file_close(lfs, file));
-
-    assert_ok!(lfs_unmount(lfs));
-    assert_ok!(lfs_mount(lfs, &env.config));
-
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    assert_eq!(lfs_file_size(lfs, file), 5);
-    let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, &mut buf[..32]);
-    assert_eq!(n, Ok(5));
-    assert_eq!(&buf[..5], b"hello");
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 }

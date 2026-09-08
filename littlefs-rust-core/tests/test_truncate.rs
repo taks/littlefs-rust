@@ -96,21 +96,18 @@ fn test_truncate_simple(#[case] medium: u32, #[case] large: u32) {
 }
 
 /// Upstream: [cases.test_truncate_read]
-#[rstest]
-#[case(31, 32)]
-#[case(32, 512)]
-#[case(512, 2048)]
-#[case(2048, 8192)]
-fn test_truncate_read(#[case] medium: u32, #[case] large: u32) {
-    if medium == 32 && large >= 512 {
-        return; // truncated CTZ read returns 0xFF
+#[lfs_test]
+fn test_truncate_read(
+    cfg: &LfsConfig,
+    #[values(31, 32, 33, 511, 512, 513, 2047, 2048, 2049)] medium: u32,
+    #[values(32, 33, 512, 513, 2048, 2049, 8192, 8193)] large: u32,
+) {
+    if medium >= large {
+        return;
     }
-    let mut env = default_config(1024);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "baldyread";
     let file = &mut LfsFile::default();
@@ -129,7 +126,7 @@ fn test_truncate_read(#[case] medium: u32, #[case] large: u32) {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
     assert_eq!(lfs_file_size(lfs, file), large);
 
@@ -151,7 +148,7 @@ fn test_truncate_read(#[case] medium: u32, #[case] large: u32) {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), medium);
 
@@ -572,7 +569,7 @@ fn test_truncate_aggressive() {
 
 /// Upstream: [cases.test_truncate_nop]
 /// defines.MEDIUMSIZE = [32, 33, 512, 513, 2048, 2049, 8192, 8193]
-#[rstest]
+#[lfs_test]
 #[case(32)]
 #[case(33)]
 #[case(512)]
@@ -581,13 +578,10 @@ fn test_truncate_aggressive() {
 #[case(2049)]
 #[case(8192)]
 #[case(8193)]
-fn test_truncate_nop(#[case] medium: u32) {
-    let mut env = default_config(512);
-    init_context(&mut env);
-
+fn test_truncate_nop(cfg: &LfsConfig, #[case] medium: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "baldynoop";
     let file = &mut LfsFile::default();
@@ -623,7 +617,7 @@ fn test_truncate_nop(#[case] medium: u32) {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
     assert_eq!(lfs_file_size(lfs, file), medium);
 

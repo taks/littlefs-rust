@@ -129,6 +129,9 @@ fn test_orphans_nonreentrant() {
 /// if = 'PROG_SIZE <= 0x3fe'. Corrupt child's commit to create orphan, mkdir triggers deorphan, check lfs_fs_size.
 #[lfs_test]
 fn test_orphans_normal(cfg: &LfsConfig) {
+    if cfg.prog_size > 0x3fe {
+        return;
+    }
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
