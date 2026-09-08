@@ -36,7 +36,7 @@ fn compact_thresh_u32(val: i32) -> u32 {
 /// close, unmount, remount, read and verify.
 #[lfs_test]
 fn test_alloc_parallel(
-    cfg: &mut LfsConfig,
+    cfg: &LfsConfig,
     #[values(false, true)] gc: bool,
     #[values(false, true)] infer_bc: bool,
 ) {
@@ -118,7 +118,7 @@ fn test_alloc_parallel(
 #[rstest]
 fn test_alloc_serial(
     #[values(false, true)] gc: bool,
-    #[values(-1, 0, 256)] compact_thresh_val: i32,
+    #[values(u32::MAX, 0, 256)] compact_thresh: u32,
     #[values(false, true)] infer_bc: bool,
 ) {
     init_logger();
@@ -129,7 +129,7 @@ fn test_alloc_serial(
     let block_count = env.config.block_count;
     let size: usize = ((block_size - 8) as usize * (block_count - 6) as usize) / FILES as usize;
 
-    env.config.compact_thresh = compact_thresh_u32(compact_thresh_val);
+    env.config.compact_thresh = compact_thresh;
 
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, &env.config));

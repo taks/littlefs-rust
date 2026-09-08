@@ -358,7 +358,7 @@ fn test_files_reentrant_write(
 /// Power-loss after each sync. Stub: implement APPEND mode with SIZE=[32,0,7,2049].
 #[lfs_test]
 fn test_files_reentrant_write_sync(
-    cfg: &mut LfsConfig,
+    cfg: &LfsConfig,
     #[values(false, true)] reentrant: bool,
     #[values(OpenFlags::APPEND, OpenFlags::TRUNC, OpenFlags::empty())] mode: OpenFlags,
     #[values(32, 0, 7, 200)] size: u32,
@@ -370,8 +370,6 @@ fn test_files_reentrant_write_sync(
     } else {
         size
     };
-
-    cfg.inline_max = inline_max;
 
     let lfs = &mut Lfs::default();
 

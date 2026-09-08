@@ -41,7 +41,7 @@ fn test_superblocks_mount(cfg: &LfsConfig) {
 // --- test_superblocks_magic ---
 // Upstream: format, then raw read to verify "littlefs" at MAGIC_OFFSET in both blocks.
 #[lfs_test]
-fn test_superblocks_magic(cfg: &mut LfsConfig) {
+fn test_superblocks_magic(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
@@ -241,12 +241,10 @@ fn test_superblocks_expand() {
 /// Same as expand + magic check after.
 #[lfs_test]
 fn test_superblocks_magic_expand(
-    cfg: &mut LfsConfig,
+    cfg: &LfsConfig,
     #[values(32, 33, 1)] block_cycles: i32,
     #[values(10, 100, 1000)] n: u32,
 ) {
-    cfg.block_cycles = block_cycles;
-
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -278,48 +276,44 @@ fn test_superblocks_magic_expand(
 /// Upstream: [cases.test_superblocks_expand_power_cycle]
 /// Same as expand but unmount/remount after each iteration.
 #[lfs_test]
-fn test_superblocks_expand_power_cycle(cfg: &mut LfsConfig) {
-    for &block_cycles in &[32i32, 33, 1] {
-        for &n in &[10u32, 100, 1000] {
-            cfg.block_cycles = block_cycles;
+fn test_superblocks_expand_power_cycle(cfg: &LfsConfig, #[values(32, 33, 1)] block_cycles: i32) {
+    for &n in &[10u32, 100, 1000] {
+        let lfs = &mut Lfs::default();
+        assert_ok!(lfs_format(lfs, cfg));
 
-            let lfs = &mut Lfs::default();
-            assert_ok!(lfs_format(lfs, cfg));
-
-            let dummy = "dummy";
-            for i in 0..n {
-                assert_ok!(lfs_mount(lfs, cfg));
-                let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-                let err = lfs_stat(lfs, dummy, info);
-                assert!(
-                    err.is_ok() || (err == Err(Error::NoEntry) && i == 0),
-                    "stat dummy: err={err:?} i={i}"
-                );
-                if err.is_ok() {
-                    assert_eq!(info.type_, LFS_TYPE_REG as u8);
-                    assert_ok!(lfs_remove(lfs, dummy));
-                }
-
-                let file = &mut LfsFile::default();
-                assert_ok!(lfs_file_open(
-                    lfs,
-                    file,
-                    dummy,
-                    LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-                ));
-                assert_ok!(lfs_file_close(lfs, file));
-                let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-                assert_ok!(lfs_stat(lfs, dummy, info));
+        let dummy = "dummy";
+        for i in 0..n {
+            assert_ok!(lfs_mount(lfs, cfg));
+            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+            let err = lfs_stat(lfs, dummy, info);
+            assert!(
+                err.is_ok() || (err == Err(Error::NoEntry) && i == 0),
+                "stat dummy: err={err:?} i={i}"
+            );
+            if err.is_ok() {
                 assert_eq!(info.type_, LFS_TYPE_REG as u8);
-                assert_ok!(lfs_unmount(lfs));
+                assert_ok!(lfs_remove(lfs, dummy));
             }
 
-            assert_ok!(lfs_mount(lfs, cfg));
+            let file = &mut LfsFile::default();
+            assert_ok!(lfs_file_open(
+                lfs,
+                file,
+                dummy,
+                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+            ));
+            assert_ok!(lfs_file_close(lfs, file));
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_ok!(lfs_stat(lfs, dummy, info));
             assert_eq!(info.type_, LFS_TYPE_REG as u8);
             assert_ok!(lfs_unmount(lfs));
         }
+
+        assert_ok!(lfs_mount(lfs, cfg));
+        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+        assert_ok!(lfs_stat(lfs, dummy, info));
+        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_ok!(lfs_unmount(lfs));
     }
 }
 
@@ -328,12 +322,11 @@ fn test_superblocks_expand_power_cycle(cfg: &mut LfsConfig) {
 #[lfs_test]
 #[cfg(feature = "slow_tests")]
 fn test_superblocks_reentrant_expand(
-    cfg: &mut LfsConfig,
+    cfg: &LfsConfig,
     #[values(false, true)] reentrant: bool,
     #[values(2, 1)] block_cycles: i32,
 ) {
     const N: u32 = 24;
-    cfg.block_cycles = block_cycles;
 
     let lfs = &mut Lfs::default();
 

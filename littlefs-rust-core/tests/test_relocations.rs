@@ -35,9 +35,7 @@ const COUNT: usize = 10;
 ///
 /// Fill FS, create many files in child dir. Triggers split when metadata overflows.
 #[lfs_test]
-fn test_relocations_dangling_split_dir(cfg: &mut LfsConfig, #[values(8, 1)] block_cycles: i32) {
-    cfg.block_cycles = block_cycles;
-
+fn test_relocations_dangling_split_dir(cfg: &LfsConfig, #[values(8, 1)] block_cycles: i32) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -211,7 +209,7 @@ fn test_relocations_nonreentrant_renames(
 #[ignore = "bug: power-loss iteration returns Error::Io for some cases"]
 #[timeout(std::time::Duration::from_mins(1))]
 fn test_relocations_reentrant(
-    cfg: &mut LfsConfig,
+    cfg: &LfsConfig,
     #[values(false, true)] reentrant: bool,
     #[case] files: usize,
     #[case] depth: usize,
@@ -252,11 +250,12 @@ fn test_relocations_reentrant(
 #[case(3, 3, 20)]
 #[cfg(feature = "slow_tests")]
 fn test_relocations_reentrant_renames(
-    cfg: &mut LfsConfig,
+    cfg: &LfsConfig,
     #[values(false, true)] reentrant: bool,
     #[case] files: usize,
     #[case] depth: usize,
     #[case] cycles: usize,
+    #[values(1)] block_cycles: i32,
 ) {
     // TODO fix this case, caused by non-DAG trees
     // NOTE the second condition is required
@@ -267,7 +266,6 @@ fn test_relocations_reentrant_renames(
         return;
     }
 
-    cfg.block_cycles = 1;
     let lfs = &mut Lfs::default();
 
     let err = littlefs_rust_core::lfs_mount(lfs, cfg);

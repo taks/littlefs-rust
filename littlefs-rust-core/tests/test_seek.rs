@@ -30,7 +30,7 @@ const PORCUPINE: &[u8] = b"porcupineee";
 #[case(200, 100)]
 #[case(4, 1)]
 #[case(4, 2)]
-fn test_seek_read(cfg: &mut LfsConfig, #[case] count: u32, #[case] skip: u32) {
+fn test_seek_read(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u32) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -657,7 +657,7 @@ fn test_seek_inline_write(#[case] size: u32) {
 #[case(128)]
 #[cfg(feature = "slow_tests")]
 fn test_seek_reentrant_write(
-    cfg: &mut LfsConfig,
+    cfg: &LfsConfig,
     #[values(false, true)] reentrant: bool,
     #[case] count: u32,
 ) {

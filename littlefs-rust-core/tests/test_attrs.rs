@@ -19,7 +19,7 @@ const ATTR_MAX: usize = 1022;
 
 // --- test_attrs_get_set ---
 #[lfs_test]
-fn test_attrs_get_set(cfg: &mut LfsConfig) {
+fn test_attrs_get_set(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -149,7 +149,7 @@ fn test_attrs_get_set_root(cfg: &LfsConfig) {
 // --- test_attrs_get_set_file ---
 // Uses lfs_file_opencfg with attrs: WRONLY writes attrs on close, RDONLY reads on open.
 #[lfs_test]
-fn test_attrs_get_set_file(cfg: &mut LfsConfig) {
+fn test_attrs_get_set_file(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -251,7 +251,7 @@ fn test_attrs_get_set_file(cfg: &mut LfsConfig) {
 // --- test_attrs_deferred_file ---
 // Uses lfs_file_opencfg with deferred attrs (synced on file_sync).
 #[lfs_test]
-fn test_attrs_deferred_file(cfg: &mut LfsConfig) {
+fn test_attrs_deferred_file(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));

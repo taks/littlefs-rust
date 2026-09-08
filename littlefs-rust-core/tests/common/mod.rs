@@ -40,7 +40,7 @@ pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConf
     test(cfg);
 }
 
-pub fn run_powerloss_linear(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig)) {
+pub fn run_powerloss_linear(cfg: &mut LfsConfig, mut test: impl FnMut(&LfsConfig)) {
     for powerloss_behavior in [PowerLossBehavior::Noop, PowerLossBehavior::Ooo] {
         let mut i = 1;
 

@@ -75,7 +75,7 @@ unsafe fn evil_invalid_tail_pointer(tail_type: u16, invalset: u32) {
 /// Mount succeeds, stat works, but dir_open/stat-child/file_open fail
 /// with Error::Corrupt.
 #[lfs_test]
-fn test_evil_invalid_dir_pointer(cfg: &mut LfsConfig, #[values(0x3u32, 0x1, 0x2)] invalset: u32) {
+fn test_evil_invalid_dir_pointer(cfg: &LfsConfig, #[values(0x3u32, 0x1, 0x2)] invalset: u32) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));

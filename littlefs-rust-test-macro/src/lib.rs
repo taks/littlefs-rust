@@ -48,7 +48,9 @@ pub fn lfs_test(
     let assign = syn::parse_macro_input!(attr with Punctuated::<syn::ExprAssign, token::Semi>::parse_terminated);
     let assign2 = quote::quote! {
         let reentrant = false;
+        let block_cycles = -1;
         let inline_max = 0;
+        let compact_thresh = u32::MAX;
     };
     let assign2: Punctuated<syn::ExprLet, token::Semi> =
         Punctuated::<syn::ExprLet, token::Semi>::parse_terminated
@@ -92,9 +94,9 @@ pub fn lfs_test(
                     prog_size: size_,
                     block_size,
                     block_count,
-                    block_cycles: -1,
+                    block_cycles,
                     cache_size: block_size,
-                    compact_thresh: u32::MAX,
+                    compact_thresh,
                     read_buffer: Some(NonNull::from_ref(&read_buf)),
                     prog_buffer: Some(NonNull::from_ref(&prog_buf)),
                     lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
