@@ -12,9 +12,9 @@ use common::{
     init_logger,
 };
 use littlefs_rust_core::{
-    Lfs, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format,
-    lfs_mount, lfs_remove, lfs_unmount,
+    Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mount, lfs_remove, lfs_unmount,
 };
+use littlefs_rust_test_macro::lfs_test;
 
 fn env_with_cache_512() -> common::TestEnv {
     config_with_cache(512, 128)
@@ -26,15 +26,16 @@ fn env_with_cache_512_2048_blocks() -> common::TestEnv {
 }
 
 // --- test_entries_grow ---
-#[test]
-fn test_entries_grow() {
-    init_logger();
-    let mut env = env_with_cache_512();
-    init_context(&mut env);
+#[lfs_test]
+fn test_entries_grow(cfg: &LfsConfig, #[values(512)] cache_size: u32) {
+    assert_eq!(cfg.cache_size, 512);
+    if !cfg.cache_size.is_multiple_of(cfg.prog_size) {
+        return;
+    }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let buf = [b'c'; 1024];
     for i in 0..4 {
