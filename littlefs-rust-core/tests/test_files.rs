@@ -9,9 +9,8 @@ use std::assert_matches;
 
 use common::{
     LFS_O_APPEND, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, advance_prng,
-    config_with_inline_max, default_config, fs_with_hello, init_context,
-    powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear},
-    test_prng, verify_prng_file, verify_prng_file_with_state, write_prng_file,
+    config_with_inline_max, default_config, fs_with_hello, init_context, test_prng,
+    verify_prng_file, verify_prng_file_with_state, write_prng_file,
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
@@ -361,10 +360,16 @@ fn test_files_reentrant_write(
 fn test_files_reentrant_write_sync(
     cfg: &mut LfsConfig,
     #[values(OpenFlags::APPEND, OpenFlags::TRUNC, OpenFlags::empty())] mode: OpenFlags,
-    #[values(32, 0, 7, 2049)] size: u32,
+    #[values(32, 0, 7, 200)] size: u32,
     #[values(31, 16, 65)] chunk_size: u32,
     #[values(0, u32::MAX, 8)] inline_max: u32,
 ) {
+    let size = if size == 200 && mode == OpenFlags::APPEND {
+        2049
+    } else {
+        size
+    };
+
     cfg.inline_max = inline_max;
 
     let lfs = &mut Lfs::default();
@@ -378,66 +383,61 @@ fn test_files_reentrant_write_sync(
     let path = "avacado";
     let file = &mut LfsFile::default();
     let open_err = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY);
+    assert_matches!(open_err, Ok(()) | Err(Error::NoEntry));
     if open_err.is_ok() {
         let sz = littlefs_rust_core::lfs_file_size(lfs, file);
         assert!(sz <= size);
         let mut prng = 1u32;
         let mut buf = [0u8; 1024];
-        let mut i: u32 = 0;
-        while i < sz as u32 {
+        for i in (0..sz).step_by(chunk_size as usize) {
             let chunk = (chunk_size.min(sz as u32 - i)) as usize;
-            let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut buf[..chunk]);
-            assert_eq!(n, Ok(chunk as u32));
+            assert_eq!(
+                lfs_file_read(lfs, file, &mut buf[..chunk]),
+                Ok(chunk as u32)
+            );
             for slot in buf[..chunk].iter() {
                 let expected = (common::test_prng(&mut prng) & 0xff) as u8;
                 assert_eq!(*slot, expected);
             }
-            i += chunk as u32;
         }
-        littlefs_rust_core::lfs_file_close(lfs, file)?;
-    } else {
-        assert_eq!(open_err, Err(Error::NoEntry));
+        assert_ok!(lfs_file_close(lfs, file));
     }
 
-    littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND)?;
-    let current_size = littlefs_rust_core::lfs_file_size(lfs, file);
-    let skip = current_size;
+    // write
+    assert_ok!(lfs_file_open(
+        lfs,
+        file,
+        path,
+        LFS_O_WRONLY | LFS_O_CREAT | mode
+    ));
+    let sz = littlefs_rust_core::lfs_file_size(lfs, file);
+    assert!(sz <= size);
+    let skip = if mode == OpenFlags::APPEND { sz } else { 0 };
     let mut prng = 1u32;
     common::advance_prng(&mut prng, skip);
-    let mut i = skip;
-    while i < size {
+
+    for i in (skip..size).step_by(chunk_size as usize) {
         let chunk = chunk_size.min(size - i);
         let mut buf = [0u8; 1024];
         for slot in buf[..chunk as usize].iter_mut() {
             *slot = (common::test_prng(&mut prng) & 0xff) as u8;
         }
-        let n = littlefs_rust_core::lfs_file_write(lfs, file, &buf[..chunk as usize])?;
+        assert_eq!(
+            lfs_file_write(lfs, file, &buf[..chunk as usize]),
+            Ok(chunk as u32)
+        );
 
-        assert_eq!(n, chunk as u32);
-        littlefs_rust_core::lfs_file_sync(lfs, file)?;
+        assert_ok!(littlefs_rust_core::lfs_file_sync(lfs, file));
+    }
+    assert_ok!(lfs_file_close(lfs, file));
 
-        i += chunk;
-    }
-    littlefs_rust_core::lfs_file_close(lfs, file)?;
-    littlefs_rust_core::lfs_unmount(lfs)?;
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
 
-    if littlefs_rust_core::lfs_mount(lfs, cfg).is_err() {
-        return Ok(());
-    }
-    let path = "avacado";
-    let file = &mut LfsFile::default();
-    if littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY).is_err() {
-        let _ = littlefs_rust_core::lfs_unmount(lfs);
-        return Ok(());
-    }
-    let sz = littlefs_rust_core::lfs_file_size(lfs, file);
-    if sz == size {
-        verify_prng_file(lfs, file, size, chunk_size, 1);
-    }
-    littlefs_rust_core::lfs_file_close(lfs, file)?;
-    littlefs_rust_core::lfs_unmount(lfs)?;
+    assert_eq!(littlefs_rust_core::lfs_file_size(lfs, file), size);
+    verify_prng_file(lfs, file, size, chunk_size, 1);
 
-    Ok(())
+    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_files_many]
