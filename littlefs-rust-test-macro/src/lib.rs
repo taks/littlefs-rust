@@ -118,6 +118,7 @@ pub fn lfs_test(
         }
 
         #[cfg(test)]
+        #[allow(unused_variables)]
         #input_fn
     }
     .into()
