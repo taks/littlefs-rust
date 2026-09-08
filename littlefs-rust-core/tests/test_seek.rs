@@ -651,7 +651,7 @@ fn test_seek_inline_write(#[case] size: u32) {
 
 /// Upstream: [cases.test_seek_reentrant_write]
 /// defines.COUNT = [4, 64, 128], POWERLOSS_BEHAVIOR = [NOOP, OOO]
-#[lfs_test(reentrant)]
+#[lfs_test(reentrant = true)]
 #[case(4)]
 #[case(64)]
 #[case(128)]

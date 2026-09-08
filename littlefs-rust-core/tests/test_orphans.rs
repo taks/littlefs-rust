@@ -333,14 +333,13 @@ fn test_orphans_mkconsistent_one_orphan() {
 
 /// Upstream: [cases.test_orphans_reentrant]
 /// FILES=[6,26], DEPTH=1; FILES=3,DEPTH=3 skipped when CACHE_SIZE!=64. reentrant, CYCLES=20.
-#[lfs_test(reentrant)]
+#[lfs_test(reentrant = true)]
 #[cfg(feature = "slow_tests")]
 fn test_orphans_reentrant(cfg: &LfsConfig) {
     const CYCLES: u32 = 20;
     const ALPHA: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
     for (files, depth) in [(6usize, 1usize), (26, 1)] {
-
         let lfs = &mut Lfs::default();
 
         let err = lfs_mount(lfs, cfg);
@@ -363,7 +362,7 @@ fn test_orphans_reentrant(cfg: &LfsConfig) {
             if res == Err(Error::NoEntry) {
                 for d in 0..depth {
                     let sub = "/".to_string() + &components[..=d].join("/");
-                    assert_matches!(lfs_mkdir(lfs, &sub), Ok(()) | Err (Error::Exists));
+                    assert_matches!(lfs_mkdir(lfs, &sub), Ok(()) | Err(Error::Exists));
                 }
                 for d in 0..depth {
                     let sub = "/".to_string() + &components[..=d].join("/");

@@ -624,7 +624,7 @@ fn test_move_file_after_corrupt(cfg: &LfsConfig) {
 
 // --- test_move_reentrant_file ---
 // Power-loss at rename points; verify FS consistent after each simulated power loss.
-#[lfs_test(reentrant)]
+#[lfs_test(reentrant = true)]
 fn test_move_reentrant_file(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     let err = lfs_mount(lfs, cfg);
@@ -888,7 +888,7 @@ fn test_move_dir_after_corrupt(cfg: &LfsConfig) {
 
 // --- test_reentrant_dir ---
 // Power-loss at cross-dir dir rename points; verify FS consistent after each.
-#[lfs_test(reentrant)]
+#[lfs_test(reentrant = true)]
 fn test_reentrant_dir(cfg: &mut LfsConfig) {
     let lfs = &mut Lfs::default();
     let err = littlefs_rust_core::lfs_mount(lfs, cfg);

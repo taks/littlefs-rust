@@ -1,6 +1,10 @@
 #![allow(clippy::single_match)]
 
-use syn::{FnArg, ItemFn, punctuated::Punctuated, token::Comma};
+use syn::{
+    FnArg, ItemFn,
+    punctuated::Punctuated,
+    token::{self, Comma},
+};
 
 #[proc_macro_attribute]
 pub fn lfs_test(
@@ -40,21 +44,7 @@ pub fn lfs_test(
         };
     }
 
-    let reentrant = if attr.is_empty() {
-        false
-    } else {
-        let attr = syn::parse_macro_input!(attr as syn::Ident);
-        attr == "reentrant"
-    };
-    let reentrant = if reentrant {
-        quote::quote! {
-            run_powerloss_linear(&mut cfg, |cfg| {
-                #call_fn(cfg, #args_);
-            });
-        }
-    } else {
-        quote::quote! {}
-    };
+    let assign = syn::parse_macro_input!(attr with Punctuated::<syn::ExprAssign, token::Semi>::parse_terminated);
 
     quote::quote! {
         #[rstest::rstest]
@@ -77,6 +67,9 @@ pub fn lfs_test(
                 let lookahead_buf = vec![0u8; block_size as usize];
                 let erase_count = 1024 * 1024 / block_size;
                 let block_count = erase_count;  // / std::cmp::max(block_size/erase_size, 1);
+                let mut reentrant = false;
+
+                #assign;
 
                 let mut cfg = LfsConfig {
                     context: None,
@@ -101,7 +94,11 @@ pub fn lfs_test(
                     #call_fn(cfg, #args_);
                 });
 
-                #reentrant
+                if reentrant {
+                    run_powerloss_linear(&mut cfg, |cfg| {
+                        #call_fn(cfg, #args_);
+                    });
+                }
             }
         }
 

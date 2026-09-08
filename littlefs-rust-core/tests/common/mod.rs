@@ -7,7 +7,6 @@
 
 pub mod dump;
 pub mod emubd;
-pub mod powerloss;
 
 use core::cell::RefCell;
 use littlefs_rust_core::{LfsConfig, Storage, error::Error, lfs_type::OpenFlags};

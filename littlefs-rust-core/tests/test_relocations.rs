@@ -203,7 +203,7 @@ fn test_relocations_nonreentrant_renames(
 
 // --- test_relocations_reentrant ---
 // mkdir/remove cycles with power-loss; verify FS consistent after each.
-#[lfs_test(reentrant)]
+#[lfs_test(reentrant = true)]
 #[case(6, 1, 20)]
 #[case(26, 1, 20)]
 #[case(3, 3, 20)]
@@ -245,7 +245,7 @@ fn test_relocations_reentrant(
 
 // --- test_relocations_reentrant_renames ---
 // Chained renames with power-loss; verify FS consistent after each.
-#[lfs_test(reentrant)]
+#[lfs_test(reentrant = true)]
 #[case(6, 1, 20)]
 #[case(26, 1, 20)]
 #[case(3, 3, 20)]

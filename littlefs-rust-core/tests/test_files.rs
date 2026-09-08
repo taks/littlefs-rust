@@ -292,7 +292,7 @@ fn test_files_truncate(
 ///
 /// Mount-or-format, check existing file (size 0 or SIZE), write SIZE PRNG(1),
 /// close, read back, verify. Power-loss retries until success.
-#[lfs_test(reentrant)]
+#[lfs_test(reentrant = true)]
 fn test_files_reentrant_write(
     cfg: &mut LfsConfig,
     #[values(32, 0, 7, 2049)] size: u32,
@@ -356,7 +356,7 @@ fn test_files_reentrant_write(
 /// Upstream: [cases.test_files_reentrant_write_sync]
 /// Three modes: APPEND, TRUNC, plain write. SIZE/CHUNKSIZE/INLINE_MAX vary per mode.
 /// Power-loss after each sync. Stub: implement APPEND mode with SIZE=[32,0,7,2049].
-#[lfs_test(reentrant)]
+#[lfs_test(reentrant = true)]
 fn test_files_reentrant_write_sync(
     cfg: &mut LfsConfig,
     #[values(OpenFlags::APPEND, OpenFlags::TRUNC, OpenFlags::empty())] mode: OpenFlags,
@@ -522,7 +522,7 @@ fn test_files_many_power_cycle(cfg: &LfsConfig) {
 ///
 /// Reentrant creation of 300 files with power-loss simulation.
 /// Can take 30+ seconds due to iteration over power-loss points.
-#[lfs_test(reentrant)]
+#[lfs_test(reentrant = true;)]
 #[cfg(feature = "slow_tests")]
 fn test_files_many_power_loss(cfg: &LfsConfig) {
     const N: usize = 300;

@@ -328,7 +328,7 @@ fn test_interspersed_remove_inconveniently(cfg: &LfsConfig, #[values(10, 100)] s
 /// Power-loss test. Mount-or-format. Open FILES files for append. Write
 /// SIZE bytes per file with sync after each byte when size <= i. Close.
 /// Verify directory and read 10 bytes from each.
-#[lfs_test(reentrant)]
+#[lfs_test(reentrant = true)]
 #[cfg(feature = "slow_tests")]
 fn test_interspersed_reentrant_files(
     cfg: &LfsConfig,
