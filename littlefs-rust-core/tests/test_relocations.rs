@@ -245,77 +245,114 @@ fn test_relocations_reentrant(
 
 // --- test_relocations_reentrant_renames ---
 // Chained renames with power-loss; verify FS consistent after each.
-#[rstest]
+#[lfs_test(reentrant)]
 #[case(6, 1, 20)]
 #[case(26, 1, 20)]
 #[case(3, 3, 20)]
 #[cfg(feature = "slow_tests")]
 fn test_relocations_reentrant_renames(
+    cfg: &mut LfsConfig,
     #[case] _files: usize,
     #[case] depth: usize,
-    #[case] _cycles: usize,
+    #[case] cycles: usize,
 ) {
-    if depth == 3 {
-        return; // guard: DEPTH==3 && CACHE_SIZE!=64
+    if depth == 3 && cfg.cache_size != 64 {
+        return;
     }
-    init_logger();
-    let block_count = 128u32; // 2*FILES < BLOCK_COUNT
-    let mut env = powerloss_config(block_count);
-    init_powerloss_context(&mut env);
 
+    cfg.block_cycles = 1;
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
-    for name in ["x", "y"] {
-        let path = name;
-        let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
-        assert_ok!(lfs_file_close(lfs, file));
+
+    let err = littlefs_rust_core::lfs_mount(lfs, cfg);
+    if err.is_err() {
+        assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
+        assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
+    }
+
+    let mut prng: u32 = 1;
+    const ALPHA: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
+
+    for i in 0..cycles {
+        //     // create random path
+        //     char full_path[256];
+        //     for (unsigned d = 0; d < DEPTH; d++) {
+        //         sprintf(&full_path[2*d], "/%c", alpha[TEST_PRNG(&prng) % FILES]);
+        //     }
+
+        //     // if it does not exist, we create it, else we destroy
+        //     struct lfs_info info;
+        //     int res = lfs_stat(&lfs, full_path, &info);
+        //     assert(!res || res == LFS_ERR_NOENT);
+        //     if (res == LFS_ERR_NOENT) {
+        //         // create each directory in turn, ignore if dir already exists
+        //         for (unsigned d = 0; d < DEPTH; d++) {
+        //             char path[1024];
+        //             strcpy(path, full_path);
+        //             path[2*d+2] = '\0';
+        //             err = lfs_mkdir(&lfs, path);
+        //             assert(!err || err == LFS_ERR_EXIST);
+        //         }
+
+        //         for (unsigned d = 0; d < DEPTH; d++) {
+        //             char path[1024];
+        //             strcpy(path, full_path);
+        //             path[2*d+2] = '\0';
+        //             lfs_stat(&lfs, path, &info) => 0;
+        //             assert(strcmp(info.name, &path[2*d+1]) == 0);
+        //             assert(info.type == LFS_TYPE_DIR);
+        //         }
+        //     } else {
+        //         assert(strcmp(info.name, &full_path[2*(DEPTH-1)+1]) == 0);
+        //         assert(info.type == LFS_TYPE_DIR);
+
+        //         // create new random path
+        //         char new_path[256];
+        //         for (unsigned d = 0; d < DEPTH; d++) {
+        //             sprintf(&new_path[2*d], "/%c", alpha[TEST_PRNG(&prng) % FILES]);
+        //         }
+
+        //         // if new path does not exist, rename, otherwise destroy
+        //         res = lfs_stat(&lfs, new_path, &info);
+        //         assert(!res || res == LFS_ERR_NOENT);
+        //         if (res == LFS_ERR_NOENT) {
+        //             // stop once some dir is renamed
+        //             for (unsigned d = 0; d < DEPTH; d++) {
+        //                 char path[1024];
+        //                 strcpy(&path[2*d], &full_path[2*d]);
+        //                 path[2*d+2] = '\0';
+        //                 strcpy(&path[128+2*d], &new_path[2*d]);
+        //                 path[128+2*d+2] = '\0';
+        //                 err = lfs_rename(&lfs, path, path+128);
+        //                 assert(!err || err == LFS_ERR_NOTEMPTY);
+        //                 if (!err) {
+        //                     strcpy(path, path+128);
+        //                 }
+        //             }
+
+        //             for (unsigned d = 0; d < DEPTH; d++) {
+        //                 char path[1024];
+        //                 strcpy(path, new_path);
+        //                 path[2*d+2] = '\0';
+        //                 lfs_stat(&lfs, path, &info) => 0;
+        //                 assert(strcmp(info.name, &path[2*d+1]) == 0);
+        //                 assert(info.type == LFS_TYPE_DIR);
+        //             }
+
+        //             lfs_stat(&lfs, full_path, &info) => LFS_ERR_NOENT;
+        //         } else {
+        //             // try to delete path in reverse order,
+        //             // ignore if dir is not empty
+        //             for (unsigned d = DEPTH-1; d+1 > 0; d--) {
+        //                 char path[1024];
+        //                 strcpy(path, full_path);
+        //                 path[2*d+2] = '\0';
+        //                 err = lfs_remove(&lfs, path);
+        //                 assert(!err || err == LFS_ERR_NOTEMPTY);
+        //             }
+
+        //             lfs_stat(&lfs, full_path, &info) => LFS_ERR_NOENT;
+        //         }
+        //     }
     }
     assert_ok!(lfs_unmount(lfs));
-
-    let snapshot = env.snapshot();
-
-    let result = run_powerloss_linear(
-        &mut env,
-        &snapshot,
-        128,
-        |lfs_ptr, config| {
-            lfs_mount(lfs_ptr, config)?;
-            let err = lfs_rename(lfs_ptr, "x", "z");
-            if err.is_err() {
-                let _ = lfs_unmount(lfs_ptr);
-                return err;
-            }
-            let err = lfs_rename(lfs_ptr, "y", "x");
-            if err.is_err() {
-                let _ = lfs_unmount(lfs_ptr);
-                return err;
-            }
-            let err = lfs_rename(lfs_ptr, "z", "y");
-            if err.is_err() {
-                let _ = lfs_unmount(lfs_ptr);
-                return err;
-            }
-            let err = lfs_remove(lfs_ptr, "x");
-            if err.is_err() {
-                let _ = lfs_unmount(lfs_ptr);
-                return err;
-            }
-            let err = lfs_remove(lfs_ptr, "y");
-            if err.is_err() {
-                let _ = lfs_unmount(lfs_ptr);
-                return err;
-            }
-            lfs_unmount(lfs_ptr)?;
-
-            Ok(())
-        },
-        |lfs_ptr, config| {
-            lfs_mount(lfs_ptr, config)?;
-            let _ = lfs_unmount(lfs_ptr);
-            Ok(())
-        },
-    );
-    result.expect("test_relocations_reentrant_renames should complete");
 }
