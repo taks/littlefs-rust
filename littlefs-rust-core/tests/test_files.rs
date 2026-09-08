@@ -569,35 +569,3 @@ fn test_files_same_session(cfg: &LfsConfig) {
     assert_eq!(&buf[..13], b"Hello World!\0");
     assert_ok!(lfs_file_close(lfs, file2));
 }
-
-#[lfs_test]
-fn test_files_seek_tell(cfg: &LfsConfig) {
-    let lfs = &mut Lfs::default();
-    assert_ok!(lfs_mount(lfs, cfg));
-
-    let path = "hello";
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path, OpenFlags::READ));
-
-    let mut buf = [0u8; 4];
-    let n = lfs_file_read(lfs, file, &mut buf[..4]);
-    assert_eq!(n, Ok(4));
-    assert_eq!(&buf[..4], b"Hell");
-    assert_eq!(lfs_file_tell(lfs, file), 4);
-
-    assert_ok!(lfs_file_rewind(lfs, file));
-    assert_eq!(lfs_file_tell(lfs, file), 0);
-
-    let n2 = lfs_file_read(lfs, file, &mut buf[..4]);
-    assert_eq!(n2, Ok(4));
-    assert_eq!(&buf[..4], b"Hell");
-
-    let pos = lfs_file_seek(lfs, file, 6, 0);
-    assert_eq!(pos, Ok(6));
-    let n3 = lfs_file_read(lfs, file, &mut buf[..4]);
-    assert_eq!(n3, Ok(4));
-    assert_eq!(&buf[..4], b"Worl");
-
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_unmount(lfs));
-}

@@ -617,44 +617,6 @@ pub const LFS_SEEK_END: i32 = 2;
 /// Max file size. Per lfs.h LFS_FILE_MAX. lfs_soff_t is i32.
 pub const LFS_FILE_MAX: i32 = 2_147_483_647;
 
-/// Format, mount, create "hello" file with "Hello World!\0", unmount.
-/// Returns env. Caller mounts again before reading.
-pub fn fs_with_hello(env: &mut TestEnv) -> Result<(), Error> {
-    use littlefs_rust_core::{
-        Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_write, lfs_format,
-        lfs_mount, lfs_unmount,
-    };
-
-    init_context(env);
-    let lfs = &mut Lfs::default();
-    lfs_format(lfs, &env.config as &LfsConfig)?;
-
-    lfs_mount(lfs, &env.config as &LfsConfig)?;
-
-    let path = "hello";
-    let data = b"Hello World!\0";
-    let file = &mut LfsFile::default();
-    let err = lfs_file_open(lfs, file, path, OpenFlags::WRITE | OpenFlags::CREATE);
-    if let Err(err) = err {
-        let _ = lfs_unmount(lfs);
-        return Err(err);
-    }
-    let n = lfs_file_write(lfs, file, data)?;
-    if n != data.len() as _ {
-        let _ = lfs_file_close(lfs, file);
-        let _ = lfs_unmount(lfs);
-        return Err(Error::Invalid);
-    }
-    let err = lfs_file_close(lfs, file);
-    if let Err(err) = err {
-        let _ = lfs_unmount(lfs);
-        return Err(err);
-    }
-    lfs_unmount(lfs)?;
-
-    Ok(())
-}
-
 /// Get the metadata block number (`m.pair[0]`) for a directory while mounted.
 /// Caller must unmount before corrupting the returned block.
 pub fn dir_block(lfs: &mut littlefs_rust_core::Lfs, dir_path: &str) -> u32 {
