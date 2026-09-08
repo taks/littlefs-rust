@@ -41,12 +41,10 @@ fn test_truncate_simple(cfg: &LfsConfig, #[case] medium: u32, #[case] large: u32
     if medium >= large {
         return;
     }
-    let mut env = default_config(1024);
-    init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "baldynoop";
     let file = &mut LfsFile::default();
@@ -65,7 +63,7 @@ fn test_truncate_simple(cfg: &LfsConfig, #[case] medium: u32, #[case] large: u32
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
     assert_eq!(lfs_file_size(lfs, file), large);
 
@@ -75,7 +73,7 @@ fn test_truncate_simple(cfg: &LfsConfig, #[case] medium: u32, #[case] large: u32
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), medium);
 
@@ -395,8 +393,8 @@ fn test_truncate_reentrant_write(
 
 /// Upstream: [cases.test_truncate_aggressive]
 /// CONFIG 0..5, 5 files, various shrink/expand patterns
-#[test]
-fn test_truncate_aggressive() {
+#[lfs_test]
+fn test_truncate_aggressive(cfg: &LfsConfig) {
     const SMALL: u32 = 32;
     const MEDIUM: u32 = 2048;
     const LARGE: u32 = 8192;
@@ -442,14 +440,11 @@ fn test_truncate_aggressive() {
         ],
     ];
 
-    let mut env = default_config(1024);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
 
     for (config, _) in configs.iter().enumerate() {
-        assert_ok!(lfs_format(lfs, &env.config));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
         let startsizes = configs[config][0];
         let startseeks = configs[config][1];
         let hotsizes = configs[config][2];
@@ -489,7 +484,7 @@ fn test_truncate_aggressive() {
         }
 
         assert_ok!(lfs_unmount(lfs));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, cfg));
 
         for i in 0..COUNT {
             let path = &format!("hairyhead{}", i);
@@ -527,7 +522,7 @@ fn test_truncate_aggressive() {
         }
 
         assert_ok!(lfs_unmount(lfs));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, cfg));
 
         for i in 0..COUNT {
             let path = &format!("hairyhead{}", i);
