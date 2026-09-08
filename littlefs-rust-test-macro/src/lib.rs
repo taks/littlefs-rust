@@ -53,6 +53,7 @@ pub fn lfs_test(
         let compact_thresh = u32::MAX;
         let name_max = 255;
         let cache_size = 64.max(read_size);
+        let lookahead_size = 16;
     };
     let assign2: Punctuated<syn::ExprLet, token::Semi> =
         Punctuated::<syn::ExprLet, token::Semi>::parse_terminated
@@ -90,7 +91,7 @@ pub fn lfs_test(
 
                 let read_buf = vec![0u8; cache_size as usize];
                 let prog_buf = vec![0u8; cache_size as usize];
-                let lookahead_buf = vec![0u8; cache_size as usize];
+                let lookahead_buf = vec![0u8; lookahead_size as usize];
 
                 let mut cfg = LfsConfig {
                     context: None,
