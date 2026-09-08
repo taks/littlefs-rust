@@ -370,7 +370,7 @@ fn test_relocations_reentrant_renames(
                 let mut d = depth - 1;
                 loop {
                     assert_matches!(
-                        lfs_remove(lfs, &full_path[..(2 * d + 2) as usize]),
+                        lfs_remove(lfs, &full_path[..(2 * d + 2)]),
                         Ok(()) | Err(Error::NotEmpty)
                     );
                     if d == 0 {

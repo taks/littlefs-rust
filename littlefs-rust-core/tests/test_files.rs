@@ -422,10 +422,7 @@ fn test_files_reentrant_write_sync(
         for slot in buf[..chunk as usize].iter_mut() {
             *slot = (common::test_prng(&mut prng) & 0xff) as u8;
         }
-        assert_eq!(
-            lfs_file_write(lfs, file, &buf[..chunk as usize]),
-            Ok(chunk as u32)
-        );
+        assert_eq!(lfs_file_write(lfs, file, &buf[..chunk as usize]), Ok(chunk));
 
         assert_ok!(littlefs_rust_core::lfs_file_sync(lfs, file));
     }
