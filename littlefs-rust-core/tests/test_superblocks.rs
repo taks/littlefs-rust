@@ -154,19 +154,15 @@ fn test_superblocks_reentrant_format(cfg: &LfsConfig, #[values(false, true)] ree
 /// Format with name_max=63, file_max=65535, attr_max=512; mount with default; verify fsinfo.
 #[lfs_test]
 fn test_superblocks_stat_tweaked(cfg: &LfsConfig) {
-    let mut env = default_config(128);
-    init_context(&mut env);
-    env.config.name_max = 63;
-    env.config.file_max = 65535;
-    env.config.attr_max = 512;
+    let mut tweaked_cfg = cfg.clone();
+    tweaked_cfg.name_max = 63;
+    tweaked_cfg.file_max = 65535;
+    tweaked_cfg.attr_max = 512;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, &tweaked_cfg));
 
-    env.config.name_max = 255;
-    env.config.file_max = 2_147_483_647;
-    env.config.attr_max = 1022;
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok!(lfs_fs_stat(lfs, fsinfo));

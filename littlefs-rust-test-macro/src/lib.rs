@@ -51,6 +51,7 @@ pub fn lfs_test(
         let block_cycles = -1;
         let inline_max = 0;
         let compact_thresh = u32::MAX;
+        let name_max = 255;
     };
     let assign2: Punctuated<syn::ExprLet, token::Semi> =
         Punctuated::<syn::ExprLet, token::Semi>::parse_terminated
@@ -101,7 +102,7 @@ pub fn lfs_test(
                     read_buffer: Some(NonNull::from_ref(&read_buf)),
                     prog_buffer: Some(NonNull::from_ref(&prog_buf)),
                     lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
-                    name_max: 255,
+                    name_max,
                     file_max: 2_147_483_647,
                     attr_max: 1022,
                     metadata_max: 0,
