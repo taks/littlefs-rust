@@ -9,15 +9,17 @@
 
 mod common;
 
-use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
+use std::fmt::Write;
+#[cfg(feature = "slow_tests")]
+use std::{assert_matches, ffi::CStr};
+
 use common::{
     LFS_O_CREAT, LFS_O_WRONLY, config_with_cache, default_config, init_context, init_logger,
+    test_prng,
 };
-#[cfg(test)]
-use littlefs_rust_core::LfsConfig;
 use littlefs_rust_core::{
-    Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_write, lfs_format, lfs_mkdir,
-    lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
+    Lfs, LfsConfig, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_write,
+    lfs_format, lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_test_macro::lfs_test;
@@ -227,8 +229,6 @@ fn test_relocations_reentrant(
 
     for _ in 0..cycles {
         for i in 0..files {
-            use littlefs_rust_core::error::Error;
-
             let path = &format!("{}", (b'a' + i as u8) as char);
             assert!(matches!(lfs_mkdir(lfs, path), Ok(()) | Err(Error::Exists)));
         }
@@ -252,11 +252,16 @@ fn test_relocations_reentrant(
 #[cfg(feature = "slow_tests")]
 fn test_relocations_reentrant_renames(
     cfg: &mut LfsConfig,
-    #[case] _files: usize,
+    #[case] files: usize,
     #[case] depth: usize,
     #[case] cycles: usize,
 ) {
+    // TODO fix this case, caused by non-DAG trees
+    // NOTE the second condition is required
     if depth == 3 && cfg.cache_size != 64 {
+        return;
+    }
+    if 2 * files >= cfg.block_count as usize {
         return;
     }
 
@@ -270,89 +275,113 @@ fn test_relocations_reentrant_renames(
     }
 
     let mut prng: u32 = 1;
-    const ALPHA: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
+    let alpha: Vec<_> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
 
-    for i in 0..cycles {
-        //     // create random path
-        //     char full_path[256];
-        //     for (unsigned d = 0; d < DEPTH; d++) {
-        //         sprintf(&full_path[2*d], "/%c", alpha[TEST_PRNG(&prng) % FILES]);
-        //     }
+    for _ in 0..cycles {
+        // create random path
+        let mut full_path = String::with_capacity(256);
+        for _ in 0..depth {
+            assert_ok!(write!(
+                &mut full_path,
+                "/{}",
+                alpha[test_prng(&mut prng) as usize % files]
+            ));
+        }
 
-        //     // if it does not exist, we create it, else we destroy
-        //     struct lfs_info info;
-        //     int res = lfs_stat(&lfs, full_path, &info);
-        //     assert(!res || res == LFS_ERR_NOENT);
-        //     if (res == LFS_ERR_NOENT) {
-        //         // create each directory in turn, ignore if dir already exists
-        //         for (unsigned d = 0; d < DEPTH; d++) {
-        //             char path[1024];
-        //             strcpy(path, full_path);
-        //             path[2*d+2] = '\0';
-        //             err = lfs_mkdir(&lfs, path);
-        //             assert(!err || err == LFS_ERR_EXIST);
-        //         }
+        // if it does not exist, we create it, else we destroy
+        let info = &mut LfsInfo::default();
+        let res = lfs_stat(lfs, &full_path, info);
+        assert!(res.is_ok() || res == Err(Error::NoEntry));
+        if res == Err(Error::NoEntry) {
+            // create each directory in turn, ignore if dir already exists
+            for d in 0..depth {
+                assert_matches!(
+                    lfs_mkdir(lfs, &full_path[..(2 * d + 2)]),
+                    Ok(()) | Err(Error::Exists)
+                );
+            }
+            for d in 0..depth {
+                use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
 
-        //         for (unsigned d = 0; d < DEPTH; d++) {
-        //             char path[1024];
-        //             strcpy(path, full_path);
-        //             path[2*d+2] = '\0';
-        //             lfs_stat(&lfs, path, &info) => 0;
-        //             assert(strcmp(info.name, &path[2*d+1]) == 0);
-        //             assert(info.type == LFS_TYPE_DIR);
-        //         }
-        //     } else {
-        //         assert(strcmp(info.name, &full_path[2*(DEPTH-1)+1]) == 0);
-        //         assert(info.type == LFS_TYPE_DIR);
+                assert_ok!(lfs_stat(lfs, &full_path[..(2 * d + 2)], info));
+                assert_eq!(
+                    CStr::from_bytes_until_nul(&info.name)
+                        .unwrap()
+                        .to_str()
+                        .unwrap(),
+                    &full_path[(2 * d + 1)..(2 * d + 2)]
+                );
+                assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+            }
+        } else {
+            use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
 
-        //         // create new random path
-        //         char new_path[256];
-        //         for (unsigned d = 0; d < DEPTH; d++) {
-        //             sprintf(&new_path[2*d], "/%c", alpha[TEST_PRNG(&prng) % FILES]);
-        //         }
+            assert_eq!(
+                CStr::from_bytes_until_nul(&info.name)
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+                &full_path[(2 * (depth - 1) + 1)..]
+            );
+            assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
-        //         // if new path does not exist, rename, otherwise destroy
-        //         res = lfs_stat(&lfs, new_path, &info);
-        //         assert(!res || res == LFS_ERR_NOENT);
-        //         if (res == LFS_ERR_NOENT) {
-        //             // stop once some dir is renamed
-        //             for (unsigned d = 0; d < DEPTH; d++) {
-        //                 char path[1024];
-        //                 strcpy(&path[2*d], &full_path[2*d]);
-        //                 path[2*d+2] = '\0';
-        //                 strcpy(&path[128+2*d], &new_path[2*d]);
-        //                 path[128+2*d+2] = '\0';
-        //                 err = lfs_rename(&lfs, path, path+128);
-        //                 assert(!err || err == LFS_ERR_NOTEMPTY);
-        //                 if (!err) {
-        //                     strcpy(path, path+128);
-        //                 }
-        //             }
+            // create new random path
+            let mut new_path = String::with_capacity(256);
+            for _ in 0..depth {
+                assert_ok!(write!(
+                    &mut new_path,
+                    "/{}",
+                    alpha[test_prng(&mut prng) as usize % files]
+                ));
+            }
 
-        //             for (unsigned d = 0; d < DEPTH; d++) {
-        //                 char path[1024];
-        //                 strcpy(path, new_path);
-        //                 path[2*d+2] = '\0';
-        //                 lfs_stat(&lfs, path, &info) => 0;
-        //                 assert(strcmp(info.name, &path[2*d+1]) == 0);
-        //                 assert(info.type == LFS_TYPE_DIR);
-        //             }
+            // if new path does not exist, rename, otherwise destroy
+            let res = lfs_stat(lfs, &new_path, info);
+            assert_matches!(res, Ok(()) | Err(Error::NoEntry));
+            if res == Err(Error::NoEntry) {
+                // stop once some dir is renamed
+                for d in 0..depth {
+                    let from = format!(
+                        "{}{}",
+                        &new_path[..(2 * d)],
+                        &full_path[(2 * d)..(2 * d + 2)]
+                    );
+                    assert_matches!(
+                        lfs_rename(lfs, &from, &new_path[..(2 * d + 2)]),
+                        Ok(()) | Err(Error::NotEmpty)
+                    );
+                }
+                for d in 0..depth {
+                    assert_ok!(lfs_stat(lfs, &new_path[..(2 * d + 2)], info));
+                    assert_eq!(
+                        CStr::from_bytes_until_nul(&info.name)
+                            .unwrap()
+                            .to_str()
+                            .unwrap(),
+                        &new_path[(2 * d + 1)..(2 * d + 2)]
+                    );
+                    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+                }
 
-        //             lfs_stat(&lfs, full_path, &info) => LFS_ERR_NOENT;
-        //         } else {
-        //             // try to delete path in reverse order,
-        //             // ignore if dir is not empty
-        //             for (unsigned d = DEPTH-1; d+1 > 0; d--) {
-        //                 char path[1024];
-        //                 strcpy(path, full_path);
-        //                 path[2*d+2] = '\0';
-        //                 err = lfs_remove(&lfs, path);
-        //                 assert(!err || err == LFS_ERR_NOTEMPTY);
-        //             }
+                assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
+            } else {
+                // try to delete path in reverse order,
+                // ignore if dir is not empty
+                let mut d = depth - 1;
+                loop {
+                    assert_matches!(
+                        lfs_remove(lfs, &full_path[..(2 * d + 2) as usize]),
+                        Ok(()) | Err(Error::NotEmpty)
+                    );
+                    if d == 0 {
+                        break;
+                    }
+                    d -= 1;
+                }
 
-        //             lfs_stat(&lfs, full_path, &info) => LFS_ERR_NOENT;
-        //         }
-        //     }
+                assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
+            }
+        }
     }
     assert_ok!(lfs_unmount(lfs));
 }
