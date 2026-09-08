@@ -253,10 +253,14 @@ fn test_dirs_many_rename_append(cfg: &LfsConfig, #[values(5, 7, 9, 11)] n: usize
 
 /// Upstream: [cases.test_dirs_many_reentrant]
 /// defines.N = [5, 11], BLOCK_COUNT >= 4*N, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
-#[lfs_test(reentrant = true)]
+#[lfs_test]
 #[cfg(feature = "slow_tests")]
 #[ignore = "bug: power-loss iteration returns LFS_ERR_CORRUPT (-84)"]
-fn test_dirs_many_reentrant(cfg: &LfsConfig, #[values(5, 11)] n: usize) {
+fn test_dirs_many_reentrant(
+    cfg: &LfsConfig,
+    #[values(false, true)] reentrant: bool,
+    #[values(5, 11)] n: usize,
+) {
     let lfs = &mut Lfs::default();
 
     let err = littlefs_rust_core::lfs_mount(lfs, cfg);
@@ -466,9 +470,13 @@ fn test_dirs_file_rename(cfg: &LfsConfig) {
 
 /// Upstream: [cases.test_dirs_file_reentrant]
 /// defines.N = [5, 25], N < BLOCK_COUNT/2, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
-#[lfs_test(reentrant = true)]
+#[lfs_test]
 #[cfg(feature = "slow_tests")]
-fn test_dirs_file_reentrant(cfg: &LfsConfig, #[values(5, 25)] n: usize) {
+fn test_dirs_file_reentrant(
+    cfg: &LfsConfig,
+    #[values(false, true)] reentrant: bool,
+    #[values(5, 25)] n: usize,
+) {
     let lfs = &mut Lfs::default();
 
     let err = lfs_mount(lfs, cfg);

@@ -651,12 +651,16 @@ fn test_seek_inline_write(#[case] size: u32) {
 
 /// Upstream: [cases.test_seek_reentrant_write]
 /// defines.COUNT = [4, 64, 128], POWERLOSS_BEHAVIOR = [NOOP, OOO]
-#[lfs_test(reentrant = true)]
+#[lfs_test]
 #[case(4)]
 #[case(64)]
 #[case(128)]
 #[cfg(feature = "slow_tests")]
-fn test_seek_reentrant_write(cfg: &mut LfsConfig, #[case] count: u32) {
+fn test_seek_reentrant_write(
+    cfg: &mut LfsConfig,
+    #[values(false, true)] reentrant: bool,
+    #[case] count: u32,
+) {
     let lfs = &mut Lfs::default();
 
     let err = littlefs_rust_core::lfs_mount(lfs, cfg);

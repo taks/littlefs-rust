@@ -151,9 +151,9 @@ fn test_superblocks_mount_unknown_block_count() {
 
 /// Upstream: [cases.test_superblocks_reentrant_format]
 /// reentrant = true, POWERLOSS_BEHAVIOR = [NOOP, OOO]. Format under power-loss, then mount.
-#[lfs_test(reentrant = true)]
+#[lfs_test]
 #[cfg(feature = "slow_tests")]
-fn test_superblocks_reentrant_format(cfg: &LfsConfig) {
+fn test_superblocks_reentrant_format(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
     let lfs = &mut Lfs::default();
     let err = lfs_mount(lfs, cfg);
     if err.is_err() {
@@ -325,9 +325,13 @@ fn test_superblocks_expand_power_cycle(cfg: &mut LfsConfig) {
 
 /// Upstream: [cases.test_superblocks_reentrant_expand]
 /// BLOCK_CYCLES = [2, 1], N = 24, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
-#[lfs_test(reentrant = true)]
+#[lfs_test]
 #[cfg(feature = "slow_tests")]
-fn test_superblocks_reentrant_expand(cfg: &mut LfsConfig, #[values(2, 1)] block_cycles: i32) {
+fn test_superblocks_reentrant_expand(
+    cfg: &mut LfsConfig,
+    #[values(false, true)] reentrant: bool,
+    #[values(2, 1)] block_cycles: i32,
+) {
     const N: u32 = 24;
     cfg.block_cycles = block_cycles;
 

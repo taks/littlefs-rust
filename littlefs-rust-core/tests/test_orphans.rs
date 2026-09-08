@@ -333,9 +333,9 @@ fn test_orphans_mkconsistent_one_orphan() {
 
 /// Upstream: [cases.test_orphans_reentrant]
 /// FILES=[6,26], DEPTH=1; FILES=3,DEPTH=3 skipped when CACHE_SIZE!=64. reentrant, CYCLES=20.
-#[lfs_test(reentrant = true)]
+#[lfs_test]
 #[cfg(feature = "slow_tests")]
-fn test_orphans_reentrant(cfg: &LfsConfig) {
+fn test_orphans_reentrant(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
     const CYCLES: u32 = 20;
     const ALPHA: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 

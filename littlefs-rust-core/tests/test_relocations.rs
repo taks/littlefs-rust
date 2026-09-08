@@ -203,7 +203,7 @@ fn test_relocations_nonreentrant_renames(
 
 // --- test_relocations_reentrant ---
 // mkdir/remove cycles with power-loss; verify FS consistent after each.
-#[lfs_test(reentrant = true)]
+#[lfs_test]
 #[case(6, 1, 20)]
 #[case(26, 1, 20)]
 #[case(3, 3, 20)]
@@ -212,6 +212,7 @@ fn test_relocations_nonreentrant_renames(
 #[timeout(std::time::Duration::from_mins(1))]
 fn test_relocations_reentrant(
     cfg: &mut LfsConfig,
+    #[values(false, true)] reentrant: bool,
     #[case] files: usize,
     #[case] depth: usize,
     #[case] cycles: usize,
@@ -245,13 +246,14 @@ fn test_relocations_reentrant(
 
 // --- test_relocations_reentrant_renames ---
 // Chained renames with power-loss; verify FS consistent after each.
-#[lfs_test(reentrant = true)]
+#[lfs_test]
 #[case(6, 1, 20)]
 #[case(26, 1, 20)]
 #[case(3, 3, 20)]
 #[cfg(feature = "slow_tests")]
 fn test_relocations_reentrant_renames(
     cfg: &mut LfsConfig,
+    #[values(false, true)] reentrant: bool,
     #[case] files: usize,
     #[case] depth: usize,
     #[case] cycles: usize,

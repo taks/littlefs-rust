@@ -308,9 +308,10 @@ fn test_truncate_write(cfg: &LfsConfig, #[case] medium: u32, #[case] large: u32)
 
 /// Upstream: [cases.test_truncate_reentrant_write]
 #[cfg(feature = "slow_tests")]
-#[lfs_test(reentrant = true)]
+#[lfs_test]
 fn test_truncate_reentrant_write(
     cfg: &LfsConfig,
+    #[values(false, true)] reentrant: bool,
     #[values(4, 512)] small_size: u32,
     #[values(0u32, 3, 4, 5, 31, 32, 33, 511, 512, 513, 1023, 1024, 1025)] medium_size: u32,
 ) {
