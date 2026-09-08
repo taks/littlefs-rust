@@ -229,7 +229,7 @@ fn test_orphans_one_orphan(cfg: &LfsConfig) {
     assert!(lfs_fs_hasorphans(lfs_ptr), "should have orphans");
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, &env.config));
+    assert_ok!(lfs_mount(lfs_ptr, cfg));
     assert!(lfs_fs_hasorphans(lfs_ptr), "orphans should persist");
     assert_ok!(lfs_fs_forceconsistency(lfs_ptr));
     assert!(
