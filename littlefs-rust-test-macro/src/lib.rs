@@ -2,6 +2,7 @@
 
 use syn::{
     FnArg, ItemFn,
+    parse::Parser,
     punctuated::Punctuated,
     token::{self, Comma},
 };
@@ -45,6 +46,19 @@ pub fn lfs_test(
     }
 
     let assign = syn::parse_macro_input!(attr with Punctuated::<syn::ExprAssign, token::Semi>::parse_terminated);
+    let assign2 = quote::quote! {
+        let inline_max = 0;
+    };
+    let assign2: Punctuated<syn::ExprLet, token::Semi> =
+        Punctuated::<syn::ExprLet, token::Semi>::parse_terminated
+            .parse2(assign2)
+            .unwrap()
+            .into_iter()
+            .filter(|p| match &*p.pat {
+                syn::Pat::Ident(i) => !args_.iter().any(|a| *a == i.ident),
+                _ => false,
+            })
+            .collect();
 
     quote::quote! {
         #[rstest::rstest]
@@ -69,6 +83,7 @@ pub fn lfs_test(
                 let block_count = erase_count;  // / std::cmp::max(block_size/erase_size, 1);
                 let mut reentrant = false;
 
+                #assign2;
                 #assign;
 
                 let mut cfg = LfsConfig {
@@ -87,7 +102,7 @@ pub fn lfs_test(
                     file_max: 2_147_483_647,
                     attr_max: 1022,
                     metadata_max: 0,
-                    inline_max: 0,
+                    inline_max,
                 };
 
                 run_powerloss_none(&mut cfg, |cfg| {

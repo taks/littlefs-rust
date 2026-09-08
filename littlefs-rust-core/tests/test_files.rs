@@ -294,12 +294,11 @@ fn test_files_truncate(
 /// close, read back, verify. Power-loss retries until success.
 #[lfs_test(reentrant = true)]
 fn test_files_reentrant_write(
-    cfg: &mut LfsConfig,
+    cfg: &LfsConfig,
     #[values(32, 0, 7, 2049)] size: u32,
     #[values(31, 16, 65)] chunk_size: usize,
     #[values(0, u32::MAX, 8)] inline_max: u32,
 ) {
-    cfg.inline_max = inline_max;
     let lfs = &mut Lfs::default();
 
     let err = lfs_mount(lfs, cfg);

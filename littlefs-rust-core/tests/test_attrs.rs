@@ -89,7 +89,7 @@ fn test_attrs_get_set(cfg: &mut LfsConfig) {
 
 // --- test_attrs_get_set_root ---
 #[lfs_test]
-fn test_attrs_get_set_root(cfg: &mut LfsConfig) {
+fn test_attrs_get_set_root(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
