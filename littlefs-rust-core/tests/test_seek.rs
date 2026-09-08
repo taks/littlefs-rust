@@ -366,15 +366,13 @@ fn test_seek_boundary_read(cfg: &LfsConfig) {
 
 /// Upstream: [cases.test_seek_boundary_write]
 /// defines.COUNT = 132
-#[test]
-fn test_seek_boundary_write() {
+#[lfs_test]
+fn test_seek_boundary_write(cfg: &LfsConfig) {
     const COUNT: u32 = 132;
-    let mut env = default_config(256);
-    init_context(&mut env);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "kitty";
     let file = &mut LfsFile::default();
@@ -391,7 +389,7 @@ fn test_seek_boundary_write() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
 
     let size = KITTY.len() as i64;
@@ -554,18 +552,15 @@ fn test_seek_out_of_bounds(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u3
 
 /// Upstream: [cases.test_seek_inline_write]
 /// defines.SIZE = [2, 4, 128, 132]
-#[rstest]
+#[lfs_test]
 #[case(2)]
 #[case(4)]
 #[case(128)]
 #[case(132)]
-fn test_seek_inline_write(#[case] size: u32) {
-    let mut env = default_config(256);
-    init_context(&mut env);
-
+fn test_seek_inline_write(cfg: &LfsConfig, #[case] size: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "tinykitty";
     let file = &mut LfsFile::default();
@@ -885,14 +880,11 @@ fn test_seek_underflow(cfg: &LfsConfig) {
 }
 
 /// Upstream: [cases.test_seek_overflow]
-#[test]
-fn test_seek_overflow() {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_seek_overflow(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "kitty";
     let file = &mut LfsFile::default();

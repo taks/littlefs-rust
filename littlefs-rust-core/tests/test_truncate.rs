@@ -26,7 +26,7 @@ const COMB: &[u8] = b"comb";
 /// defines.MEDIUMSIZE = [31, 32, 33, 511, 512, 513, 2047, 2048, 2049]
 /// defines.LARGESIZE = [32, 33, 512, 513, 2048, 2049, 8192, 8193]
 /// if = 'MEDIUMSIZE < LARGESIZE'
-#[rstest]
+#[lfs_test]
 #[case(31, 32)]
 #[case(32, 33)]
 #[case(32, 512)]
@@ -37,9 +37,9 @@ const COMB: &[u8] = b"comb";
 #[case(2048, 2049)]
 #[case(2048, 8192)]
 #[case(2049, 8193)]
-fn test_truncate_simple(#[case] medium: u32, #[case] large: u32) {
-    if (medium == 31 || medium == 32) && large >= 512 {
-        return; // truncated CTZ read returns 0xFF
+fn test_truncate_simple(cfg: &LfsConfig, #[case] medium: u32, #[case] large: u32) {
+    if medium >= large {
+        return;
     }
     let mut env = default_config(1024);
     init_context(&mut env);
@@ -169,18 +169,15 @@ fn test_truncate_read(
 
 /// Upstream: [cases.test_truncate_write_read]
 /// No defines. Sequential buffer, chop last 1/4, read 3/4, seek to 1/4, chop to half, read second quarter.
-#[test]
-fn test_truncate_write_read() {
-    let mut env = default_config(256);
-    init_context(&mut env);
-
-    let cache_size = env.config.cache_size;
+#[lfs_test]
+fn test_truncate_write_read(cfg: &LfsConfig) {
+    let cache_size = cfg.cache_size;
     let size = core::cmp::min(cache_size, 512); // buffer size
     let qsize = size / 4;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "sequence";
     let file = &mut LfsFile::default();

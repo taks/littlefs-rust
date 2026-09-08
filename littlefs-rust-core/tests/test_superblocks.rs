@@ -74,11 +74,7 @@ fn test_traverse_filter_gets_superblock_after_push(cfg: &LfsConfig) {
     let mut out = littlefs_rust_core::TraverseTestOut::default();
 
     assert_ok!(unsafe {
-        littlefs_rust_core::test_traverse_filter_gets_superblock_after_push(
-            lfs,
-            cfg,
-            &mut out,
-        )
+        littlefs_rust_core::test_traverse_filter_gets_superblock_after_push(lfs, cfg, &mut out)
     });
 
     let has_superblock = out.tags[..out.call_count as usize].contains(&0x0ff);
@@ -98,29 +94,25 @@ fn test_traverse_filter_gets_superblock_after_push(cfg: &LfsConfig) {
 
 // --- test_superblocks_invalid_mount ---
 // Upstream: mount on blank device => LFS_ERR_CORRUPT
-#[test]
-fn test_superblocks_invalid_mount() {
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_superblocks_invalid_mount(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    let err = lfs_mount(lfs, &env.config);
+    let err = lfs_mount(lfs, cfg);
     assert_err!(Error::Corrupt, err);
 }
 
 // --- test_superblocks_stat ---
 // Upstream: fs_stat after format/mount returns correct values
-#[test]
-fn test_superblocks_stat() {
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_superblocks_stat(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
     assert_ok!(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(fsinfo.block_size, env.config.block_size);
-    assert_eq!(fsinfo.block_count, env.config.block_count);
+    assert_eq!(fsinfo.block_size, cfg.block_size);
+    assert_eq!(fsinfo.block_count, cfg.block_count);
     assert_eq!(fsinfo.disk_version, 0x0002_0001);
     assert_eq!(fsinfo.name_max, 255);
     assert_eq!(fsinfo.file_max, 2_147_483_647);
@@ -160,8 +152,8 @@ fn test_superblocks_reentrant_format(cfg: &LfsConfig, #[values(false, true)] ree
 
 /// Upstream: [cases.test_superblocks_stat_tweaked]
 /// Format with name_max=63, file_max=65535, attr_max=512; mount with default; verify fsinfo.
-#[test]
-fn test_superblocks_stat_tweaked() {
+#[lfs_test]
+fn test_superblocks_stat_tweaked(cfg: &LfsConfig) {
     let mut env = default_config(128);
     init_context(&mut env);
     env.config.name_max = 63;

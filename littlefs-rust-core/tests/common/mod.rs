@@ -695,22 +695,6 @@ pub fn corrupt_block(cfg: &LfsConfig, block: u32) {
     assert_ok!(write_block_raw(cfg, block, 0, &buffer));
 }
 
-/// Build test environment with the given block_count and inline_max.
-/// inline_max semantics match upstream C (lfs.c:4328-4347):
-///   inline_max = -1  → (lfs_size_t)-1 = 0xFFFFFFFF → disabled (lfs uses 0)
-///   inline_max = 0   → use library default (computed from cache/attr/metadata)
-///   inline_max = N>0 → use N
-pub fn config_with_inline_max(block_count: u32, inline_max: i32) -> TestEnv {
-    let mut env = default_config(block_count);
-    if inline_max < 0 {
-        // C: (lfs_size_t)-1
-        env.config.inline_max = u32::MAX;
-    } else {
-        env.config.inline_max = inline_max as u32;
-    }
-    env
-}
-
 /// Format fs, sync, return raw content of superblock blocks 0 and 1.
 /// Helper for debug tests. Caller must init_context before.
 pub fn format_and_read_superblock_blocks(env: &mut TestEnv) -> Result<(Vec<u8>, Vec<u8>), Error> {

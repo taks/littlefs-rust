@@ -12,8 +12,7 @@ use std::assert_matches;
 
 use common::{
     LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, config_with_wear_leveling, corrupt_block,
-    default_config, dir_block, dir_entry_names, dir_pair, init_context, init_logger,
-    init_wear_leveling_context,
+    dir_block, dir_entry_names, dir_pair, init_logger, init_wear_leveling_context,
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo,
@@ -210,15 +209,11 @@ fn test_move_state_stealing(cfg: &LfsConfig) {
 
 // --- test_move_create_delete_same ---
 // Same-dir rename while files open
-#[test]
-fn test_move_create_delete_same() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_move_create_delete_same(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let f1 = "1.move_me";
     let file = &mut LfsFile::default();
@@ -262,7 +257,7 @@ fn test_move_create_delete_same() {
     assert_ok!(lfs_file_close(lfs, fb));
     assert_ok!(lfs_file_close(lfs, fc));
 
-    let names = dir_entry_names(lfs, &env.config, "/").unwrap();
+    let names = dir_entry_names(lfs, cfg, "/").unwrap();
     assert!(names.contains(&"0.before".to_string()));
     assert!(names.contains(&"2.in_between".to_string()));
     assert!(names.contains(&"3.move_me".to_string()));

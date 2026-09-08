@@ -9,19 +9,14 @@ use std::assert_matches;
 
 use common::{
     LFS_O_APPEND, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, advance_prng,
-    config_with_inline_max, default_config, fs_with_hello, init_context, test_prng,
-    verify_prng_file, verify_prng_file_with_state, write_prng_file,
+    test_prng, verify_prng_file, verify_prng_file_with_state, write_prng_file,
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
-    lfs_file_rewind, lfs_file_seek, lfs_file_size, lfs_file_sync, lfs_file_tell, lfs_file_truncate,
-    lfs_file_write, lfs_format, lfs_mount, lfs_type::OpenFlags, lfs_unmount,
+    lfs_file_rewind, lfs_file_seek, lfs_file_size, lfs_file_tell, lfs_file_write, lfs_format,
+    lfs_mount, lfs_type::OpenFlags, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
-use rstest::rstest;
-
-/// Block count for tests with large files (SIZE up to 262144).
-const BLOCK_COUNT_LARGE: u32 = 1024;
 
 // ── Upstream Cases ──────────────────────────
 
@@ -29,14 +24,11 @@ const BLOCK_COUNT_LARGE: u32 = 1024;
 /// defines.INLINE_MAX = [0, -1, 8]
 ///
 /// Create, write "Hello World!\0", close, unmount, mount, read, verify.
-#[rstest]
-fn test_files_simple(#[values(0, -1, 8)] inline_max: i32) {
-    let mut env = config_with_inline_max(128, inline_max);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_files_simple(cfg: &LfsConfig, #[values(0, u32::MAX, 8)] inline_max: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "hello";
     let data = b"Hello World!\0";
@@ -52,7 +44,7 @@ fn test_files_simple(#[values(0, -1, 8)] inline_max: i32) {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     let mut buf = [0u8; 32];
@@ -70,20 +62,18 @@ fn test_files_simple(#[values(0, -1, 8)] inline_max: i32) {
 ///
 /// Write SIZE bytes of PRNG(seed=1) in CHUNKSIZE chunks, unmount, remount,
 /// verify file_size == SIZE, read back and verify. Final read past EOF returns 0.
-#[rstest]
+#[lfs_test]
 fn test_files_large(
+    cfg: &LfsConfig,
     #[values(32, 8192, 262144, 0, 7, 8193)] size: u32,
     #[values(31, 16, 33, 1, 1023)] chunk_size: u32,
-    #[values(0, -1, 8)] inline_max: i32,
+    #[values(0, u32::MAX, 8)] inline_max: u32,
 ) {
-    let mut env = config_with_inline_max(BLOCK_COUNT_LARGE, inline_max);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
     // write
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let path = "avacado";
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -97,7 +87,7 @@ fn test_files_large(
     assert_ok!(lfs_unmount(lfs));
 
     // read
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, &cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), size);
     verify_prng_file(lfs, file, size, chunk_size, 1);
@@ -117,24 +107,22 @@ fn test_files_large(
 ///
 /// Write SIZE1, read back, rewrite with SIZE2 (WRONLY, no TRUNC), read:
 /// first SIZE2 bytes PRNG(2), remaining (SIZE2..SIZE1) PRNG(1) from offset SIZE2.
-#[rstest]
+#[lfs_test]
 fn test_files_rewrite(
+    cfg: &LfsConfig,
     #[values(32, 8192, 131072, 0, 7, 8193)] size1: u32,
     #[values(32, 8192, 131072, 0, 7, 8193)] size2: u32,
     #[values(31, 16, 1)] chunk_size: u32,
-    #[values(0, -1, 8)] inline_max: i32,
+    #[values(0, u32::MAX, 8)] inline_max: u32,
 ) {
-    let mut env = config_with_inline_max(BLOCK_COUNT_LARGE, inline_max);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
     let path = "avacado";
     let file = &mut LfsFile::default();
 
     // write SIZE1
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -146,7 +134,7 @@ fn test_files_rewrite(
     assert_ok!(lfs_unmount(lfs));
 
     // read SIZE1
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), size1);
     verify_prng_file(lfs, file, size1, chunk_size, 1);
@@ -154,14 +142,14 @@ fn test_files_rewrite(
     assert_ok!(lfs_unmount(lfs));
 
     // rewrite SIZE2 (WRONLY, no TRUNC)
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY));
     write_prng_file(lfs, file, size2, chunk_size, 2);
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
     // read: first SIZE2 = PRNG(2), then SIZE2..SIZE1 (if size1 > size2) = PRNG(1) from offset SIZE2
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), size1.max(size2));
     verify_prng_file(lfs, file, size2, chunk_size, 2);
@@ -185,24 +173,22 @@ fn test_files_rewrite(
 /// defines.INLINE_MAX = [0, -1, 8]
 ///
 /// Write SIZE1, append SIZE2 (PRNG seed 2). Read: first SIZE1 = PRNG(1), next SIZE2 = PRNG(2).
-#[rstest]
+#[lfs_test]
 fn test_files_append(
+    cfg: &LfsConfig,
     #[values(32, 8192, 131072, 0, 7, 8193)] size1: u32,
     #[values(32, 8192, 131072, 0, 7, 8193)] size2: u32,
     #[values(31, 16, 1)] chunk_size: u32,
-    #[values(0, -1, 8)] inline_max: i32,
+    #[values(0, u32::MAX, 8)] inline_max: u32,
 ) {
-    let mut env = config_with_inline_max(BLOCK_COUNT_LARGE, inline_max);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
     let path = "avacado";
     let file = &mut LfsFile::default();
 
     // write SIZE1
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -214,14 +200,14 @@ fn test_files_append(
     assert_ok!(lfs_unmount(lfs));
 
     // append SIZE2
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_APPEND));
     write_prng_file(lfs, file, size2, chunk_size, 2);
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
     // read: SIZE1 + SIZE2, first PRNG(1) then PRNG(2)
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), size1 + size2);
     verify_prng_file(lfs, file, size1, chunk_size, 1);
@@ -237,24 +223,22 @@ fn test_files_append(
 /// defines.INLINE_MAX = [0, -1, 8]
 ///
 /// Write SIZE1, truncate+write SIZE2 (TRUNC|WRONLY). Read: SIZE2 bytes PRNG(2). Final read returns 0.
-#[rstest]
+#[lfs_test]
 fn test_files_truncate(
+    cfg: &LfsConfig,
     #[values(32, 8192, 131072, 0, 7, 8193)] size1: u32,
     #[values(32, 8192, 131072, 0, 7, 8193)] size2: u32,
     #[values(31, 16, 1)] chunk_size: u32,
-    #[values(0, -1, 8)] inline_max: i32,
+    #[values(0, u32::MAX, 8)] inline_max: u32,
 ) {
-    let mut env = config_with_inline_max(BLOCK_COUNT_LARGE, inline_max);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
     let path = "avacado";
     let file = &mut LfsFile::default();
 
     // write SIZE1
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(
         lfs,
         file,
@@ -266,14 +250,14 @@ fn test_files_truncate(
     assert_ok!(lfs_unmount(lfs));
 
     // truncate + write SIZE2
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_TRUNC));
     write_prng_file(lfs, file, size2, chunk_size, 2);
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
     // read SIZE2
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), size2);
     verify_prng_file(lfs, file, size2, chunk_size, 2);
@@ -586,14 +570,10 @@ fn test_files_same_session(cfg: &LfsConfig) {
     assert_ok!(lfs_file_close(lfs, file2));
 }
 
-#[test]
-fn test_files_seek_tell() {
-    let mut env = default_config(128);
-    fs_with_hello(&mut env).expect("fs_with_hello");
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_files_seek_tell(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = "hello";
     let file = &mut LfsFile::default();

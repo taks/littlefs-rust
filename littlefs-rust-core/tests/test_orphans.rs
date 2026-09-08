@@ -10,10 +10,7 @@ use std::assert_matches;
 
 #[cfg(feature = "slow_tests")]
 use common::test_prng;
-use common::{
-    default_config, dir_block, erase_block_raw, init_context, init_logger, read_block_raw,
-    write_block_raw,
-};
+use common::{dir_block, erase_block_raw, read_block_raw, write_block_raw};
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::LfsConfig;
 use littlefs_rust_core::error::Error;
@@ -105,15 +102,11 @@ fn test_orphans_no_orphans(cfg: &LfsConfig) {
 // --- test_orphans_nonreentrant ---
 // Upstream: orphan operations without powerloss.
 // Uses n=1 dir to match test_dirs_many_removal (n=2+ mkdir currently fails in this crate).
-#[test]
-fn test_orphans_nonreentrant() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_nonreentrant(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
     let path = "a";
@@ -189,15 +182,11 @@ fn test_orphans_normal(cfg: &LfsConfig) {
 
 /// Upstream: [cases.test_orphans_one_orphan]
 /// Create orphan via internal APIs (lfs_dir_alloc + SOFTTAIL commit + lfs_fs_preporphans). Run lfs_fs_forceconsistency.
-#[test]
-fn test_orphans_one_orphan() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_one_orphan(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
 
@@ -252,15 +241,11 @@ fn test_orphans_one_orphan() {
 
 /// Upstream: [cases.test_orphans_mkconsistent_one_orphan]
 /// Same orphan creation as one_orphan. Use lfs_fs_mkconsistent + remount. Verify cleanup.
-#[test]
-fn test_orphans_mkconsistent_one_orphan() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_mkconsistent_one_orphan(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
 
@@ -303,7 +288,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     assert!(lfs_fs_hasorphans(lfs_ptr), "should have orphans");
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, &env.config));
+    assert_ok!(lfs_mount(lfs_ptr, cfg));
     assert!(lfs_fs_hasorphans(lfs_ptr), "orphans should persist");
     assert_ok!(lfs_fs_mkconsistent(lfs_ptr));
     assert!(
@@ -313,7 +298,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     assert_ok!(lfs_unmount(lfs_ptr));
 
     // Remount and verify orphans are still gone
-    assert_ok!(lfs_mount(lfs_ptr, &env.config));
+    assert_ok!(lfs_mount(lfs_ptr, cfg));
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "after remount, orphans should still be gone"

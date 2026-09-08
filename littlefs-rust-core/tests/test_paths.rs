@@ -84,15 +84,11 @@ fn test_paths_simple_files(cfg: &LfsConfig) {
 }
 
 // --- test_paths_absolute_files ---
-#[test]
-fn test_paths_absolute_files() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_paths_absolute_files(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let coffee = "coffee";
     assert_ok!(lfs_mkdir(lfs, coffee));
@@ -120,15 +116,11 @@ fn test_paths_absolute_files() {
 }
 
 // --- test_paths_absolute_dirs ---
-#[test]
-fn test_paths_absolute_dirs() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_paths_absolute_dirs(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let coffee = "coffee";
     assert_ok!(lfs_mkdir(lfs, coffee));
@@ -149,15 +141,11 @@ fn test_paths_absolute_dirs() {
 }
 
 // --- test_paths_noent ---
-#[test]
-fn test_paths_noent() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_paths_noent(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let coffee = "coffee";
     assert_ok!(lfs_mkdir(lfs, coffee));
@@ -187,15 +175,11 @@ fn test_paths_noent() {
 }
 
 // --- test_paths_root ---
-#[test]
-fn test_paths_root() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_paths_root(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let root_path = "/";
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
