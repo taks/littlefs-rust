@@ -4,7 +4,7 @@ mod common;
 
 use common::{
     LFS_FILE_MAX, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_RDWR, LFS_O_WRONLY, LFS_SEEK_CUR,
-    LFS_SEEK_END, LFS_SEEK_SET, default_config, init_context,
+    LFS_SEEK_END, LFS_SEEK_SET,
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
@@ -12,7 +12,6 @@ use littlefs_rust_core::{
     lfs_format, lfs_mount, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
-use rstest::rstest;
 
 const KITTY: &[u8] = b"kittycatcat";
 const DOGGO: &[u8] = b"doggodogdog";

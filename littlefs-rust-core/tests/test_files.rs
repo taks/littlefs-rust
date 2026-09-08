@@ -13,7 +13,7 @@ use common::{
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
-    lfs_file_rewind, lfs_file_seek, lfs_file_size, lfs_file_tell, lfs_file_write, lfs_format,
+    lfs_file_size, lfs_file_write, lfs_format,
     lfs_mount, lfs_type::OpenFlags, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;

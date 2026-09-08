@@ -52,6 +52,7 @@ pub fn lfs_test(
         let inline_max = 0;
         let compact_thresh = u32::MAX;
         let name_max = 255;
+        let cache_size = 64.max(read_size);
     };
     let assign2: Punctuated<syn::ExprLet, token::Semi> =
         Punctuated::<syn::ExprLet, token::Semi>::parse_terminated
@@ -73,7 +74,7 @@ pub fn lfs_test(
 
             init_logger();
 
-            for (size_, block_size) in [
+            for (read_size, block_size) in [
                 (16, 512),
                 (1, 512),
                 (512, 512),
@@ -81,23 +82,24 @@ pub fn lfs_test(
                 (4096, 32768)
             ] {
 
-                let read_buf = vec![0u8; block_size as usize];
-                let prog_buf = vec![0u8; block_size as usize];
-                let lookahead_buf = vec![0u8; block_size as usize];
                 let erase_count = 1024 * 1024 / block_size;
                 let block_count = erase_count;  // / std::cmp::max(block_size/erase_size, 1);
 
                 #assign2;
                 #assign;
 
+                let read_buf = vec![0u8; cache_size as usize];
+                let prog_buf = vec![0u8; cache_size as usize];
+                let lookahead_buf = vec![0u8; cache_size as usize];
+
                 let mut cfg = LfsConfig {
                     context: None,
-                    read_size: size_,
-                    prog_size: size_,
+                    read_size,
+                    prog_size: read_size,
                     block_size,
                     block_count,
                     block_cycles,
-                    cache_size: block_size,
+                    cache_size,
                     compact_thresh,
                     read_buffer: Some(NonNull::from_ref(&read_buf)),
                     prog_buffer: Some(NonNull::from_ref(&prog_buf)),
