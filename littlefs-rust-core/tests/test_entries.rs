@@ -17,10 +17,6 @@ use littlefs_rust_core::{
 };
 use littlefs_rust_test_macro::lfs_test;
 
-fn env_with_cache_512() -> common::TestEnv {
-    config_with_cache(512, 128)
-}
-
 /// 2048 blocks matches upstream C test geometry (ERASE_COUNT=1M/512).
 fn env_with_cache_512_2048_blocks() -> common::TestEnv {
     config_with_cache(512, 2048)
