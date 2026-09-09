@@ -45,6 +45,8 @@ pub fn lfs_test(
         let name_max = 255;
         let cache_size = 64.max(read_size);
         let lookahead_size = 16;
+        let erase_cycles = 0;
+        let badblock_behavior = BadblockBehavior::Prog;
     };
     let mut cfg_params = Vec::new();
     let assign2: Punctuated<syn::ExprLet, token::Semi> =
@@ -94,7 +96,8 @@ pub fn lfs_test(
         #(#attrs)*
         fn #f_ident(#args) {
             use std::ptr::NonNull;
-            use common::{init_logger, run_powerloss_none, run_powerloss_linear};
+            use common::{init_logger, run_powerloss_none, run_powerloss_linear,
+                EmubdConfig, BadblockBehavior, PowerLossBehavior};
 
             init_logger();
 
@@ -135,12 +138,25 @@ pub fn lfs_test(
                     inline_max,
                 };
 
+                let bdcfg = EmubdConfig {
+                    read_size,
+                    prog_size: read_size,
+                    erase_size: block_size,
+                    erase_count: block_count,
+                    erase_value: Some(0xFF),
+                    erase_cycles,
+                    badblock_behavior,
+                    power_cycles: 0,
+                    powerloss_behavior: PowerLossBehavior::Noop,
+                    powerloss_cb: &|| {},
+                };
+
                 if reentrant {
-                    run_powerloss_linear(&mut cfg, |cfg| {
+                    run_powerloss_linear(&mut cfg, &bdcfg, |cfg| {
                         #call_fn(cfg, #args_);
                     });
                 } else {
-                    run_powerloss_none(&mut cfg, |cfg| {
+                    run_powerloss_none(&mut cfg, &bdcfg, |cfg| {
                         #call_fn(cfg, #args_);
                     });
                 }

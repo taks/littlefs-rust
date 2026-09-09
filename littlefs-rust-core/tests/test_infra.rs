@@ -5,9 +5,8 @@
 mod common;
 
 use common::{
-    BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, config_badblock_with_behavior,
-    config_with_wear_leveling, init_badblock_context, init_wear_leveling_context, test_prng,
-    verify_prng_file, write_block_raw, write_prng_file,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, test_prng, verify_prng_file, write_block_raw,
+    write_prng_file,
 };
 use littlefs_rust_core::{Lfs, LfsConfig, LfsFile, error::Error};
 use littlefs_rust_test_macro::lfs_test;

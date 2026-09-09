@@ -1,6 +1,6 @@
 use std::{fmt::Debug, ops::Deref, rc::Rc};
 
-use littlefs_rust_core::{Storage, error::Error};
+use littlefs_rust_core::{LfsConfig, Storage, error::Error};
 
 struct EmubdBlock {
     wear: u32,
@@ -39,23 +39,6 @@ pub struct EmubdConfig<'d> {
     pub powerloss_cb: &'d dyn Fn(),
 }
 impl std::panic::RefUnwindSafe for EmubdConfig<'_> {}
-
-impl Default for EmubdConfig<'_> {
-    fn default() -> Self {
-        Self {
-            read_size: Default::default(),
-            prog_size: Default::default(),
-            erase_size: Default::default(),
-            erase_count: Default::default(),
-            erase_value: Default::default(),
-            erase_cycles: Default::default(),
-            badblock_behavior: BadblockBehavior::Prog,
-            power_cycles: Default::default(),
-            powerloss_behavior: PowerLossBehavior::Noop,
-            powerloss_cb: &|| {},
-        }
-    }
-}
 
 impl Debug for EmubdConfig<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -286,4 +269,14 @@ impl Storage for Emubd<'_> {
 
         Ok(())
     }
+}
+
+pub fn lfs_emubd_setwear(cfg: &LfsConfig, block: u32, wear: u32) {
+    let bd = unsafe { &mut *(cfg.context.unwrap().as_ptr() as *mut Emubd) };
+
+    // check if block is valid
+    assert!(block < bd.cfg.erase_count);
+
+    let b = bd.mutblock(block as usize);
+    b.wear = wear;
 }

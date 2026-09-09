@@ -11,8 +11,8 @@ mod common;
 use std::assert_matches;
 
 use common::{
-    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, config_with_wear_leveling, corrupt_block,
-    dir_block, dir_entry_names, dir_pair, init_logger, init_wear_leveling_context,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, corrupt_block, dir_block,
+    dir_entry_names, dir_pair, lfs_emubd_setwear,
 };
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo,
@@ -987,17 +987,12 @@ fn test_reentrant_dir(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
 
 /// Upstream: [cases.test_move_fix_relocation]
 /// RELOCATIONS in 0..4, ERASE_CYCLES=0xffffffff. Force dir relocation via set_wear, then rename.
-#[test]
-fn test_move_fix_relocation() {
-    init_logger();
-    const ERASE_CYCLES: u32 = 0xffffffff;
-    let mut env = config_with_wear_leveling(256, ERASE_CYCLES);
-    init_wear_leveling_context(&mut env);
-
+#[lfs_test]
+fn test_move_fix_relocation(cfg: &LfsConfig, #[values(0xffffffff)] erase_cycles: u32) {
     for relocations in 0..4u32 {
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &env.config));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
 
         assert_ok!(lfs_mkdir(lfs, "parent"));
         assert_ok!(lfs_mkdir(lfs, "parent/child"));
@@ -1048,13 +1043,14 @@ fn test_move_fix_relocation() {
 
         if relocations & 1 != 0 {
             let pair = dir_pair(lfs, "parent");
-            env.bd.set_wear(pair[0], 0xffffffff);
-            env.bd.set_wear(pair[1], 0xffffffff);
+
+            lfs_emubd_setwear(cfg, pair[0], 0xffffffff);
+            lfs_emubd_setwear(cfg, pair[1], 0xffffffff);
         }
         if relocations & 2 != 0 {
             let pair = dir_pair(lfs, "parent/child");
-            env.bd.set_wear(pair[0], 0xffffffff);
-            env.bd.set_wear(pair[1], 0xffffffff);
+            lfs_emubd_setwear(cfg, pair[0], 0xffffffff);
+            lfs_emubd_setwear(cfg, pair[1], 0xffffffff);
         }
 
         assert_ok!(lfs_rename(
@@ -1138,17 +1134,12 @@ fn test_move_fix_relocation() {
 
 /// Upstream: [cases.test_move_fix_relocation_predecessor]
 /// RELOCATIONS in 0..8. Move sibling/1.move_me -> child/1.move_me with forced relocations.
-#[test]
-fn test_move_fix_relocation_predecessor() {
-    init_logger();
-    const ERASE_CYCLES: u32 = 0xffffffff;
-    let mut env = config_with_wear_leveling(256, ERASE_CYCLES);
-    init_wear_leveling_context(&mut env);
-
+#[lfs_test]
+fn test_move_fix_relocation_predecessor(cfg: &LfsConfig, #[values(0xffffffff)] erase_cycles: u32) {
     for relocations in 0..8u32 {
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &env.config));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
 
         assert_ok!(lfs_mkdir(lfs, "parent"));
         assert_ok!(lfs_mkdir(lfs, "parent/child"));
@@ -1195,18 +1186,18 @@ fn test_move_fix_relocation_predecessor() {
 
         if relocations & 1 != 0 {
             let pair = dir_pair(lfs, "parent");
-            env.bd.set_wear(pair[0], 0xffffffff);
-            env.bd.set_wear(pair[1], 0xffffffff);
+            lfs_emubd_setwear(cfg, pair[0], 0xffffffff);
+            lfs_emubd_setwear(cfg, pair[1], 0xffffffff);
         }
         if relocations & 2 != 0 {
             let pair = dir_pair(lfs, "parent/sibling");
-            env.bd.set_wear(pair[0], 0xffffffff);
-            env.bd.set_wear(pair[1], 0xffffffff);
+            lfs_emubd_setwear(cfg, pair[0], 0xffffffff);
+            lfs_emubd_setwear(cfg, pair[1], 0xffffffff);
         }
         if relocations & 4 != 0 {
             let pair = dir_pair(lfs, "parent/child");
-            env.bd.set_wear(pair[0], 0xffffffff);
-            env.bd.set_wear(pair[1], 0xffffffff);
+            lfs_emubd_setwear(cfg, pair[0], 0xffffffff);
+            lfs_emubd_setwear(cfg, pair[1], 0xffffffff);
         }
 
         assert_ok!(lfs_rename(

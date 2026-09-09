@@ -30,7 +30,7 @@ const FILEMULT: usize = 1;
 /// For each block b in 2..BLOCK_COUNT: mark block b as worn (0xffffffff) and
 /// block b-1 as fresh (0). Format, mount, create 9 dirs with files, unmount,
 /// remount, stat/read all dirs and files.
-#[rstest]
+#[lfs_test]
 fn test_badblocks_single(
     #[values(0x00, 0xff, -1)] erase_value: i32,
     #[values(
@@ -40,7 +40,7 @@ fn test_badblocks_single(
         BadBlockBehavior::ProgNoop,
         BadBlockBehavior::EraseNoop
     )]
-    behavior: BadBlockBehavior,
+    badblock_behavior: BadBlockBehavior,
 ) {
     let block_count: u32 = 256;
 

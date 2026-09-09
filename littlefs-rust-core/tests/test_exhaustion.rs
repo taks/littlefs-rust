@@ -7,10 +7,7 @@
 
 mod common;
 
-use common::{
-    BadBlockBehavior, WearLevelingEnv, config_with_wear_leveling_behavior, init_logger,
-    init_wear_leveling_context, test_prng,
-};
+use common::{BadblockBehavior, init_logger, test_prng};
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_unmount,

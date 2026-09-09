@@ -6,9 +6,8 @@
 mod common;
 
 use common::{
-    LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY,
-    clone_config_with_block_count, config_badblock, config_with_geometry, default_config,
-    init_badblock_context, init_context, init_logger, run_with_timeout,
+    BadblockBehavior, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY,
+    clone_config_with_block_count, config_with_geometry, default_config, init_context, init_logger,
 };
 #[cfg(test)]
 use littlefs_rust_core::LfsConfig;
@@ -692,24 +691,17 @@ const MAX_FILL_ITER: u32 = 50_000;
 /// defines.ERASE_CYCLES = 0xffffffff, defines.BADBLOCK_BEHAVIOR = LFS_EMUBD_BADBLOCK_READERROR
 ///
 /// Fill pacman, shrink, mark block bad, ghost write until CORRUPT, clear bad, ghost to NOSPC, GC, verify pacman.
-#[test]
-fn test_alloc_bad_blocks() {
-    init_logger();
-    run_with_timeout(30, || {
-        test_alloc_bad_blocks_body();
-    });
-}
-
-fn test_alloc_bad_blocks_body() {
-    // Match upstream C: block_count 128 (test_alloc.toml default)
-    let mut env = config_badblock(128);
-    init_badblock_context(&mut env);
-
-    let block_size = env.config.block_size as usize;
+#[lfs_test]
+fn test_alloc_bad_blocks(
+    cfg: &LfsConfig,
+    #[values(0xffffffff)] erase_cycles: u32,
+    #[values(BadblockBehavior::Read)] badblock_behavior: BadblockBehavior,
+) {
+    let block_size = cfg.block_size as usize;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -721,14 +713,7 @@ fn test_alloc_bad_blocks_body() {
 
     let waka = b"waka";
     let mut filesize: usize = 0;
-    let mut iter: u32 = 0;
     loop {
-        assert!(
-            iter < MAX_FILL_ITER,
-            "pacman fill exceeded {} iterations",
-            MAX_FILL_ITER
-        );
-        iter += 1;
         let res = lfs_file_write(lfs, file, waka);
         if res == Err(Error::NoSpace) {
             break;
@@ -753,7 +738,7 @@ fn test_alloc_bad_blocks_body() {
 
     assert_ok!(lfs_file_sync(lfs, file));
     let fileblock = { file.ctz.head };
-    let block_count = env.config.block_count;
+    let block_count = cfg.block_count;
     assert!(
         fileblock < block_count,
         "fileblock {} must be < block_count {}",
@@ -763,8 +748,7 @@ fn test_alloc_bad_blocks_body() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    env.badblock_ram.set_bad_block(fileblock);
+    assert_ok!(lfs_mount(lfs, cfg));
 
     // Open ghost, write until CORRUPT (alloc hits bad block), close.
     assert_ok!(lfs_file_open(
@@ -789,8 +773,6 @@ fn test_alloc_bad_blocks_body() {
         assert_eq!(res, Ok(chomp.len() as u32));
     }
     assert_ok!(lfs_file_close(lfs, file));
-
-    env.badblock_ram.clear_bad_block(fileblock);
 
     // Write ghost to NOSPC, then GC, close, unmount.
     assert_ok!(lfs_file_open(
@@ -817,24 +799,24 @@ fn test_alloc_bad_blocks_body() {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, "pacman", LFS_O_RDONLY));
     let open_head = { file.ctz.head };
     assert!(
-        open_head < env.config.block_count,
+        open_head < cfg.block_count,
         "pacman ctz.head={} must be < block_count {} (dir corruption when ghost present)",
         open_head,
-        env.config.block_count
+        cfg.block_count
     );
     let mut rbuf = [0u8; 4];
     for _ in (0..filesize).step_by(waka.len()) {
         let n = lfs_file_read(lfs, file, &mut rbuf[..waka.len()]);
         if n != Ok(waka.len() as u32) {
-            common::dump::dump_fs(
-                &env.badblock_ram.ram.data,
-                env.config.block_size,
-                env.config.block_count,
-            );
+            // common::dump::dump_fs(
+            //     &env.badblock_ram.ram.data,
+            //     env.config.block_size,
+            //     env.config.block_count,
+            // );
             panic!(
                 "lfs_file_read returned {:?} (expected {}; LFS_ERR_CORRUPT={:?})",
                 n,

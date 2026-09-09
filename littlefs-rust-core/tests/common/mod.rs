@@ -6,33 +6,25 @@
 #![allow(dead_code)]
 
 pub mod dump;
-pub mod emubd;
+mod emubd;
 
-use core::cell::RefCell;
+use emubd::Emubd;
+#[allow(unused_imports)]
+pub use emubd::{BadblockBehavior, EmubdConfig, PowerLossBehavior, lfs_emubd_setwear};
+
 use littlefs_rust_core::{LfsConfig, Storage, error::Error, lfs_type::OpenFlags};
 use std::{panic::AssertUnwindSafe, ptr::NonNull};
-
-use crate::common::emubd::{BadblockBehavior, Emubd, EmubdConfig, PowerLossBehavior};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
     let _ = env_logger::try_init();
 }
 
-pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConfig)) {
-    let bdcfg = EmubdConfig {
-        read_size: cfg.read_size,
-        prog_size: cfg.prog_size,
-        erase_size: cfg.block_size,
-        erase_count: cfg.block_count,
-        erase_value: Some(0xFF),
-        erase_cycles: 0,
-        badblock_behavior: BadblockBehavior::Prog,
-        power_cycles: 0,
-        powerloss_behavior: PowerLossBehavior::Noop,
-        powerloss_cb: &|| {},
-    };
-
+pub fn run_powerloss_none(
+    cfg: &mut LfsConfig,
+    bdcfg: &EmubdConfig,
+    mut test: impl FnMut(&mut LfsConfig),
+) {
     let mut context =
         Emubd::new(unsafe { core::mem::transmute::<&EmubdConfig<'_>, &EmubdConfig<'_>>(&bdcfg) });
     cfg.context = Some(NonNull::from_mut(&mut context));
@@ -40,23 +32,21 @@ pub fn run_powerloss_none(cfg: &mut LfsConfig, mut test: impl FnMut(&mut LfsConf
     test(cfg);
 }
 
-pub fn run_powerloss_linear(cfg: &mut LfsConfig, mut test: impl FnMut(&LfsConfig)) {
+pub fn run_powerloss_linear(
+    cfg: &mut LfsConfig,
+    bdcfg: &EmubdConfig,
+    mut test: impl FnMut(&LfsConfig),
+) {
     for powerloss_behavior in [PowerLossBehavior::Noop, PowerLossBehavior::Ooo] {
         let mut i = 1;
 
         let powerloss_cb = || panic!("powerloss_{}", i);
 
         let bdcfg = EmubdConfig {
-            read_size: cfg.read_size,
-            prog_size: cfg.prog_size,
-            erase_size: cfg.block_size,
-            erase_count: cfg.block_count,
-            erase_value: Some(0xFF),
-            erase_cycles: 0,
-            badblock_behavior: BadblockBehavior::Prog,
             power_cycles: i,
             powerloss_behavior,
             powerloss_cb: &powerloss_cb,
+            ..*bdcfg
         };
 
         let mut context = Emubd::new(unsafe {
@@ -148,121 +138,6 @@ impl Storage for RamStorage {
 
     fn erase(&mut self, block: u32) -> Result<(), Error> {
         self.erase(block);
-        Ok(())
-    }
-}
-
-/// Mode determining how "bad-blocks" behave during testing.
-/// Matches C lfs_emubd_badblock_behavior_t exactly.
-///
-/// C: reference/bd/lfs_emubd.h:38-44
-/// ```c
-/// typedef enum lfs_emubd_badblock_behavior {
-///     LFS_EMUBD_BADBLOCK_PROGERROR  = 0, // Error on prog
-///     LFS_EMUBD_BADBLOCK_ERASEERROR = 1, // Error on erase
-///     LFS_EMUBD_BADBLOCK_READERROR  = 2, // Error on read
-///     LFS_EMUBD_BADBLOCK_PROGNOOP   = 3, // Prog does nothing silently
-///     LFS_EMUBD_BADBLOCK_ERASENOOP  = 4, // Erase does nothing silently
-/// } lfs_emubd_badblock_behavior_t;
-/// ```
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(u32)]
-pub enum BadBlockBehavior {
-    ProgError = 0,
-    EraseError = 1,
-    ReadError = 2,
-    ProgNoop = 3,
-    EraseNoop = 4,
-}
-
-/// RAM storage with bad-block simulation. Wraps RamStorage and applies
-/// BadBlockBehavior in the appropriate callback when a block is marked bad.
-///
-/// Matches the bad-block logic in C lfs_emubd_read/prog/erase
-/// (reference/bd/lfs_emubd.c:287-525).
-pub struct BadBlockRamStorage {
-    pub ram: RamStorage,
-    pub bad_blocks: RefCell<Vec<u32>>,
-    pub behavior: BadBlockBehavior,
-}
-
-impl BadBlockRamStorage {
-    pub fn new(block_size: u32, block_count: u32) -> Self {
-        Self {
-            ram: RamStorage::new(block_size, block_count),
-            bad_blocks: RefCell::new(Vec::new()),
-            behavior: BadBlockBehavior::ProgError,
-        }
-    }
-
-    pub fn new_with_behavior(
-        block_size: u32,
-        block_count: u32,
-        behavior: BadBlockBehavior,
-    ) -> Self {
-        Self {
-            ram: RamStorage::new(block_size, block_count),
-            bad_blocks: RefCell::new(Vec::new()),
-            behavior,
-        }
-    }
-
-    pub fn set_bad_block(&self, block: u32) {
-        let mut blocks = self.bad_blocks.borrow_mut();
-        if !blocks.contains(&block) {
-            blocks.push(block);
-        }
-    }
-
-    pub fn clear_bad_block(&self, block: u32) {
-        self.bad_blocks.borrow_mut().retain(|&b| b != block);
-    }
-
-    fn is_bad(&self, block: u32) -> bool {
-        self.bad_blocks.borrow().contains(&block)
-    }
-}
-
-impl Storage for BadBlockRamStorage {
-    /// C: lfs_emubd_read — block bad check (lfs_emubd.c:303-308)
-    /// Only READERROR triggers on read; all other behaviors allow the read through.
-    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
-        if self.is_bad(block) && self.behavior == BadBlockBehavior::ReadError {
-            return Err(Error::Corrupt);
-        }
-        self.ram.read(block, offset, buf);
-        Ok(())
-    }
-
-    /// C: lfs_emubd_prog — block bad check (lfs_emubd.c:358-370)
-    /// PROGERROR → return LFS_ERR_CORRUPT
-    /// PROGNOOP or ERASENOOP → return 0 (silently skip the prog)
-    /// All others → prog normally
-    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
-        if self.is_bad(block) {
-            match self.behavior {
-                BadBlockBehavior::ProgError => return Err(Error::Corrupt),
-                BadBlockBehavior::ProgNoop | BadBlockBehavior::EraseNoop => return Ok(()),
-                _ => {}
-            }
-        }
-        self.ram.prog(block, offset, data);
-        Ok(())
-    }
-
-    /// C: lfs_emubd_erase — block bad check (lfs_emubd.c:454-468)
-    /// ERASEERROR → return LFS_ERR_CORRUPT
-    /// ERASENOOP → return 0 (silently skip the erase)
-    /// All others → erase normally
-    fn erase(&mut self, block: u32) -> Result<(), Error> {
-        if self.is_bad(block) {
-            match self.behavior {
-                BadBlockBehavior::EraseError => return Err(Error::Corrupt),
-                BadBlockBehavior::EraseNoop => return Ok(()),
-                _ => {}
-            }
-        }
-        self.ram.erase(block);
         Ok(())
     }
 }
@@ -409,65 +284,6 @@ pub fn clone_config_with_block_count(env: &TestEnv, block_count: u32) -> ClonedC
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,
     }
-}
-
-/// TestEnv variant with bad-block BD. Use for test_alloc_bad_blocks.
-pub struct BadBlockTestEnv {
-    pub badblock_ram: BadBlockRamStorage,
-    pub config: LfsConfig,
-    pub _read_buf: Vec<u8>,
-    pub _prog_buf: Vec<u8>,
-    pub _lookahead_buf: Vec<u8>,
-}
-
-/// Build test environment with bad-block BD. Default behavior is ProgError
-/// (matching C LFS_EMUBD_BADBLOCK_PROGERROR, the upstream default).
-pub fn config_badblock(block_count: u32) -> BadBlockTestEnv {
-    config_badblock_with_behavior(block_count, BadBlockBehavior::ProgError)
-}
-
-/// Build test environment with bad-block BD and explicit behavior.
-pub fn config_badblock_with_behavior(
-    block_count: u32,
-    behavior: BadBlockBehavior,
-) -> BadBlockTestEnv {
-    let block_size = BLOCK_SIZE;
-    let badblock_ram = BadBlockRamStorage::new_with_behavior(block_size, block_count, behavior);
-    let read_buf = vec![0u8; block_size as usize];
-    let prog_buf = vec![0u8; block_size as usize];
-    let lookahead_buf = vec![0u8; block_size as usize];
-
-    let config = LfsConfig {
-        context: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-        read_size: 16,
-        prog_size: 16,
-        block_size,
-        block_count,
-        block_cycles: -1,
-        cache_size: block_size,
-        compact_thresh: u32::MAX,
-        read_buffer: Some(NonNull::from_ref(&read_buf)),
-        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
-        name_max: 255,
-        file_max: 2_147_483_647,
-        attr_max: 1022,
-        metadata_max: 0,
-        inline_max: 0,
-    };
-
-    BadBlockTestEnv {
-        badblock_ram,
-        config,
-        _read_buf: read_buf,
-        _prog_buf: prog_buf,
-        _lookahead_buf: lookahead_buf,
-    }
-}
-
-/// Call after config_badblock() to set context. Required for BadBlockTestEnv.
-pub fn init_badblock_context(env: &mut BadBlockTestEnv) {
-    env.config.context = Some(NonNull::from_mut(&mut env.badblock_ram));
 }
 
 /// Run `f` with a process-level timeout. If the closure does not complete within
@@ -670,253 +486,6 @@ pub fn format_and_read_superblock_blocks(env: &mut TestEnv) -> Result<(Vec<u8>, 
 
     Ok((block0, block1))
 }
-
-// ── Wear-leveling block device ──────────────────────────────────────────────
-//
-// For test_exhaustion. Wraps RamStorage with per-block erase-cycle tracking.
-// Mirrors C lfs_emubd wear logic (reference/bd/lfs_emubd.c:287-525).
-//
-// erase_cycles = 0 means unlimited (no wear tracking).
-// erase_cycles > 0: each erase increments wear[block]. When wear >= erase_cycles,
-// the block is "bad" and behaves according to badblock_behavior.
-
-/// Per-block erase-cycle tracking BD wrapper.
-/// Mirrors C lfs_emubd with erase_cycles + badblock_behavior.
-///
-/// C: reference/bd/lfs_emubd.h:69-161
-pub struct WearLevelingBd {
-    pub ram: RamStorage,
-    /// Max erase cycles per block before it goes bad. 0 = unlimited.
-    pub erase_cycles: u32,
-    /// How bad blocks behave. Default: ProgError (C default).
-    pub badblock_behavior: BadBlockBehavior,
-    /// Per-block erase count.
-    pub wear: Vec<u32>,
-    pub block_count: u32,
-    /// What value to fill blocks with on erase. -1 = no fill (skip memset).
-    /// C: lfs_emubd_config.erase_value
-    pub erase_value: i32,
-}
-
-impl WearLevelingBd {
-    pub fn new(block_count: u32, block_size: u32, erase_cycles: u32) -> Self {
-        Self {
-            ram: RamStorage::new(block_size, block_count),
-            erase_cycles,
-            badblock_behavior: BadBlockBehavior::ProgError,
-            wear: vec![0u32; block_count as usize],
-            block_count,
-            erase_value: 0xff,
-        }
-    }
-
-    pub fn new_with_behavior(
-        block_count: u32,
-        block_size: u32,
-        erase_cycles: u32,
-        behavior: BadBlockBehavior,
-    ) -> Self {
-        Self {
-            ram: RamStorage::new(block_size, block_count),
-            erase_cycles,
-            badblock_behavior: behavior,
-            wear: vec![0u32; block_count as usize],
-            block_count,
-            erase_value: 0xff,
-        }
-    }
-
-    pub fn new_full(
-        block_count: u32,
-        block_size: u32,
-        erase_cycles: u32,
-        behavior: BadBlockBehavior,
-        erase_value: i32,
-    ) -> Self {
-        Self {
-            ram: RamStorage::new(block_size, block_count),
-            erase_cycles,
-            badblock_behavior: behavior,
-            wear: vec![0u32; block_count as usize],
-            block_count,
-            erase_value,
-        }
-    }
-
-    /// Returns true if block has exceeded its erase cycle limit.
-    /// C: `bd->cfg->erase_cycles && b->wear >= bd->cfg->erase_cycles`
-    pub fn is_worn(&self, block: u32) -> bool {
-        self.erase_cycles > 0 && self.wear[block as usize] >= self.erase_cycles
-    }
-
-    /// Get wear count for a block. Mirrors C lfs_emubd_wear.
-    pub fn get_wear(&self, block: u32) -> u32 {
-        self.wear[block as usize]
-    }
-
-    /// Set a specific block's wear count (for test setup).
-    /// Mirrors C lfs_emubd_setwear.
-    pub fn set_wear(&mut self, block: u32, cycles: u32) {
-        self.wear[block as usize] = cycles;
-    }
-}
-
-impl Storage for WearLevelingBd {
-    /// C: lfs_emubd_read — wear check (lfs_emubd.c:303-308)
-    /// Only READERROR triggers on read for worn blocks.
-    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
-        if self.is_worn(block) && self.badblock_behavior == BadBlockBehavior::ReadError {
-            return Err(Error::Corrupt);
-        }
-        self.ram.read(block, offset, buf);
-        Ok(())
-    }
-
-    /// C: lfs_emubd_prog — wear check (lfs_emubd.c:358-370)
-    /// PROGERROR → LFS_ERR_CORRUPT
-    /// PROGNOOP or ERASENOOP → return 0 (skip prog)
-    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
-        if self.is_worn(block) {
-            match self.badblock_behavior {
-                BadBlockBehavior::ProgError => return Err(Error::Corrupt),
-                BadBlockBehavior::ProgNoop | BadBlockBehavior::EraseNoop => return Ok(()),
-                _ => {}
-            }
-        }
-        self.ram.prog(block, offset, data);
-        Ok(())
-    }
-
-    /// C: lfs_emubd_erase — wear tracking + bad check (lfs_emubd.c:453-469)
-    /// If erase_cycles > 0 and block is worn:
-    ///   ERASEERROR → LFS_ERR_CORRUPT
-    ///   ERASENOOP → return 0 (skip erase)
-    /// If not worn: increment wear, then erase.
-    fn erase(&mut self, block: u32) -> Result<(), Error> {
-        // C: if (bd->cfg->erase_cycles) { ... }
-        if self.erase_cycles > 0 {
-            if self.wear[block as usize] >= self.erase_cycles {
-                match self.badblock_behavior {
-                    BadBlockBehavior::EraseError => return Err(Error::Corrupt),
-                    BadBlockBehavior::EraseNoop => return Ok(()),
-                    _ => {}
-                }
-            } else {
-                self.wear[block as usize] += 1;
-            }
-        }
-        // C: if (bd->cfg->erase_value != -1) { memset(..., erase_value, ...); }
-        if self.erase_value != -1 {
-            let base = self.ram.block_offset(block);
-            let end = base + self.ram.block_size as usize;
-            self.ram.data[base..end].fill(self.erase_value as u8);
-        }
-        Ok(())
-    }
-}
-
-/// Test environment with wear-leveling BD. Owns WearLevelingBd, config, buffers.
-pub struct WearLevelingEnv {
-    pub bd: WearLevelingBd,
-    pub config: LfsConfig,
-    pub _read_buf: Vec<u8>,
-    pub _prog_buf: Vec<u8>,
-    pub _lookahead_buf: Vec<u8>,
-}
-
-/// Build wear-leveling test environment.
-/// erase_cycles = max erases per block before it goes bad (0 = unlimited).
-pub fn config_with_wear_leveling(block_count: u32, erase_cycles: u32) -> WearLevelingEnv {
-    config_with_wear_leveling_behavior(block_count, erase_cycles, BadBlockBehavior::ProgError)
-}
-
-/// Build wear-leveling test environment with explicit bad-block behavior.
-pub fn config_with_wear_leveling_behavior(
-    block_count: u32,
-    erase_cycles: u32,
-    behavior: BadBlockBehavior,
-) -> WearLevelingEnv {
-    let block_size = BLOCK_SIZE;
-    let bd = WearLevelingBd::new_with_behavior(block_count, block_size, erase_cycles, behavior);
-    let read_buf = vec![0u8; block_size as usize];
-    let prog_buf = vec![0u8; block_size as usize];
-    let lookahead_buf = vec![0u8; block_size as usize];
-
-    let config = LfsConfig {
-        context: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-        read_size: 16,
-        prog_size: 16,
-        block_size,
-        block_count,
-        block_cycles: -1,
-        cache_size: block_size,
-        compact_thresh: u32::MAX,
-        read_buffer: Some(NonNull::from_ref(&read_buf)),
-        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
-        name_max: 255,
-        file_max: 2_147_483_647,
-        attr_max: 1022,
-        metadata_max: 0,
-        inline_max: 0,
-    };
-
-    WearLevelingEnv {
-        bd,
-        config,
-        _read_buf: read_buf,
-        _prog_buf: prog_buf,
-        _lookahead_buf: lookahead_buf,
-    }
-}
-
-/// Build wear-leveling test environment with all parameters.
-pub fn config_with_wear_leveling_full(
-    block_count: u32,
-    erase_cycles: u32,
-    behavior: BadBlockBehavior,
-    erase_value: i32,
-) -> WearLevelingEnv {
-    let block_size = BLOCK_SIZE;
-    let bd = WearLevelingBd::new_full(block_count, block_size, erase_cycles, behavior, erase_value);
-    let read_buf = vec![0u8; block_size as usize];
-    let prog_buf = vec![0u8; block_size as usize];
-    let lookahead_buf = vec![0u8; block_size as usize];
-
-    let config = LfsConfig {
-        context: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-        read_size: 16,
-        prog_size: 16,
-        block_size,
-        block_count,
-        block_cycles: -1,
-        cache_size: block_size,
-        compact_thresh: u32::MAX,
-        read_buffer: Some(NonNull::from_ref(&read_buf)),
-        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
-        name_max: 255,
-        file_max: 2_147_483_647,
-        attr_max: 1022,
-        metadata_max: 0,
-        inline_max: 0,
-    };
-
-    WearLevelingEnv {
-        bd,
-        config,
-        _read_buf: read_buf,
-        _prog_buf: prog_buf,
-        _lookahead_buf: lookahead_buf,
-    }
-}
-
-/// Call after config_with_wear_leveling() to set context. Required for WearLevelingEnv.
-pub fn init_wear_leveling_context(env: &mut WearLevelingEnv) {
-    env.config.context = Some(NonNull::from_mut(&mut env.bd));
-}
-
-// ── PRNG and chunked I/O helpers ────────────────────────────────────────────
 
 /// xorshift32 PRNG matching C littlefs TEST_PRNG exactly.
 /// Deterministic; same seed produces same sequence as C.
