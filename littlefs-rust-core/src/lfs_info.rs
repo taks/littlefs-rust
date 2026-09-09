@@ -22,6 +22,17 @@ impl Default for LfsInfo {
     }
 }
 
+impl LfsInfo {
+    pub fn name_str(&self) -> &str {
+        let nul = self
+            .name
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(self.name.len());
+        core::str::from_utf8(&self.name[..nul]).unwrap()
+    }
+}
+
 /// Per lfs.h struct lfs_fsinfo
 #[repr(C)]
 pub struct LfsFsinfo {
