@@ -9,9 +9,9 @@
 
 mod common;
 
-use std::fmt::Write;
 #[cfg(feature = "slow_tests")]
-use std::{assert_matches, ffi::CStr};
+use std::assert_matches;
+use std::fmt::Write;
 
 use common::{
     LFS_O_CREAT, LFS_O_WRONLY, config_with_cache, default_config, init_context, init_logger,
@@ -54,11 +54,7 @@ fn test_relocations_dangling_split_dir(cfg: &LfsConfig, #[values(8, 1)] block_cy
         let path = &format!("d0/f{i}");
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok!(lfs_stat(lfs, path, info));
-        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-        assert_eq!(
-            core::str::from_utf8(&info.name[..nul]).unwrap(),
-            format!("f{i}")
-        );
+        assert_eq!(info.name_str(), format!("f{i}"));
     }
 
     assert_ok!(lfs_unmount(lfs));
@@ -92,11 +88,7 @@ fn test_relocations_outdated_head(cfg: &LfsConfig, #[values(8, 1)] block_cycles:
         let path = &format!("d0/sub/f{i}");
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok!(lfs_stat(lfs, path, info));
-        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-        assert_eq!(
-            core::str::from_utf8(&info.name[..nul]).unwrap(),
-            format!("f{i}")
-        );
+        assert_eq!(info.name_str(), format!("f{i}"));
     }
 
     assert_ok!(lfs_unmount(lfs));
@@ -135,8 +127,7 @@ fn test_relocations_nonreentrant(
             let path = &format!("{}", (b'a' + i as u8) as char);
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_ok!(lfs_stat(lfs, path, info));
-            let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-            assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), path);
+            assert_eq!(info.name_str(), path);
             assert_ok!(lfs_remove(lfs, path));
         }
     }
@@ -180,13 +171,11 @@ fn test_relocations_nonreentrant_renames(
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_ok!(lfs_stat(lfs, "x", info));
-    let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-    assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "x");
+    assert_eq!(info.name_str(), "x");
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_ok!(lfs_stat(lfs, "y", info));
-    let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-    assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "y");
+    assert_eq!(info.name_str(), "y");
 
     assert_ok!(lfs_remove(lfs, "x"));
     assert_ok!(lfs_remove(lfs, "y"));
@@ -300,25 +289,13 @@ fn test_relocations_reentrant_renames(
                 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
 
                 assert_ok!(lfs_stat(lfs, &full_path[..(2 * d + 2)], info));
-                assert_eq!(
-                    CStr::from_bytes_until_nul(&info.name)
-                        .unwrap()
-                        .to_str()
-                        .unwrap(),
-                    &full_path[(2 * d + 1)..(2 * d + 2)]
-                );
+                assert_eq!(info.name_str(), &full_path[(2 * d + 1)..(2 * d + 2)]);
                 assert_eq!(info.type_, LFS_TYPE_DIR as u8);
             }
         } else {
             use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
 
-            assert_eq!(
-                CStr::from_bytes_until_nul(&info.name)
-                    .unwrap()
-                    .to_str()
-                    .unwrap(),
-                &full_path[(2 * (depth - 1) + 1)..]
-            );
+            assert_eq!(info.name_str(), &full_path[(2 * (depth - 1) + 1)..]);
             assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
             // create new random path
@@ -349,13 +326,7 @@ fn test_relocations_reentrant_renames(
                 }
                 for d in 0..depth {
                     assert_ok!(lfs_stat(lfs, &new_path[..(2 * d + 2)], info));
-                    assert_eq!(
-                        CStr::from_bytes_until_nul(&info.name)
-                            .unwrap()
-                            .to_str()
-                            .unwrap(),
-                        &new_path[(2 * d + 1)..(2 * d + 2)]
-                    );
+                    assert_eq!(info.name_str(), &new_path[(2 * d + 1)..(2 * d + 2)]);
                     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
                 }
 

@@ -640,7 +640,7 @@ fn test_move_reentrant_file(cfg: &LfsConfig, #[values(false, true)] reentrant: b
         let info = &mut LfsInfo::default();
         for dir in dirs {
             if lfs_stat(lfs, &format!("{}/hello", dir), info).is_ok() {
-                assert_eq!(&info.name[..5], b"hello");
+                assert_eq!(info.name_str(), "hello");
                 assert_eq!(info.type_, LFS_TYPE_REG as u8);
                 assert!(info.size == 5 + 8 + 6 || info.size == 0);
                 count += 1;
@@ -904,7 +904,7 @@ fn test_reentrant_dir(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
         let mut info = LfsInfo::default();
         for dir in dirs {
             if lfs_stat(lfs, &format!("{}/hi", dir), &mut info).is_ok() {
-                assert_eq!(&info.name[..2], b"hi");
+                assert_eq!(info.name_str(), "hi");
                 assert_eq!(info.type_, LFS_TYPE_DIR as u8);
                 count += 1;
             }
@@ -938,10 +938,10 @@ fn test_reentrant_dir(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
     let info = &mut LfsInfo::default();
     assert_ok!(lfs_dir_open(lfs, dir, "a"));
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-    assert_eq!(&info.name[..1], b".");
+    assert_eq!(info.name_str(), ".");
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-    assert_eq!(&info.name[..2], b"..");
+    assert_eq!(info.name_str(), "..");
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
@@ -1078,8 +1078,7 @@ fn test_move_fix_relocation() {
             if n == Ok(false) {
                 break;
             }
-            let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-            let name = core::str::from_utf8(&info.name[..nul]).unwrap();
+            let name = info.name_str();
             if name == "." || name == ".." {
                 continue;
             }

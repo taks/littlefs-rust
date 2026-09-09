@@ -323,7 +323,7 @@ fn test_superblocks_reentrant_expand(
         let err = lfs_stat(lfs, dummy, info);
         assert!(err.is_ok() || (err == Err(Error::NoEntry) && i == 0));
         if err.is_ok() {
-            assert_eq!(&info.name[..5], dummy.as_bytes());
+            assert_eq!(info.name_str(), dummy);
             assert_eq!(info.type_, LFS_TYPE_REG as u8);
             assert_ok!(lfs_remove(lfs, dummy));
         }
@@ -338,7 +338,7 @@ fn test_superblocks_reentrant_expand(
 
         let info = &mut LfsInfo::default();
         assert_ok!(lfs_stat(lfs, dummy, info));
-        assert_eq!(&info.name[..5], dummy.as_bytes());
+        assert_eq!(info.name_str(), dummy);
         assert_eq!(info.type_, LFS_TYPE_REG as u8);
         assert_ok!(lfs_unmount(lfs));
     }
@@ -347,7 +347,7 @@ fn test_superblocks_reentrant_expand(
     assert_ok!(lfs_mount(lfs, cfg));
     let info = &mut LfsInfo::default();
     assert_ok!(lfs_stat(lfs, dummy, info));
-    assert_eq!(&info.name[..5], dummy.as_bytes());
+    assert_eq!(info.name_str(), dummy);
     assert_eq!(info.type_, LFS_TYPE_REG as u8);
     assert_ok!(lfs_unmount(lfs));
 }
@@ -676,13 +676,7 @@ fn test_superblocks_metadata_max(
         assert_ok!(lfs_file_close(lfs, file));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok!(lfs_stat(lfs, name, info));
-        let nul = info
-            .name
-            .iter()
-            .position(|&b| b == 0)
-            .unwrap_or(info.name.len());
-        let info_name = core::str::from_utf8(&info.name[..nul]).unwrap();
-        assert_eq!(info_name, name_str);
+        assert_eq!(info.name_str(), name_str);
         assert_eq!(info.type_, LFS_TYPE_REG as u8);
     }
 

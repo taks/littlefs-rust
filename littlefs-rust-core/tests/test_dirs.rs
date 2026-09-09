@@ -6,7 +6,7 @@
 mod common;
 
 #[cfg(feature = "slow_tests")]
-use std::{assert_matches, ffi::CStr};
+use std::assert_matches;
 
 use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, dir_entry_names};
 use littlefs_rust_core::error::Error;
@@ -35,16 +35,13 @@ fn test_dirs_root(cfg: &LfsConfig) {
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     let n = lfs_dir_read(lfs, dir, info);
     assert_eq!(n, Ok(true));
-    assert_eq!(info.name[0], b'.');
-    assert_eq!(info.name[1], 0);
+    assert_eq!(info.name_str(), ".");
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     let n = lfs_dir_read(lfs, dir, info);
     assert_eq!(n, Ok(true));
-    assert_eq!(info.name[0], b'.');
-    assert_eq!(info.name[1], b'.');
-    assert_eq!(info.name[2], 0);
+    assert_eq!(info.name_str(), "..");
     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
@@ -288,11 +285,7 @@ fn test_dirs_many_reentrant(
     for i in 0..n {
         let expected = format!("hi{i:03}");
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-        let name = CStr::from_bytes_until_nul(&info.name)
-            .unwrap()
-            .to_str()
-            .unwrap();
-        assert_eq!(name, expected);
+        assert_eq!(info.name_str(), expected);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
@@ -309,11 +302,7 @@ fn test_dirs_many_reentrant(
     for i in 0..n {
         let expected = format!("hello{i:03}");
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-        let name = CStr::from_bytes_until_nul(&info.name)
-            .unwrap()
-            .to_str()
-            .unwrap();
-        assert_eq!(name, expected);
+        assert_eq!(info.name_str(), expected);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
@@ -508,13 +497,7 @@ fn test_dirs_file_reentrant(
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
 
         assert_eq!(info.type_, LFS_TYPE_REG as u8);
-        assert_eq!(
-            CStr::from_bytes_until_nul(&info.name)
-                .unwrap()
-                .to_str()
-                .unwrap(),
-            expected
-        );
+        assert_eq!(info.name_str(), expected);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
@@ -534,13 +517,7 @@ fn test_dirs_file_reentrant(
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
 
         assert_eq!(info.type_, LFS_TYPE_REG as u8);
-        assert_eq!(
-            CStr::from_bytes_until_nul(&info.name)
-                .unwrap()
-                .to_str()
-                .unwrap(),
-            expected
-        );
+        assert_eq!(info.name_str(), expected);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));

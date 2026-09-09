@@ -344,17 +344,13 @@ fn test_orphans_reentrant(cfg: &LfsConfig, #[values(false, true)] reentrant: boo
 
                     assert_ok!(lfs_stat(lfs, &sub, info));
 
-                    let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-                    let name = core::str::from_utf8(&info.name[..nul]).unwrap();
                     let expected = &components[d];
-                    assert_eq!(name, *expected);
+                    assert_eq!(info.name_str(), *expected);
                     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
                 }
             } else {
                 let expected = &components[depth - 1];
-                let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-                let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-                assert_eq!(name, *expected);
+                assert_eq!(info.name_str(), *expected);
                 assert_eq!(info.type_, LFS_TYPE_DIR as u8);
                 for d in (0..depth).rev() {
                     let sub = "/".to_string() + &components[..=d].join("/");

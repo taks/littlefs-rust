@@ -589,10 +589,7 @@ pub fn dir_entry_names(
             let _ = lfs_dir_close(lfs, dir);
             return Err(err);
         }
-        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-        let name = core::str::from_utf8(&info.name[..nul])
-            .unwrap_or("")
-            .to_string();
+        let name = info.name_str().to_string();
         if name != "." && name != ".." {
             names.push(name);
         }
