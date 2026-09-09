@@ -5,8 +5,7 @@
 mod common;
 
 use common::{
-    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, test_prng, verify_prng_file, write_block_raw,
-    write_prng_file,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, test_prng, verify_prng_file, write_prng_file,
 };
 use littlefs_rust_core::{Lfs, LfsConfig, LfsFile};
 use littlefs_rust_test_macro::lfs_test;

@@ -7,24 +7,12 @@
 
 mod common;
 
-use common::{BadblockBehavior, init_logger, lfs_emubd_setwear, test_prng};
+use common::{BadblockBehavior, lfs_emubd_setwear, lfs_emubd_wear, test_prng};
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
+    Error, Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
-use rstest::rstest;
-
-fn init_exhaustion_env(
-    erase_cycles: u32,
-    block_cycles: i32,
-    behavior: BadBlockBehavior,
-) -> WearLevelingEnv {
-    let block_count: u32 = 256;
-    let mut env = config_with_wear_leveling_behavior(block_count, erase_cycles, behavior);
-    env.config.block_cycles = block_cycles;
-    env
-}
 
 /// Run the exhaustion loop: write FILES files with PRNG data under `prefix/`,
 /// verify after each cycle, repeat until NOSPC. Returns number of completed cycles.
@@ -171,8 +159,7 @@ fn test_exhaustion_superblocks(
 
     // The superblocks variant uses "test{i}" paths (no parent dir),
     // but run_exhaustion expects a prefix. Use "" prefix and adjust paths.
-    let cycle = run_exhaustion_root(lfs, cfg, files);
-
+    let _cycle = run_exhaustion_root(lfs, cfg, files);
     verify_after_exhaustion_root(lfs, cfg, files);
 }
 
@@ -254,44 +241,39 @@ fn verify_after_exhaustion_root(lfs: &mut Lfs, config: &LfsConfig, files: u32) {
 /// ERASE_CYCLES=20, BLOCK_CYCLES=10, ERASE_COUNT=256, FILES=10
 /// Run exhaustion twice: first with BLOCK_COUNT/2 usable blocks, then full device.
 /// Assert doubling blocks yields >= 2x cycles (within 10% tolerance).
-#[test]
-fn test_exhaustion_wear_leveling() {
-    init_logger();
+#[lfs_test]
+fn test_exhaustion_wear_leveling(
+    cfg: &LfsConfig,
+    #[values(20)] erase_cycles: u32,
+    #[values(10)] block_cycles: i32,
+    #[values(256)] erase_count: u32,
+) {
+    assert_eq!(cfg.block_count, 256);
 
-    let erase_cycles: u32 = 20;
-    let block_cycles: i32 = (erase_cycles / 2) as i32;
     let files: u32 = 10;
     let block_count: u32 = 256;
     let run_block_count = [block_count / 2, block_count];
     let mut run_cycles = [0u32; 2];
 
     for run in 0..2 {
-        let mut env = config_with_wear_leveling_behavior(
-            block_count,
-            erase_cycles,
-            BadBlockBehavior::ProgError,
-        );
-        env.config.block_cycles = block_cycles;
-        init_wear_leveling_context(&mut env);
-
         // C: lfs_emubd_setwear — blocks < run_block_count get wear 0, rest get ERASE_CYCLES
         for b in 0..block_count {
             if b < run_block_count[run] {
-                env.bd.set_wear(b, 0);
+                lfs_emubd_setwear(cfg, b, 0);
             } else {
-                env.bd.set_wear(b, erase_cycles);
+                lfs_emubd_setwear(cfg, b, 20);
             }
         }
 
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &env.config));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
         assert_ok!(lfs_mkdir(lfs, "roadrunner"));
         assert_ok!(lfs_unmount(lfs));
 
-        let cycle = run_exhaustion(lfs, &env.config, "roadrunner", files);
+        let cycle = run_exhaustion(lfs, cfg, "roadrunner", files);
 
-        verify_after_exhaustion(lfs, &env.config, "roadrunner", files);
+        verify_after_exhaustion(lfs, cfg, "roadrunner", files);
 
         run_cycles[run] = cycle;
         eprintln!(
@@ -336,11 +318,11 @@ fn test_exhaustion_wear_leveling_superblocks(
         }
 
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, cfg));
 
-        let cycle = run_exhaustion_root(lfs, &env.config, files);
+        let cycle = run_exhaustion_root(lfs, cfg, files);
 
-        verify_after_exhaustion_root(lfs, &env.config, files);
+        verify_after_exhaustion_root(lfs, cfg, files);
 
         run_cycles[run] = cycle;
         eprintln!(
@@ -362,32 +344,26 @@ fn test_exhaustion_wear_leveling_superblocks(
 /// ERASE_CYCLES=0xffffffff (unlimited), BLOCK_CYCLES=[5,4,3,2,1], CYCLES=100, FILES=10
 /// if = 'BLOCK_CYCLES < CYCLES/10'
 /// Run CYCLES write cycles. Check wear distribution: stddev^2 < 8.
-#[rstest]
-fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: i32) {
+#[lfs_test]
+fn test_exhaustion_wear_distribution(
+    cfg: &LfsConfig,
+    #[values(0xffffffff)] erase_cycles: u32,
+    #[values(5, 4, 3, 2, 1)] block_cycles: i32,
+) {
     let cycles: u32 = 100;
-    // C: if = 'BLOCK_CYCLES < CYCLES/10'
-    if block_cycles_val >= (cycles / 10) as i32 {
-        return;
-    }
 
-    let erase_cycles: u32 = 0xffffffff;
     let files: u32 = 10;
     let block_count: u32 = 256;
 
-    let mut env =
-        config_with_wear_leveling_behavior(block_count, erase_cycles, BadBlockBehavior::ProgError);
-    env.config.block_cycles = block_cycles_val;
-    init_wear_leveling_context(&mut env);
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_mkdir(lfs, "roadrunner"));
     assert_ok!(lfs_unmount(lfs));
 
     let mut cycle: u32 = 0;
     'outer: while cycle < cycles {
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, cfg));
 
         for i in 0..files {
             let path = &format!("roadrunner/test{i}");
@@ -447,7 +423,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
     }
 
     // Verify after exhaustion
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     for i in 0..files {
         let path = &format!("roadrunner/test{i}");
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
@@ -455,16 +431,12 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
     }
     assert_ok!(lfs_unmount(lfs));
 
-    eprintln!(
-        "test_exhaustion_wear_distribution(block_cycles={block_cycles_val}): completed {cycle} cycles"
-    );
-
     // Check wear distribution (skip blocks 0,1 = superblocks)
     let mut min_wear: i64 = i64::MAX;
     let mut max_wear: i64 = 0;
     let mut total_wear: i64 = 0;
     for b in 2..block_count {
-        let wear = env.bd.get_wear(b) as i64;
+        let wear = lfs_emubd_wear(cfg, b) as i64;
         assert!(wear >= 0);
         if wear < min_wear {
             min_wear = wear;
@@ -480,7 +452,7 @@ fn test_exhaustion_wear_distribution(#[values(5, 4, 3, 2, 1)] block_cycles_val: 
     // C: stddev^2 = sum((wear - avg)^2) / totalwear; assert(dev2 < 8)
     let mut dev2: i64 = 0;
     for b in 2..block_count {
-        let wear = env.bd.get_wear(b) as i64;
+        let wear = lfs_emubd_wear(cfg, b) as i64;
         let diff = wear - avg_wear;
         dev2 += diff * diff;
     }

@@ -51,7 +51,7 @@ pub fn lfs_test(
         let erase_value = Some(0xFF);
         let erase_cycles = 0;
         let badblock_behavior = BadblockBehavior::ProgError;
-        let block_count = std::cmp::max(block_size/erase_size, 1);
+        let block_count = erase_count / std::cmp::max(block_size/erase_size, 1);
 
     };
     let mut cfg_params = Vec::new();

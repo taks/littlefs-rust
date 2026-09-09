@@ -10,7 +10,9 @@ mod emubd;
 
 use emubd::Emubd;
 #[allow(unused_imports)]
-pub use emubd::{BadblockBehavior, EmubdConfig, PowerLossBehavior, lfs_emubd_setwear};
+pub use emubd::{
+    BadblockBehavior, EmubdConfig, PowerLossBehavior, lfs_emubd_setwear, lfs_emubd_wear,
+};
 
 use littlefs_rust_core::{Error, LfsConfig, Storage, lfs_type::OpenFlags};
 use std::{panic::AssertUnwindSafe, ptr::NonNull};

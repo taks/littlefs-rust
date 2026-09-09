@@ -271,11 +271,14 @@ impl Storage for Emubd<'_> {
     }
 }
 
-pub fn lfs_emubd_setwear(cfg: &LfsConfig, block: u32, wear: u32) {
+pub fn lfs_emubd_wear(cfg: &LfsConfig, block: u32) -> u32 {
     let bd = unsafe { &mut *(cfg.context.unwrap().as_ptr() as *mut Emubd) };
 
-    // check if block is valid
-    assert!(block < bd.cfg.erase_count);
+    bd.blocks[block as usize].as_ref().map_or(0, |b| b.wear)
+}
+
+pub fn lfs_emubd_setwear(cfg: &LfsConfig, block: u32, wear: u32) {
+    let bd = unsafe { &mut *(cfg.context.unwrap().as_ptr() as *mut Emubd) };
 
     let b = bd.mutblock(block as usize);
     b.wear = wear;
