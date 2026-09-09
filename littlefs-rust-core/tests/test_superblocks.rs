@@ -180,13 +180,9 @@ fn test_superblocks_expand(
     #[values(32, 33, 1)] block_cycles: i32,
     #[values(10, 100, 1000)] n: u32,
 ) {
-    let mut env = default_config(128);
-    init_context(&mut env);
-    env.config.block_cycles = block_cycles;
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let dummy = "dummy";
     for _ in 0..n {
@@ -205,7 +201,7 @@ fn test_superblocks_expand(
     }
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
         lfs,

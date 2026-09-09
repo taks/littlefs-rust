@@ -1,7 +1,7 @@
 #![allow(clippy::single_match)]
 
 use syn::{
-    FnArg, ItemFn,
+    FnArg, ItemFn, Pat,
     parse::Parser,
     punctuated::Punctuated,
     token::{self, Comma},
@@ -21,29 +21,20 @@ pub fn lfs_test(
     let attrs = std::mem::take(&mut input_fn.attrs);
 
     let args: Punctuated<FnArg, Comma> = input_fn.sig.inputs.clone().into_iter().skip(1).collect();
-    let args_ = args
+    let args_idents: Vec<_> = args
         .clone()
         .into_iter()
         .map(|arg| match arg {
             FnArg::Typed(pat_type) => {
                 let pat = *pat_type.pat;
                 match pat {
-                    syn::Pat::Ident(pat_ident) => pat_ident.ident,
+                    Pat::Ident(pat_ident) => pat_ident.ident,
                     _ => panic!("Expected typed argument"),
                 }
             }
             _ => panic!("Expected typed argument"),
         })
-        .collect::<Punctuated<_, Comma>>();
-
-    for input in &mut input_fn.sig.inputs {
-        match input {
-            FnArg::Typed(pat_type) => {
-                pat_type.attrs.clear();
-            }
-            _ => {}
-        };
-    }
+        .collect();
 
     let assign = syn::parse_macro_input!(attr with Punctuated::<syn::ExprAssign, token::Semi>::parse_terminated);
     let assign2 = quote::quote! {
@@ -55,16 +46,48 @@ pub fn lfs_test(
         let cache_size = 64.max(read_size);
         let lookahead_size = 16;
     };
+    let mut cfg_params = Vec::new();
     let assign2: Punctuated<syn::ExprLet, token::Semi> =
         Punctuated::<syn::ExprLet, token::Semi>::parse_terminated
             .parse2(assign2)
             .unwrap()
             .into_iter()
             .filter(|p| match &*p.pat {
-                syn::Pat::Ident(i) => !args_.iter().any(|a| *a == i.ident),
+                syn::Pat::Ident(i) => {
+                    if args_idents.iter().any(|a| *a == i.ident) {
+                        cfg_params.push(i.ident.clone());
+                        false
+                    } else {
+                        true
+                    }
+                }
                 _ => false,
             })
             .collect();
+
+    input_fn.sig.inputs = input_fn
+        .sig
+        .inputs
+        .into_iter()
+        .filter_map(|input| match input {
+            FnArg::Typed(mut pat_type) => {
+                if let Pat::Ident(ref pat_ident) = *pat_type.pat
+                    && cfg_params.iter().any(|i| *i == pat_ident.ident)
+                {
+                    None
+                } else {
+                    pat_type.attrs.clear();
+                    Some(FnArg::Typed(pat_type))
+                }
+            }
+            _ => Some(input),
+        })
+        .collect();
+
+    let args_: Punctuated<_, Comma> = args_idents
+        .iter()
+        .filter(|i| !cfg_params.iter().any(|p| *p == **i))
+        .collect();
 
     quote::quote! {
         #[rstest::rstest]
@@ -125,7 +148,6 @@ pub fn lfs_test(
         }
 
         #[cfg(test)]
-        #[allow(unused_variables)]
         #input_fn
     }
     .into()
