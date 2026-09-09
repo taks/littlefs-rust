@@ -348,10 +348,10 @@ fn test_exhaustion_wear_leveling_superblocks(
 fn test_exhaustion_wear_distribution(
     cfg: &LfsConfig,
     #[values(0xffffffff)] erase_cycles: u32,
+    #[values(256)] erase_count: u32,
     #[values(5, 4, 3, 2, 1)] block_cycles: i32,
 ) {
     let cycles: u32 = 100;
-
     let files: u32 = 10;
     let block_count: u32 = 256;
 
