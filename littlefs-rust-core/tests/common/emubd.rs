@@ -40,6 +40,23 @@ pub struct EmubdConfig<'d> {
 }
 impl std::panic::RefUnwindSafe for EmubdConfig<'_> {}
 
+impl Default for EmubdConfig<'_> {
+    fn default() -> Self {
+        Self {
+            read_size: Default::default(),
+            prog_size: Default::default(),
+            erase_size: Default::default(),
+            erase_count: Default::default(),
+            erase_value: Default::default(),
+            erase_cycles: Default::default(),
+            badblock_behavior: BadblockBehavior::Prog,
+            power_cycles: Default::default(),
+            powerloss_behavior: PowerLossBehavior::Noop,
+            powerloss_cb: &|| {},
+        }
+    }
+}
+
 impl Debug for EmubdConfig<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EmubdConfig")
