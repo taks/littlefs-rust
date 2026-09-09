@@ -3,7 +3,7 @@
 use core::cell::UnsafeCell;
 use std::{os::raw::c_void, ptr::NonNull};
 
-use littlefs_rust_core::error::Error;
+use littlefs_rust_core::Error;
 
 /// Filesystem geometry for tests.
 pub struct TestGeometry {

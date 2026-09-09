@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::mem::ManuallyDrop;
 use core::ptr::NonNull;
-use littlefs_rust_core::error::Error;
+use littlefs_rust_core::Error;
 use littlefs_rust_core::lfs_type::OpenFlags;
 
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
