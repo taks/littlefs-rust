@@ -695,7 +695,7 @@ const MAX_FILL_ITER: u32 = 50_000;
 fn test_alloc_bad_blocks(
     cfg: &LfsConfig,
     #[values(0xffffffff)] erase_cycles: u32,
-    #[values(BadblockBehavior::Read)] badblock_behavior: BadblockBehavior,
+    #[values(BadblockBehavior::ReadError)] badblock_behavior: BadblockBehavior,
 ) {
     let block_size = cfg.block_size as usize;
 

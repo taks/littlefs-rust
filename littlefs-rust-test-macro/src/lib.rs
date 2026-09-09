@@ -45,8 +45,11 @@ pub fn lfs_test(
         let name_max = 255;
         let cache_size = 64.max(read_size);
         let lookahead_size = 16;
+
+        let erase_count = block_count;
+        let erase_value = Some(0xFF);
         let erase_cycles = 0;
-        let badblock_behavior = BadblockBehavior::Prog;
+        let badblock_behavior = BadblockBehavior::ProgError;
     };
     let mut cfg_params = Vec::new();
     let assign2: Punctuated<syn::ExprLet, token::Semi> =
@@ -142,8 +145,8 @@ pub fn lfs_test(
                     read_size,
                     prog_size: read_size,
                     erase_size: block_size,
-                    erase_count: block_count,
-                    erase_value: Some(0xFF),
+                    erase_count,
+                    erase_value,
                     erase_cycles,
                     badblock_behavior,
                     power_cycles: 0,

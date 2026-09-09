@@ -5,15 +5,14 @@
 
 mod common;
 
-use common::{
-    BadBlockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, config_with_wear_leveling_full,
-    init_wear_leveling_context,
-};
+use common::{BadblockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY};
 use littlefs_rust_core::{
-    Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
+    Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
     lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_unmount,
 };
-use rstest::rstest;
+use littlefs_rust_test_macro::lfs_test;
+
+use crate::common::lfs_emubd_setwear;
 
 const LFS_TYPE_DIR: u8 = 0x02;
 const NAMEMULT: usize = 64;
@@ -32,32 +31,26 @@ const FILEMULT: usize = 1;
 /// remount, stat/read all dirs and files.
 #[lfs_test]
 fn test_badblocks_single(
-    #[values(0x00, 0xff, -1)] erase_value: i32,
+    cfg: &LfsConfig,
+    #[values(Some(0x00), Some(0xff), None)] erase_value: Option<u8>,
     #[values(
-        BadBlockBehavior::ProgError,
-        BadBlockBehavior::EraseError,
-        BadBlockBehavior::ReadError,
-        BadBlockBehavior::ProgNoop,
-        BadBlockBehavior::EraseNoop
+        BadblockBehavior::ProgError,
+        BadblockBehavior::EraseError,
+        BadblockBehavior::ReadError,
+        BadblockBehavior::ProgNoop,
+        BadblockBehavior::EraseNoop
     )]
-    badblock_behavior: BadBlockBehavior,
+    badblock_behavior: BadblockBehavior,
 ) {
     let block_count: u32 = 256;
 
     for badblock in 2..block_count {
-        let mut env =
-            config_with_wear_leveling_full(block_count, 0xffffffff, behavior, erase_value);
-        init_wear_leveling_context(&mut env);
-
-        // C: lfs_emubd_setwear(cfg, badblock-1, 0)
-        env.bd.set_wear(badblock - 1, 0);
-        // C: lfs_emubd_setwear(cfg, badblock, 0xffffffff)
-        env.bd.set_wear(badblock, 0xffffffff);
+        lfs_emubd_setwear(cfg, badblock - 1, 0);
+        lfs_emubd_setwear(cfg, badblock, 0xffffffff);
 
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &env.config));
-
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
 
         for i in 1..10 {
             let mut buffer = [0u8; 1024];
@@ -97,7 +90,7 @@ fn test_badblocks_single(
         assert_ok!(lfs_unmount(lfs));
 
         // Remount and verify
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_mount(lfs, cfg));
 
         for i in 1..10 {
             let mut buffer = [0u8; 1024];
@@ -151,37 +144,35 @@ fn test_badblocks_single(
 ///
 /// Mark first half of blocks (starting at 2) as worn. Format, create
 /// 9 dirs+files, unmount, remount, verify.
-#[rstest]
+#[lfs_test]
 fn test_badblocks_region_corruption(
-    #[values(0x00, 0xff, -1)] erase_value: i32,
+    cfg: &LfsConfig,
+    #[values(Some(0x00), Some(0xff), None)] erase_value: Option<u8>,
     #[values(
-        BadBlockBehavior::ProgError,
-        BadBlockBehavior::EraseError,
-        BadBlockBehavior::ReadError,
-        BadBlockBehavior::ProgNoop,
-        BadBlockBehavior::EraseNoop
+        BadblockBehavior::ProgError,
+        BadblockBehavior::EraseError,
+        BadblockBehavior::ReadError,
+        BadblockBehavior::ProgNoop,
+        BadblockBehavior::EraseNoop
     )]
-    behavior: BadBlockBehavior,
+    behavior: BadblockBehavior,
 ) {
     let block_count: u32 = 256;
-
-    let mut env = config_with_wear_leveling_full(block_count, 0xffffffff, behavior, erase_value);
-    init_wear_leveling_context(&mut env);
 
     // C: for (lfs_block_t i = 0; i < (BLOCK_COUNT-2)/2; i++) {
     //        lfs_emubd_setwear(cfg, i+2, 0xffffffff)
     for i in 0..((block_count - 2) / 2) {
-        env.bd.set_wear(i + 2, 0xffffffff);
+        lfs_emubd_setwear(cfg, i + 2, 0xffffffff);
     }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     badblocks_create_dirs_and_files(lfs);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     badblocks_verify_dirs_and_files(lfs);
     assert_ok!(lfs_unmount(lfs));
 }
@@ -196,37 +187,35 @@ fn test_badblocks_region_corruption(
 ///
 /// Mark every other block starting at 2 as worn. Format, create
 /// 9 dirs+files, unmount, remount, verify.
-#[rstest]
+#[lfs_test]
 fn test_badblocks_alternating_corruption(
-    #[values(0x00, 0xff, -1)] erase_value: i32,
+    cfg: &LfsConfig,
+    #[values(Some(0x00), Some(0xff), None)] erase_value: Option<u8>,
     #[values(
-        BadBlockBehavior::ProgError,
-        BadBlockBehavior::EraseError,
-        BadBlockBehavior::ReadError,
-        BadBlockBehavior::ProgNoop,
-        BadBlockBehavior::EraseNoop
+        BadblockBehavior::ProgError,
+        BadblockBehavior::EraseError,
+        BadblockBehavior::ReadError,
+        BadblockBehavior::ProgNoop,
+        BadblockBehavior::EraseNoop
     )]
-    behavior: BadBlockBehavior,
+    badblock_behavior: BadblockBehavior,
 ) {
     let block_count: u32 = 256;
-
-    let mut env = config_with_wear_leveling_full(block_count, 0xffffffff, behavior, erase_value);
-    init_wear_leveling_context(&mut env);
 
     // C: for (lfs_block_t i = 0; i < (BLOCK_COUNT-2)/2; i++) {
     //        lfs_emubd_setwear(cfg, (2*i) + 2, 0xffffffff)
     for i in 0..((block_count - 2) / 2) {
-        env.bd.set_wear((2 * i) + 2, 0xffffffff);
+        lfs_emubd_setwear(cfg, (2 * i) + 2, 0xffffffff)
     }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     badblocks_create_dirs_and_files(lfs);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     badblocks_verify_dirs_and_files(lfs);
     assert_ok!(lfs_unmount(lfs));
 }
@@ -239,42 +228,28 @@ fn test_badblocks_alternating_corruption(
 /// Mark blocks 0 and 1 (superblocks) as worn.
 /// Expect lfs_format to fail with LFS_ERR_NOSPC.
 /// Expect lfs_mount to fail with LFS_ERR_CORRUPT.
-#[rstest]
+#[lfs_test]
 fn test_badblocks_superblocks(
-    #[values(0x00, 0xff, -1)] erase_value: i32,
+    cfg: &LfsConfig,
+    #[values(0xffffffff)] erase_cycles: u32,
+    #[values(Some(0x00), Some(0xff), None)] erase_value: Option<u8>,
     #[values(
-        BadBlockBehavior::ProgError,
-        BadBlockBehavior::EraseError,
-        BadBlockBehavior::ReadError,
-        BadBlockBehavior::ProgNoop,
-        BadBlockBehavior::EraseNoop
+        BadblockBehavior::ProgError,
+        BadblockBehavior::EraseError,
+        BadblockBehavior::ReadError,
+        BadblockBehavior::ProgNoop,
+        BadblockBehavior::EraseNoop
     )]
-    behavior: BadBlockBehavior,
+    badblock_behavior: BadblockBehavior,
 ) {
     use littlefs_rust_core::error::Error;
 
-    let block_count: u32 = 128;
-
-    let mut env = config_with_wear_leveling_full(block_count, 0xffffffff, behavior, erase_value);
-    init_wear_leveling_context(&mut env);
-
-    env.bd.set_wear(0, 0xffffffff);
-    env.bd.set_wear(1, 0xffffffff);
+    lfs_emubd_setwear(cfg, 0, 0xffffffff);
+    lfs_emubd_setwear(cfg, 1, 0xffffffff);
 
     let lfs = &mut Lfs::default();
-    let err = lfs_format(lfs, &env.config);
-    assert_eq!(
-        err,
-        Err(Error::NoSpace),
-        "format should fail with NOSPC, got {err:?}"
-    );
-
-    let err = lfs_mount(lfs, &env.config);
-    assert_eq!(
-        err,
-        Err(Error::Corrupt),
-        "mount should fail with CORRUPT, got {err:?}"
-    );
+    assert_eq!(lfs_format(lfs, cfg), Err(Error::NoSpace));
+    assert_eq!(lfs_mount(lfs, cfg), Err(Error::Corrupt));
 }
 
 // ── Helpers shared by region/alternating tests ──────────────────────────────

@@ -9,9 +9,9 @@ struct EmubdBlock {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BadblockBehavior {
-    Prog,
-    Erase,
-    Read,
+    ProgError,
+    EraseError,
+    ReadError,
     ProgNoop,
     EraseNoop,
 }
@@ -151,7 +151,7 @@ impl Storage for Emubd<'_> {
             // block bad?
             if self.cfg.erase_cycles > 0
                 && b.wear >= self.cfg.erase_cycles
-                && self.cfg.badblock_behavior == BadblockBehavior::Read
+                && self.cfg.badblock_behavior == BadblockBehavior::ReadError
             {
                 return Err(Error::Corrupt);
             }
@@ -181,7 +181,7 @@ impl Storage for Emubd<'_> {
         // block bad?
         if self.cfg.erase_cycles > 0 && b.wear >= self.cfg.erase_cycles {
             match self.cfg.badblock_behavior {
-                BadblockBehavior::Prog => return Err(Error::Corrupt),
+                BadblockBehavior::ProgError => return Err(Error::Corrupt),
                 BadblockBehavior::ProgNoop | BadblockBehavior::EraseNoop => return Ok(()),
                 _ => (),
             };
@@ -231,7 +231,7 @@ impl Storage for Emubd<'_> {
         if self.cfg.erase_cycles > 0 {
             if b.wear >= self.cfg.erase_cycles {
                 match self.cfg.badblock_behavior {
-                    BadblockBehavior::Erase => return Err(Error::Corrupt),
+                    BadblockBehavior::EraseError => return Err(Error::Corrupt),
                     BadblockBehavior::EraseNoop => return Ok(()),
                     _ => (),
                 };
