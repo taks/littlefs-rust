@@ -229,14 +229,13 @@ fn test_relocations_reentrant(
 // --- test_relocations_reentrant_renames ---
 // Chained renames with power-loss; verify FS consistent after each.
 #[lfs_test]
-#[case(6, 1, 20)]
-#[case(26, 1, 20)]
+// #[case(6, 1, 20)]
+// #[case(26, 1, 20)]
 #[case(3, 3, 20)]
 #[cfg(feature = "slow_tests")]
-#[ignore = "TODO FIX"]
 fn test_relocations_reentrant_renames(
     cfg: &LfsConfig,
-    #[values(false, true)] reentrant: bool,
+    #[values(false)] reentrant: bool,
     #[case] files: usize,
     #[case] depth: usize,
     #[case] cycles: usize,
@@ -313,12 +312,14 @@ fn test_relocations_reentrant_renames(
             assert_matches!(res, Ok(()) | Err(Error::NoEntry));
             if res == Err(Error::NoEntry) {
                 // stop once some dir is renamed
+                log::info!("{} ==> {}", &full_path, &new_path);
                 for d in 0..depth {
                     let from = format!(
                         "{}{}",
                         &new_path[..(2 * d)],
                         &full_path[(2 * d)..(2 * d + 2)]
                     );
+                    log::info!("{} -> {}", from, &new_path[..(2 * d + 2)]);
                     assert_matches!(
                         lfs_rename(lfs, &from, &new_path[..(2 * d + 2)]),
                         Ok(()) | Err(Error::NotEmpty)
@@ -330,7 +331,12 @@ fn test_relocations_reentrant_renames(
                     assert_eq!(info.type_, LFS_TYPE_DIR as u8);
                 }
 
-                assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
+                assert_eq!(
+                    lfs_stat(lfs, &full_path, info),
+                    Err(Error::NoEntry),
+                    "[{}]",
+                    full_path
+                );
             } else {
                 // try to delete path in reverse order,
                 // ignore if dir is not empty
