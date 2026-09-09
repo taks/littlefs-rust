@@ -9,8 +9,8 @@ use common::{
     default_config, init_context,
 };
 use littlefs_rust_core::{
-    Lfs, LfsFile, error::Error, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
-    lfs_format, lfs_fs_grow, lfs_mount, lfs_unmount,
+    Error, Lfs, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format,
+    lfs_fs_grow, lfs_mount, lfs_unmount,
 };
 
 const BLOCK_SIZE: u32 = 512;

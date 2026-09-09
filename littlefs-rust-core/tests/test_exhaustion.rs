@@ -147,34 +147,33 @@ fn test_exhaustion_normal(
 
 /// Upstream: [cases.test_exhaustion_superblocks]
 /// Same as normal but files in root (no "roadrunner/"), forcing superblock expansion.
-#[rstest]
+#[lfs_test]
 fn test_exhaustion_superblocks(
+    cfg: &LfsConfig,
+    #[values(10)] erase_cycles: u32,
+    #[values(256)] erase_count: u32,
+    #[values(5)] block_cycles: i32,
     #[values(
-        BadBlockBehavior::ProgError,
-        BadBlockBehavior::EraseError,
-        BadBlockBehavior::ReadError,
-        BadBlockBehavior::ProgNoop,
-        BadBlockBehavior::EraseNoop
+        BadblockBehavior::ProgError,
+        BadblockBehavior::EraseError,
+        BadblockBehavior::ReadError,
+        BadblockBehavior::ProgNoop,
+        BadblockBehavior::EraseNoop
     )]
-    behavior: BadBlockBehavior,
+    badblock_behavior: BadblockBehavior,
 ) {
-    let erase_cycles: u32 = 10;
-    let block_cycles: i32 = (erase_cycles / 2) as i32;
     let files: u32 = 10;
 
-    let mut env = init_exhaustion_env(erase_cycles, block_cycles, behavior);
-    init_wear_leveling_context(&mut env);
     let lfs = &mut Lfs::default();
 
     // No mkdir — files go directly in root
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
     // The superblocks variant uses "test{i}" paths (no parent dir),
     // but run_exhaustion expects a prefix. Use "" prefix and adjust paths.
-    let cycle = run_exhaustion_root(lfs, &env.config, files);
-    eprintln!("test_exhaustion_superblocks({behavior:?}): completed {cycle} cycles");
+    let cycle = run_exhaustion_root(lfs, cfg, files);
 
-    verify_after_exhaustion_root(lfs, &env.config, files);
+    verify_after_exhaustion_root(lfs, cfg, files);
 }
 
 /// Run exhaustion with files in root (no subdirectory prefix).

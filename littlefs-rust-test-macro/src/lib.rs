@@ -46,10 +46,13 @@ pub fn lfs_test(
         let cache_size = 64.max(read_size);
         let lookahead_size = 16;
 
-        let erase_count = block_count;
+        let erase_count = 1024 * 1024 / erase_size;
+        let block_size = erase_size;
         let erase_value = Some(0xFF);
         let erase_cycles = 0;
         let badblock_behavior = BadblockBehavior::ProgError;
+        let block_count = std::cmp::max(block_size/erase_size, 1);
+
     };
     let mut cfg_params = Vec::new();
     let assign2: Punctuated<syn::ExprLet, token::Semi> =
@@ -104,16 +107,13 @@ pub fn lfs_test(
 
             init_logger();
 
-            for (read_size, block_size) in [
+            for (read_size, erase_size) in [
                 (16, 512),
                 (1, 512),
                 (512, 512),
                 (1, 4096),
                 (4096, 32768)
             ] {
-
-                let erase_count = 1024 * 1024 / block_size;
-                let block_count = erase_count;  // / std::cmp::max(block_size/erase_size, 1);
 
                 #assign2;
                 #assign;

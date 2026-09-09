@@ -12,7 +12,7 @@ use emubd::Emubd;
 #[allow(unused_imports)]
 pub use emubd::{BadblockBehavior, EmubdConfig, PowerLossBehavior, lfs_emubd_setwear};
 
-use littlefs_rust_core::{LfsConfig, Storage, error::Error, lfs_type::OpenFlags};
+use littlefs_rust_core::{Error, LfsConfig, Storage, lfs_type::OpenFlags};
 use std::{panic::AssertUnwindSafe, ptr::NonNull};
 
 /// Initialize env_logger for tests that use logging. Idempotent.

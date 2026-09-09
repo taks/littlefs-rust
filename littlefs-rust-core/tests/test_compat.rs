@@ -9,9 +9,9 @@ mod common;
 use littlefs_rust_core::lfs_type::OpenFlags;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
-    LFS_DISK_VERSION, Lfs, LfsFsinfo, LfsMattr, LfsMdir, LfsSuperblock, error::Error,
-    lfs_dir_commit, lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mktag, lfs_mount,
-    lfs_superblock_tole32, lfs_unmount,
+    Error, LFS_DISK_VERSION, Lfs, LfsFsinfo, LfsMattr, LfsMdir, LfsSuperblock, lfs_dir_commit,
+    lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mktag, lfs_mount, lfs_superblock_tole32,
+    lfs_unmount,
 };
 use littlefs_rust_core::{
     LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,

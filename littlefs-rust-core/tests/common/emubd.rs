@@ -1,6 +1,6 @@
 use std::{fmt::Debug, ops::Deref, rc::Rc};
 
-use littlefs_rust_core::{LfsConfig, Storage, error::Error};
+use littlefs_rust_core::{Error, LfsConfig, Storage};
 
 struct EmubdBlock {
     wear: u32,

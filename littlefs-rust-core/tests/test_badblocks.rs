@@ -7,8 +7,8 @@ mod common;
 
 use common::{BadblockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY};
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
-    lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_unmount,
+    Error, Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
+    lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 
@@ -155,7 +155,7 @@ fn test_badblocks_region_corruption(
         BadblockBehavior::ProgNoop,
         BadblockBehavior::EraseNoop
     )]
-    behavior: BadblockBehavior,
+    badblock_behavior: BadblockBehavior,
 ) {
     let block_count: u32 = 256;
 
@@ -242,8 +242,6 @@ fn test_badblocks_superblocks(
     )]
     badblock_behavior: BadblockBehavior,
 ) {
-    use littlefs_rust_core::error::Error;
-
     lfs_emubd_setwear(cfg, 0, 0xffffffff);
     lfs_emubd_setwear(cfg, 1, 0xffffffff);
 

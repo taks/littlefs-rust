@@ -10,7 +10,7 @@ use common::{
     LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, default_config, erase_block_raw, init_context,
     read_block_raw, write_block_raw,
 };
-use littlefs_rust_core::error::Error;
+use littlefs_rust_core::Error;
 use littlefs_rust_core::lfs_type::lfs_type::*;
 use littlefs_rust_core::{
     Lfs, LfsConfig, LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMattr, LfsMdir, lfs_ctz_fromle32,

@@ -12,9 +12,9 @@ use common::{
 #[cfg(test)]
 use littlefs_rust_core::LfsConfig;
 use littlefs_rust_core::{
-    Lfs, LfsFile, LfsInfo, error::Error, lfs_file_close, lfs_file_open, lfs_file_read,
-    lfs_file_size, lfs_file_sync, lfs_file_truncate, lfs_file_write, lfs_format, lfs_fs_gc,
-    lfs_mkdir, lfs_mount, lfs_remove, lfs_stat, lfs_unmount,
+    Error, Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_size,
+    lfs_file_sync, lfs_file_truncate, lfs_file_write, lfs_format, lfs_fs_gc, lfs_mkdir, lfs_mount,
+    lfs_remove, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
@@ -388,8 +388,6 @@ fn test_alloc_exhaustion(#[values(false, true)] infer_bc: bool) {
     loop {
         let res = lfs_file_write(lfs, file, blah);
         if res.is_err() {
-            use littlefs_rust_core::error::Error;
-
             assert_err!(Error::NoSpace, res);
             break;
         }
@@ -498,7 +496,7 @@ fn test_alloc_exhaustion_wraparound(#[values(false, true)] infer_bc: bool) {
     loop {
         let res = lfs_file_write(lfs, file, blah);
         if let Err(err) = res {
-            assert_eq!(err, littlefs_rust_core::error::Error::NoSpace);
+            assert_eq!(err, Error::NoSpace);
             break;
         }
         assert_eq!(res, Ok(blah.len() as u32));
@@ -528,8 +526,6 @@ fn test_alloc_exhaustion_wraparound(#[values(false, true)] infer_bc: bool) {
 /// Find max file size, verify mkdir fits with count writes, fails with count+1.
 #[rstest]
 fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
-    use littlefs_rust_core::error::Error;
-
     init_logger();
     let mut env = default_config(128);
     init_context(&mut env);

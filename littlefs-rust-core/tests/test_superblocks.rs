@@ -9,12 +9,11 @@ use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, clone_config_with_block_count,
     default_config, init_context, read_block_raw,
 };
-use littlefs_rust_core::error::Error;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsFile, LfsFsinfo, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
-    lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_mount, lfs_remove, lfs_stat,
-    lfs_unmount,
+    Error, Lfs, LfsConfig, LfsFile, LfsFsinfo, LfsInfo, lfs_file_close, lfs_file_open,
+    lfs_file_read, lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_mount, lfs_remove,
+    lfs_stat, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;

@@ -15,10 +15,9 @@ use common::{
     dir_entry_names, dir_pair, lfs_emubd_setwear,
 };
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo,
-    error::Error,
-    lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close, lfs_file_open, lfs_file_read,
-    lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat,
+    Error, Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
+    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
+    lfs_remove, lfs_rename, lfs_stat,
     lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG},
     lfs_unmount,
 };
