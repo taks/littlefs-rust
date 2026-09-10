@@ -62,7 +62,7 @@ pub fn lfs_test(
             .into_iter()
             .filter(|p| match &*p.pat {
                 syn::Pat::Ident(i) => {
-                    if args_idents.iter().any(|a| *a == i.ident) {
+                    if args_idents.contains(&i.ident) {
                         cfg_params.push(i.ident.clone());
                         false
                     } else {
@@ -80,7 +80,7 @@ pub fn lfs_test(
         .filter_map(|input| match input {
             FnArg::Typed(mut pat_type) => {
                 if let Pat::Ident(ref pat_ident) = *pat_type.pat
-                    && cfg_params.iter().any(|i| *i == pat_ident.ident)
+                    && cfg_params.contains(&pat_ident.ident)
                 {
                     None
                 } else {

@@ -255,39 +255,6 @@ pub struct ClonedConfig {
     pub _lookahead_buf: Vec<u8>,
 }
 
-/// Clone a TestEnv's config with a different block_count, sharing the same
-/// RAM context pointer. Caller must ensure the original TestEnv outlives this.
-pub fn clone_config_with_block_count(env: &TestEnv, block_count: u32) -> ClonedConfig {
-    let bs = env.config.block_size as usize;
-    let read_buf = vec![0u8; bs];
-    let prog_buf = vec![0u8; bs];
-    let lookahead_buf = vec![0u8; bs];
-    let config = LfsConfig {
-        context: env.config.context,
-        read_size: env.config.read_size,
-        prog_size: env.config.prog_size,
-        block_size: env.config.block_size,
-        block_count,
-        block_cycles: env.config.block_cycles,
-        cache_size: env.config.cache_size,
-        compact_thresh: env.config.compact_thresh,
-        read_buffer: Some(NonNull::from_ref(&read_buf)),
-        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
-        name_max: env.config.name_max,
-        file_max: env.config.file_max,
-        attr_max: env.config.attr_max,
-        metadata_max: env.config.metadata_max,
-        inline_max: env.config.inline_max,
-    };
-    ClonedConfig {
-        config,
-        _read_buf: read_buf,
-        _prog_buf: prog_buf,
-        _lookahead_buf: lookahead_buf,
-    }
-}
-
 /// Run `f` with a process-level timeout. If the closure does not complete within
 /// `secs` seconds, the process is aborted. Use for tests that may hang (e.g.
 /// infinite loops in write paths).
