@@ -435,35 +435,36 @@ fn test_superblocks_fewer_blocks(cfg: &LfsConfig) {
         // incorrect block_count
         cfg.block_count = erase_count;
         assert_eq!(lfs_mount(lfs, &cfg), Err(Error::Invalid));
-        // TODO:
-        // let cfg0 = clone_config_with_block_count(&env, 0);
-        // assert_ok!(lfs_mount(lfs, &cfg0.config));
-        // let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-        // assert_ok!(lfs_fs_stat(lfs, fsinfo));
-        // assert_eq!(fsinfo.block_count, block_count);
-        // assert_ok!(lfs_unmount(lfs));
 
-        // let test_path = "test";
-        // assert_ok!(lfs_mount(lfs, &cfg0.config));
-        // let file = &mut LfsFile::default();
-        // assert_ok!(lfs_file_open(
-        //     lfs,
-        //     file,
-        //     test_path,
-        //     LFS_O_CREAT | LFS_O_EXCL | LFS_O_WRONLY,
-        // ));
-        // assert_eq!(lfs_file_write(lfs, file, b"hello!"), Ok(6));
-        // assert_ok!(lfs_file_close(lfs, file));
-        // assert_ok!(lfs_unmount(lfs));
+        // unknown block_count
+        cfg.block_count = 0;
+        assert_ok!(lfs_mount(lfs, &cfg));
+        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_eq!(fsinfo.block_count, block_count);
+        assert_ok!(lfs_unmount(lfs));
 
-        // assert_ok!(lfs_mount(lfs, &cfg0.config));
-        // let file = &mut LfsFile::default();
-        // assert_ok!(lfs_file_open(lfs, file, test_path, LFS_O_RDONLY));
-        // let mut buf = [0u8; 16];
-        // assert_eq!(lfs_file_read(lfs, file, &mut buf,), Ok(6));
-        // assert_eq!(&buf[..6], b"hello!");
-        // assert_ok!(lfs_file_close(lfs, file));
-        // assert_ok!(lfs_unmount(lfs));
+        // do some work
+
+        assert_ok!(lfs_mount(lfs, &cfg));
+        let file = &mut LfsFile::default();
+        assert_ok!(lfs_file_open(
+            lfs,
+            file,
+            "test",
+            LFS_O_CREAT | LFS_O_EXCL | LFS_O_WRONLY,
+        ));
+        assert_eq!(lfs_file_write(lfs, file, b"hello!"), Ok(6));
+        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_unmount(lfs));
+
+        assert_ok!(lfs_mount(lfs, &cfg));
+        let file = &mut LfsFile::default();
+        assert_ok!(lfs_file_open(lfs, file, "test", LFS_O_RDONLY));
+        let mut buf = [0u8; 16];
+        assert_eq!(lfs_file_read(lfs, file, &mut buf,), Ok(6));
+        assert_eq!(&buf[..6], b"hello!");
+        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_unmount(lfs));
     }
 }
 
