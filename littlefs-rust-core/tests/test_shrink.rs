@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, default_config, init_context};
+use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY};
 use littlefs_rust_core::{
     Error, Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
     lfs_format, lfs_fs_grow, lfs_mount, lfs_unmount,

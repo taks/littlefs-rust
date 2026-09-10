@@ -7,7 +7,7 @@ mod common;
 
 use common::{
     BadblockBehavior, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY,
-    clone_config_with_block_count, config_with_geometry, default_config, init_context, init_logger,
+    config_with_geometry, init_context, init_logger,
 };
 #[cfg(test)]
 use littlefs_rust_core::LfsConfig;
@@ -17,7 +17,6 @@ use littlefs_rust_core::{
     lfs_remove, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
-use rstest::rstest;
 
 const FILES: u32 = 3;
 const NAMES: &[&[u8]] = &[b"bacon", b"eggs", b"pancakes"];
@@ -278,28 +277,31 @@ fn test_alloc_parallel_reuse(
 /// defines.CYCLES = [1, 10], INFER_BC = [false, true]
 ///
 /// CYCLES iterations: create breakfast, write each file serially, read back, remove all.
-#[rstest]
-fn test_alloc_serial_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)] infer_bc: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
-    let block_size = env.config.block_size;
-    let block_count = env.config.block_count;
+#[lfs_test]
+fn test_alloc_serial_reuse(
+    cfg: &LfsConfig,
+    #[values(1, 10)] cycles: u32,
+    #[values(false, true)] infer_bc: bool,
+) {
+    let block_size = cfg.block_size;
+    let block_count = cfg.block_count;
     let size: usize = ((block_size - 8) as usize * (block_count - 6) as usize) / FILES as usize;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
-    let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
+    let mount_cfg = LfsConfig {
+        block_count: if infer_bc { 0 } else { block_count },
+        ..*cfg
+    };
 
     for _c in 0..cycles {
-        assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+        assert_ok!(lfs_mount(lfs, &mount_cfg));
         assert_ok!(lfs_mkdir(lfs, "breakfast"));
         assert_ok!(lfs_unmount(lfs));
 
         for n in 0..FILES {
-            assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+            assert_ok!(lfs_mount(lfs, &mount_cfg));
             let path = &format!(
                 "breakfast/{}",
                 core::str::from_utf8(NAMES[n as usize]).unwrap()
@@ -323,7 +325,7 @@ fn test_alloc_serial_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)] 
             assert_ok!(lfs_unmount(lfs));
         }
 
-        assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+        assert_ok!(lfs_mount(lfs, &mount_cfg));
         for n in 0..FILES {
             let path = &format!(
                 "breakfast/{}",
@@ -343,7 +345,7 @@ fn test_alloc_serial_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)] 
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+        assert_ok!(lfs_mount(lfs, &mount_cfg));
         for n in 0..FILES {
             let path = &format!(
                 "breakfast/{}",
@@ -362,18 +364,16 @@ fn test_alloc_serial_reuse(#[values(1, 10)] cycles: u32, #[values(false, true)] 
 ///
 /// Create file "exhaustion", write "exhaustion" then "blahblahblahblah" until NOSPC, GC, close,
 /// remount, read back and verify.
-#[rstest]
-fn test_alloc_exhaustion(#[values(false, true)] infer_bc: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_alloc_exhaustion(cfg: &LfsConfig, #[values(false, true)] infer_bc: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
-    let mount_cfg =
-        clone_config_with_block_count(&env, if infer_bc { 0 } else { env.config.block_count });
-    assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+    let mount_cfg = LfsConfig {
+        block_count: if infer_bc { 0 } else { cfg.block_count },
+        ..*cfg
+    };
+    assert_ok!(lfs_mount(lfs, &mount_cfg));
 
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -401,7 +401,7 @@ fn test_alloc_exhaustion(#[values(false, true)] infer_bc: bool) {
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+    assert_ok!(lfs_mount(lfs, &mount_cfg));
     assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_RDONLY));
     let fsize = lfs_file_size(lfs, file);
     assert!(fsize >= exhaustion.len() as u32);
@@ -526,18 +526,17 @@ fn test_alloc_exhaustion_wraparound(cfg: &LfsConfig, #[values(false, true)] infe
 /// defines.INFER_BC = [false, true]
 ///
 /// Find max file size, verify mkdir fits with count writes, fails with count+1.
-#[rstest]
-fn test_alloc_dir_exhaustion(#[values(false, true)] infer_bc: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
-    let block_count = env.config.block_count;
-    let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
+#[lfs_test]
+fn test_alloc_dir_exhaustion(cfg: &LfsConfig, #[values(false, true)] infer_bc: bool) {
+    let block_count = cfg.block_count;
+    let mount_cfg = LfsConfig {
+        block_count: if infer_bc { 0 } else { block_count },
+        ..*cfg
+    };
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, &mount_cfg));
 
     assert_ok!(lfs_mkdir(lfs, "exhaustiondir"));
 
