@@ -613,8 +613,11 @@ fn test_superblocks_shrink(
     assert_ok!(lfs_unmount(lfs));
 
     // mounting with the previous (larger) size should fail
-    let cfg_old = clone_config_with_block_count(&env, BLOCK_COUNT);
-    assert_err!(Error::Invalid, lfs_mount(lfs, &cfg_old.config));
+    let cfg_old = LfsConfig {
+        block_count: BLOCK_COUNT,
+        ..env.config
+    };
+    assert_err!(Error::Invalid, lfs_mount(lfs, &cfg_old));
 
     env.config.block_count = if known_block_count { block_count_2 } else { 0 };
 
