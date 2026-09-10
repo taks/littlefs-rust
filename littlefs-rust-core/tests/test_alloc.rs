@@ -458,8 +458,11 @@ fn test_alloc_exhaustion_wraparound(cfg: &LfsConfig, #[values(false, true)] infe
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
-    let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
-    assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+    let mut mount_cfg = cfg.clone();
+    if infer_bc {
+        mount_cfg.block_count = 0;
+    }
+    assert_ok!(lfs_mount(lfs, &mount_cfg));
 
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -502,7 +505,7 @@ fn test_alloc_exhaustion_wraparound(cfg: &LfsConfig, #[values(false, true)] infe
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &mount_cfg.config));
+    assert_ok!(lfs_mount(lfs, &mount_cfg));
     assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_RDONLY));
     let fsize = lfs_file_size(lfs, file);
     assert!(fsize >= exhaustion.len() as u32);

@@ -7,8 +7,7 @@
 mod common;
 
 use common::{
-    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, default_config, erase_block_raw, init_context,
-    read_block_raw, write_block_raw,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, erase_block_raw, read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::Error;
 use littlefs_rust_core::lfs_type::lfs_type::*;
@@ -21,9 +20,6 @@ use littlefs_rust_core::{
 use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
 
-const BLOCK_SIZE: u32 = 512;
-const BLOCK_COUNT: u32 = 256;
-
 /// Upstream: [cases.test_evil_invalid_tail_pointer]
 ///
 /// defines.TAIL_TYPE = [LFS_TYPE_HARDTAIL, LFS_TYPE_SOFTTAIL]
@@ -31,20 +27,12 @@ const BLOCK_COUNT: u32 = 256;
 ///
 /// Format, then commit a TAIL_TYPE tag with invalid pair to root metadata.
 /// Expect lfs_mount to return Error::Corrupt.
-#[test]
-fn test_evil_invalid_tail_pointer() {
-    for &tail_type in &[LFS_TYPE_HARDTAIL, LFS_TYPE_SOFTTAIL] {
-        for &invalset in &[0x3u32, 0x1, 0x2] {
-            unsafe { evil_invalid_tail_pointer(tail_type, invalset) };
-        }
-    }
-}
-
-unsafe fn evil_invalid_tail_pointer(tail_type: u16, invalset: u32) {
-    let mut env = default_config(BLOCK_COUNT);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_evil_invalid_tail_pointer(
+    cfg: &LfsConfig,
+    #[values(LFS_TYPE_HARDTAIL, LFS_TYPE_SOFTTAIL)] tail_type: u16,
+    #[values(0x03, 0x01, 0x02)] invalset: u32,
+) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
@@ -150,18 +138,8 @@ fn test_evil_invalid_dir_pointer(cfg: &LfsConfig, #[values(0x3u32, 0x1, 0x2)] in
 /// Create "file_here" (empty). Corrupt its CTZSTRUCT to point at 0xcccccccc
 /// with faked size. Mount + stat succeed. file_read fails with Error::Corrupt.
 /// If SIZE > 2*BLOCK_SIZE, mkdir also fails (GC triggers corrupt read).
-#[test]
-fn test_evil_invalid_file_pointer() {
-    for &size in &[10u32, 1000, 100000] {
-        evil_invalid_file_pointer(size);
-    }
-}
-
-fn evil_invalid_file_pointer(size: u32) {
-    let mut env = default_config(BLOCK_COUNT);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_evil_invalid_file_pointer(cfg: &LfsConfig, #[values(10, 1000, 100000)] size: u32) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -224,7 +202,7 @@ fn evil_invalid_file_pointer(size: u32) {
     );
     assert_ok!(lfs_file_close(lfs, file));
 
-    if size > 2 * BLOCK_SIZE {
+    if size > 2 * cfg.block_size {
         let dir_name = "dir_here";
         assert_err!(Error::Corrupt, lfs_mkdir(lfs, dir_name));
     }
@@ -239,104 +217,97 @@ fn evil_invalid_file_pointer(size: u32) {
 /// Create file of SIZE bytes. Corrupt the CTZ skip-list head block by writing
 /// invalid block pointers into it. Mount + stat succeed. File read fails
 /// with Error::Corrupt. If SIZE > 2*BLOCK_SIZE, mkdir also fails.
-#[test]
-fn test_evil_invalid_ctz_pointer() {
-    for &size in &[2 * BLOCK_SIZE, 3 * BLOCK_SIZE, 4 * BLOCK_SIZE] {
-        unsafe { evil_invalid_ctz_pointer(size) };
+#[lfs_test]
+fn test_evil_invalid_ctz_pointer(cfg: &LfsConfig) {
+    let block_size = cfg.block_size;
+    for &size in &[2 * block_size, 3 * block_size, 4 * block_size] {
+        let lfs = &mut Lfs::default();
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
+
+        let file_name = "file_here";
+        let file = &mut LfsFile::default();
+        assert_ok!(lfs_file_open(
+            lfs,
+            file,
+            file_name,
+            LFS_O_WRONLY | LFS_O_CREAT,
+        ));
+        for _ in 0..size {
+            let c: u8 = b'c';
+            let n = lfs_file_write(lfs, file, &[c]);
+            assert_eq!(n, Ok(1));
+        }
+        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_unmount(lfs));
+
+        // Read the CTZ struct and corrupt the head block
+        assert_ok!(lfs_init(lfs, cfg));
+        let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
+        let pair: [u32; 2] = [0, 1];
+        assert_ok!(lfs_dir_fetch(lfs, mdir, pair));
+
+        // Verify id 1 == our file
+        let mut buffer = vec![0u8; 4 * cfg.block_size as usize];
+        let tag = lfs_dir_get(
+            lfs,
+            mdir,
+            lfs_mktag(0x700, 0x3ff, 0),
+            lfs_mktag(LFS_TYPE_NAME, 1, 9),
+            buffer.as_mut_bytes(),
+        );
+        assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE3_REG, 1, 9) as u32));
+        assert_eq!(&buffer[..9], b"file_here");
+
+        // Get CTZ struct
+        let mut ctz = LfsCtz { head: 0, size: 0 };
+        let tag = lfs_dir_get(
+            lfs,
+            mdir,
+            lfs_mktag(0x700, 0x3ff, 0),
+            lfs_mktag(LFS_TYPE_STRUCT, 1, core::mem::size_of::<LfsCtz>()),
+            ctz.as_mut_bytes(),
+        );
+        assert_eq!(
+            tag,
+            Ok(lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>()) as u32)
+        );
+        lfs_ctz_fromle32(&mut ctz);
+
+        // Rewrite ctz.head block with bad pointers at offsets 0 and 4
+        let mut bbuffer = vec![0u8; cfg.block_size as usize];
+        assert_ok!(read_block_raw(cfg, ctz.head, 0, &mut bbuffer));
+        let bad = 0xcccccccc_u32.to_le();
+        bbuffer[0..4].copy_from_slice(&bad.to_ne_bytes());
+        bbuffer[4..8].copy_from_slice(&bad.to_ne_bytes());
+        assert_ok!(erase_block_raw(cfg, ctz.head));
+        assert_ok!(write_block_raw(cfg, ctz.head, 0, &bbuffer));
+        assert_ok!(lfs_deinit(lfs));
+
+        // Verify corruption behavior
+        assert_ok!(lfs_mount(lfs, cfg));
+
+        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
+        assert_ok!(lfs_stat(lfs, file_name, info));
+        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
+        assert_eq!(&info.name[..nul], b"file_here");
+        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_eq!(info.size, size);
+
+        assert_ok!(lfs_file_open(lfs, file, file_name, LFS_O_RDONLY));
+        assert_err!(
+            Error::Corrupt,
+            lfs_file_read(lfs, file, &mut buffer[..size as usize]),
+        );
+        assert_ok!(lfs_file_close(lfs, file));
+
+        if size > 2 * cfg.block_size {
+            let dir_name = "dir_here";
+            assert_err!(Error::Corrupt, lfs_mkdir(lfs, dir_name));
+        }
+
+        assert_ok!(lfs_unmount(lfs));
     }
-}
-
-unsafe fn evil_invalid_ctz_pointer(size: u32) {
-    let mut env = default_config(BLOCK_COUNT);
-    init_context(&mut env);
-    let cfg = &env.config;
-
-    let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
-
-    let file_name = "file_here";
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        file_name,
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    for _ in 0..size {
-        let c: u8 = b'c';
-        let n = lfs_file_write(lfs, file, &[c]);
-        assert_eq!(n, Ok(1));
-    }
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_unmount(lfs));
-
-    // Read the CTZ struct and corrupt the head block
-    assert_ok!(lfs_init(lfs, cfg));
-    let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
-    let pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(lfs, mdir, pair));
-
-    // Verify id 1 == our file
-    let mut buffer = vec![0u8; 4 * BLOCK_SIZE as usize];
-    let tag = lfs_dir_get(
-        lfs,
-        mdir,
-        lfs_mktag(0x700, 0x3ff, 0),
-        lfs_mktag(LFS_TYPE_NAME, 1, 9),
-        buffer.as_mut_bytes(),
-    );
-    assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE3_REG, 1, 9) as u32));
-    assert_eq!(&buffer[..9], b"file_here");
-
-    // Get CTZ struct
-    let mut ctz = LfsCtz { head: 0, size: 0 };
-    let tag = lfs_dir_get(
-        lfs,
-        mdir,
-        lfs_mktag(0x700, 0x3ff, 0),
-        lfs_mktag(LFS_TYPE_STRUCT, 1, core::mem::size_of::<LfsCtz>()),
-        ctz.as_mut_bytes(),
-    );
-    assert_eq!(
-        tag,
-        Ok(lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>()) as u32)
-    );
-    lfs_ctz_fromle32(&mut ctz);
-
-    // Rewrite ctz.head block with bad pointers at offsets 0 and 4
-    let mut bbuffer = vec![0u8; BLOCK_SIZE as usize];
-    assert_ok!(read_block_raw(cfg, ctz.head, 0, &mut bbuffer));
-    let bad = 0xcccccccc_u32.to_le();
-    bbuffer[0..4].copy_from_slice(&bad.to_ne_bytes());
-    bbuffer[4..8].copy_from_slice(&bad.to_ne_bytes());
-    assert_ok!(erase_block_raw(cfg, ctz.head));
-    assert_ok!(write_block_raw(cfg, ctz.head, 0, &bbuffer));
-    assert_ok!(lfs_deinit(lfs));
-
-    // Verify corruption behavior
-    assert_ok!(lfs_mount(lfs, cfg));
-
-    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok!(lfs_stat(lfs, file_name, info));
-    let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-    assert_eq!(&info.name[..nul], b"file_here");
-    assert_eq!(info.type_, LFS_TYPE_REG as u8);
-    assert_eq!(info.size, size);
-
-    assert_ok!(lfs_file_open(lfs, file, file_name, LFS_O_RDONLY));
-    assert_err!(
-        Error::Corrupt,
-        lfs_file_read(lfs, file, &mut buffer[..size as usize]),
-    );
-    assert_ok!(lfs_file_close(lfs, file));
-
-    if size > 2 * BLOCK_SIZE {
-        let dir_name = "dir_here";
-        assert_err!(Error::Corrupt, lfs_mkdir(lfs, dir_name));
-    }
-
-    assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_evil_invalid_gstate_pointer]
@@ -345,18 +316,8 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
 ///
 /// Corrupt gstate via lfs_fs_prepmove with invalid move pointer.
 /// Mount may succeed but first lfs_mkdir fails with Error::Corrupt.
-#[test]
-fn test_evil_invalid_gstate_pointer() {
-    for &invalset in &[0x3u32, 0x1, 0x2] {
-        unsafe { evil_invalid_gstate_pointer(invalset) };
-    }
-}
-
-unsafe fn evil_invalid_gstate_pointer(invalset: u32) {
-    let mut env = default_config(BLOCK_COUNT);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_evil_invalid_gstate_pointer(cfg: &LfsConfig, #[values(0x3, 0x1, 0x2)] invalset: u32) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
@@ -383,16 +344,8 @@ unsafe fn evil_invalid_gstate_pointer(invalset: u32) {
 ///
 /// Change root tail to point at (0, 1) (itself), forming a 1-length
 /// metadata loop. Expect mount to fail with Error::Corrupt.
-#[test]
-fn test_evil_mdir_loop() {
-    unsafe { evil_mdir_loop() };
-}
-
-unsafe fn evil_mdir_loop() {
-    let mut env = default_config(BLOCK_COUNT);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_evil_mdir_loop(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
@@ -416,16 +369,8 @@ unsafe fn evil_mdir_loop() {
 ///
 /// Create "child" dir. Corrupt child's tail to point at root (0, 1),
 /// forming a 2-length loop. Expect mount to fail with Error::Corrupt.
-#[test]
-fn test_evil_mdir_loop2() {
-    unsafe { evil_mdir_loop2() };
-}
-
-unsafe fn evil_mdir_loop2() {
-    let mut env = default_config(BLOCK_COUNT);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_evil_mdir_loop2(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -471,16 +416,8 @@ unsafe fn evil_mdir_loop2() {
 /// Create "child" dir. Corrupt child's tail to point at itself (child's
 /// own block pair), forming a 1-length child loop. Expect mount to fail
 /// with Error::Corrupt.
-#[test]
-fn test_evil_mdir_loop_child() {
-    unsafe { evil_mdir_loop_child() };
-}
-
-unsafe fn evil_mdir_loop_child() {
-    let mut env = default_config(BLOCK_COUNT);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_evil_mdir_loop_child(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));

@@ -86,7 +86,7 @@ fn test_files_large(
     assert_ok!(lfs_unmount(lfs));
 
     // read
-    assert_ok!(lfs_mount(lfs, &cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
     assert_eq!(lfs_file_size(lfs, file), size);
     verify_prng_file(lfs, file, size, chunk_size, 1);

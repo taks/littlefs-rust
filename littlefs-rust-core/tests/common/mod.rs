@@ -28,7 +28,7 @@ pub fn run_powerloss_none(
     mut test: impl FnMut(&mut LfsConfig),
 ) {
     let mut context =
-        Emubd::new(unsafe { core::mem::transmute::<&EmubdConfig<'_>, &EmubdConfig<'_>>(&bdcfg) });
+        Emubd::new(unsafe { core::mem::transmute::<&EmubdConfig<'_>, &EmubdConfig<'_>>(bdcfg) });
     cfg.context = Some(NonNull::from_mut(&mut context));
 
     test(cfg);
