@@ -33,6 +33,8 @@ const FILEMULT: usize = 1;
 fn test_badblocks_single(
     cfg: &LfsConfig,
     #[values(Some(0x00), Some(0xff), None)] erase_value: Option<u8>,
+    #[values(256)] erase_count: u32,
+    #[values(0xffffffff)] erase_cycles: u32,
     #[values(
         BadblockBehavior::ProgError,
         BadblockBehavior::EraseError,
@@ -193,6 +195,8 @@ fn test_badblocks_region_corruption(
 fn test_badblocks_alternating_corruption(
     cfg: &LfsConfig,
     #[values(Some(0x00), Some(0xff), None)] erase_value: Option<u8>,
+    #[values(256)] erase_count: u32,
+    #[values(0xffffffff)] erase_cycles: u32,
     #[values(
         BadblockBehavior::ProgError,
         BadblockBehavior::EraseError,
