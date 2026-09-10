@@ -449,18 +449,14 @@ fn test_alloc_split_dir(cfg: &LfsConfig) {
 /// defines.SIZE = (((BLOCK_SIZE-8)*(BLOCK_COUNT-4))/3), INFER_BC = [false, true]
 ///
 /// Fill padding file, remove, create exhaustion file, write until NOSPC, GC, remount, verify.
-#[rstest]
-fn test_alloc_exhaustion_wraparound(#[values(false, true)] infer_bc: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
-    let block_size = env.config.block_size;
-    let block_count = env.config.block_count;
+#[lfs_test]
+fn test_alloc_exhaustion_wraparound(cfg: &LfsConfig, #[values(false, true)] infer_bc: bool) {
+    let block_size = cfg.block_size;
+    let block_count = cfg.block_count;
     let size: usize = ((block_size - 8) as usize * (block_count - 4) as usize) / 3;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
 
     let mount_cfg = clone_config_with_block_count(&env, if infer_bc { 0 } else { block_count });
     assert_ok!(lfs_mount(lfs, &mount_cfg.config));

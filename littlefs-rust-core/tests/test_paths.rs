@@ -5,7 +5,6 @@
 
 mod common;
 
-use common::{default_config, init_context, init_logger};
 #[allow(unused_imports)]
 use littlefs_rust_core::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG};
 use littlefs_rust_core::{
@@ -14,7 +13,6 @@ use littlefs_rust_core::{
 };
 use littlefs_rust_core::{LfsConfig, LfsFile, lfs_file_close, lfs_file_open};
 use littlefs_rust_test_macro::lfs_test;
-use rstest::rstest;
 
 use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY};
 
@@ -372,16 +370,13 @@ fn test_paths_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_dots(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_dots(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
     let create_paths = &[
@@ -466,16 +461,13 @@ fn test_paths_dots(#[case] dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_trailing_dots(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_trailing_dots(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
     if dir_mode {
@@ -567,16 +559,13 @@ fn test_paths_trailing_dots(#[case] dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_dotdots(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "no"));
     assert_ok!(lfs_mkdir(lfs, "no/no"));
@@ -664,16 +653,13 @@ fn test_paths_dotdots(#[case] dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_trailing_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
 
@@ -792,16 +778,13 @@ fn test_paths_trailing_dotdots(#[case] dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_dot_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "no"));
     assert_ok!(lfs_mkdir(lfs, "no/no"));
@@ -929,16 +912,13 @@ fn test_paths_dot_dotdots(#[case] dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_dotdotdots(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_dotdotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
     assert_ok!(lfs_mkdir(lfs, "coffee/..."));
@@ -975,16 +955,13 @@ fn test_paths_dotdotdots(#[case] dir_mode: bool) {
 /// Upstream: [cases.test_paths_noent_trailing_slashes]
 /// defines.DIR = [false, true]
 /// Paths with trailing slashes on non-existent entries. C expects exact Error::NoEntry for stat/dir_open.
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_noent_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
     for name in PATHS {
@@ -1188,16 +1165,13 @@ fn test_paths_noent_trailing_slashes(#[case] dir_mode: bool) {
 /// Upstream: [cases.test_paths_noent_trailing_dots]
 /// defines.DIR = [false, true]
 /// Paths with trailing dots on non-existent entries. Expect Error::NoEntry.
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_noent_trailing_dots(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
     for name in PATHS {
@@ -1286,16 +1260,13 @@ fn test_paths_noent_trailing_dots(#[case] dir_mode: bool) {
 /// Paths with trailing .. components. C: INVAL above root, ISDIR for file_open on coffee/_rip/..,
 /// dir_open success for coffee/_rip/.., rename (bad source/dest, valid coffee/thai_/.. → espresso/mocha),
 /// remove (NOTEMPTY, INVAL).
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_noent_trailing_dotdots(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_noent_trailing_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
     for name in PATHS {
@@ -1371,16 +1342,13 @@ fn test_paths_noent_trailing_dotdots(#[case] dir_mode: bool) {
 /// Upstream: [cases.test_paths_utf8_ipa]
 /// defines.DIR = [false, true]
 /// UTF-8 names with IPA symbols. C adds: WRONLY|CREAT => ISDIR or success; WRONLY|CREAT|EXCL => EXIST.
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_utf8_ipa(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let parent = "ˈkɔ.fi";
     let children = [
@@ -1451,16 +1419,13 @@ fn test_paths_utf8_ipa(#[case] dir_mode: bool) {
 /// Upstream: [cases.test_paths_oopsallspaces]
 /// C layout: root " ", children " / ", " /  ", " /   ", " /    ", " /     ", " /      " (6 children).
 /// Stat all, file_open/dir_open matrix, rename to "  /      " etc., remove.
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_oopsallspaces(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_oopsallspaces(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let root = " ";
     let children = [" ", "  ", "   ", "    ", "     ", "      "];
@@ -1543,16 +1508,13 @@ fn test_paths_oopsallspaces(#[case] dir_mode: bool) {
 
 /// Upstream: [cases.test_paths_oopsalldels]
 /// C layout: root \x7f (1 byte), children \x7f/\x7f, \x7f/\x7f\x7f, … (6 children with 1–6 DEL bytes).
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_oopsalldels(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_oopsalldels(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let root = &[0x7f];
     assert_ok!(lfs_mkdir(lfs, unsafe { str::from_utf8_unchecked(root) }));
@@ -1653,16 +1615,13 @@ fn test_paths_oopsalldels(#[case] dir_mode: bool) {
 
 /// Upstream: [cases.test_paths_oopsallffs]
 /// Same as oopsalldels but with 0xff bytes. C layout: root 0xff, 6 children 0xff/0xff, 0xff/0xff0xff, etc.
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_oopsallffs(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_oopsallffs(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     #[expect(invalid_from_utf8_unchecked)]
     let root = unsafe { str::from_utf8_unchecked(&[0xff]) };
@@ -1759,60 +1718,48 @@ fn test_paths_oopsallffs(#[case] dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_leading_dots(#[case] _dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_leading_dots(cfg: &LfsConfig, #[case] _dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err!(Error::Invalid, lfs_stat(lfs, "..", info));
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_root_dotdots(#[case] _dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_root_dotdots(cfg: &LfsConfig, #[case] _dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err!(Error::Invalid, lfs_stat(lfs, "/..", info));
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[test]
-fn test_paths_noent_parent() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_paths_noent_parent(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err!(Error::NoEntry, lfs_stat(lfs, "nonexistent/child", info));
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[test]
-fn test_paths_notdir_parent() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_paths_notdir_parent(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -1827,16 +1774,13 @@ fn test_paths_notdir_parent() {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_empty(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_empty(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_err!(Error::Invalid, lfs_stat(lfs, "", info));
@@ -1856,16 +1800,13 @@ fn test_paths_empty(#[case] dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_root_aliases(#[case] _dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_root_aliases(cfg: &LfsConfig, #[case] _dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let aliases = &["/", ".", "./", "/.", "//"];
     for alias in aliases {
@@ -1878,14 +1819,11 @@ fn test_paths_root_aliases(#[case] _dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[test]
-fn test_paths_magic_noent() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_paths_magic_noent(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "a"));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -1893,16 +1831,13 @@ fn test_paths_magic_noent() {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[rstest]
+#[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_magic_conflict(#[case] dir_mode: bool) {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+fn test_paths_magic_conflict(cfg: &LfsConfig, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     if dir_mode {
         assert_ok!(lfs_mkdir(lfs, "littlefs"));
@@ -1928,27 +1863,21 @@ fn test_paths_magic_conflict(#[case] dir_mode: bool) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[test]
-fn test_paths_nametoolong() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_paths_nametoolong(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     let long_name = "a".repeat(256);
     assert_err!(Error::NameTooLong, lfs_mkdir(lfs, &long_name));
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[test]
-fn test_paths_namejustlongenough() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_paths_namejustlongenough(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     let max_name = "a".repeat(255);
     assert_ok!(lfs_mkdir(lfs, &max_name));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -1957,14 +1886,11 @@ fn test_paths_namejustlongenough() {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[test]
-fn test_paths_utf8() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_paths_utf8(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     let name = "café_日本_한글";
     assert_ok!(lfs_mkdir(lfs, name));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -1973,14 +1899,11 @@ fn test_paths_utf8() {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[test]
-fn test_paths_spaces() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_paths_spaces(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     let name = "foo bar";
     assert_ok!(lfs_mkdir(lfs, name));
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
@@ -1989,14 +1912,11 @@ fn test_paths_spaces() {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[test]
-fn test_paths_nonprintable() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_paths_nonprintable(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     let mut name: Vec<u8> = vec![b'a'; 10];
     name[5] = 0x01;
     let name = unsafe { str::from_utf8_unchecked(&name) };
@@ -2006,14 +1926,11 @@ fn test_paths_nonprintable() {
     assert_ok!(lfs_unmount(lfs));
 }
 
-#[test]
-fn test_paths_nonutf8() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
+#[lfs_test]
+fn test_paths_nonutf8(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
     #[expect(invalid_from_utf8_unchecked)]
     let name = unsafe { str::from_utf8_unchecked(b"foo\xff\xfe\xfdbar") };
     assert_ok!(lfs_mkdir(lfs, name));
