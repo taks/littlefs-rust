@@ -19,10 +19,7 @@ use littlefs_rust_core::{
     lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_remove,
     lfs_rename, lfs_stat, lfs_unmount,
 };
-use littlefs_rust_core::{
-    error::Error,
-    lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG},
-};
+use littlefs_rust_core::{error::Error, lfs_type::LfsType};
 
 // --- test_move_nop ---
 // Rename to self is legal
@@ -52,7 +49,7 @@ fn test_move_nop() {
     assert_ok!(lfs_stat(lfs, hi_hi_hi, info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "hi");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_ok!(lfs_unmount(lfs));
 }
@@ -738,7 +735,7 @@ fn test_move_dir_corrupt_source() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok!(lfs_stat(lfs, "c/hi", info));
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hi", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
@@ -791,7 +788,7 @@ fn test_move_dir_corrupt_source_dest() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok!(lfs_stat(lfs, "a/hi", info));
-    assert_eq!({ info.type_ }, LFS_TYPE_DIR);
+    assert_eq!({ info.type_ }, LfsType::DIR);
 
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "c/hi", info));
@@ -848,7 +845,7 @@ fn test_move_dir_after_corrupt() {
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
     assert_ok!(lfs_stat(lfs, "c/hi", info));
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_err!(Error::NoEntry, lfs_stat(lfs, "a/hi", info));
     assert_err!(Error::NoEntry, lfs_stat(lfs, "b/hi", info));
@@ -1012,10 +1009,10 @@ fn test_move_fix_relocation() {
             assert!(idx < expect_parent.len(), "extra entry: {name}");
             assert_eq!(name, expect_parent[idx]);
             if idx < 2 {
-                assert_eq!(info.type_, LFS_TYPE_REG);
+                assert_eq!(info.type_, LfsType::REG);
                 assert_eq!(info.size, 7);
             } else {
-                assert_eq!(info.type_, LFS_TYPE_DIR);
+                assert_eq!(info.type_, LfsType::DIR);
             }
             idx += 1;
         }
@@ -1039,7 +1036,7 @@ fn test_move_fix_relocation() {
             }
             assert!(idx < expect_child.len(), "extra entry: {name}");
             assert_eq!(name, expect_child[idx]);
-            assert_eq!(info.type_, LFS_TYPE_REG);
+            assert_eq!(info.type_, LfsType::REG);
             assert_eq!(info.size, if name == "1.move_me" { 8 } else { 7 });
             idx += 1;
         }
@@ -1157,7 +1154,7 @@ fn test_move_fix_relocation_predecessor() {
             assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), name);
-            assert_eq!(info.type_, LFS_TYPE_REG);
+            assert_eq!(info.type_, LfsType::REG);
             assert_eq!(info.size, 7);
         }
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
@@ -1172,7 +1169,7 @@ fn test_move_fix_relocation_predecessor() {
             assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
-            assert_eq!(info.type_, LFS_TYPE_REG);
+            assert_eq!(info.type_, LfsType::REG);
             if *name == "1.move_me" {
                 assert_eq!(info.size, 8);
             } else {

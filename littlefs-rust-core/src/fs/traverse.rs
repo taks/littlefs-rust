@@ -199,13 +199,13 @@ pub fn lfs_fs_traverse_(
     // iterate over any open files
     use crate::file::LfsFile;
     use crate::file::ctz::lfs_ctz_traverse;
-    use crate::lfs_type::lfs_type::LFS_TYPE_REG;
+    use crate::lfs_type::LfsType;
 
     let mut m = lfs.mlist;
     while !m.is_null() {
         let f = m as *mut LfsFile;
         let f_ref = unsafe { &*f };
-        if f_ref.type_ == LFS_TYPE_REG {
+        if f_ref.type_ == LfsType::REG {
             if f_ref.flags.contains(OpenFlags::DIRTY) && !f_ref.flags.contains(OpenFlags::INLINE) {
                 lfs_ctz_traverse(
                     lfs,

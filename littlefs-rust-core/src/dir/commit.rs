@@ -13,6 +13,7 @@ use crate::dir::{LfsCommit, LfsFcrc, LfsMdir};
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::fs::stat::lfs_fs_size_;
+use crate::lfs_type::LfsType;
 use crate::lfs_type::lfs_type::LFS_TYPE_FCRC;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
 
@@ -1893,7 +1894,7 @@ fn relocatingcommit_fixmlist(
                     let tag = attr.tag;
                     if (lfs_tag_type3(tag)) == LFS_TYPE_DELETE
                         && d_ref.id == lfs_tag_id(tag)
-                        && d_ref.type_ != crate::lfs_type::lfs_type::LFS_TYPE_DIR as u8
+                        && d_ref.type_ != LfsType::DIR as u8
                     {
                         d_ref.m.pair = [LFS_BLOCK_NULL, LFS_BLOCK_NULL];
                     } else if (lfs_tag_type3(tag)) == LFS_TYPE_DELETE && d_ref.id > lfs_tag_id(tag)

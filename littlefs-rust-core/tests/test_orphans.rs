@@ -15,7 +15,7 @@ use common::{
 };
 use littlefs_rust_core::error::Error;
 #[cfg(feature = "slow_tests")]
-use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
+use littlefs_rust_core::lfs_type::LfsType;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
 use littlefs_rust_core::{
     Lfs, LfsInfo, LfsMattr, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit,
@@ -390,7 +390,7 @@ fn test_orphans_reentrant() {
                             if name != *expected {
                                 return Err(Error::Invalid);
                             }
-                            if info.type_ != LFS_TYPE_DIR {
+                            if info.type_ != LfsType::DIR {
                                 return Err(Error::Invalid);
                             }
                         }
@@ -398,7 +398,7 @@ fn test_orphans_reentrant() {
                         let expected = &components[depth - 1];
                         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
                         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-                        if name != *expected || info.type_ != LFS_TYPE_DIR {
+                        if name != *expected || info.type_ != LfsType::DIR {
                             return Err(Error::Invalid);
                         }
                         for d in (0..depth).rev() {

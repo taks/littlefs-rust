@@ -14,8 +14,7 @@ use littlefs_rust_core::lfs_file_size;
 use littlefs_rust_core::{
     Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close,
     lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mount, lfs_remove,
-    lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG},
-    lfs_unmount,
+    lfs_type::LfsType, lfs_unmount,
 };
 use rstest::rstest;
 
@@ -70,11 +69,11 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     for j in 0..files {
         let expected_name = String::from(ALPHAS[j] as char);
@@ -82,7 +81,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
         assert_eq!(name, expected_name);
-        assert_eq!(info.type_, LFS_TYPE_REG);
+        assert_eq!(info.type_, LfsType::REG);
         assert_eq!(info.size, size as u32);
     }
 
@@ -182,17 +181,17 @@ fn test_interspersed_remove_files(
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     let name = core::str::from_utf8(&info.name[..nul]).unwrap();
     assert_eq!(name, "zzz");
-    assert_eq!(info.type_, LFS_TYPE_REG);
+    assert_eq!(info.type_, LfsType::REG);
     assert_eq!(info.size, files as u32);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
@@ -283,22 +282,22 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "e");
-    assert_eq!(info.type_, LFS_TYPE_REG);
+    assert_eq!(info.type_, LfsType::REG);
     assert_eq!(info.size, size as u32);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "g");
-    assert_eq!(info.type_, LFS_TYPE_REG);
+    assert_eq!(info.type_, LfsType::REG);
     assert_eq!(info.size, size as u32);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
@@ -386,11 +385,11 @@ fn test_interspersed_reentrant_files(
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     for j in 0..files {
         let expected_name = String::from(ALPHAS[j] as char);
@@ -398,7 +397,7 @@ fn test_interspersed_reentrant_files(
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
         assert_eq!(name, expected_name);
-        assert_eq!(info.type_, LFS_TYPE_REG);
+        assert_eq!(info.type_, LfsType::REG);
         assert_eq!(info.size, size as u32);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));

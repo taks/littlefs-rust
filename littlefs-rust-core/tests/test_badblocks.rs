@@ -11,7 +11,7 @@ use common::{
 };
 use littlefs_rust_core::{
     Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
-    lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_type::lfs_type::LFS_TYPE_DIR, lfs_unmount,
+    lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_type::LfsType, lfs_unmount,
 };
 use rstest::rstest;
 
@@ -110,7 +110,7 @@ fn test_badblocks_single(
                 unsafe { str::from_utf8_unchecked(&buffer[..NAMEMULT]) },
                 info,
             ));
-            assert_eq!(info.type_, LFS_TYPE_DIR);
+            assert_eq!(info.type_, LfsType::DIR);
 
             buffer[NAMEMULT] = b'/';
             for j in 0..NAMEMULT {
@@ -328,7 +328,7 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
             unsafe { str::from_utf8_unchecked(&buffer[..(NAMEMULT)]) },
             info,
         ));
-        assert_eq!(info.type_, LFS_TYPE_DIR);
+        assert_eq!(info.type_, LfsType::DIR);
 
         buffer[NAMEMULT] = b'/';
         for j in 0..NAMEMULT {
