@@ -208,42 +208,6 @@ pub fn init_context(env: &mut TestEnv) {
     env.config.context = Some(NonNull::from_mut(&mut env.ram));
 }
 
-/// A second config that shares the same RAM device but has its own buffers
-/// and a different block_count. For lfs_fs_grow shrink tests where the
-/// reduced-size config must mount the same underlying storage.
-///
-/// C pattern: `struct lfs_config cfg2 = *cfg; cfg2.block_count = N;`
-pub struct ClonedConfig {
-    pub config: LfsConfig,
-    pub _read_buf: Vec<u8>,
-    pub _prog_buf: Vec<u8>,
-    pub _lookahead_buf: Vec<u8>,
-}
-
-/// Run `f` with a process-level timeout. If the closure does not complete within
-/// `secs` seconds, the process is aborted. Use for tests that may hang (e.g.
-/// infinite loops in write paths).
-pub fn run_with_timeout<F, R>(secs: u64, f: F) -> R
-where
-    F: FnOnce() -> R,
-{
-    let (tx, rx) = std::sync::mpsc::channel::<()>();
-    let guard =
-        std::thread::spawn(
-            move || match rx.recv_timeout(std::time::Duration::from_secs(secs)) {
-                Ok(()) | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {}
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                    eprintln!("test exceeded {} second timeout, aborting", secs);
-                    std::process::abort();
-                }
-            },
-        );
-    let result = f();
-    let _ = tx.send(());
-    guard.join().expect("timeout guard thread panicked");
-    result
-}
-
 /// Panic if result is not Ok.
 #[macro_export]
 macro_rules! assert_ok {
