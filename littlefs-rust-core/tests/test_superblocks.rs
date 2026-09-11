@@ -131,8 +131,10 @@ fn test_superblocks_mount_unknown_block_count(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
-    let mut tweaked_cfg = cfg.clone();
-    tweaked_cfg.block_count = 0;
+    let tweaked_cfg = LfsConfig {
+        block_count: 0,
+        ..*cfg
+    };
 
     assert_ok!(lfs_mount(lfs, &tweaked_cfg));
     assert_eq!(lfs.block_count, cfg.block_count);
@@ -157,10 +159,12 @@ fn test_superblocks_reentrant_format(cfg: &LfsConfig, #[values(false, true)] ree
 /// Format with name_max=63, file_max=65535, attr_max=512; mount with default; verify fsinfo.
 #[lfs_test]
 fn test_superblocks_stat_tweaked(cfg: &LfsConfig) {
-    let mut tweaked_cfg = cfg.clone();
-    tweaked_cfg.name_max = 63;
-    tweaked_cfg.file_max = 65535;
-    tweaked_cfg.attr_max = 512;
+    let tweaked_cfg = LfsConfig {
+        name_max: 63,
+        file_max: 65535,
+        attr_max: 512,
+        ..*cfg
+    };
 
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, &tweaked_cfg));

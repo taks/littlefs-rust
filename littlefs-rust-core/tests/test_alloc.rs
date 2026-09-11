@@ -39,8 +39,10 @@ fn test_alloc_parallel(
     let size: usize = ((block_size - 8) as usize * (block_count - 6) as usize) / FILES as usize;
 
     for compact_thresh in [u32::MAX, 0, block_size / 2] {
-        let mut cfg = cfg.clone();
-        cfg.compact_thresh = compact_thresh;
+        let mut cfg = LfsConfig {
+            compact_thresh: compact_thresh,
+            ..*cfg
+        };
 
         let lfs = &mut Lfs::default();
         assert_ok!(lfs_format(lfs, &cfg));
@@ -124,10 +126,10 @@ fn test_alloc_serial(
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
-    let cfg_ = &mut cfg.clone();
-    if infer_bc {
-        cfg_.block_count = 0;
-    }
+    let cfg_ = &LfsConfig {
+        block_count: if infer_bc { 0 } else { cfg.block_count },
+        ..*cfg
+    };
 
     assert_ok!(lfs_mount(lfs, cfg_));
     assert_ok!(lfs_mkdir(lfs, "breakfast"));
@@ -461,10 +463,10 @@ fn test_alloc_exhaustion_wraparound(cfg: &LfsConfig, #[values(false, true)] infe
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
-    let mut mount_cfg = cfg.clone();
-    if infer_bc {
-        mount_cfg.block_count = 0;
-    }
+    let mount_cfg = LfsConfig {
+        block_count: if infer_bc { 0 } else { cfg.block_count },
+        ..*cfg
+    };
     assert_ok!(lfs_mount(lfs, &mount_cfg));
 
     let file = &mut LfsFile::default();
