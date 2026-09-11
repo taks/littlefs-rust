@@ -85,7 +85,7 @@ fn test_paths_simple_files() {
         assert_ok!(lfs_stat(lfs, path, info));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
-        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_eq!(info.type_, LFS_TYPE_REG);
     }
     assert_ok!(lfs_unmount(lfs));
 }
@@ -150,7 +150,7 @@ fn test_paths_absolute_dirs() {
         assert_ok!(lfs_stat(lfs, path, info));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
-        assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+        assert_eq!(info.type_, LFS_TYPE_DIR);
     }
     assert_ok!(lfs_unmount(lfs));
 }
@@ -377,7 +377,7 @@ fn test_paths_trailing_slashes(#[case] dir_mode: bool) {
         if dir_mode {
             assert_ok!(err);
             assert_eq!(info_name_str(info), PATHS[i]);
-            assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+            assert_eq!(info.type_, LFS_TYPE_DIR);
         } else {
             assert_err!(Error::NotDir, err);
         }

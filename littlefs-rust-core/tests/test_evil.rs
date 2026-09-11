@@ -129,7 +129,7 @@ fn evil_invalid_dir_pointer(invalset: u32) {
     assert_ok!(lfs_stat(lfs, dir_name, info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info.name[..nul], b"dir_here");
-    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR);
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_err!(Error::Corrupt, lfs_dir_open(lfs, dir, dir_name));
@@ -224,7 +224,7 @@ fn evil_invalid_file_pointer(size: u32) {
     assert_ok!(lfs_stat(lfs, file_name, info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info.name[..nul], b"file_here");
-    assert_eq!(info.type_, LFS_TYPE_REG as u8);
+    assert_eq!(info.type_, LFS_TYPE_REG);
     assert_eq!(info.size, size);
 
     assert_ok!(lfs_file_open(lfs, file, file_name, LFS_O_RDONLY));
@@ -331,7 +331,7 @@ unsafe fn evil_invalid_ctz_pointer(size: u32) {
     assert_ok!(lfs_stat(lfs, file_name, info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(&info.name[..nul], b"file_here");
-    assert_eq!(info.type_, LFS_TYPE_REG as u8);
+    assert_eq!(info.type_, LFS_TYPE_REG);
     assert_eq!(info.size, size);
 
     assert_ok!(lfs_file_open(lfs, file, file_name, LFS_O_RDONLY));

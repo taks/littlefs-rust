@@ -14,13 +14,12 @@ use littlefs_rust_core::lfs_file_size;
 use littlefs_rust_core::{
     Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close,
     lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mount, lfs_remove,
+    lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG},
     lfs_unmount,
 };
 use rstest::rstest;
 
 const ALPHAS: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
-const LFS_TYPE_DIR: u8 = 0x02;
-const LFS_TYPE_REG: u8 = 0x01;
 
 /// Upstream: [cases.test_interspersed_files]
 /// defines.SIZE = [10, 100]

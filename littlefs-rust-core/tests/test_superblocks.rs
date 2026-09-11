@@ -238,7 +238,7 @@ fn test_superblocks_expand() {
                 assert_ok!(lfs_file_close(lfs, file));
                 let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
                 assert_ok!(lfs_stat(lfs, dummy, info));
-                assert_eq!(info.type_, LFS_TYPE_REG as u8);
+                assert_eq!(info.type_, LFS_TYPE_REG);
                 assert_ok!(lfs_remove(lfs, dummy));
             }
             assert_ok!(lfs_unmount(lfs));
@@ -254,7 +254,7 @@ fn test_superblocks_expand() {
             assert_ok!(lfs_file_close(lfs, file));
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_ok!(lfs_stat(lfs, dummy, info));
-            assert_eq!(info.type_, LFS_TYPE_REG as u8);
+            assert_eq!(info.type_, LFS_TYPE_REG);
             assert_ok!(lfs_unmount(lfs));
         }
     }
@@ -287,7 +287,7 @@ fn test_superblocks_magic_expand() {
                 assert_ok!(lfs_file_close(lfs, file));
                 let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
                 assert_ok!(lfs_stat(lfs, dummy, info));
-                assert_eq!(info.type_, LFS_TYPE_REG as u8);
+                assert_eq!(info.type_, LFS_TYPE_REG);
                 assert_ok!(lfs_remove(lfs, dummy));
             }
             assert_ok!(lfs_unmount(lfs));
@@ -382,7 +382,7 @@ fn test_superblocks_reentrant_expand() {
                         &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
                     let err = lfs_stat(lfs_ptr, dummy, info);
                     if err.is_ok() {
-                        if info.type_ == LFS_TYPE_REG as u8 {
+                        if info.type_ == LFS_TYPE_REG {
                             let e = lfs_remove(lfs_ptr, dummy);
                             if e.is_err() {
                                 let _ = lfs_unmount(lfs_ptr);

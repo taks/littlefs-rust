@@ -43,7 +43,7 @@ fn test_dirs_root() {
     assert_eq!(n, Ok(true));
     assert_eq!(info.name[0], b'.');
     assert_eq!(info.name[1], 0);
-    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     let n = lfs_dir_read(lfs, dir, info);
@@ -51,7 +51,7 @@ fn test_dirs_root() {
     assert_eq!(info.name[0], b'.');
     assert_eq!(info.name[1], b'.');
     assert_eq!(info.name[2], 0);
-    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     let n = lfs_dir_read(lfs, dir, info);
@@ -80,7 +80,7 @@ fn test_dirs_one_mkdir() {
     assert_ok!(lfs_stat(lfs, path, info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "d0");
-    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LFS_TYPE_DIR);
 
     let names = dir_entry_names(lfs, &env.config, "/").expect("dir_entry_names");
     assert_eq!(names.len(), 1);
@@ -245,13 +245,13 @@ fn test_dirs_many_rename_append() {
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-        assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+        assert_eq!(info.type_, LFS_TYPE_DIR);
         assert_eq!(info.name[0], b'.');
         assert_eq!(info.name[1], 0);
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-        assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+        assert_eq!(info.type_, LFS_TYPE_DIR);
         assert_eq!(info.name[0], b'.');
         assert_eq!(info.name[1], b'.');
         assert_eq!(info.name[2], 0);
@@ -264,7 +264,7 @@ fn test_dirs_many_rename_append() {
                 Ok(true),
                 "N={n}, expected entry {i}"
             );
-            assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+            assert_eq!(info.type_, LFS_TYPE_DIR);
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             let name = core::str::from_utf8(&info.name[..nul]).unwrap();
             assert_eq!(name, expected, "N={n}, entry {i}");
@@ -619,7 +619,7 @@ fn test_dirs_file_reentrant() {
                         let _ = lfs_dir_close(lfs_ptr, dir);
                         return Err(if let Err(r) = r { r } else { Error::Invalid });
                     }
-                    if info.type_ != LFS_TYPE_REG as u8 {
+                    if info.type_ != LFS_TYPE_REG {
                         let _ = lfs_dir_close(lfs_ptr, dir);
                         return Err(Error::Invalid);
                     }
@@ -658,7 +658,7 @@ fn test_dirs_file_reentrant() {
                         let _ = lfs_dir_close(lfs_ptr, dir);
                         return Err(if let Err(r) = r { r } else { Error::Invalid });
                     }
-                    if info.type_ != LFS_TYPE_REG as u8 {
+                    if info.type_ != LFS_TYPE_REG {
                         let _ = lfs_dir_close(lfs_ptr, dir);
                         return Err(Error::Invalid);
                     }

@@ -390,7 +390,7 @@ fn test_orphans_reentrant() {
                             if name != *expected {
                                 return Err(Error::Invalid);
                             }
-                            if info.type_ != LFS_TYPE_DIR as u8 {
+                            if info.type_ != LFS_TYPE_DIR {
                                 return Err(Error::Invalid);
                             }
                         }
@@ -398,7 +398,7 @@ fn test_orphans_reentrant() {
                         let expected = &components[depth - 1];
                         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
                         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-                        if name != *expected || info.type_ != LFS_TYPE_DIR as u8 {
+                        if name != *expected || info.type_ != LFS_TYPE_DIR {
                             return Err(Error::Invalid);
                         }
                         for d in (0..depth).rev() {
