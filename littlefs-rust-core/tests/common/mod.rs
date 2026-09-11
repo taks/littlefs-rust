@@ -163,41 +163,6 @@ pub fn config_with_cache(cache_size: u32, block_count: u32) -> TestEnv {
     env
 }
 
-/// Build test environment with custom geometry. For geometry-specific tests (block_size=512, block_count=1024).
-pub fn config_with_geometry(block_size: u32, block_count: u32) -> TestEnv {
-    let ram = RamStorage::new(block_size, block_count);
-    let read_buf = vec![0u8; block_size as usize];
-    let prog_buf = vec![0u8; block_size as usize];
-    let lookahead_buf = vec![0u8; block_size as usize];
-
-    let config = LfsConfig {
-        context: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-        read_size: 16,
-        prog_size: 16,
-        block_size,
-        block_count,
-        block_cycles: -1,
-        cache_size: block_size,
-        compact_thresh: u32::MAX,
-        read_buffer: Some(NonNull::from_ref(&read_buf)),
-        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
-        name_max: 255,
-        file_max: 2_147_483_647,
-        attr_max: 1022,
-        metadata_max: 0,
-        inline_max: 0,
-    };
-
-    TestEnv {
-        ram,
-        config,
-        _read_buf: read_buf,
-        _prog_buf: prog_buf,
-        _lookahead_buf: lookahead_buf,
-    }
-}
-
 /// Build test environment with RAM BD. block_count defaults to 128 (upstream).
 pub fn default_config(block_count: u32) -> TestEnv {
     let block_size = BLOCK_SIZE;

@@ -7,7 +7,6 @@ mod common;
 
 use common::{
     BadblockBehavior, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY,
-    config_with_geometry, init_context, init_logger,
 };
 #[cfg(test)]
 use littlefs_rust_core::LfsConfig;
@@ -836,15 +835,15 @@ fn test_alloc_bad_blocks(
 /// if = 'ERASE_SIZE == 512', defines.ERASE_COUNT = 1024
 ///
 /// Find max file size, chained dir fails, truncate until mkdir succeeds.
-#[test]
-fn test_alloc_chained_dir_exhaustion() {
-    init_logger();
-    let mut env = config_with_geometry(512, 1024);
-    init_context(&mut env);
+#[lfs_test]
+fn test_alloc_chained_dir_exhaustion(cfg: &LfsConfig, #[values(1024)] erase_count: u32) {
+    if cfg.block_size != 512 {
+        return;
+    }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_mkdir(lfs, "exhaustiondir"));
     for i in 0..10 {
@@ -930,20 +929,20 @@ fn test_alloc_chained_dir_exhaustion() {
 /// if = 'ERASE_SIZE == 512', defines.ERASE_COUNT = 1024
 ///
 /// Fill two files, remount, truncate+rewrite both; verify lookahead uses fresh population.
-#[test]
-fn test_alloc_outdated_lookahead() {
-    init_logger();
-    let mut env = config_with_geometry(512, 1024);
-    init_context(&mut env);
+#[lfs_test]
+fn test_alloc_outdated_lookahead(cfg: &LfsConfig, #[values(1024)] erase_count: u32) {
+    if cfg.block_size != 512 {
+        return;
+    }
 
-    let block_size = env.config.block_size as usize;
-    let block_count = env.config.block_count as usize;
+    let block_size = cfg.block_size as usize;
+    let block_count = cfg.block_count as usize;
     let size1 = ((block_count - 2) / 2) * (block_size - 8);
     let size2 = (block_count - 2).div_ceil(2) * (block_size - 8);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let file = &mut LfsFile::default();
     let blah = b"blahblahblahblah";
@@ -974,7 +973,7 @@ fn test_alloc_outdated_lookahead() {
     assert_ok!(lfs_file_close(lfs, file));
 
     assert_ok!(lfs_unmount(lfs));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_file_open(
         lfs,
@@ -1010,21 +1009,21 @@ fn test_alloc_outdated_lookahead() {
 /// if = 'ERASE_SIZE == 512', defines.ERASE_COUNT = 1024
 ///
 /// Fill two files, remount, truncate one with hole; mkdir fails NOSPC, file create succeeds.
-#[test]
-fn test_alloc_outdated_lookahead_split_dir() {
-    init_logger();
-    let mut env = config_with_geometry(512, 1024);
-    init_context(&mut env);
+#[lfs_test]
+fn test_alloc_outdated_lookahead_split_dir(cfg: &LfsConfig, #[values(1024)] erase_count: u32) {
+    if cfg.block_size != 512 {
+        return;
+    }
 
-    let block_size = env.config.block_size as usize;
-    let block_count = env.config.block_count as usize;
+    let block_size = cfg.block_size as usize;
+    let block_count = cfg.block_count as usize;
     let size1_full = ((block_count - 2) / 2) * (block_size - 8);
     let size2 = (block_count - 2).div_ceil(2) * (block_size - 8);
     let size1_hole = ((block_count - 2) / 2 - 1) * (block_size - 8);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let file = &mut LfsFile::default();
     let blah = b"blahblahblahblah";
@@ -1055,7 +1054,7 @@ fn test_alloc_outdated_lookahead_split_dir() {
     assert_ok!(lfs_file_close(lfs, file));
 
     assert_ok!(lfs_unmount(lfs));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     assert_ok!(lfs_file_open(
         lfs,
