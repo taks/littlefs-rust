@@ -97,7 +97,7 @@ pub(crate) fn dir_entry_from_info(info: &LfsInfo) -> DirEntry {
         .position(|&b| b == 0)
         .unwrap_or(info.name.len());
     let name = core::str::from_utf8(&info.name[..nul]).unwrap_or("").into();
-    let file_type = if info.type_ == littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR {
+    let file_type = if info.type_ == littlefs_rust_core::lfs_type::LfsType::DIR {
         FileType::Dir
     } else {
         FileType::File
