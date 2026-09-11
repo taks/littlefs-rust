@@ -1,5 +1,6 @@
 //! Directory fetch. Per lfs.c lfs_dir_fetch, lfs_dir_getgstate, lfs_dir_getinfo.
 
+use num_enum::TryFromPrimitive;
 use zerocopy::IntoBytes;
 
 use crate::bd::bd::{lfs_bd_crc, lfs_bd_read};
@@ -13,6 +14,7 @@ use crate::file::lfs_ctz::{LfsCtz, lfs_ctz_fromle32};
 use crate::lfs_gstate::LfsGstate;
 use crate::lfs_gstate::{lfs_gstate_fromle32, lfs_gstate_hasmovehere, lfs_gstate_xor};
 use crate::lfs_info::LfsInfo;
+use crate::lfs_type::LsfType;
 use crate::lfs_type::lfs_type::{
     LFS_TYPE_CCRC, LFS_TYPE_CTZSTRUCT, LFS_TYPE_DELETE, LFS_TYPE_DIR, LFS_TYPE_FCRC,
     LFS_TYPE_INLINESTRUCT, LFS_TYPE_NAME, LFS_TYPE_SPLICE, LFS_TYPE_STRUCT, LFS_TYPE_TAIL,
@@ -765,7 +767,7 @@ pub fn lfs_dir_getinfo(
 ) -> Result<(), Error> {
     // C: lfs.c:1415-1420
     if id == 0x3ff {
-        info.type_ = LFS_TYPE_DIR as u8;
+        info.type_ = LsfType::DIR;
         info.name[0] = b'/';
         info.name[1] = 0;
         return Ok(());
@@ -781,7 +783,7 @@ pub fn lfs_dir_getinfo(
         &mut info.name,
     )?;
 
-    info.type_ = lfs_tag_type3(tag as _) as u8;
+    info.type_ = LsfType::try_from_primitive(lfs_tag_type3(tag as _) as u8).unwrap();
 
     // C: lfs.c:1430-1441
     let mut ctz = LfsCtz { head: 0, size: 0 };

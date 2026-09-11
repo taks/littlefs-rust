@@ -440,11 +440,11 @@ fn test_dirs_file_creation() {
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-        assert_eq!({ info.type_ }, LFS_TYPE_DIR as u8);
+        assert_eq!({ info.type_ }, LFS_TYPE_DIR);
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-        assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+        assert_eq!(info.type_, LFS_TYPE_DIR);
 
         for i in 0..n {
             let expected = format!("file{i:03}");
@@ -454,7 +454,7 @@ fn test_dirs_file_creation() {
                 Ok(true),
                 "N={n}, expected entry {i}"
             );
-            assert_eq!(info.type_, LFS_TYPE_REG as u8, "N={n}, entry {i} type");
+            assert_eq!(info.type_, LFS_TYPE_REG, "N={n}, entry {i} type");
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             let name = core::str::from_utf8(&info.name[..nul]).unwrap();
             assert_eq!(name, expected, "N={n}, entry {i} name");

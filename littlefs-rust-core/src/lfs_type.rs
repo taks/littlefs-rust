@@ -5,9 +5,10 @@
 //! File types. Per lfs.h enum lfs_type.
 
 use bitflags::bitflags;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, IntoPrimitive, TryFromPrimitive)]
 pub enum LsfType {
     #[default]
     NONE = 0x00,

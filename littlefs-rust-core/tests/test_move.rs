@@ -1157,7 +1157,7 @@ fn test_move_fix_relocation_predecessor() {
             assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), name);
-            assert_eq!(info.type_, LFS_TYPE_REG as u8);
+            assert_eq!(info.type_, LFS_TYPE_REG);
             assert_eq!(info.size, 7);
         }
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
@@ -1172,7 +1172,7 @@ fn test_move_fix_relocation_predecessor() {
             assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), *name);
-            assert_eq!(info.type_, LFS_TYPE_REG as u8);
+            assert_eq!(info.type_, LFS_TYPE_REG);
             if *name == "1.move_me" {
                 assert_eq!(info.size, 8);
             } else {

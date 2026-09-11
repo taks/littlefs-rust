@@ -2,12 +2,12 @@
 
 use zerocopy_derive::{Immutable, KnownLayout, TryFromBytes};
 
-use crate::types::lfs_size_t;
+use crate::{lfs_type::LsfType, types::lfs_size_t};
 
 /// Per lfs.h struct lfs_info
 #[repr(C)]
 pub struct LfsInfo {
-    pub type_: u8,
+    pub type_: LsfType,
     pub size: lfs_size_t,
     pub name: [u8; 256], // LFS_NAME_MAX+1
 }

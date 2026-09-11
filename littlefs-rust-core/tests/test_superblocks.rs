@@ -322,7 +322,7 @@ fn test_superblocks_expand_power_cycle() {
                     "stat dummy: err={err:?} i={i}"
                 );
                 if err.is_ok() {
-                    assert_eq!(info.type_, LFS_TYPE_REG as u8);
+                    assert_eq!(info.type_, LFS_TYPE_REG);
                     assert_ok!(lfs_remove(lfs, dummy));
                 }
 
@@ -336,14 +336,14 @@ fn test_superblocks_expand_power_cycle() {
                 assert_ok!(lfs_file_close(lfs, file));
                 let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
                 assert_ok!(lfs_stat(lfs, dummy, info));
-                assert_eq!(info.type_, LFS_TYPE_REG as u8);
+                assert_eq!(info.type_, LFS_TYPE_REG);
                 assert_ok!(lfs_unmount(lfs));
             }
 
             assert_ok!(lfs_mount(lfs, &env.config));
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_ok!(lfs_stat(lfs, dummy, info));
-            assert_eq!(info.type_, LFS_TYPE_REG as u8);
+            assert_eq!(info.type_, LFS_TYPE_REG);
             assert_ok!(lfs_unmount(lfs));
         }
     }
@@ -760,7 +760,7 @@ fn test_superblocks_metadata_max(
             .unwrap_or(info.name.len());
         let info_name = core::str::from_utf8(&info.name[..nul]).unwrap();
         assert_eq!(info_name, name_str);
-        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_eq!(info.type_, LFS_TYPE_REG);
     }
 
     assert_ok!(lfs_unmount(lfs));
