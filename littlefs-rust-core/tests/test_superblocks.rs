@@ -10,13 +10,13 @@ use common::{
     read_block_raw,
 };
 use littlefs_rust_core::lfs_type::lfs_type::{
-    LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_REG, LFS_TYPE_SUPERBLOCK,
+    LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK,
 };
 use littlefs_rust_core::{
     Error, LFS_DISK_VERSION, Lfs, LfsConfig, LfsFile, LfsFsinfo, LfsInfo, LfsMattr, LfsMdir,
     LfsSuperblock, lfs_deinit, lfs_dir_commit, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_init, lfs_mktag, lfs_mount,
-    lfs_remove, lfs_stat, lfs_superblock_tole32, lfs_unmount,
+    lfs_remove, lfs_stat, lfs_superblock_tole32, lfs_type::LfsType, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
@@ -203,7 +203,7 @@ fn test_superblocks_expand(
         assert_ok!(lfs_file_close(lfs, file));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok!(lfs_stat(lfs, dummy, info));
-        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_eq!(info.type_, LfsType::REG);
         assert_ok!(lfs_remove(lfs, dummy));
     }
     assert_ok!(lfs_unmount(lfs));
@@ -219,7 +219,7 @@ fn test_superblocks_expand(
     assert_ok!(lfs_file_close(lfs, file));
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_ok!(lfs_stat(lfs, dummy, info));
-    assert_eq!(info.type_, LFS_TYPE_REG as u8);
+    assert_eq!(info.type_, LfsType::REG);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -247,7 +247,7 @@ fn test_superblocks_magic_expand(
         assert_ok!(lfs_file_close(lfs, file));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok!(lfs_stat(lfs, dummy, info));
-        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_eq!(info.type_, LfsType::REG);
         assert_ok!(lfs_remove(lfs, dummy));
     }
     assert_ok!(lfs_unmount(lfs));
@@ -280,7 +280,7 @@ fn test_superblocks_expand_power_cycle(
             "stat dummy: err={err:?} i={i}"
         );
         if err.is_ok() {
-            assert_eq!(info.type_, LFS_TYPE_REG as u8);
+            assert_eq!(info.type_, LfsType::REG);
             assert_ok!(lfs_remove(lfs, dummy));
         }
 
@@ -294,14 +294,14 @@ fn test_superblocks_expand_power_cycle(
         assert_ok!(lfs_file_close(lfs, file));
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok!(lfs_stat(lfs, dummy, info));
-        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_eq!(info.type_, LfsType::REG);
         assert_ok!(lfs_unmount(lfs));
     }
 
     assert_ok!(lfs_mount(lfs, cfg));
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_ok!(lfs_stat(lfs, dummy, info));
-    assert_eq!(info.type_, LFS_TYPE_REG as u8);
+    assert_eq!(info.type_, LfsType::REG);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -331,7 +331,7 @@ fn test_superblocks_reentrant_expand(
         assert!(err.is_ok() || (err == Err(Error::NoEntry) && i == 0));
         if err.is_ok() {
             assert_eq!(info.name_str(), dummy);
-            assert_eq!(info.type_, LFS_TYPE_REG as u8);
+            assert_eq!(info.type_, LfsType::REG);
             assert_ok!(lfs_remove(lfs, dummy));
         }
         let file = &mut LfsFile::default();
@@ -346,7 +346,7 @@ fn test_superblocks_reentrant_expand(
         let info = &mut LfsInfo::default();
         assert_ok!(lfs_stat(lfs, dummy, info));
         assert_eq!(info.name_str(), dummy);
-        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_eq!(info.type_, LfsType::REG);
         assert_ok!(lfs_unmount(lfs));
     }
 
@@ -355,7 +355,7 @@ fn test_superblocks_reentrant_expand(
     let info = &mut LfsInfo::default();
     assert_ok!(lfs_stat(lfs, dummy, info));
     assert_eq!(info.name_str(), dummy);
-    assert_eq!(info.type_, LFS_TYPE_REG as u8);
+    assert_eq!(info.type_, LfsType::REG);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -763,7 +763,7 @@ fn test_superblocks_metadata_max(
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_ok!(lfs_stat(lfs, name, info));
         assert_eq!(info.name_str(), name_str);
-        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_eq!(info.type_, LfsType::REG);
     }
 
     assert_ok!(lfs_unmount(lfs));

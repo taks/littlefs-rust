@@ -8,13 +8,12 @@ mod common;
 use common::{BadblockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY};
 use littlefs_rust_core::{
     Error, Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
-    lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_unmount,
+    lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_type::LfsType, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 
 use crate::common::lfs_emubd_setwear;
 
-const LFS_TYPE_DIR: u8 = 0x02;
 const NAMEMULT: usize = 64;
 const FILEMULT: usize = 1;
 
@@ -106,7 +105,7 @@ fn test_badblocks_single(
                 unsafe { str::from_utf8_unchecked(&buffer[..NAMEMULT]) },
                 info,
             ));
-            assert_eq!(info.type_, LFS_TYPE_DIR);
+            assert_eq!(info.type_, LfsType::DIR);
 
             buffer[NAMEMULT] = b'/';
             for j in 0..NAMEMULT {
@@ -308,7 +307,7 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
             unsafe { str::from_utf8_unchecked(&buffer[..(NAMEMULT)]) },
             info,
         ));
-        assert_eq!(info.type_, LFS_TYPE_DIR);
+        assert_eq!(info.type_, LfsType::DIR);
 
         buffer[NAMEMULT] = b'/';
         for j in 0..NAMEMULT {

@@ -11,8 +11,8 @@ use crate::error::Error;
 use crate::file::LfsFile;
 use crate::file::ctz::lfs_ctz_find;
 use crate::lfs_info::LfsFileConfig;
-use crate::lfs_type::OpenFlags;
 use crate::lfs_type::lfs_type::{LFS_TYPE_INLINESTRUCT, LFS_TYPE3_REG};
+use crate::lfs_type::{LfsType, OpenFlags};
 use crate::tag::lfs_mktag;
 use crate::types::LFS_BLOCK_INLINE;
 use crate::types::{lfs_block_t, lfs_off_t};
@@ -207,7 +207,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
     use crate::dir::traverse::lfs_dir_get;
     use crate::file::lfs_ctz::lfs_ctz_fromle32;
     use crate::fs::superblock::lfs_fs_forceconsistency;
-    use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_REG, LFS_TYPE_USERATTR};
+    use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_USERATTR};
     use crate::tag::{lfs_mktag, lfs_tag_size, lfs_tag_type3};
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_path_isdir, lfs_path_islast, lfs_path_namelen};
@@ -233,7 +233,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
         return crate::lfs_pass_err!(Err(err));
     }
 
-    file.type_ = LFS_TYPE_REG;
+    file.type_ = LfsType::REG;
     lfs_mlist_append(lfs, unsafe { file.as_mut_lsf_mist() });
 
     if tag == Err(Error::NoEntry) {

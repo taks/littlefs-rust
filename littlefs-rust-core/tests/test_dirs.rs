@@ -9,7 +9,7 @@ mod common;
 use std::assert_matches;
 
 use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, dir_entry_names};
-use littlefs_rust_core::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE_REG};
+use littlefs_rust_core::lfs_type::LfsType;
 use littlefs_rust_core::{
     Error, Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
     lfs_dir_rewind, lfs_dir_seek, lfs_dir_tell, lfs_file_close, lfs_file_open, lfs_format,
@@ -35,13 +35,13 @@ fn test_dirs_root(cfg: &LfsConfig) {
     let n = lfs_dir_read(lfs, dir, info);
     assert_eq!(n, Ok(true));
     assert_eq!(info.name_str(), ".");
-    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LfsType::DIR);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     let n = lfs_dir_read(lfs, dir, info);
     assert_eq!(n, Ok(true));
     assert_eq!(info.name_str(), "..");
-    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LfsType::DIR);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     let n = lfs_dir_read(lfs, dir, info);
@@ -66,7 +66,7 @@ fn test_dirs_one_mkdir(cfg: &LfsConfig) {
     assert_ok!(lfs_stat(lfs, path, info));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "d0");
-    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LfsType::DIR);
 
     let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
     assert_eq!(names.len(), 1);
@@ -215,13 +215,13 @@ fn test_dirs_many_rename_append(cfg: &LfsConfig, #[values(5, 7, 9, 11)] n: usize
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LfsType::DIR);
     assert_eq!(info.name[0], b'.');
     assert_eq!(info.name[1], 0);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+    assert_eq!(info.type_, LfsType::DIR);
     assert_eq!(info.name[0], b'.');
     assert_eq!(info.name[1], b'.');
     assert_eq!(info.name[2], 0);
@@ -234,7 +234,7 @@ fn test_dirs_many_rename_append(cfg: &LfsConfig, #[values(5, 7, 9, 11)] n: usize
             Ok(true),
             "N={n}, expected entry {i}"
         );
-        assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+        assert_eq!(info.type_, LfsType::DIR);
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
         assert_eq!(name, expected, "N={n}, entry {i}");
@@ -343,11 +343,11 @@ fn test_dirs_file_creation(cfg: &LfsConfig) {
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-        assert_eq!({ info.type_ }, LFS_TYPE_DIR as u8);
+        assert_eq!({ info.type_ }, LfsType::DIR);
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-        assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+        assert_eq!(info.type_, LfsType::DIR);
 
         for i in 0..n {
             let expected = format!("file{i:03}");
@@ -357,7 +357,7 @@ fn test_dirs_file_creation(cfg: &LfsConfig) {
                 Ok(true),
                 "N={n}, expected entry {i}"
             );
-            assert_eq!(info.type_, LFS_TYPE_REG as u8, "N={n}, entry {i} type");
+            assert_eq!(info.type_, LfsType::REG, "N={n}, entry {i} type");
             let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
             let name = core::str::from_utf8(&info.name[..nul]).unwrap();
             assert_eq!(name, expected, "N={n}, entry {i} name");
@@ -495,7 +495,7 @@ fn test_dirs_file_reentrant(
         let expected = format!("hi{i:03}");
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
 
-        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_eq!(info.type_, LfsType::REG);
         assert_eq!(info.name_str(), expected);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
@@ -515,7 +515,7 @@ fn test_dirs_file_reentrant(
         let expected = format!("hello{i:03}");
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
 
-        assert_eq!(info.type_, LFS_TYPE_REG as u8);
+        assert_eq!(info.type_, LfsType::REG);
         assert_eq!(info.name_str(), expected);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));

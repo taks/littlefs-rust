@@ -14,7 +14,7 @@ use common::{dir_block, erase_block_raw, read_block_raw, write_block_raw};
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::LfsConfig;
 #[cfg(feature = "slow_tests")]
-use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
+use littlefs_rust_core::lfs_type::LfsType;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
 use littlefs_rust_core::{
     Error, Lfs, LfsInfo, LfsMattr, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit,
@@ -345,12 +345,12 @@ fn test_orphans_reentrant(cfg: &LfsConfig, #[values(false, true)] reentrant: boo
 
                     let expected = &components[d];
                     assert_eq!(info.name_str(), *expected);
-                    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+                    assert_eq!(info.type_, LfsType::DIR);
                 }
             } else {
                 let expected = &components[depth - 1];
                 assert_eq!(info.name_str(), *expected);
-                assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+                assert_eq!(info.type_, LfsType::DIR);
                 for d in (0..depth).rev() {
                     let sub = "/".to_string() + &components[..=d].join("/");
                     assert_matches!(lfs_remove(lfs, &sub), Ok(()) | Err(Error::NotEmpty));

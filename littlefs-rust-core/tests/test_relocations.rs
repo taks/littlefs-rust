@@ -19,7 +19,8 @@ use common::{
 };
 use littlefs_rust_core::{
     Error, Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_write,
-    lfs_format, lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
+    lfs_format, lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_type::LfsType,
+    lfs_unmount,
 };
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_test_macro::lfs_test;
@@ -286,17 +287,13 @@ fn test_relocations_reentrant_renames(
                 );
             }
             for d in 0..depth {
-                use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
-
                 assert_ok!(lfs_stat(lfs, &full_path[..(2 * d + 2)], info));
                 assert_eq!(info.name_str(), &full_path[(2 * d + 1)..(2 * d + 2)]);
-                assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+                assert_eq!(info.type_, LfsType::DIR);
             }
         } else {
-            use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
-
             assert_eq!(info.name_str(), &full_path[(2 * (depth - 1) + 1)..]);
-            assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+            assert_eq!(info.type_, LfsType::DIR);
 
             // create new random path
             let mut new_path = String::with_capacity(256);
@@ -327,7 +324,7 @@ fn test_relocations_reentrant_renames(
                 for d in 0..depth {
                     assert_ok!(lfs_stat(lfs, &new_path[..(2 * d + 2)], info));
                     assert_eq!(info.name_str(), &new_path[(2 * d + 1)..(2 * d + 2)]);
-                    assert_eq!(info.type_, LFS_TYPE_DIR as u8);
+                    assert_eq!(info.type_, LfsType::DIR);
                 }
 
                 assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
