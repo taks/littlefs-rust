@@ -9,15 +9,19 @@ use common::{
     LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, default_config, init_context,
     read_block_raw,
 };
-use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_REG;
+use littlefs_rust_core::lfs_type::lfs_type::{
+    LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_REG, LFS_TYPE_SUPERBLOCK,
+};
 use littlefs_rust_core::{
-    Error, Lfs, LfsConfig, LfsFile, LfsFsinfo, LfsInfo, lfs_file_close, lfs_file_open,
-    lfs_file_read, lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_mount, lfs_remove,
-    lfs_stat, lfs_unmount,
+    Error, LFS_DISK_VERSION, Lfs, LfsConfig, LfsFile, LfsFsinfo, LfsInfo, LfsMattr, LfsMdir,
+    LfsSuperblock, lfs_deinit, lfs_dir_commit, lfs_file_close, lfs_file_open, lfs_file_read,
+    lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_init, lfs_mktag, lfs_mount,
+    lfs_remove, lfs_stat, lfs_superblock_tole32, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 use rstest::rstest;
 use std::cmp;
+use zerocopy::IntoBytes;
 
 // --- test_superblocks_format ---
 // Upstream: lfs_format(&lfs, cfg) => 0
@@ -471,20 +475,57 @@ fn test_superblocks_fewer_blocks(cfg: &LfsConfig) {
 /// Upstream: [cases.test_superblocks_more_blocks]
 /// Format with 2*ERASE_COUNT blocks; mount with ERASE_COUNT => LFS_ERR_INVAL.
 #[lfs_test]
-#[ignore = "TODO FIX"]
 fn test_superblocks_more_blocks(cfg: &LfsConfig) {
-    const ERASE_COUNT: u32 = 128;
-    let mut env = default_config(2 * ERASE_COUNT);
-    init_context(&mut env);
+    let format_block_count = 2 * cfg.block_count;
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
 
-    let cfg_half = LfsConfig {
-        block_count: ERASE_COUNT,
-        ..*cfg
+    assert_ok!(lfs_init(lfs, cfg));
+
+    let mut root = LfsMdir {
+        pair: [0, 0],
+        rev: 0,
+        off: core::mem::size_of::<u32>() as u32,
+        etag: 0xffff_ffff,
+        count: 0,
+        erased: false,
+        split: false,
+        tail: [u32::MAX, u32::MAX],
     };
-    let err = lfs_mount(lfs, &cfg_half);
-    assert_err!(Error::Invalid, err);
+
+    let mut superblock = LfsSuperblock {
+        version: LFS_DISK_VERSION,
+        block_size: cfg.block_size,
+        block_count: format_block_count,
+        name_max: 255,
+        file_max: 255,
+        attr_max: 255,
+    };
+    lfs_superblock_tole32(&mut superblock);
+
+    assert_ok!(lfs_dir_commit(
+        lfs,
+        &mut root,
+        &[
+            LfsMattr {
+                tag: lfs_mktag(LFS_TYPE_CREATE, 0, 0),
+                buffer: &[],
+            },
+            LfsMattr {
+                tag: lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
+                buffer: b"littlefs",
+            },
+            LfsMattr {
+                tag: lfs_mktag(
+                    LFS_TYPE_INLINESTRUCT,
+                    0,
+                    std::mem::size_of::<LfsSuperblock>()
+                ),
+                buffer: superblock.as_bytes(),
+            },
+        ],
+    ));
+    assert_ok!(lfs_deinit(lfs));
+    assert_eq!(lfs_mount(lfs, cfg), Err(Error::Invalid));
 }
 
 const ERASE_COUNT_GROW: u32 = 128;
