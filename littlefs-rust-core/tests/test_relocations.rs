@@ -216,17 +216,16 @@ fn test_relocations_nonreentrant_renames(
 #[case(26, 1, 20)]
 #[case(3, 3, 20)]
 #[cfg(feature = "slow_tests")]
-#[ignore = "bug: power-loss iteration returns Error::Io for some cases"]
-#[timeout(std::time::Duration::from_mins(1))]
 fn test_relocations_reentrant(
     cfg: &LfsConfig,
-    #[values(false, true)] reentrant: bool,
+    #[values(true)] reentrant: bool,
     #[case] files: usize,
     #[case] depth: usize,
     #[case] cycles: usize,
+    #[values(1)] block_cycles: i32,
 ) {
-    if depth == 3 {
-        return; // guard: DEPTH==3 && CACHE_SIZE!=64
+    if depth == 3 && cfg.cache_size != 64 || 2 * files >= cfg.block_count as usize {
+        return;
     }
 
     let lfs = &mut Lfs::default();
@@ -236,19 +235,52 @@ fn test_relocations_reentrant(
         assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
     }
 
+    let mut prng: u32 = 1;
     for _ in 0..cycles {
-        for i in 0..files {
-            let path = &format!("{}", (b'a' + i as u8) as char);
-            assert!(matches!(lfs_mkdir(lfs, path), Ok(()) | Err(Error::Exists)));
+        let mut full_path = String::with_capacity(256);
+        // create random path
+        for _ in 0..depth {
+            assert_ok!(write!(
+                &mut full_path,
+                "/{}",
+                ALPHA[test_prng(&mut prng) as usize % files] as char
+            ));
         }
-        for i in 0..files {
-            let path = &format!("{}", (b'a' + i as u8) as char);
-            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-            assert_ok!(lfs_stat(lfs, path, info));
+        // if it does not exist, we create it, else we destroy
+        let info = &mut LfsInfo::default();
+        let res = lfs_stat(lfs, &full_path, info);
+        assert!(res.is_ok() || res == Err(Error::NoEntry));
+        if res == Err(Error::NoEntry) {
+            // create each directory in turn, ignore if dir already exists
+            for d in 0..depth {
+                assert_matches!(
+                    lfs_mkdir(lfs, &full_path[..(2 * d + 2)]),
+                    Ok(()) | Err(Error::Exists)
+                );
+            }
+            for d in 0..depth {
+                assert_ok!(lfs_stat(lfs, &full_path[..(2 * d + 2)], info));
+                assert_eq!(info.name_str(), &full_path[(2 * d + 1)..(2 * d + 2)]);
+                assert_eq!(info.type_, LfsType::DIR);
+            }
+        } else {
+            // try to delete path in reverse order, ignore if dir is not empty
+            let mut d = depth - 1;
+            loop {
+                assert_matches!(
+                    lfs_remove(lfs, &full_path[..(2 * d + 2)]),
+                    Ok(()) | Err(Error::NotEmpty)
+                );
+                if d == 0 {
+                    break;
+                }
+                d -= 1;
+            }
 
-            assert_ok!(lfs_remove(lfs, path));
+            assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
         }
     }
+
     assert_ok!(lfs_unmount(lfs));
 }
 
