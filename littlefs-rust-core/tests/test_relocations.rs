@@ -234,8 +234,8 @@ fn test_relocations_nonreentrant_renames(
                 let mut from = String::new();
                 let mut to = String::new();
                 for d in 0..depth {
-                    from.push_str(&full_path[(2*d)..(2*d+2)]);
-                    to.push_str(&new_path[(2*d)..(2*d+2)]);
+                    from.push_str(&full_path[(2 * d)..(2 * d + 2)]);
+                    to.push_str(&new_path[(2 * d)..(2 * d + 2)]);
                     let ret = lfs_rename(lfs, &from, &to);
                     assert_matches!(ret, Ok(()) | Err(Error::NotEmpty));
                     if ret.is_ok() {
@@ -431,8 +431,8 @@ fn test_relocations_reentrant_renames(
                 let mut from = String::new();
                 let mut to = String::new();
                 for d in 0..depth {
-                    from.push_str(&full_path[(2*d)..(2*d+2)]);
-                    to.push_str(&new_path[(2*d)..(2*d+2)]);
+                    from.push_str(&full_path[(2 * d)..(2 * d + 2)]);
+                    to.push_str(&new_path[(2 * d)..(2 * d + 2)]);
                     let ret = lfs_rename(lfs, &from, &to);
                     assert_matches!(ret, Ok(()) | Err(Error::NotEmpty));
                     if ret.is_ok() {

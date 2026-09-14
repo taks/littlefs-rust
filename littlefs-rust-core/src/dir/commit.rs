@@ -13,6 +13,7 @@ use crate::dir::{LfsCommit, LfsFcrc, LfsMdir};
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::fs::stat::lfs_fs_size_;
+use crate::lfs_debug;
 use crate::lfs_type::LfsType;
 use crate::lfs_type::lfs_type::LFS_TYPE_FCRC;
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
@@ -2159,6 +2160,14 @@ pub fn lfs_dir_orphaningcommit(
     let mut lpair = lpair;
 
     while state == crate::error::LFS_OK_RELOCATED {
+        lfs_debug!(
+            "Relocating {{0x{:x}, 0x{:x}}} -> {{0x{:x}, 0x{:x}}}",
+            lpair[0],
+            lpair[1],
+            ldir.pair[0],
+            ldir.pair[1]
+        );
+
         state = 0;
 
         // C: lfs.c:2480-2483 — update internal root
