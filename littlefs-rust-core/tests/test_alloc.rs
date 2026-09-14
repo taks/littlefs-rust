@@ -39,7 +39,7 @@ fn test_alloc_parallel(
 
     for compact_thresh in [u32::MAX, 0, block_size / 2] {
         let mut cfg = LfsConfig {
-            compact_thresh: compact_thresh,
+            compact_thresh,
             ..*cfg
         };
 
@@ -114,7 +114,7 @@ fn test_alloc_serial(
 
     for compact_thresh in [u32::MAX, 0, block_size / 2] {
         let mut cfg = LfsConfig {
-            compact_thresh: compact_thresh,
+            compact_thresh,
             ..*cfg
         };
 

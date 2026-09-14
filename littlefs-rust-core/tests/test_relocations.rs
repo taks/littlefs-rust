@@ -101,12 +101,12 @@ fn test_relocations_outdated_head(cfg: &LfsConfig, #[values(8, 1)] block_cycles:
 #[case(26, 1, 2000)]
 #[case(3, 3, 2000)]
 #[cfg(feature = "slow_tests")]
-#[ignore = "TODO FIX"]
 fn test_relocations_nonreentrant(
     cfg: &LfsConfig,
     #[case] files: usize,
     #[case] depth: usize,
     #[case] cycles: usize,
+    #[values(1)] block_cycles: i32,
 ) {
     if depth == 3 && cfg.cache_size != 64 || 2 * files >= cfg.block_count as usize {
         return;

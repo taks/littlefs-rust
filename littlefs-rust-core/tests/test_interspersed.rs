@@ -8,7 +8,7 @@ mod common;
 
 #[cfg(feature = "slow_tests")]
 use common::LFS_O_APPEND;
-use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY};
+use common::{ALPHA, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY};
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_file_size;
 use littlefs_rust_core::{
@@ -17,8 +17,6 @@ use littlefs_rust_core::{
     lfs_mount, lfs_remove, lfs_type::LfsType, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
-
-const ALPHAS: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
 /// Upstream: [cases.test_interspersed_files]
 /// defines.SIZE = [10, 100]
@@ -40,7 +38,7 @@ fn test_interspersed_files(
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         assert_ok!(lfs_file_open(
             lfs,
             &mut file_handles[j],
@@ -51,7 +49,7 @@ fn test_interspersed_files(
 
     for _i in 0..size {
         for j in 0..files {
-            let byte = [ALPHAS[j]];
+            let byte = [ALPHA[j]];
             let n = lfs_file_write(lfs, &mut file_handles[j], &byte);
             assert_eq!(n, Ok(1));
         }
@@ -77,7 +75,7 @@ fn test_interspersed_files(
     assert_eq!(info.type_, LfsType::DIR);
 
     for j in 0..files {
-        let expected_name = String::from(ALPHAS[j] as char);
+        let expected_name = String::from(ALPHA[j] as char);
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
@@ -93,7 +91,7 @@ fn test_interspersed_files(
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         assert_ok!(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY));
     }
 
@@ -102,7 +100,7 @@ fn test_interspersed_files(
             let mut buffer = [0u8; 1];
             let n = lfs_file_read(lfs, &mut file_handles[j], &mut buffer);
             assert_eq!(n, Ok(1));
-            assert_eq!(buffer[0], ALPHAS[j]);
+            assert_eq!(buffer[0], ALPHA[j]);
         }
     }
 
@@ -132,7 +130,7 @@ fn test_interspersed_remove_files(
 
     // Create FILES files with SIZE bytes each
     for j in 0..files {
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
             lfs,
@@ -141,7 +139,7 @@ fn test_interspersed_remove_files(
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         for _i in 0..size {
-            let byte = [ALPHAS[j]];
+            let byte = [ALPHA[j]];
             let n = lfs_file_write(lfs, file, &byte);
             assert_eq!(n, Ok(1));
         }
@@ -166,7 +164,7 @@ fn test_interspersed_remove_files(
         assert_eq!(n, Ok(1));
         assert_ok!(lfs_file_sync(lfs, file));
 
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         assert_ok!(lfs_remove(lfs, path));
     }
     assert_ok!(lfs_file_close(lfs, file));
@@ -346,7 +344,7 @@ fn test_interspersed_reentrant_files(
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         assert_ok!(lfs_file_open(
             lfs,
             &mut file_handles[j],
@@ -359,7 +357,7 @@ fn test_interspersed_reentrant_files(
         for j in 0..files {
             let file_sz = lfs_file_size(lfs, &file_handles[j]);
             if (file_sz as usize) <= i {
-                let byte = [ALPHAS[j]];
+                let byte = [ALPHA[j]];
                 let n = lfs_file_write(lfs, &mut file_handles[j], &byte);
                 assert_eq!(n, Ok(1));
                 assert_ok!(lfs_file_sync(lfs, &mut file_handles[j]));
@@ -387,7 +385,7 @@ fn test_interspersed_reentrant_files(
     assert_eq!(info.type_, LfsType::DIR);
 
     for j in 0..files {
-        let expected_name = String::from(ALPHAS[j] as char);
+        let expected_name = String::from(ALPHA[j] as char);
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
@@ -402,7 +400,7 @@ fn test_interspersed_reentrant_files(
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         assert_ok!(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY));
     }
 
@@ -411,7 +409,7 @@ fn test_interspersed_reentrant_files(
             let mut buffer = [0u8; 1];
             let n = lfs_file_read(lfs, &mut file_handles[j], &mut buffer);
             assert_eq!(n, Ok(1));
-            assert_eq!(buffer[0], ALPHAS[j]);
+            assert_eq!(buffer[0], ALPHA[j]);
         }
     }
 
