@@ -144,7 +144,10 @@ fn test_relocations_nonreentrant(
             // try to delete path in reverse order, ignore if dir is not empty
             let mut d = depth - 1;
             loop {
-                assert_ok!(lfs_remove(lfs, &full_path[..(2 * d + 2)]));
+                assert_matches!(
+                    lfs_remove(lfs, &full_path[..(2 * d + 2)]),
+                    Ok(()) | Err(Error::NotEmpty)
+                );
                 if d == 0 {
                     break;
                 }
@@ -159,7 +162,6 @@ fn test_relocations_nonreentrant(
 }
 
 // --- test_relocations_nonreentrant_renames ---
-// Chained renames (x→z, y→x, z→y) exercise same-slot name change.
 #[lfs_test]
 #[case(6, 1, 2000)]
 #[case(26, 1, 2000)]
@@ -229,16 +231,17 @@ fn test_relocations_nonreentrant_renames(
             assert_matches!(res, Ok(()) | Err(Error::NoEntry));
             if res == Err(Error::NoEntry) {
                 // stop once some dir is renamed
+                let mut from = String::new();
+                let mut to = String::new();
                 for d in 0..depth {
-                    let from = format!(
-                        "{}{}",
-                        &new_path[..(2 * d)],
-                        &full_path[(2 * d)..(2 * d + 2)]
-                    );
-                    assert_matches!(
-                        lfs_rename(lfs, &from, &new_path[..(2 * d + 2)]),
-                        Ok(()) | Err(Error::NotEmpty)
-                    );
+                    from.push_str(&full_path[(2*d)..(2*d+2)]);
+                    to.push_str(&new_path[(2*d)..(2*d+2)]);
+                    let ret = lfs_rename(lfs, &from, &to);
+                    assert_matches!(ret, Ok(()) | Err(Error::NotEmpty));
+                    if ret.is_ok() {
+                        from.clear();
+                        from.push_str(&to);
+                    }
                 }
                 for d in 0..depth {
                     assert_ok!(lfs_stat(lfs, &new_path[..(2 * d + 2)], info));
