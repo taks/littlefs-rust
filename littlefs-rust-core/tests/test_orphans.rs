@@ -10,7 +10,7 @@ use std::assert_matches;
 
 #[cfg(feature = "slow_tests")]
 use common::test_prng;
-use common::{dir_block, erase_block_raw, read_block_raw, write_block_raw};
+use common::{ALPHA, dir_block, erase_block_raw, read_block_raw, write_block_raw};
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::LfsConfig;
 #[cfg(feature = "slow_tests")]
@@ -311,7 +311,6 @@ fn test_orphans_mkconsistent_one_orphan(cfg: &LfsConfig) {
 #[cfg(feature = "slow_tests")]
 fn test_orphans_reentrant(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
     const CYCLES: u32 = 20;
-    const ALPHA: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
     for (files, depth) in [(6usize, 1usize), (26, 1)] {
         let lfs = &mut Lfs::default();

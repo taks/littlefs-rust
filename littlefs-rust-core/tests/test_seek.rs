@@ -3,8 +3,8 @@
 mod common;
 
 use common::{
-    LFS_FILE_MAX, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_RDWR, LFS_O_WRONLY, LFS_SEEK_CUR,
-    LFS_SEEK_END, LFS_SEEK_SET,
+    ALPHA, LFS_FILE_MAX, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_RDWR, LFS_O_WRONLY,
+    LFS_SEEK_CUR, LFS_SEEK_END, LFS_SEEK_SET,
 };
 use littlefs_rust_core::{
     Error, Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_rewind,
@@ -565,12 +565,11 @@ fn test_seek_inline_write(cfg: &LfsConfig, #[case] size: u32) {
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR | LFS_O_CREAT));
 
-    let alphabet = b"abcdefghijklmnopqrstuvwxyz";
     let mut j = 0usize;
     let mut k = 0usize;
 
     for i in 0..size {
-        let c = alphabet[j % 26];
+        let c = ALPHA[j % 26];
         let n = lfs_file_write(lfs, file, &[c]);
         assert_eq!(n, Ok(1));
         assert_eq!(lfs_file_tell(lfs, file), (i + 1));
@@ -586,7 +585,7 @@ fn test_seek_inline_write(cfg: &LfsConfig, #[case] size: u32) {
     for _ in 0..size {
         let n = lfs_file_read(lfs, file, &mut c);
         assert_eq!(n, Ok(1));
-        assert_eq!(c[0], alphabet[k % 26]);
+        assert_eq!(c[0], ALPHA[k % 26]);
         k += 1;
     }
 
@@ -597,7 +596,7 @@ fn test_seek_inline_write(cfg: &LfsConfig, #[case] size: u32) {
     assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
 
     for i in 0..size {
-        let c = alphabet[j % 26];
+        let c = ALPHA[j % 26];
         let n = lfs_file_write(lfs, file, &[c]);
         assert_eq!(n, Ok(1));
         assert_eq!(lfs_file_tell(lfs, file), (i + 1));
@@ -631,7 +630,7 @@ fn test_seek_inline_write(cfg: &LfsConfig, #[case] size: u32) {
     for _ in 0..size {
         let n = lfs_file_read(lfs, file, &mut c);
         assert_eq!(n, Ok(1));
-        assert_eq!(c[0], alphabet[k % 26]);
+        assert_eq!(c[0], ALPHA[k % 26]);
         k += 1;
     }
 

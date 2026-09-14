@@ -577,3 +577,5 @@ pub fn verify_prng_file_with_state(
         i += chunk;
     }
 }
+
+pub const ALPHA: &[u8] = b"abcdefghijklmnopqrstuvwxyz";

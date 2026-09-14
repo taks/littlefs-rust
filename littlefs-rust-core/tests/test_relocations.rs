@@ -14,8 +14,7 @@ use std::assert_matches;
 use std::fmt::Write;
 
 use common::{
-    LFS_O_CREAT, LFS_O_WRONLY, config_with_cache, default_config, init_context, init_logger,
-    test_prng,
+    ALPHA, LFS_O_CREAT, LFS_O_WRONLY, config_with_cache, init_context, init_logger, test_prng,
 };
 use littlefs_rust_core::{
     Error, Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_write,
@@ -97,27 +96,20 @@ fn test_relocations_outdated_head(cfg: &LfsConfig, #[values(8, 1)] block_cycles:
 
 // --- test_relocations_nonreentrant ---
 // mkdir/remove cycles, no power-loss.
-#[rstest]
+#[lfs_test]
 #[case(6, 1, 2000)]
 #[case(26, 1, 2000)]
 #[case(3, 3, 2000)]
 #[cfg(feature = "slow_tests")]
 fn test_relocations_nonreentrant(
+    cfg: &LfsConfig,
     #[case] files: usize,
     #[case] depth: usize,
     #[case] cycles: usize,
 ) {
-    if depth == 3 {
-        return; // guard: DEPTH==3 && CACHE_SIZE!=64
-    }
-    init_logger();
-    let block_count = 128u32;
-    let mut env = default_config(block_count);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     for _ in 0..cycles {
         for i in 0..files {
@@ -261,7 +253,6 @@ fn test_relocations_reentrant_renames(
     }
 
     let mut prng: u32 = 1;
-    let alpha: Vec<_> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
 
     for _ in 0..cycles {
         // create random path
@@ -270,7 +261,7 @@ fn test_relocations_reentrant_renames(
             assert_ok!(write!(
                 &mut full_path,
                 "/{}",
-                alpha[test_prng(&mut prng) as usize % files]
+                ALPHA[test_prng(&mut prng) as usize % files] as char
             ));
         }
 
@@ -301,7 +292,7 @@ fn test_relocations_reentrant_renames(
                 assert_ok!(write!(
                     &mut new_path,
                     "/{}",
-                    alpha[test_prng(&mut prng) as usize % files]
+                    ALPHA[test_prng(&mut prng) as usize % files] as char
                 ));
             }
 
