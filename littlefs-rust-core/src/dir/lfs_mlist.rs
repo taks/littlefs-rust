@@ -2,6 +2,8 @@
 
 use core::fmt::Debug;
 
+use crate::{LfsDir, lfs_type::LfsType};
+
 use super::lfs_mdir::LfsMdir;
 
 /// Per lfs.h struct lfs_mlist
@@ -21,6 +23,13 @@ impl Debug for LfsMlist {
             .field("type_", &self.type_)
             .field("m", &self.m)
             .finish()
+    }
+}
+
+impl LfsMlist {
+    pub(crate) unsafe fn as_mut_lsf_dir(&mut self) -> &mut LfsDir {
+        debug_assert!(self.type_ == LfsType::DIR as u8);
+        unsafe { ::core::mem::transmute::<&mut Self, &mut LfsDir>(self) }
     }
 }
 
