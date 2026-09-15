@@ -1,22 +1,23 @@
 //! Directory commit. Per lfs.c lfs_dir_commit, lfs_dir_commitattr, lfs_dir_alloc, etc.
 
 use core::cell::UnsafeCell;
-use core::cmp;
 use core::ptr::NonNull;
+use core::{cmp, ptr};
 
 use zerocopy::{FromBytes, IntoBytes, TryFromBytes};
 
 use crate::dir::fetch::lfs_dir_getgstate;
 use crate::dir::lfs_fcrc::lfs_fcrc_tole32;
 use crate::dir::traverse::LfsDirTraverseStackCb;
-use crate::dir::{LfsCommit, LfsFcrc, LfsMdir};
+use crate::dir::{LfsCommit, LfsFcrc, LfsMdir, LfsMlist};
 use crate::error::Error;
+use crate::file::ops::{lfs_file_flush, lfs_file_outline};
 use crate::fs::Lfs;
 use crate::fs::stat::lfs_fs_size_;
-use crate::lfs_debug;
-use crate::lfs_type::LfsType;
 use crate::lfs_type::lfs_type::LFS_TYPE_FCRC;
+use crate::lfs_type::{LfsType, OpenFlags};
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
+use crate::{LfsFile, lfs_debug};
 
 /// Per lfs.c lfs_dir_commitprog (lines 1604-1618)
 ///
@@ -2122,6 +2123,25 @@ pub fn lfs_dir_orphaningcommit(
 ) -> Result<i32, Error> {
     use crate::error::LFS_OK_ORPHANED;
     use crate::util::{lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_tole32};
+
+    // check for any inline files that aren't RAM backed and
+    // forcefully evict them, needed for filesystem consistency
+    unsafe {
+        let mut f = ::core::mem::transmute::<*mut LfsMlist, *mut LfsFile>(lfs.mlist);
+        while !f.is_null() {
+            if dir.as_ptr() != ptr::addr_of_mut!((*f).m)
+                && !lfs_pair_cmp(&(*f).m.pair, &dir.as_ref().pair)
+                && (*f).type_ == LfsType::REG
+                && (*f).flags.contains(OpenFlags::INLINE)
+                && (*f).ctz.size > lfs.cfg.as_ref().cache_size
+            {
+                lfs_file_outline(lfs, &mut (*f))?;
+                lfs_file_flush(lfs, &mut (*f))?;
+            }
+
+            f = (*f).next;
+        }
+    }
 
     let dir = unsafe { dir.as_mut() };
 
