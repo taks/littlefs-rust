@@ -1510,10 +1510,10 @@ pub fn lfs_dir_splittingcompact(
         }
     }
 
-    let superblock_pair = [0u32, 1u32];
-    if lfs_dir_needsrelocation(lfs, dir) && !lfs_pair_cmp(&dir.pair, &superblock_pair) {
+    if lfs_dir_needsrelocation(lfs, dir) && !lfs_pair_cmp(&dir.pair, &[0, 1]) {
         let size = lfs_fs_size_(lfs)?;
         if lfs.block_count as i64 - size as i64 > (lfs.block_count as i64) / 8 {
+            lfs_debug!("Expanding superblock at rev {}", dir.rev);
             let err = lfs_dir_split(lfs, dir, attrs, source, begin, end_val);
             if let Err(err) = err
                 && err != Error::NoSpace
@@ -2129,7 +2129,8 @@ pub fn lfs_dir_orphaningcommit(
     let mut ldir = *dir;
     let mut pdir = unsafe { core::mem::zeroed() };
 
-    let state = lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?;
+    let mut state =
+        lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?;
 
     if !lfs_pair_cmp(&dir.pair, &lpair) {
         *dir = ldir;
@@ -2148,9 +2149,11 @@ pub fn lfs_dir_orphaningcommit(
             ),
             buffer: dir.tail.as_bytes(),
         }];
-        let tail_state = lfs_dir_relocatingcommit(lfs, &mut pdir, &plpair, &tail_attrs, None);
-        lfs_pair_fromle32(&mut dir.tail);
-        tail_state?;
+        state = {
+            let state = lfs_dir_relocatingcommit(lfs, &mut pdir, &plpair, &tail_attrs, None);
+            lfs_pair_fromle32(&mut dir.tail);
+            state?
+        };
         ldir = pdir;
     }
 
@@ -2269,6 +2272,12 @@ pub fn lfs_dir_orphaningcommit(
             let mut moveid: u16 = 0x3ff;
             if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
                 moveid = crate::tag::lfs_tag_id(lfs.gstate.tag);
+                lfs_debug!(
+                    "Fixing move while relocating {{0x{:x}, 0x{:x}}} 0x{:x}",
+                    pdir.pair[0],
+                    pdir.pair[1],
+                    moveid
+                );
                 crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, None);
             }
 
