@@ -1510,10 +1510,10 @@ pub fn lfs_dir_splittingcompact(
         }
     }
 
-    let superblock_pair = [0u32, 1u32];
-    if lfs_dir_needsrelocation(lfs, dir) && !lfs_pair_cmp(&dir.pair, &superblock_pair) {
+    if lfs_dir_needsrelocation(lfs, dir) && !lfs_pair_cmp(&dir.pair, &[0, 1]) {
         let size = lfs_fs_size_(lfs)?;
         if lfs.block_count as i64 - size as i64 > (lfs.block_count as i64) / 8 {
+            lfs_debug!("Expanding superblock at rev {}", dir.rev);
             let err = lfs_dir_split(lfs, dir, attrs, source, begin, end_val);
             if let Err(err) = err
                 && err != Error::NoSpace

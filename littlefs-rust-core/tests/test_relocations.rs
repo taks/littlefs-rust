@@ -194,6 +194,7 @@ fn test_relocations_nonreentrant_renames(
                 ALPHA[test_prng(&mut prng) as usize % files] as char
             ));
         }
+        log::info!("{}", full_path);
 
         // if it does not exist, we create it, else we destroy
         let info = &mut LfsInfo::default();
