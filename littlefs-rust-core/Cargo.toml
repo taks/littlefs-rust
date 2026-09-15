@@ -28,7 +28,7 @@ rstest = "0.26"
 littlefs-rust-test-macro = { path = "../littlefs-rust-test-macro" }
 
 [features]
-default = ["alloc", "slow_tests"]
+default = ["alloc"]
 alloc = []
 # Enable for debugging: RUST_LOG=littlefs_rust=trace cargo test --features log ...
 std = []
@@ -41,3 +41,6 @@ multiversion = []  # disk_version in config, lfs_fs_disk_version*
 shrink = []        # lfs_shrink_checkblock, shrink in lfs_fs_grow_
 migrate = []       # v1->v2 migration (defer)
 slow_tests = []    # Enable slow power-loss/reentrant tests (CI nightly)
+
+[profile.release]
+opt-level = "s"
