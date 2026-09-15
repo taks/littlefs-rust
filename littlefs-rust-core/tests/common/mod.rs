@@ -361,23 +361,6 @@ pub fn corrupt_block(cfg: &LfsConfig, block: u32) {
     assert_ok!(write_block_raw(cfg, block, 0, &buffer));
 }
 
-/// Format fs, sync, return raw content of superblock blocks 0 and 1.
-/// Helper for debug tests. Caller must init_context before.
-pub fn format_and_read_superblock_blocks(env: &mut TestEnv) -> Result<(Vec<u8>, Vec<u8>), Error> {
-    use littlefs_rust_core::{Lfs, lfs_format};
-
-    let lfs = &mut Lfs::default();
-    lfs_format(lfs, &env.config as &LfsConfig)?;
-
-    let block_size = env.config.block_size as usize;
-    let mut block0 = vec![0u8; block_size];
-    let mut block1 = vec![0u8; block_size];
-    read_block_raw(&env.config as &LfsConfig, 0, 0, &mut block0)?;
-    read_block_raw(&env.config as &LfsConfig, 1, 0, &mut block1)?;
-
-    Ok((block0, block1))
-}
-
 /// xorshift32 PRNG matching C littlefs TEST_PRNG exactly.
 /// Deterministic; same seed produces same sequence as C.
 ///

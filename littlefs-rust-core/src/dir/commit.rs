@@ -2125,7 +2125,7 @@ pub fn lfs_dir_orphaningcommit(
 
     let dir = unsafe { dir.as_mut() };
 
-    let lpair = dir.pair;
+    let mut lpair = dir.pair;
     let mut ldir = *dir;
     let mut pdir = unsafe { core::mem::zeroed() };
 
@@ -2159,9 +2159,6 @@ pub fn lfs_dir_orphaningcommit(
 
     // C: lfs.c:2472-2594 — relocation handling
     let mut orphans = false;
-    let mut state = state;
-    let mut lpair = lpair;
-
     while state == crate::error::LFS_OK_RELOCATED {
         lfs_debug!(
             "Relocating {{0x{:x}, 0x{:x}}} -> {{0x{:x}, 0x{:x}}}",
