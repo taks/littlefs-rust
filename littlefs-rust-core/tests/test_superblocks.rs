@@ -629,7 +629,7 @@ fn test_superblocks_shrink(cfg: &LfsConfig, #[values(true, false)] known_block_c
         let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
         assert_ok!(lfs_fs_stat(lfs, fsinfo));
         assert_eq!(fsinfo.block_size, cfg.block_size);
-        assert_eq!(fsinfo.block_count, cfg.block_count);
+        assert_eq!(fsinfo.block_count, block_count);
         assert_ok!(lfs_unmount(lfs));
 
         // same size is a noop

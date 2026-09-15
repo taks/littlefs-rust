@@ -19,7 +19,10 @@ use std::{panic::AssertUnwindSafe, ptr::NonNull};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
 pub fn init_logger() {
-    let _ = env_logger::try_init();
+    let _ = env_logger::builder()
+        .is_test(true)
+        .format_timestamp(None)
+        .try_init();
 }
 
 pub fn run_powerloss_none(
