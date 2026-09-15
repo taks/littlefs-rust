@@ -604,124 +604,121 @@ fn test_superblocks_grow(cfg: &LfsConfig, #[values(false, true)] known_block_cou
     }
 }
 
-#[cfg(feature = "shrink")]
-const ERASE_COUNT_SHRINK: u32 = 128;
-
 /// Upstream: [cases.test_superblocks_shrink]
 /// BLOCK_COUNT = ERASE_COUNT, BLOCK_COUNT_2 = [ERASE_COUNT/2, ERASE_COUNT/4, 2],
 /// KNOWN_BLOCK_COUNT = [true, false]. Shrink via lfs_fs_grow to smaller size.
 #[cfg(feature = "shrink")]
 #[lfs_test]
-fn test_superblocks_shrink(
-    cfg: &LfsConfig,
-    #[values(ERASE_COUNT_SHRINK / 2, ERASE_COUNT_SHRINK / 4, 2u32)] block_count_2: u32,
-    #[values(true, false)] known_block_count: bool,
-) {
-    const BLOCK_COUNT: u32 = ERASE_COUNT_SHRINK;
-    const BLOCK_SIZE: u32 = 512;
+fn test_superblocks_shrink(cfg: &LfsConfig, #[values(true, false)] known_block_count: bool) {
+    let block_count = cfg.block_count;
+    for block_count_2 in [block_count / 2, block_count / 4, 2] {
+        let lfs = &mut Lfs::default();
 
-    let lfs = &mut Lfs::default();
+        assert_ok!(lfs_format(lfs, cfg));
 
-    assert_ok!(lfs_format(lfs, &env.config));
+        let cfg = &mut LfsConfig {
+            block_count: if known_block_count {
+                cfg.block_count
+            } else {
+                0
+            },
+            ..*cfg
+        };
 
-    env.config.block_count = if known_block_count { BLOCK_COUNT } else { 0 };
+        assert_ok!(lfs_mount(lfs, cfg));
+        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
+        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_eq!(fsinfo.block_size, cfg.block_size);
+        assert_eq!(fsinfo.block_count, cfg.block_count);
+        assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(fsinfo.block_size, BLOCK_SIZE);
-    assert_eq!(fsinfo.block_count, BLOCK_COUNT);
-    assert_ok!(lfs_unmount(lfs));
+        // same size is a noop
+        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_fs_grow(lfs, block_count));
+        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
+        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_eq!(fsinfo.block_size, cfg.block_size);
+        assert_eq!(fsinfo.block_count, block_count);
+        assert_ok!(lfs_unmount(lfs));
 
-    // same size is a noop
-    assert_ok!(lfs_mount(lfs, &env.config));
-    assert_ok!(lfs_fs_grow(lfs, BLOCK_COUNT));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(fsinfo.block_size, BLOCK_SIZE);
-    assert_eq!(fsinfo.block_count, BLOCK_COUNT);
-    assert_ok!(lfs_unmount(lfs));
+        assert_ok!(lfs_mount(lfs, cfg));
+        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
+        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_eq!(fsinfo.block_size, cfg.block_size);
+        assert_eq!(fsinfo.block_count, block_count);
+        assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(fsinfo.block_size, BLOCK_SIZE);
-    assert_eq!(fsinfo.block_count, BLOCK_COUNT);
-    assert_ok!(lfs_unmount(lfs));
+        // shrink to BLOCK_COUNT_2
+        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_fs_grow(lfs, block_count_2));
+        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
+        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_eq!(fsinfo.block_size, cfg.block_size);
+        assert_eq!(fsinfo.block_count, block_count_2);
+        assert_ok!(lfs_unmount(lfs));
 
-    // shrink to BLOCK_COUNT_2
-    assert_ok!(lfs_mount(lfs, &env.config));
-    assert_ok!(lfs_fs_grow(lfs, block_count_2));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(fsinfo.block_size, BLOCK_SIZE);
-    assert_eq!(fsinfo.block_count, block_count_2);
-    assert_ok!(lfs_unmount(lfs));
+        cfg.block_count = if known_block_count { block_count_2 } else { 0 };
 
-    env.config.block_count = if known_block_count { block_count_2 } else { 0 };
+        assert_ok!(lfs_mount(lfs, cfg));
+        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
+        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_eq!(fsinfo.block_size, cfg.block_size);
+        assert_eq!(fsinfo.block_count, block_count_2);
+        assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(fsinfo.block_size, BLOCK_SIZE);
-    assert_eq!(fsinfo.block_count, block_count_2);
-    assert_ok!(lfs_unmount(lfs));
+        // mounting with the previous (larger) size should fail
+        cfg.block_count = block_count;
+        assert_eq!(lfs_mount(lfs, cfg), Err(Error::Invalid));
 
-    // mounting with the previous (larger) size should fail
-    let cfg_old = LfsConfig {
-        block_count: BLOCK_COUNT,
-        ..env.config
-    };
-    assert_err!(Error::Invalid, lfs_mount(lfs, &cfg_old));
+        cfg.block_count = if known_block_count { block_count_2 } else { 0 };
 
-    env.config.block_count = if known_block_count { block_count_2 } else { 0 };
+        // same size is a noop
+        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_fs_grow(lfs, block_count_2));
+        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
+        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_eq!(fsinfo.block_size, cfg.block_size);
+        assert_eq!(fsinfo.block_count, block_count_2);
+        assert_ok!(lfs_unmount(lfs));
 
-    // same size is a noop
-    assert_ok!(lfs_mount(lfs, &env.config));
-    assert_ok!(lfs_fs_grow(lfs, block_count_2));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(fsinfo.block_size, BLOCK_SIZE);
-    assert_eq!(fsinfo.block_count, block_count_2);
-    assert_ok!(lfs_unmount(lfs));
+        assert_ok!(lfs_mount(lfs, cfg));
+        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
+        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_eq!(fsinfo.block_size, cfg.block_size);
+        assert_eq!(fsinfo.block_count, block_count_2);
+        assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(fsinfo.block_size, BLOCK_SIZE);
-    assert_eq!(fsinfo.block_count, block_count_2);
-    assert_ok!(lfs_unmount(lfs));
+        // write and read back a file
+        assert_ok!(lfs_mount(lfs, cfg));
+        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
+        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_eq!(fsinfo.block_size, cfg.block_size);
+        assert_eq!(fsinfo.block_count, block_count_2);
+        let test_path = "test";
+        let file = &mut LfsFile::default();
+        assert_ok!(lfs_file_open(
+            lfs,
+            file,
+            test_path,
+            LFS_O_CREAT | LFS_O_EXCL | LFS_O_WRONLY,
+        ));
+        assert_eq!(lfs_file_write(lfs, file, b"hello!"), Ok(6));
+        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_unmount(lfs));
 
-    // write and read back a file
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(fsinfo.block_size, BLOCK_SIZE);
-    assert_eq!(fsinfo.block_count, block_count_2);
-    let test_path = "test";
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        test_path,
-        LFS_O_CREAT | LFS_O_EXCL | LFS_O_WRONLY,
-    ));
-    assert_eq!(lfs_file_write(lfs, file, b"hello!"), Ok(6));
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_unmount(lfs));
-
-    assert_ok!(lfs_mount(lfs, &env.config));
-    let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
-    assert_eq!(fsinfo.block_size, BLOCK_SIZE);
-    assert_eq!(fsinfo.block_count, block_count_2);
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, test_path, LFS_O_RDONLY));
-    let mut buf = [0u8; 256];
-    assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(6));
-    assert_eq!(&buf[..6], b"hello!");
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_unmount(lfs));
+        assert_ok!(lfs_mount(lfs, cfg));
+        let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
+        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_eq!(fsinfo.block_size, cfg.block_size);
+        assert_eq!(fsinfo.block_count, block_count_2);
+        let file = &mut LfsFile::default();
+        assert_ok!(lfs_file_open(lfs, file, test_path, LFS_O_RDONLY));
+        let mut buf = [0u8; 256];
+        assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(6));
+        assert_eq!(&buf[..6], b"hello!");
+        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_unmount(lfs));
+    }
 }
 
 /// Upstream: [cases.test_superblocks_metadata_max]
