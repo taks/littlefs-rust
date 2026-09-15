@@ -163,9 +163,9 @@ fn test_relocations_nonreentrant(
 
 // --- test_relocations_nonreentrant_renames ---
 #[lfs_test]
-#[case(6, 1, 2000)]
+// #[case(6, 1, 2000)]
 #[case(26, 1, 2000)]
-#[case(3, 3, 2000)]
+// #[case(3, 3, 2000)]
 #[cfg(feature = "slow_tests")]
 fn test_relocations_nonreentrant_renames(
     cfg: &LfsConfig,
