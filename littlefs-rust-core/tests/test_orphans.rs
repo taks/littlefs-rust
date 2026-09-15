@@ -9,18 +9,16 @@ mod common;
 use std::assert_matches;
 
 #[cfg(feature = "slow_tests")]
-use common::test_prng;
-use common::{ALPHA, dir_block, erase_block_raw, read_block_raw, write_block_raw};
-#[cfg(feature = "slow_tests")]
-use littlefs_rust_core::LfsConfig;
+use common::{ALPHA, test_prng};
+use common::{dir_block, erase_block_raw, read_block_raw, write_block_raw};
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_type::LfsType;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
 use littlefs_rust_core::{
-    Error, Lfs, LfsInfo, LfsMattr, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit,
-    lfs_dir_fetch, lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
-    lfs_fs_preporphans, lfs_fs_size, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32, lfs_remove,
-    lfs_stat, lfs_unmount,
+    Error, Lfs, LfsConfig, LfsInfo, LfsMattr, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc,
+    lfs_dir_commit, lfs_dir_fetch, lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans,
+    lfs_fs_mkconsistent, lfs_fs_preporphans, lfs_fs_size, lfs_mkdir, lfs_mktag, lfs_mount,
+    lfs_pair_tole32, lfs_remove, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;

@@ -19,7 +19,6 @@ use littlefs_rust_core::{
     lfs_format, lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_type::LfsType,
     lfs_unmount,
 };
-#[cfg(feature = "slow_tests")]
 use littlefs_rust_test_macro::lfs_test;
 
 #[allow(dead_code)]
