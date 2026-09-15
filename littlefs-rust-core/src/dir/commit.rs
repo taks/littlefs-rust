@@ -2206,7 +2206,7 @@ pub fn lfs_dir_orphaningcommit(
                 }
 
                 if (*d).type_ == LfsType::DIR as u8 {
-                    let d = (&mut (*d)).as_mut_lsf_dir();
+                    let d = (&mut (*d)).as_mut_lfs_dir();
                     if !lfs_pair_cmp(&lpair, &d.head) {
                         d.head[0] = ldir.pair[0];
                         d.head[1] = ldir.pair[1];

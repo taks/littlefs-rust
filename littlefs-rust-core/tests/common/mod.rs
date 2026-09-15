@@ -14,7 +14,7 @@ pub use emubd::{
     BadblockBehavior, EmubdConfig, PowerLossBehavior, lfs_emubd_setwear, lfs_emubd_wear,
 };
 
-use littlefs_rust_core::{Error, LfsConfig, Storage, lfs_type::OpenFlags};
+use littlefs_rust_core::{Error, LfsConfig, lfs_type::OpenFlags};
 use std::{panic::AssertUnwindSafe, ptr::NonNull};
 
 /// Initialize env_logger for tests that use logging. Idempotent.
@@ -80,126 +80,6 @@ pub fn run_powerloss_linear(
 /// Layout: [rev 4][CREATE tag 4]["littlefs" 8] — C format_and_dump shows magic at 8
 pub const MAGIC: &[u8; 8] = b"littlefs";
 pub const MAGIC_OFFSET: u32 = 8;
-
-/// RAM block device storage. Erase = 0xff; prog = copy; read = copy.
-pub struct RamStorage {
-    pub data: Vec<u8>,
-    pub block_size: u32,
-    pub block_count: u32,
-}
-
-impl RamStorage {
-    pub fn new(block_size: u32, block_count: u32) -> Self {
-        let size = (block_size as usize)
-            .checked_mul(block_count as usize)
-            .expect("overflow");
-        Self {
-            data: vec![0u8; size],
-            block_size,
-            block_count,
-        }
-    }
-
-    pub fn block_offset(&self, block: u32) -> usize {
-        (block as usize)
-            .checked_mul(self.block_size as usize)
-            .expect("block overflow")
-    }
-
-    pub fn read(&mut self, block: u32, off: u32, buf: &mut [u8]) {
-        let base = self.block_offset(block);
-        let start = base + off as usize;
-        let end = start + buf.len();
-        buf.copy_from_slice(&self.data[start..end]);
-    }
-
-    pub fn prog(&mut self, block: u32, off: u32, buf: &[u8]) {
-        let base = self.block_offset(block);
-        let start = base + off as usize;
-        let end = start + buf.len();
-        self.data[start..end].copy_from_slice(buf);
-    }
-
-    pub fn erase(&mut self, block: u32) {
-        let base = self.block_offset(block);
-        let end = base + self.block_size as usize;
-        self.data[base..end].fill(0xff);
-    }
-}
-
-impl Storage for RamStorage {
-    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
-        self.read(block, offset, buf);
-        Ok(())
-    }
-
-    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
-        self.prog(block, offset, data);
-        Ok(())
-    }
-
-    fn erase(&mut self, block: u32) -> Result<(), Error> {
-        self.erase(block);
-        Ok(())
-    }
-}
-
-/// Holds RAM storage, config, and buffers. Keeps pointers valid for lfs_* calls.
-pub struct TestEnv {
-    pub ram: RamStorage,
-    pub config: LfsConfig,
-    pub _read_buf: Vec<u8>,
-    pub _prog_buf: Vec<u8>,
-    pub _lookahead_buf: Vec<u8>,
-}
-
-/// Default block size. Matches upstream.
-const BLOCK_SIZE: u32 = 512;
-
-/// Build test environment with RAM BD. block_count defaults to 128 (upstream).
-pub fn default_config(block_count: u32) -> TestEnv {
-    let block_size = BLOCK_SIZE;
-    let ram = RamStorage::new(block_size, block_count);
-    let read_buf = vec![0u8; block_size as usize];
-    let prog_buf = vec![0u8; block_size as usize];
-    let lookahead_buf = vec![0u8; block_size as usize];
-
-    let config = LfsConfig {
-        context: unsafe { core::mem::MaybeUninit::zeroed().assume_init() },
-        read_size: 16,
-        prog_size: 16,
-        block_size,
-        block_count,
-        block_cycles: -1,
-        cache_size: block_size,
-        compact_thresh: u32::MAX, // -1 in C
-        read_buffer: Some(NonNull::from_ref(&read_buf)),
-        prog_buffer: Some(NonNull::from_ref(&prog_buf)),
-        lookahead_buffer: Some(NonNull::from_ref(&lookahead_buf)),
-        name_max: 255,
-        file_max: 2_147_483_647,
-        attr_max: 1022,
-        metadata_max: 0,
-        inline_max: 0,
-    };
-
-    // Build TestEnv, then set context/buffers. We must set context after returning
-    // to the caller, since env moves and the stored &mut env.ram would otherwise
-    // be a dangling pointer. Use TestEnv::init_context() after default_config().
-    TestEnv {
-        ram,
-        config,
-        _read_buf: read_buf,
-        _prog_buf: prog_buf,
-        _lookahead_buf: lookahead_buf,
-    }
-}
-
-/// Call after default_config() to set context to ram. Required because context
-/// must point to env.ram at its final address (after the env has been moved).
-pub fn init_context(env: &mut TestEnv) {
-    env.config.context = Some(NonNull::from_mut(&mut env.ram));
-}
 
 /// Panic if result is not Ok.
 #[macro_export]

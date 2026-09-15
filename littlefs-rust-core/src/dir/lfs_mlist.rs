@@ -27,7 +27,7 @@ impl Debug for LfsMlist {
 }
 
 impl LfsMlist {
-    pub(crate) unsafe fn as_mut_lsf_dir(&mut self) -> &mut LfsDir {
+    pub(crate) unsafe fn as_mut_lfs_dir(&mut self) -> &mut LfsDir {
         debug_assert!(self.type_ == LfsType::DIR as u8);
         unsafe { ::core::mem::transmute::<&mut Self, &mut LfsDir>(self) }
     }

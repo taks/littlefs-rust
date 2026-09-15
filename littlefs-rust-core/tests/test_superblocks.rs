@@ -5,10 +5,7 @@
 
 mod common;
 
-use common::{
-    LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, default_config, init_context,
-    read_block_raw,
-};
+use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, read_block_raw};
 use littlefs_rust_core::lfs_type::lfs_type::{
     LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK,
 };
@@ -19,8 +16,7 @@ use littlefs_rust_core::{
     lfs_remove, lfs_stat, lfs_superblock_tole32, lfs_type::LfsType, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
-use rstest::rstest;
-use std::cmp;
+use std::cmp::max;
 use zerocopy::IntoBytes;
 
 // --- test_superblocks_format ---
@@ -48,7 +44,7 @@ fn test_superblocks_magic(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
-    let mut magic = vec![0u8; cmp::max(16, cfg.read_size as usize)];
+    let mut magic = vec![0u8; max(16, cfg.read_size as usize)];
     assert_ok!(read_block_raw(cfg, 0, 0, &mut magic));
     assert_eq!(&magic[8..16], b"littlefs");
     assert_ok!(read_block_raw(cfg, 1, 0, &mut magic));
@@ -252,7 +248,7 @@ fn test_superblocks_magic_expand(
     }
     assert_ok!(lfs_unmount(lfs));
 
-    let mut magic = vec![0u8; cmp::max(16, cfg.read_size as usize)];
+    let mut magic = vec![0u8; max(16, cfg.read_size as usize)];
     assert_ok!(read_block_raw(cfg, 0, 0, &mut magic));
     assert_eq!(&magic[8..16], b"littlefs");
     assert_ok!(read_block_raw(cfg, 1, 0, &mut magic));
@@ -615,16 +611,14 @@ const ERASE_COUNT_SHRINK: u32 = 128;
 /// BLOCK_COUNT = ERASE_COUNT, BLOCK_COUNT_2 = [ERASE_COUNT/2, ERASE_COUNT/4, 2],
 /// KNOWN_BLOCK_COUNT = [true, false]. Shrink via lfs_fs_grow to smaller size.
 #[cfg(feature = "shrink")]
-#[rstest]
+#[lfs_test]
 fn test_superblocks_shrink(
+    cfg: &LfsConfig,
     #[values(ERASE_COUNT_SHRINK / 2, ERASE_COUNT_SHRINK / 4, 2u32)] block_count_2: u32,
     #[values(true, false)] known_block_count: bool,
 ) {
     const BLOCK_COUNT: u32 = ERASE_COUNT_SHRINK;
     const BLOCK_SIZE: u32 = 512;
-
-    let mut env = default_config(ERASE_COUNT_SHRINK);
-    init_context(&mut env);
 
     let lfs = &mut Lfs::default();
 
@@ -734,37 +728,38 @@ fn test_superblocks_shrink(
 /// Exercises superblock compaction under different metadata_max constraints.
 /// METADATA_MAX = [lfs_max(512, PROG_SIZE), lfs_max(BLOCK_SIZE/2, PROG_SIZE), BLOCK_SIZE]
 /// With BLOCK_SIZE=512, PROG_SIZE=16: [512, 256, 512]. N = [10, 100, 1000].
-#[rstest]
-fn test_superblocks_metadata_max(
-    #[values(512, 256, 512)] metadata_max: u32,
-    #[values(10, 100, 1000)] n: u32,
-) {
-    // Upstream default: ERASE_COUNT=2048, BLOCK_SIZE=512 → 1MB.
-    // Need enough blocks for 1000 files with directory splitting.
-    let mut env = default_config(1024);
-    init_context(&mut env);
-    env.config.metadata_max = metadata_max;
+#[lfs_test]
+fn test_superblocks_metadata_max(cfg: &LfsConfig, #[values(10, 100, 1000)] n: u32) {
+    for metadata_max in [
+        max(512, cfg.prog_size),
+        max(cfg.block_size / 2, cfg.prog_size),
+        cfg.block_size,
+    ] {
+        let cfg = LfsConfig {
+            metadata_max,
+            ..*cfg
+        };
 
-    let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+        let lfs = &mut Lfs::default();
+        assert_ok!(lfs_format(lfs, &cfg));
+        assert_ok!(lfs_mount(lfs, &cfg));
 
-    for i in 0..n {
-        let name_str = format!("hello{:03x}", i);
-        let name = &name_str;
-        let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            name,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_ok!(lfs_file_close(lfs, file));
-        let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok!(lfs_stat(lfs, name, info));
-        assert_eq!(info.name_str(), name_str);
-        assert_eq!(info.type_, LfsType::REG);
+        for i in 0..n {
+            let name = &format!("hello{:03x}", i);
+            let file = &mut LfsFile::default();
+            assert_ok!(lfs_file_open(
+                lfs,
+                file,
+                name,
+                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+            ));
+            assert_ok!(lfs_file_close(lfs, file));
+            let info = &mut LfsInfo::default();
+            assert_ok!(lfs_stat(lfs, name, info));
+            assert_eq!(info.name_str(), name);
+            assert_eq!(info.type_, LfsType::REG);
+        }
+
+        assert_ok!(lfs_unmount(lfs));
     }
-
-    assert_ok!(lfs_unmount(lfs));
 }

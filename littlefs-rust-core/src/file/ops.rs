@@ -234,7 +234,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
     }
 
     file.type_ = LfsType::REG;
-    lfs_mlist_append(lfs, unsafe { file.as_mut_lsf_mist() });
+    lfs_mlist_append(lfs, unsafe { file.as_mut_lfs_mist() });
 
     if tag == Err(Error::NoEntry) {
         if !flags.contains(OpenFlags::CREATE) {
@@ -444,7 +444,7 @@ pub fn lfs_file_close_(lfs: &mut crate::fs::Lfs, file: &mut LfsFile) -> Result<(
         err = lfs_file_sync_(lfs, file);
     }
 
-    unsafe { lfs_mlist_remove(lfs, file.as_mut_lsf_mist()) };
+    unsafe { lfs_mlist_remove(lfs, file.as_mut_lfs_mist()) };
 
     #[cfg(feature = "alloc")]
     unsafe {
