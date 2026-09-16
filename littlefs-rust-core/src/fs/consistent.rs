@@ -62,7 +62,7 @@ pub fn lfs_fs_mkconsistent_(lfs: &mut Lfs) -> Result<(), Error> {
         if !lfs_gstate_iszero(&delta) {
             let mut root = core::mem::zeroed::<LfsMdir>();
 
-            lfs_dir_fetch(lfs, &mut root, lfs.root)?;
+            lfs_dir_fetch(lfs, &mut root, lfs.root, None)?;
             lfs_dir_commit(lfs, &mut root, &[])?;
         }
     }
@@ -156,9 +156,7 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs, sw: &mut Stopwatch) -> Result<(), E
 
             while !lfs_pair_isnull(&mdir.tail) {
                 let mdir_tail = mdir.tail;
-                sw.start();
-                lfs_dir_fetch(lfs, &mut mdir, mdir_tail)?;
-                sw.stop();
+                lfs_dir_fetch(lfs, &mut mdir, mdir_tail, Some(sw))?;
 
                 let should_compact = !mdir.erased
                     || if compact_thresh == 0 {

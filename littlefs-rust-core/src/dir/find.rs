@@ -301,6 +301,7 @@ pub fn lfs_dir_find(
                 lfs_mktag(LFS_TYPE_NAME, 0, namelen),
                 id,
                 Some(&|tag, disk| lfs_dir_find_match(&match_data, tag, disk)),
+                None
             )?;
 
             if tag != 0 {

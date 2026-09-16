@@ -1,6 +1,7 @@
 //! Directory fetch. Per lfs.c lfs_dir_fetch, lfs_dir_getgstate, lfs_dir_getinfo.
 
 use num_enum::TryFromPrimitive as _;
+use stopwatch::Stopwatch;
 use zerocopy::IntoBytes;
 
 use crate::bd::bd::{lfs_bd_crc, lfs_bd_read};
@@ -322,7 +323,9 @@ pub fn lfs_dir_fetchmatch(
     ftag: lfs_tag_t,
     id: &mut Option<&mut u16>,
     cb: Option<&dyn Fn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
+    mut sw: Option<&mut stopwatch::Stopwatch>,
 ) -> Result<lfs_tag_t, Error> {
+
     let cfg = unsafe { lfs.cfg.as_ref() };
 
     let mut besttag: lfs_stag_t = -1;
@@ -336,6 +339,8 @@ pub fn lfs_dir_fetchmatch(
     // find the block with the most recent revision (C: lines 1123-1138)
     let mut revs = [0u32; 2];
     let mut r = 0usize;
+        sw.as_mut().map(|sw| sw.start());
+
     for i in 0..2 {
         crate::lfs_trace!("fetchmatch: reading rev for pair[{}]={}", i, pair[i]);
         let mut rev_buf = [0u8; 4];
@@ -358,6 +363,7 @@ pub fn lfs_dir_fetchmatch(
             r = i;
         }
     }
+    sw.as_mut().map(|sw| sw.stop());
 
     dir.pair[0] = pair[r % 2];
     dir.pair[1] = pair[(r + 1) % 2];
@@ -669,8 +675,9 @@ pub fn lfs_dir_fetch(
     lfs: &mut crate::fs::Lfs,
     dir: &mut LfsMdir,
     pair: [lfs_block_t; 2],
+    sw: Option<&mut Stopwatch>
 ) -> Result<(), Error> {
-    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, &mut None, None);
+    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, &mut None, None, sw);
     if let Err(e) = res { Err(e) } else { Ok(()) }
 }
 

@@ -67,7 +67,7 @@ pub fn lfs_fs_pred(
             if !have_fetched {
                 // Matched before any fetch: tail [0,1] == pair (root).
                 // The root has no predecessor.
-                lfs_dir_fetch(lfs, pdir, pdir.tail)?;
+                lfs_dir_fetch(lfs, pdir, pdir.tail, None)?;
 
                 if lfs_pair_isnull(&pdir.tail) {
                     return Err(crate::error::Error::NoEntry);
@@ -76,7 +76,7 @@ pub fn lfs_fs_pred(
             return Ok(());
         }
 
-        lfs_dir_fetch(lfs, pdir, pdir.tail)?;
+        lfs_dir_fetch(lfs, pdir, pdir.tail, None)?;
         have_fetched = true;
     }
 
@@ -203,6 +203,7 @@ pub fn lfs_fs_parent(
             lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
             &mut None,
             Some(&|_, disk| lfs_fs_parent_match(&find_match, disk)),
+            None,
         );
 
         if tag != Ok(0) && tag != Err(Error::NoEntry) {

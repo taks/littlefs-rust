@@ -152,7 +152,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
 
         while pred.split {
             let pred_tail = pred.tail;
-            lfs_dir_fetch(lfs, &mut pred, pred_tail)?;
+            lfs_dir_fetch(lfs, &mut pred, pred_tail, None)?;
         }
 
         lfs_pair_tole32(&mut pred.tail);

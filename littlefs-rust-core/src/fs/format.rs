@@ -181,7 +181,7 @@ pub fn lfs_format_(
         }
 
         // sanity check that fetch works
-        err = lfs_dir_fetch(lfs, &mut root, [0, 1]);
+        err = lfs_dir_fetch(lfs, &mut root, [0, 1], None);
         if err.is_err() {
             let _ = lfs_deinit(lfs);
             return crate::lfs_pass_err!(err);

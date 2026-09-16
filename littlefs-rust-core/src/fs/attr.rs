@@ -75,7 +75,7 @@ pub fn lfs_getattr_(
     let mut id = lfs_tag_id(tag);
     if id == 0x3ff {
         id = 0;
-        lfs_dir_fetch(lfs, &mut cwd, lfs.root)?;
+        lfs_dir_fetch(lfs, &mut cwd, lfs.root, None)?;
     }
     let size = cmp::min(buffer.len(), lfs.attr_max as usize);
     let gtag = lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size);
@@ -144,7 +144,7 @@ pub fn lfs_commitattr(
     if id == 0x3ff {
         id = 0;
         let lfs_root = lfs.root;
-        lfs_dir_fetch(lfs, &mut cwd, lfs_root)?;
+        lfs_dir_fetch(lfs, &mut cwd, lfs_root, None)?;
     }
 
     let attrs = [LfsMattr {

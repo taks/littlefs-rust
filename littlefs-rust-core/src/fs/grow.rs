@@ -104,7 +104,7 @@ pub fn lfs_fs_grow_(lfs: &mut super::lfs::Lfs, block_count: lfs_size_t) -> Resul
     // fetch the root
     let mut root = core::mem::MaybeUninit::<LfsMdir>::zeroed();
     let root = unsafe { root.assume_init_mut() };
-    lfs_dir_fetch(lfs, root, lfs.root)?;
+    lfs_dir_fetch(lfs, root, lfs.root, None)?;
 
     // update the superblock
     let mut superblock = unsafe { core::mem::zeroed::<LfsSuperblock>() };

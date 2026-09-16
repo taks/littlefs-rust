@@ -95,7 +95,7 @@ pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &str) -> 
         lfs_pair_fromle32(&mut pair);
     }
 
-    lfs_dir_fetch(lfs, &mut dir.m, pair)?;
+    lfs_dir_fetch(lfs, &mut dir.m, pair, None)?;
 
     dir.head[0] = dir.m.pair[0];
     dir.head[1] = dir.m.pair[1];
@@ -205,7 +205,7 @@ pub fn lfs_dir_read_(
                     return Ok(false);
                 }
                 let dir_m_tail = dir.m.tail;
-                lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
+                lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail, None)?;
 
                 dir.id = 0;
             }
@@ -291,7 +291,7 @@ pub fn lfs_dir_seek_(
                 return Err(Error::Invalid);
             }
             let dir_m_tail = dir.m.tail;
-            lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail)?;
+            lfs_dir_fetch(lfs, &mut dir.m, dir_m_tail, None)?;
             dir.id = 0;
         }
         let diff = cmp::min((dir.m.count - dir.id) as u32, off);
@@ -333,7 +333,7 @@ pub fn lfs_dir_tell_(_lfs: *mut crate::fs::Lfs, dir: *const LfsDir) -> crate::ty
 /// }
 /// ```
 pub fn lfs_dir_rewind_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir) -> Result<(), Error> {
-    lfs_dir_fetch(lfs, &mut dir.m, dir.head)?;
+    lfs_dir_fetch(lfs, &mut dir.m, dir.head, None)?;
     dir.id = 0;
     dir.pos = 0;
     Ok(())

@@ -1913,7 +1913,7 @@ fn relocatingcommit_fixmlist(
                     d_ref.id -= d_ref.m.count;
                 }
                 let d_ref_m_tail = d_ref.m.tail;
-                lfs_dir_fetch(lfs, &mut d_ref.m, d_ref_m_tail)?;
+                lfs_dir_fetch(lfs, &mut d_ref.m, d_ref_m_tail, None)?;
             }
         }
         d = d_ref.next;

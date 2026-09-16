@@ -160,7 +160,7 @@ pub fn lfs_fs_traverse_(
         // iterate through ids in directory
         crate::lfs_trace!("fs_traverse: fetch tail={:?} count={}", dir.tail, dir.count);
         let dir_tail = dir.tail;
-        lfs_dir_fetch(lfs, &mut dir, dir_tail)?;
+        lfs_dir_fetch(lfs, &mut dir, dir_tail, None)?;
 
         for id in 0..dir.count {
             let mut raw: [lfs_block_t; 2] = [0, 0];

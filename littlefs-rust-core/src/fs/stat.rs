@@ -119,7 +119,7 @@ pub fn lfs_fs_stat_(
             split: false,
             tail: [0, 0],
         };
-        lfs_dir_fetch(lfs, &mut dir, lfs.root)?;
+        lfs_dir_fetch(lfs, &mut dir, lfs.root, None)?;
 
         let mut superblock = unsafe { core::mem::zeroed::<LfsSuperblock>() };
         let _tag = lfs_dir_get(
