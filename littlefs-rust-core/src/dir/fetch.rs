@@ -478,10 +478,7 @@ pub fn lfs_dir_fetchmatch(
                     tempcount = lfs_tag_id(tag) + 1;
                 }
             } else if (lfs_tag_type1(tag)) == LFS_TYPE_SPLICE {
-                // Divergence: C uses tempcount += lfs_tag_splice(tag) (unsigned wrap). We clamp
-                // to 0 to avoid underflow when splice is negative (Rule 7).
-                let delta = lfs_tag_splice(tag) as i32;
-                tempcount = (tempcount as i32 + delta).max(0) as u16;
+                tempcount = tempcount.wrapping_add(lfs_tag_splice(tag) as u16);
 
                 let delete_tag = lfs_mktag(LFS_TYPE_DELETE, 0, 0)
                     | (lfs_mktag(0, 0x3ff, 0) & tempbesttag as lfs_tag_t);
