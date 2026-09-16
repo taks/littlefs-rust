@@ -222,7 +222,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
             tail: [lfs.root[0], lfs.root[1]],
         };
         let mut oldpath_ptr = oldpath;
-        let oldtag = lfs_dir_find(lfs, &mut oldcwd, &mut oldpath_ptr, &mut None)?;
+        let oldtag = lfs_dir_find(lfs, &mut oldcwd, &mut oldpath_ptr, None)?;
         if lfs_tag_id(oldtag) == 0x3ff {
             return Err(Error::Invalid);
         }
@@ -239,7 +239,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
         };
         let mut newpath_ptr = newpath;
         let mut newid: u16 = 0;
-        let prevtag = lfs_dir_find(lfs, &mut newcwd, &mut newpath_ptr, &mut Some(&mut newid));
+        let prevtag = lfs_dir_find(lfs, &mut newcwd, &mut newpath_ptr, Some(&mut newid));
         let newpath_slice = newpath_ptr.as_bytes();
         if (prevtag.is_err() || lfs_tag_id(prevtag.unwrap()) == 0x3ff)
             && !(prevtag == Err(Error::NoEntry) && lfs_path_islast(newpath_slice))

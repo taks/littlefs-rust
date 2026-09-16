@@ -118,7 +118,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
         };
 
         let mut path_ptr = path;
-        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
+        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, None)?;
         if lfs_tag_id(tag) == 0x3ff {
             return Err(Error::Invalid);
         }

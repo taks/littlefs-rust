@@ -225,7 +225,7 @@ pub fn lfs_file_opencfg_<'a: 'b, 'b>(
     file.cache.buffer = NonNull::from_ref(&[]);
 
     let mut path_ptr = path;
-    let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, &mut Some(&mut file.id));
+    let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, Some(&mut file.id));
     if let Err(err) = tag
         && !(err == Error::NoEntry && lfs_path_islast(path_ptr.as_bytes()))
     {

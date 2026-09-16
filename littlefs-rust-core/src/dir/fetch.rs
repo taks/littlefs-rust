@@ -319,7 +319,7 @@ pub fn lfs_dir_fetchmatch(
     pair: [lfs_block_t; 2],
     fmask: lfs_tag_t,
     ftag: lfs_tag_t,
-    id: &mut Option<&mut u16>,
+    id: Option<&mut u16>,
     cb: Option<&dyn Fn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
 ) -> Result<lfs_tag_t, Error> {
     let cfg = unsafe { lfs.cfg.as_ref() };
@@ -602,7 +602,7 @@ pub fn lfs_dir_fetchmatch(
         }
 
         if let Some(_id) = id {
-            **_id = cmp::min(lfs_tag_id(besttag as lfs_tag_t), dir.count);
+            *_id = cmp::min(lfs_tag_id(besttag as lfs_tag_t), dir.count);
         }
 
         if lfs_tag_isvalid(besttag as lfs_tag_t) {
@@ -663,7 +663,7 @@ pub fn lfs_dir_fetch(
     dir: &mut LfsMdir,
     pair: [lfs_block_t; 2],
 ) -> Result<(), Error> {
-    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, &mut None, None);
+    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, None, None);
     if let Err(e) = res { Err(e) } else { Ok(()) }
 }
 

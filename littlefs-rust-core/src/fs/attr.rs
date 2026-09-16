@@ -70,7 +70,7 @@ pub fn lfs_getattr_(
     };
 
     let mut path_ptr = path;
-    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
+    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, None)?;
 
     let mut id = lfs_tag_id(tag);
     if id == 0x3ff {
@@ -138,7 +138,7 @@ pub fn lfs_commitattr(
     };
 
     let mut path_ptr = path;
-    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None)?;
+    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, None)?;
 
     let mut id = lfs_tag_id(tag);
     if id == 0x3ff {

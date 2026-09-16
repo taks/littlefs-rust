@@ -267,7 +267,7 @@ pub fn lfs_mount_(
                 dir_tail,
                 lfs_mktag(0x7ff, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-                &mut None,
+                None,
                 Some(&|tag, disk| lfs_dir_find_match(&find_match, tag, disk)),
             );
 
