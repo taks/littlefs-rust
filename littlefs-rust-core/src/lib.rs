@@ -11,7 +11,7 @@ extern crate alloc;
 
 mod bd;
 mod block_alloc;
-mod crc;
+pub mod crc;
 mod dir;
 #[cfg(feature = "alloc")]
 mod lfs_alloc_module;

@@ -77,3 +77,9 @@ fn test_write_verify_prng_file(cfg: &LfsConfig) {
     assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file));
     assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
 }
+
+#[test]
+fn test_crc() {
+    let crc = littlefs_rust_core::crc::lfs_crc(0xffff_ffff, b"123456789");
+    assert_eq!(crc, 0x340BC6D9, "{:X}", crc);
+}
