@@ -1,6 +1,7 @@
 //! Directory fetch. Per lfs.c lfs_dir_fetch, lfs_dir_getgstate, lfs_dir_getinfo.
 
 use num_enum::TryFromPrimitive as _;
+use scopeguard::defer;
 use stopwatch::Stopwatch;
 use zerocopy::IntoBytes;
 
@@ -339,7 +340,6 @@ pub fn lfs_dir_fetchmatch(
     // find the block with the most recent revision (C: lines 1123-1138)
     let mut revs = [0u32; 2];
     let mut r = 0usize;
-        sw.as_mut().map(|sw| sw.start());
 
     for i in 0..2 {
         crate::lfs_trace!("fetchmatch: reading rev for pair[{}]={}", i, pair[i]);
@@ -363,7 +363,6 @@ pub fn lfs_dir_fetchmatch(
             r = i;
         }
     }
-    sw.as_mut().map(|sw| sw.stop());
 
     dir.pair[0] = pair[r % 2];
     dir.pair[1] = pair[(r + 1) % 2];
@@ -420,6 +419,10 @@ pub fn lfs_dir_fetchmatch(
             }
 
             ptag = tag;
+                sw.as_mut().map(|sw| sw.start());
+    defer! {
+        sw.as_mut().map(|sw| sw.stop());
+    }
 
             if (lfs_tag_type2(tag)) == LFS_TYPE_CCRC {
                 let mut dcrc_buf = [0u8; 4];
