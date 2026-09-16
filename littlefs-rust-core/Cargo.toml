@@ -25,6 +25,7 @@ num_enum = { version = "0.7", default-features = false }
 [dev-dependencies]
 env_logger = "0.11"
 rstest = "0.26"
+littlefs-rust-test-macro = { path = "../littlefs-rust-test-macro" }
 
 [features]
 default = ["alloc"]
@@ -40,3 +41,6 @@ multiversion = []  # disk_version in config, lfs_fs_disk_version*
 shrink = []        # lfs_shrink_checkblock, shrink in lfs_fs_grow_
 migrate = []       # v1->v2 migration (defer)
 slow_tests = []    # Enable slow power-loss/reentrant tests (CI nightly)
+
+[profile.release]
+opt-level = "s"

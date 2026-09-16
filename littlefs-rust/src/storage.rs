@@ -50,7 +50,7 @@ impl<S: Storage> littlefs_rust_core::Storage for SS<S> {
         block: u32,
         offset: u32,
         buf: &mut [u8],
-    ) -> Result<(), littlefs_rust_core::error::Error> {
+    ) -> Result<(), littlefs_rust_core::Error> {
         self.0.read(block, offset, buf)
     }
 
@@ -59,15 +59,15 @@ impl<S: Storage> littlefs_rust_core::Storage for SS<S> {
         block: u32,
         offset: u32,
         data: &[u8],
-    ) -> Result<(), littlefs_rust_core::error::Error> {
+    ) -> Result<(), littlefs_rust_core::Error> {
         self.0.write(block, offset, data)
     }
 
-    fn erase(&mut self, block: u32) -> Result<(), littlefs_rust_core::error::Error> {
+    fn erase(&mut self, block: u32) -> Result<(), littlefs_rust_core::Error> {
         self.0.erase(block)
     }
 
-    fn sync(&mut self) -> Result<(), littlefs_rust_core::error::Error> {
+    fn sync(&mut self) -> Result<(), littlefs_rust_core::Error> {
         self.0.sync()
     }
 }

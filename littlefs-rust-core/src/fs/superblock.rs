@@ -335,16 +335,11 @@ pub fn lfs_fs_deorphan(lfs: &mut super::lfs::Lfs, powerloss: bool) -> Result<(),
     let mut pass: i32 = 0;
     while pass < 2 {
         let mut pdir = LfsMdir {
-            pair: [0, 0],
-            rev: 0,
-            off: 0,
-            etag: 0,
-            count: 0,
-            erased: false,
             split: true,
             tail: [0, 1],
+            ..Default::default()
         };
-        let mut dir = unsafe { core::mem::zeroed::<LfsMdir>() };
+        let mut dir = LfsMdir::default();
         let mut moreorphans = false;
 
         while !crate::util::lfs_pair_isnull(&pdir.tail) {

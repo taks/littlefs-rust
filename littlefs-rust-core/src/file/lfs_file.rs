@@ -45,7 +45,7 @@ impl Default for LfsFile<'_> {
 }
 
 impl<'a> LfsFile<'a> {
-    pub(crate) unsafe fn as_mut_lsf_mist(&mut self) -> &mut LfsMlist {
+    pub(crate) unsafe fn as_mut_lfs_mist(&mut self) -> &mut LfsMlist {
         unsafe { ::core::mem::transmute::<&mut LfsFile<'_>, &mut LfsMlist>(self) }
     }
 }

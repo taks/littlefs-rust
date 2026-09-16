@@ -1,21 +1,23 @@
 //! Directory commit. Per lfs.c lfs_dir_commit, lfs_dir_commitattr, lfs_dir_alloc, etc.
 
 use core::cell::UnsafeCell;
-use core::cmp;
 use core::ptr::NonNull;
+use core::{cmp, ptr};
 
 use zerocopy::{FromBytes, IntoBytes, TryFromBytes};
 
 use crate::dir::fetch::lfs_dir_getgstate;
 use crate::dir::lfs_fcrc::lfs_fcrc_tole32;
 use crate::dir::traverse::LfsDirTraverseStackCb;
-use crate::dir::{LfsCommit, LfsFcrc, LfsMdir};
+use crate::dir::{LfsCommit, LfsFcrc, LfsMdir, LfsMlist};
 use crate::error::Error;
+use crate::file::ops::{lfs_file_flush, lfs_file_outline};
 use crate::fs::Lfs;
 use crate::fs::stat::lfs_fs_size_;
-use crate::lfs_type::LfsType;
 use crate::lfs_type::lfs_type::LFS_TYPE_FCRC;
+use crate::lfs_type::{LfsType, OpenFlags};
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_tag_t};
+use crate::{LfsFile, lfs_debug};
 
 /// Per lfs.c lfs_dir_commitprog (lines 1604-1618)
 ///
@@ -1509,10 +1511,10 @@ pub fn lfs_dir_splittingcompact(
         }
     }
 
-    let superblock_pair = [0u32, 1u32];
-    if lfs_dir_needsrelocation(lfs, dir) && !lfs_pair_cmp(&dir.pair, &superblock_pair) {
+    if lfs_dir_needsrelocation(lfs, dir) && !lfs_pair_cmp(&dir.pair, &[0, 1]) {
         let size = lfs_fs_size_(lfs)?;
         if lfs.block_count as i64 - size as i64 > (lfs.block_count as i64) / 8 {
+            lfs_debug!("Expanding superblock at rev {}", dir.rev);
             let err = lfs_dir_split(lfs, dir, attrs, source, begin, end_val);
             if let Err(err) = err
                 && err != Error::NoSpace
@@ -2122,13 +2124,33 @@ pub fn lfs_dir_orphaningcommit(
     use crate::error::LFS_OK_ORPHANED;
     use crate::util::{lfs_pair_cmp, lfs_pair_fromle32, lfs_pair_tole32};
 
+    // check for any inline files that aren't RAM backed and
+    // forcefully evict them, needed for filesystem consistency
+    unsafe {
+        let mut f = ::core::mem::transmute::<*mut LfsMlist, *mut LfsFile>(lfs.mlist);
+        while !f.is_null() {
+            if dir.as_ptr() != ptr::addr_of_mut!((*f).m)
+                && !lfs_pair_cmp(&(*f).m.pair, &dir.as_ref().pair)
+                && (*f).type_ == LfsType::REG
+                && (*f).flags.contains(OpenFlags::INLINE)
+                && (*f).ctz.size > lfs.cfg.as_ref().cache_size
+            {
+                lfs_file_outline(lfs, &mut (*f))?;
+                lfs_file_flush(lfs, &mut (*f))?;
+            }
+
+            f = (*f).next;
+        }
+    }
+
     let dir = unsafe { dir.as_mut() };
 
-    let lpair = dir.pair;
+    let mut lpair = dir.pair;
     let mut ldir = *dir;
     let mut pdir = unsafe { core::mem::zeroed() };
 
-    let state = lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?;
+    let mut state =
+        lfs_dir_relocatingcommit(lfs, &mut ldir, &dir.pair, attrs_slice, Some(&mut pdir))?;
 
     if !lfs_pair_cmp(&dir.pair, &lpair) {
         *dir = ldir;
@@ -2147,18 +2169,25 @@ pub fn lfs_dir_orphaningcommit(
             ),
             buffer: dir.tail.as_bytes(),
         }];
-        let tail_state = lfs_dir_relocatingcommit(lfs, &mut pdir, &plpair, &tail_attrs, None);
-        lfs_pair_fromle32(&mut dir.tail);
-        tail_state?;
+        state = {
+            let state = lfs_dir_relocatingcommit(lfs, &mut pdir, &plpair, &tail_attrs, None);
+            lfs_pair_fromle32(&mut dir.tail);
+            state?
+        };
         ldir = pdir;
     }
 
     // C: lfs.c:2472-2594 — relocation handling
     let mut orphans = false;
-    let mut state = state;
-    let mut lpair = lpair;
-
     while state == crate::error::LFS_OK_RELOCATED {
+        lfs_debug!(
+            "Relocating {{0x{:x}, 0x{:x}}} -> {{0x{:x}, 0x{:x}}}",
+            lpair[0],
+            lpair[1],
+            ldir.pair[0],
+            ldir.pair[1]
+        );
+
         state = 0;
 
         // C: lfs.c:2480-2483 — update internal root
@@ -2174,6 +2203,14 @@ pub fn lfs_dir_orphaningcommit(
                 if !lfs_pair_cmp(&lpair, &(*d).m.pair) {
                     (*d).m.pair[0] = ldir.pair[0];
                     (*d).m.pair[1] = ldir.pair[1];
+                }
+
+                if (*d).type_ == LfsType::DIR as u8 {
+                    let d = (&mut (*d)).as_mut_lfs_dir();
+                    if !lfs_pair_cmp(&lpair, &d.head) {
+                        d.head[0] = ldir.pair[0];
+                        d.head[1] = ldir.pair[1];
+                    }
                 }
                 d = (*d).next;
             }
@@ -2252,6 +2289,12 @@ pub fn lfs_dir_orphaningcommit(
             let mut moveid: u16 = 0x3ff;
             if crate::lfs_gstate::lfs_gstate_hasmovehere(&lfs.gstate, &pdir.pair) {
                 moveid = crate::tag::lfs_tag_id(lfs.gstate.tag);
+                lfs_debug!(
+                    "Fixing move while relocating {{0x{:x}, 0x{:x}}} 0x{:x}",
+                    pdir.pair[0],
+                    pdir.pair[1],
+                    moveid
+                );
                 crate::fs::superblock::lfs_fs_prepmove(lfs, 0x3ff, None);
             }
 

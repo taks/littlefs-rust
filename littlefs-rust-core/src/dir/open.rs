@@ -102,7 +102,7 @@ pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &str) -> 
     dir.id = 0;
     dir.pos = 0;
     dir.type_ = LfsType::DIR.into();
-    lfs_mlist_append(lfs, unsafe { dir.as_mut_lsf_mist() });
+    lfs_mlist_append(lfs, unsafe { dir.as_mut_lfs_mist() });
 
     Ok(())
 }
@@ -119,7 +119,7 @@ pub fn lfs_dir_open_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir, path: &str) -> 
 /// }
 /// ```
 pub fn lfs_dir_close_(lfs: &mut crate::fs::Lfs, dir: &mut LfsDir) -> Result<(), Error> {
-    lfs_mlist_remove(lfs, unsafe { dir.as_mut_lsf_mist() });
+    lfs_mlist_remove(lfs, unsafe { dir.as_mut_lfs_mist() });
 
     Ok(())
 }

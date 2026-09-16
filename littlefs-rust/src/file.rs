@@ -1,7 +1,7 @@
 use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
-use littlefs_rust_core::error::Error;
+use littlefs_rust_core::Error;
 
 use littlefs_rust_core::lfs_type::OpenFlags;
 use littlefs_rust_core::{LfsFile, LfsFileConfig};
