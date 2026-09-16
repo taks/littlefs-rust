@@ -201,7 +201,7 @@ pub fn lfs_fs_parent(
             parent.tail,
             lfs_mktag(0x7ff, 0, 0x3ff),
             lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
-            &mut None,
+            None,
             Some(&|_, disk| lfs_fs_parent_match(&find_match, disk)),
         );
 

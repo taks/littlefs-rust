@@ -320,7 +320,7 @@ pub fn lfs_dir_fetchmatch(
     pair: [lfs_block_t; 2],
     fmask: lfs_tag_t,
     ftag: lfs_tag_t,
-    id: &mut Option<&mut u16>,
+    id: Option<&mut u16>,
     cb: Option<&dyn Fn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
 ) -> Result<lfs_tag_t, Error> {
     let cfg = unsafe { lfs.cfg.as_ref() };
@@ -479,10 +479,7 @@ pub fn lfs_dir_fetchmatch(
                     tempcount = lfs_tag_id(tag) + 1;
                 }
             } else if (lfs_tag_type1(tag)) == LFS_TYPE_SPLICE {
-                // Divergence: C uses tempcount += lfs_tag_splice(tag) (unsigned wrap). We clamp
-                // to 0 to avoid underflow when splice is negative (Rule 7).
-                let delta = lfs_tag_splice(tag) as i32;
-                tempcount = (tempcount as i32 + delta).max(0) as u16;
+                tempcount = tempcount.wrapping_add(lfs_tag_splice(tag) as u16);
 
                 let delete_tag = lfs_mktag(LFS_TYPE_DELETE, 0, 0)
                     | (lfs_mktag(0, 0x3ff, 0) & tempbesttag as lfs_tag_t);
@@ -603,7 +600,7 @@ pub fn lfs_dir_fetchmatch(
         }
 
         if let Some(_id) = id {
-            **_id = cmp::min(lfs_tag_id(besttag as lfs_tag_t), dir.count);
+            *_id = cmp::min(lfs_tag_id(besttag as lfs_tag_t), dir.count);
         }
 
         if lfs_tag_isvalid(besttag as lfs_tag_t) {
@@ -670,7 +667,7 @@ pub fn lfs_dir_fetch(
     dir: &mut LfsMdir,
     pair: [lfs_block_t; 2],
 ) -> Result<(), Error> {
-    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, &mut None, None);
+    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, None, None);
     if let Err(e) = res { Err(e) } else { Ok(()) }
 }
 
