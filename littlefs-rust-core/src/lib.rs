@@ -315,8 +315,8 @@ pub fn lfs_fs_mkconsistent(lfs: &mut Lfs) -> Result<(), Error> {
 
 /// Attempt any janitorial work. Per lfs.h lfs_fs_gc (lfs.c:6495-6499).
 #[inline]
-pub fn lfs_fs_gc(lfs: &mut Lfs) -> Result<(), Error> {
-    crate::fs::consistent::lfs_fs_gc_(lfs)
+pub fn lfs_fs_gc(lfs: &mut Lfs, sw: &mut stopwatch::Stopwatch) -> Result<(), Error> {
+    crate::fs::consistent::lfs_fs_gc_(lfs, sw)
 }
 
 /// Force consistency (deorphan, demove, desuperblock). For testing.

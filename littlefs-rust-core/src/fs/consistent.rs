@@ -2,6 +2,8 @@
 
 use core::cmp;
 
+use stopwatch::Stopwatch;
+
 use crate::Lfs;
 use crate::dir::LfsMdir;
 use crate::dir::fetch::lfs_dir_fetch;
@@ -123,7 +125,7 @@ pub fn lfs_fs_mkconsistent_(lfs: &mut Lfs) -> Result<(), Error> {
 /// }
 /// #endif
 /// ```
-pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
+pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs, sw: &mut Stopwatch) -> Result<(), Error> {
     use crate::block_alloc::alloc::lfs_alloc_scan;
     use crate::dir::commit::lfs_dir_commit;
     use crate::util::lfs_pair_isnull;
@@ -154,7 +156,9 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
 
             while !lfs_pair_isnull(&mdir.tail) {
                 let mdir_tail = mdir.tail;
+                sw.start();
                 lfs_dir_fetch(lfs, &mut mdir, mdir_tail)?;
+                sw.stop();
 
                 let should_compact = !mdir.erased
                     || if compact_thresh == 0 {
@@ -166,7 +170,9 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs) -> Result<(), Error> {
                 if should_compact {
                     let mdir_ref = &mut mdir;
                     mdir_ref.erased = false;
+
                     lfs_dir_commit(lfs, mdir_ref, &[])?;
+
                 }
             }
         }
