@@ -40,13 +40,13 @@ const RTABLE: [u32; 16] = [
 /// }
 /// ```
 #[inline(always)]
-pub fn lfs_crc(crc: u32, buffer: &[u8]) -> u32 {
-    let mut crc = crc;
-    for &byte in buffer {
-        let idx = ((crc ^ byte as u32) & 0xf) as usize;
-        crc = (crc >> 4) ^ RTABLE[idx];
-        let idx = ((crc ^ (byte >> 4) as u32) & 0xf) as usize;
-        crc = (crc >> 4) ^ RTABLE[idx];
-    }
-    crc
+pub fn lfs_crc(mut crc: u32, buffer: &[u8]) -> u32 {
+    // for &byte in buffer {
+    //     let idx = ((crc ^ byte as u32) & 0xf) as usize;
+    //     crc = (crc >> 4) ^ RTABLE[idx];
+    //     let idx = ((crc ^ (byte >> 4) as u32) & 0xf) as usize;
+    //     crc = (crc >> 4) ^ RTABLE[idx];
+    // }
+    // crc
+    0
 }

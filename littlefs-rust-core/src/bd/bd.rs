@@ -360,13 +360,11 @@ pub fn lfs_bd_crc(
 ) -> Result<(), Error> {
     use crate::crc::lfs_crc;
 
-    ::log::warn!("{}", size);
-
-
     let mut i: usize = 0;
     while i < size {
-        let mut dat = [0u8; 8];
-        let diff = core::cmp::min(size - i, 8) as usize;
+        let mut dat = [0u8; 1024];
+        let diff = core::cmp::min(size - i, 1024) as usize;
+        let dat = unsafe { dat.get_unchecked_mut(..diff) };
 
         lfs_bd_read(
             lfs,
@@ -375,13 +373,13 @@ pub fn lfs_bd_crc(
             hint as usize - i,
             block,
             off + i,
-            &mut dat[0..diff],
+            dat,
         )?;
 
 
                     // sw.as_mut().map(|sw| sw.start());
 
-        *crc = lfs_crc(*crc, &dat[..(diff as usize)]);
+        *crc = lfs_crc(*crc, dat);
                        //  sw.as_mut().map(|sw| sw.stop());
 
 
