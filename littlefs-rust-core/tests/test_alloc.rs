@@ -127,9 +127,9 @@ fn test_alloc_serial(
         assert_ok!(lfs_mkdir(lfs, "breakfast"));
         assert_ok!(lfs_unmount(lfs));
 
-        for n in 0..FILES {
+        for name in NAMES.into_iter() {
             assert_ok!(lfs_mount(lfs, &cfg));
-            let path = &format!("breakfast/{}", NAMES[n as usize]);
+            let path = &format!("breakfast/{}", name);
             let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(
                 lfs,
@@ -137,33 +137,28 @@ fn test_alloc_serial(
                 path,
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
             ));
-            let name = NAMES[n as usize];
-            let mut buf = [0u8; 16];
-            buf[..name.len()].copy_from_slice(name.as_bytes());
-            for i in (0..size).step_by(name.len()) {
+            for _ in (0..size).step_by(name.len()) {
                 if gc {
                     assert_ok!(lfs_fs_gc(lfs));
                 }
-                let chunk = (size - i).min(name.len());
-                let nw = lfs_file_write(lfs, file, &buf[..chunk]);
-                assert_eq!(nw, Ok(chunk as u32));
+                assert_eq!(
+                    lfs_file_write(lfs, file, name.as_bytes()),
+                    Ok(name.len() as u32)
+                );
             }
             assert_ok!(lfs_file_close(lfs, file));
             assert_ok!(lfs_unmount(lfs));
         }
 
         assert_ok!(lfs_mount(lfs, &cfg));
-        for n in 0..FILES {
-            let path = &format!("breakfast/{}", NAMES[n as usize]);
+        for name in NAMES.into_iter() {
+            let path = &format!("breakfast/{}", name);
             let file = &mut LfsFile::default();
             assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-            let name = NAMES[n as usize];
-            let mut buf = [0u8; 16];
-            for i in (0..size).step_by(name.len()) {
-                let chunk = (size - i).min(name.len());
-                let nr = lfs_file_read(lfs, file, &mut buf[..chunk]);
-                assert_eq!(nr, Ok(chunk as u32));
-                assert_eq!(&buf[..chunk], &name.as_bytes()[..chunk]);
+            let mut buf = vec![0u8; name.len()];
+            for _ in (0..size).step_by(name.len()) {
+                assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(buf.len() as u32));
+                assert_eq!(&buf, &name.as_bytes());
             }
             assert_ok!(lfs_file_close(lfs, file));
         }
