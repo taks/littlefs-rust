@@ -531,9 +531,10 @@ pub fn lfs_dir_fetchmatch(
                 hasfcrc = true;
             }
 
-            if (fmask & tag) == (fmask & ftag)
-                && let Some(cb) = cb
-            {
+            if (fmask & tag) == (fmask & ftag) {
+                debug_assert!(cb.is_some());
+                let cb = unsafe { cb.unwrap_unchecked() };
+
                 let diskoff = crate::tag::lfs_diskoff {
                     block: dir.pair[0],
                     off: off + 4,
