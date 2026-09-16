@@ -470,6 +470,7 @@ pub fn lfs_dir_fetchmatch(
                 (off + 4) as usize,
                 entry_size as usize,
                 &mut crc_val,
+                None
             );
             if let Err(err) = err {
                 if err == Error::Corrupt {
@@ -576,14 +577,10 @@ pub fn lfs_dir_fetchmatch(
             dir.rev = revs[(r + 1) % 2];
             continue;
         }
-        sw.as_mut().map(|sw| sw.start());
-        defer! {
-                sw.as_mut().map(|sw| sw.stop());
-
-        }
 
         dir.erased = false;
         if maybeerased && dir.off.is_multiple_of(cfg.prog_size) && hasfcrc {
+
             let mut fcrc_ = 0xffff_ffffu32;
             let err = lfs_bd_crc(
                 lfs,
@@ -594,7 +591,9 @@ pub fn lfs_dir_fetchmatch(
                 dir.off as usize,
                 fcrc.size as usize,
                 &mut fcrc_,
+                sw
             );
+
             if let Err(err) = err
                 && err != Error::Corrupt
             {

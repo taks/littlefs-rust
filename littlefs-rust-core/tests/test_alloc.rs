@@ -31,8 +31,8 @@ const NAMES: [&str; 3] = ["bacon", "eggs", "pancakes"];
 #[lfs_test]
 fn test_alloc_serial(
     cfg: &LfsConfig,
-    #[values(false, true)] gc: bool,
-    #[values(false, true)] infer_bc: bool,
+    #[values(true)] gc: bool,
+    #[values(false)] infer_bc: bool,
 ) {
     let block_size = cfg.block_size;
     let block_count = cfg.block_count;

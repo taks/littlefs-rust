@@ -2,6 +2,8 @@
 
 use core::cmp;
 
+use scopeguard::defer;
+
 use crate::bd::LfsCache;
 use crate::error::Error;
 use crate::fs::Lfs;
@@ -354,13 +356,18 @@ pub fn lfs_bd_crc(
     off: usize,
     size: usize,
     crc: &mut u32,
+    mut sw: Option<&mut stopwatch::Stopwatch>
 ) -> Result<(), Error> {
     use crate::crc::lfs_crc;
+
+    ::log::warn!("{}", size);
+
 
     let mut i: usize = 0;
     while i < size {
         let mut dat = [0u8; 8];
         let diff = core::cmp::min(size - i, 8) as usize;
+
         lfs_bd_read(
             lfs,
             pcache,
@@ -371,7 +378,12 @@ pub fn lfs_bd_crc(
             &mut dat[0..diff],
         )?;
 
+
+                    // sw.as_mut().map(|sw| sw.start());
+
         *crc = lfs_crc(*crc, &dat[..(diff as usize)]);
+                       //  sw.as_mut().map(|sw| sw.stop());
+
 
         i += diff;
     }

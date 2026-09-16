@@ -372,6 +372,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
                 noff,
                 fcrc.size as usize,
                 &mut fcrc.crc,
+                None
             );
 
             if let Err(err) = ret
@@ -436,6 +437,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
         commit.begin as usize,
         (off1 - commit.begin) as usize,
         &mut crc,
+        None
     )?;
 
     if crc != crc1 {
@@ -451,6 +453,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
         off1 as usize,
         4,
         &mut crc,
+        None
     )?;
 
     if crc != 0 {
