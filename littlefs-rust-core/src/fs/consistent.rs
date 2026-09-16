@@ -170,7 +170,6 @@ pub fn lfs_fs_gc_(lfs: &mut super::lfs::Lfs, sw: &mut Stopwatch) -> Result<(), E
                     mdir_ref.erased = false;
 
                     lfs_dir_commit(lfs, mdir_ref, &[])?;
-
                 }
             }
         }

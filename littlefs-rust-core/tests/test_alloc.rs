@@ -21,8 +21,6 @@ use stopwatch::Stopwatch;
 const FILES: u32 = 3;
 const NAMES: [&str; 3] = ["bacon", "eggs", "pancakes"];
 
-
-
 // --- test_alloc_serial ---
 /// Upstream: [cases.test_alloc_serial]
 /// defines.FILES = 3, SIZE = (((BLOCK_SIZE-8)*(BLOCK_COUNT-6))/FILES)

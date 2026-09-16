@@ -326,7 +326,6 @@ pub fn lfs_dir_fetchmatch(
     cb: Option<&dyn Fn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
     mut sw: Option<&mut stopwatch::Stopwatch>,
 ) -> Result<lfs_tag_t, Error> {
-
     let cfg = unsafe { lfs.cfg.as_ref() };
 
     let mut besttag: lfs_stag_t = -1;
@@ -400,6 +399,7 @@ pub fn lfs_dir_fetchmatch(
                 off as usize,
                 &mut tag_buf,
             );
+
             if let Err(err) = err {
                 if err == Error::Corrupt {
                     break;
@@ -419,10 +419,6 @@ pub fn lfs_dir_fetchmatch(
             }
 
             ptag = tag;
-                sw.as_mut().map(|sw| sw.start());
-    defer! {
-        sw.as_mut().map(|sw| sw.stop());
-    }
 
             if (lfs_tag_type2(tag)) == LFS_TYPE_CCRC {
                 let mut dcrc_buf = [0u8; 4];
@@ -580,6 +576,11 @@ pub fn lfs_dir_fetchmatch(
             dir.rev = revs[(r + 1) % 2];
             continue;
         }
+        sw.as_mut().map(|sw| sw.start());
+        defer! {
+                sw.as_mut().map(|sw| sw.stop());
+
+        }
 
         dir.erased = false;
         if maybeerased && dir.off.is_multiple_of(cfg.prog_size) && hasfcrc {
@@ -678,9 +679,18 @@ pub fn lfs_dir_fetch(
     lfs: &mut crate::fs::Lfs,
     dir: &mut LfsMdir,
     pair: [lfs_block_t; 2],
-    sw: Option<&mut Stopwatch>
+    sw: Option<&mut Stopwatch>,
 ) -> Result<(), Error> {
-    let res = lfs_dir_fetchmatch(lfs, dir, pair, 0xffff_ffff, 0xffff_ffff, &mut None, None, sw);
+    let res = lfs_dir_fetchmatch(
+        lfs,
+        dir,
+        pair,
+        0xffff_ffff,
+        0xffff_ffff,
+        &mut None,
+        None,
+        sw,
+    );
     if let Err(e) = res { Err(e) } else { Ok(()) }
 }
 
