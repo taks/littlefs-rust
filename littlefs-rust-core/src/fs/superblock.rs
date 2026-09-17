@@ -94,7 +94,7 @@ pub async fn lfs_fs_desuperblock<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Re
         };
         lfs_superblock_tole32(&mut superblock);
 
-        let attrs = [crate::tag::lfs_mattr {
+        let attrs = [crate::tag::LfsMattr {
             tag: lfs_mktag(
                 LFS_TYPE_INLINESTRUCT,
                 0,
@@ -170,7 +170,7 @@ pub async fn lfs_fs_demove<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<(
     let moveid = lfs_tag_id(lfs.gdisk.tag);
     lfs_fs_prepmove(lfs, 0x3ff, None);
 
-    let attrs = [crate::tag::lfs_mattr {
+    let attrs = [crate::tag::LfsMattr {
         tag: lfs_mktag(LFS_TYPE_DELETE, moveid as u32, 0),
         buffer: &[],
     }];
@@ -338,16 +338,11 @@ pub async fn lfs_fs_deorphan<S: Storage>(
     let mut pass: i32 = 0;
     while pass < 2 {
         let mut pdir = LfsMdir {
-            pair: [0, 0],
-            rev: 0,
-            off: 0,
-            etag: 0,
-            count: 0,
-            erased: false,
             split: true,
             tail: [0, 1],
+            ..Default::default()
         };
-        let mut dir = unsafe { core::mem::zeroed::<LfsMdir>() };
+        let mut dir = LfsMdir::default();
         let mut moreorphans = false;
 
         while !crate::util::lfs_pair_isnull(&pdir.tail) {
@@ -384,7 +379,7 @@ pub async fn lfs_fs_deorphan<S: Storage>(
 
                         lfs_pair_tole32(&mut pair);
                         let attrs = [
-                            crate::tag::lfs_mattr {
+                            crate::tag::LfsMattr {
                                 tag: lfs_mktag_if(
                                     moveid != 0x3ff,
                                     crate::lfs_type::lfs_type::LFS_TYPE_DELETE,
@@ -393,7 +388,7 @@ pub async fn lfs_fs_deorphan<S: Storage>(
                                 ),
                                 buffer: &[],
                             },
-                            crate::tag::lfs_mattr {
+                            crate::tag::LfsMattr {
                                 tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
                                 buffer: pair.as_bytes(),
                             },
@@ -428,7 +423,7 @@ pub async fn lfs_fs_deorphan<S: Storage>(
 
                     let mut dir_tail = dir.tail;
                     lfs_pair_tole32(&mut dir_tail);
-                    let attrs = [crate::tag::lfs_mattr {
+                    let attrs = [crate::tag::LfsMattr {
                         tag: lfs_mktag(LFS_TYPE_TAIL + if dir.split { 1 } else { 0 }, 0x3ff, 8),
                         buffer: dir_tail.as_bytes(),
                     }];

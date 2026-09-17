@@ -11,8 +11,8 @@ use crate::error::Error;
 use crate::file::LfsFile;
 use crate::file::ctz::lfs_ctz_find;
 use crate::lfs_info::LfsFileConfig;
-use crate::lfs_type::OpenFlags;
 use crate::lfs_type::lfs_type::{LFS_TYPE_INLINESTRUCT, LFS_TYPE3_REG};
+use crate::lfs_type::{LfsType, OpenFlags};
 use crate::tag::lfs_mktag;
 use crate::types::LFS_BLOCK_INLINE;
 use crate::types::{lfs_block_t, lfs_off_t};
@@ -207,7 +207,7 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
     use crate::dir::traverse::lfs_dir_get;
     use crate::file::lfs_ctz::lfs_ctz_fromle32;
     use crate::fs::superblock::lfs_fs_forceconsistency;
-    use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_REG, LFS_TYPE_USERATTR};
+    use crate::lfs_type::lfs_type::{LFS_TYPE_CREATE, LFS_TYPE_USERATTR};
     use crate::tag::{lfs_mktag, lfs_tag_size, lfs_tag_type3};
     use crate::types::LFS_BLOCK_INLINE;
     use crate::util::{lfs_path_isdir, lfs_path_islast, lfs_path_namelen};
@@ -225,7 +225,7 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
     file.cache.buffer = NonNull::from_ref(&[]);
 
     let mut path_ptr = path;
-    let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, &mut Some(&mut file.id)).await;
+    let mut tag = lfs_dir_find(lfs, &mut file.m, &mut path_ptr, Some(&mut file.id)).await;
     if let Err(err) = tag
         && !(err == Error::NoEntry && lfs_path_islast(path_ptr.as_bytes()))
     {
@@ -233,8 +233,8 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
         return crate::lfs_pass_err!(Err(err));
     }
 
-    file.type_ = LFS_TYPE_REG;
-    lfs_mlist_append(lfs, unsafe { file.as_mut_lsf_mist() });
+    file.type_ = LfsType::REG;
+    lfs_mlist_append(lfs, unsafe { file.as_mut_lfs_mist() });
 
     if tag == Err(Error::NoEntry) {
         if !flags.contains(OpenFlags::CREATE) {
@@ -252,15 +252,15 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
         }
         lfs_alloc_ckpoint(lfs);
         let attrs = [
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_CREATE, file.id as u32, 0),
                 buffer: &[],
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE3_REG, file.id as u32, nlen),
                 buffer: path_ptr.as_bytes(),
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(LFS_TYPE_INLINESTRUCT, file.id as u32, 0),
                 buffer: &[],
             },
@@ -409,15 +409,19 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
 /// C: Wrapper that calls opencfg with default config.
 /// Static defaults for lfs_file_open (no opencfg). C uses the same;
 /// a stack-local would make file.cfg a dangling pointer after return.
+#[cfg(feature = "alloc")]
 static mut BUFFER: [u8; 0] = [];
+#[cfg(feature = "alloc")]
 static mut ATTRS: [LfsAttr; 0] = [];
-#[allow(clippy::deref_addrof)]
+#[cfg(feature = "alloc")]
+#[expect(clippy::deref_addrof)]
 static mut LFS_FILE_DEFAULTS: LfsFileConfig = LfsFileConfig {
     buffer: unsafe { &mut *(&raw mut BUFFER) },
     attrs: unsafe { &mut *(&raw mut ATTRS) },
     // attr_count: 0,
 };
 
+#[cfg(feature = "alloc")]
 #[allow(clippy::deref_addrof)]
 pub async fn lfs_file_open_<'a, S: Storage>(
     lfs: &mut crate::fs::Lfs<S>,
@@ -447,7 +451,7 @@ pub async fn lfs_file_close_<'a, S: Storage>(
         err = lfs_file_sync_(lfs, file).await;
     }
 
-    unsafe { lfs_mlist_remove(lfs, file.as_mut_lsf_mist()) };
+    unsafe { lfs_mlist_remove(lfs, file.as_mut_lfs_mist()) };
 
     #[cfg(feature = "alloc")]
     unsafe {
@@ -784,7 +788,6 @@ pub async fn lfs_file_flush<'a, S: Storage>(
                 };
                 lfs_cache_drop(lfs, &mut *lfs.rcache.get());
 
-                #[allow(clippy::while_immutable_condition)] // file.pos updated by flushedwrite
                 while file.pos < file.ctz.size {
                     let mut data: u8 = 0;
                     let _res = lfs_file_flushedread(lfs, &mut orig, data.as_mut_bytes()).await?;
@@ -932,11 +935,11 @@ pub async fn lfs_file_sync_<'a, S: Storage>(
         };
 
         let attrs = [
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(type_, file.id as u32, size),
                 buffer,
             },
-            crate::tag::lfs_mattr {
+            crate::tag::LfsMattr {
                 tag: lfs_mktag(
                     crate::lfs_type::lfs_type::LFS_FROM_USERATTRS,
                     file.id as u32,
@@ -1326,7 +1329,6 @@ pub async fn lfs_file_write_<'a, S: Storage>(
         let pos = file.pos;
         file.pos = file.ctz.size;
         let zero: u8 = 0;
-        #[allow(clippy::while_immutable_condition)] // pos mutated via raw ptr in flushedwrite
         while file.pos < pos {
             let _res = lfs_file_flushedwrite(lfs, file, zero.as_bytes()).await?;
         }
@@ -1550,7 +1552,6 @@ pub async fn lfs_file_truncate_<'a, S: Storage>(
         let _res = lfs_file_seek_(lfs, file, 0, LFS_SEEK_END).await?;
 
         let zero = [0u8];
-        #[allow(clippy::while_immutable_condition)] // file.pos updated by lfs_file_write_
         while file.pos < size {
             let _res = lfs_file_write_(lfs, file, &zero).await?;
         }

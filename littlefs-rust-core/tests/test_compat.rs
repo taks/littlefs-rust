@@ -6,30 +6,27 @@
 
 mod common;
 
-use common::{default_config, init_context, init_logger};
-use littlefs_rust_core::LfsFile;
 use littlefs_rust_core::lfs_type::OpenFlags;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
-    LFS_DISK_VERSION, Lfs, LfsFsinfo, LfsMdir, LfsSuperblock, error::Error, lfs_dir_commit,
-    lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mattr, lfs_mktag, lfs_mount, lfs_superblock_tole32,
+    Error, LFS_DISK_VERSION, Lfs, LfsFsinfo, LfsMattr, LfsMdir, LfsSuperblock, lfs_dir_commit,
+    lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mktag, lfs_mount, lfs_superblock_tole32,
     lfs_unmount,
 };
+use littlefs_rust_core::{
+    LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
+};
+use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
 
 /// Upstream: [cases.test_compat_major_incompat]
 ///
 /// Bump major version in superblock, verify mount rejects with LFS_ERR_INVAL.
-#[test]
-fn test_compat_major_incompat() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-    let cfg = &env.config;
-
-    let mut lfs = Lfs::default();
-    assert_ok!(lfs_format(&mut lfs, cfg));
-    assert_ok!(lfs_mount(&mut lfs, cfg));
+#[lfs_test]
+fn test_compat_major_incompat(cfg: &LfsConfig) {
+    let lfs = &mut Lfs::default();
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let mut mdir = LfsMdir {
         pair: [0, 0],
@@ -42,7 +39,7 @@ fn test_compat_major_incompat() {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(&mut lfs, &mut mdir, root_pair));
+    assert_ok!(lfs_dir_fetch(lfs, &mut mdir, root_pair));
 
     let mut superblock = LfsSuperblock {
         version: LFS_DISK_VERSION + 0x0001_0000,
@@ -53,7 +50,7 @@ fn test_compat_major_incompat() {
         attr_max: lfs.attr_max,
     };
     lfs_superblock_tole32(&mut superblock);
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
@@ -61,22 +58,17 @@ fn test_compat_major_incompat() {
         ),
         buffer: superblock.as_bytes(),
     }];
-    assert_ok!(lfs_dir_commit(&mut lfs, &mut mdir, &attrs));
-    assert_ok!(lfs_unmount(&mut lfs));
+    assert_ok!(lfs_dir_commit(lfs, &mut mdir, &attrs));
+    assert_ok!(lfs_unmount(lfs));
 
-    assert_err!(Error::Invalid, lfs_mount(&mut lfs, cfg));
+    assert_err!(Error::Invalid, lfs_mount(lfs, cfg));
 }
 
 /// Upstream: [cases.test_compat_minor_incompat]
 ///
 /// Bump minor version in superblock beyond what we support, verify mount rejects.
-#[test]
-fn test_compat_minor_incompat() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_compat_minor_incompat(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -103,7 +95,7 @@ fn test_compat_minor_incompat() {
         attr_max: lfs.attr_max,
     };
     lfs_superblock_tole32(&mut superblock);
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(
             LFS_TYPE_INLINESTRUCT,
             0,
@@ -120,15 +112,8 @@ fn test_compat_minor_incompat() {
 /// Upstream: [cases.test_compat_minor_bump]
 ///
 /// Downgrade minor version in superblock, mount works, write triggers minor bump.
-#[test]
-fn test_compat_minor_bump() {
-    use littlefs_rust_core::{lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write};
-
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_compat_minor_bump(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -169,7 +154,7 @@ fn test_compat_minor_bump() {
         attr_max: lfs.attr_max,
     };
     lfs_superblock_tole32(&mut superblock);
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(
             LFS_TYPE_INLINESTRUCT,
             0,

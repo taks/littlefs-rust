@@ -55,29 +55,19 @@ pub trait Storage {
 pub(crate) struct SS<S: Storage>(pub S);
 
 impl<S: Storage> littlefs_rust_core::Storage for SS<S> {
-    async fn read(
-        &mut self,
-        block: u32,
-        offset: u32,
-        buf: &mut [u8],
-    ) -> Result<(), littlefs_rust_core::error::Error> {
+    async fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
         self.0.read(block, offset, buf).await
     }
 
-    async fn write(
-        &mut self,
-        block: u32,
-        offset: u32,
-        data: &[u8],
-    ) -> Result<(), littlefs_rust_core::error::Error> {
+    async fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
         self.0.write(block, offset, data).await
     }
 
-    async fn erase(&mut self, block: u32) -> Result<(), littlefs_rust_core::error::Error> {
+    async fn erase(&mut self, block: u32) -> Result<(), Error> {
         self.0.erase(block).await
     }
 
-    async fn sync(&mut self) -> Result<(), littlefs_rust_core::error::Error> {
+    async fn sync(&mut self) -> Result<(), Error> {
         self.0.sync().await
     }
 }

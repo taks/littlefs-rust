@@ -20,11 +20,13 @@ zerocopy = "0.8"
 zerocopy-derive = "0.8"
 bitflags = "2"
 defmt = { version = "1", optional = true }
+num_enum = { version = "0.7", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.11"
 rstest = "0.26"
 tokio = { version = "1.53.1", features = ["rt", "macros"] }
+littlefs-rust-test-macro = { path = "../littlefs-rust-test-macro" }
 
 [features]
 default = ["alloc"]
@@ -36,8 +38,10 @@ defmt = ["dep:defmt"]
 
 # LittleFS compile-time flags (match C -DLFS_*)
 readonly = []      # Omit all write operations
-no_malloc = []     # lfs_file_open disabled; use lfs_file_opencfg only
 multiversion = []  # disk_version in config, lfs_fs_disk_version*
 shrink = []        # lfs_shrink_checkblock, shrink in lfs_fs_grow_
 migrate = []       # v1->v2 migration (defer)
 slow_tests = []    # Enable slow power-loss/reentrant tests (CI nightly)
+
+[profile.release]
+opt-level = "s"

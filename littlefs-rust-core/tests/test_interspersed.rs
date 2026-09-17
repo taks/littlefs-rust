@@ -8,19 +8,15 @@ mod common;
 
 #[cfg(feature = "slow_tests")]
 use common::LFS_O_APPEND;
-use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, default_config, init_context};
+use common::{ALPHA, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY};
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_file_size;
 use littlefs_rust_core::{
-    Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close,
-    lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mount, lfs_remove,
-    lfs_unmount,
+    Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
+    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format,
+    lfs_mount, lfs_remove, lfs_type::LfsType, lfs_unmount,
 };
-use rstest::rstest;
-
-const ALPHAS: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
-const LFS_TYPE_DIR: u8 = 0x02;
-const LFS_TYPE_REG: u8 = 0x01;
+use littlefs_rust_test_macro::lfs_test;
 
 /// Upstream: [cases.test_interspersed_files]
 /// defines.SIZE = [10, 100]
@@ -29,19 +25,20 @@ const LFS_TYPE_REG: u8 = 0x01;
 /// Open FILES files ("a","b",...), write SIZE bytes to each in round-robin
 /// (1 byte per iteration), close all. Verify directory listing (FILES + 2
 /// for . and ..). Check each file has SIZE bytes, read back first 10 bytes.
-#[rstest]
-fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] files: usize) {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_interspersed_files(
+    cfg: &LfsConfig,
+    #[values(10, 100)] size: usize,
+    #[values(4, 10, 26)] files: usize,
+) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         assert_ok!(lfs_file_open(
             lfs,
             &mut file_handles[j],
@@ -52,7 +49,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
 
     for _i in 0..size {
         for j in 0..files {
-            let byte = [ALPHAS[j]];
+            let byte = [ALPHA[j]];
             let n = lfs_file_write(lfs, &mut file_handles[j], &byte);
             assert_eq!(n, Ok(1));
         }
@@ -71,19 +68,19 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     for j in 0..files {
-        let expected_name = String::from(ALPHAS[j] as char);
+        let expected_name = String::from(ALPHA[j] as char);
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
         assert_eq!(name, expected_name);
-        assert_eq!(info.type_, LFS_TYPE_REG);
+        assert_eq!(info.type_, LfsType::REG);
         assert_eq!(info.size, size as u32);
     }
 
@@ -94,7 +91,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         assert_ok!(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY));
     }
 
@@ -103,7 +100,7 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
             let mut buffer = [0u8; 1];
             let n = lfs_file_read(lfs, &mut file_handles[j], &mut buffer);
             assert_eq!(n, Ok(1));
-            assert_eq!(buffer[0], ALPHAS[j]);
+            assert_eq!(buffer[0], ALPHA[j]);
         }
     }
 
@@ -121,21 +118,19 @@ fn test_interspersed_files(#[values(10, 100)] size: usize, #[values(4, 10, 26)] 
 /// Create FILES files with SIZE bytes each. Open "zzz", write one byte
 /// and sync, remove one of the FILES-lettered files, repeat. After removing
 /// all, verify "zzz" has FILES bytes and directory listing is correct.
-#[rstest]
+#[lfs_test]
 fn test_interspersed_remove_files(
+    cfg: &LfsConfig,
     #[values(10, 100)] size: usize,
     #[values(4, 10, 26)] files: usize,
 ) {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     // Create FILES files with SIZE bytes each
     for j in 0..files {
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
             lfs,
@@ -144,7 +139,7 @@ fn test_interspersed_remove_files(
             LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
         ));
         for _i in 0..size {
-            let byte = [ALPHAS[j]];
+            let byte = [ALPHA[j]];
             let n = lfs_file_write(lfs, file, &byte);
             assert_eq!(n, Ok(1));
         }
@@ -153,7 +148,7 @@ fn test_interspersed_remove_files(
     assert_ok!(lfs_unmount(lfs));
 
     // Remount, open "zzz", interleave writes+syncs with removes
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_mount(lfs, cfg));
     let zzz_path = "zzz";
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -169,7 +164,7 @@ fn test_interspersed_remove_files(
         assert_eq!(n, Ok(1));
         assert_ok!(lfs_file_sync(lfs, file));
 
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         assert_ok!(lfs_remove(lfs, path));
     }
     assert_ok!(lfs_file_close(lfs, file));
@@ -183,17 +178,17 @@ fn test_interspersed_remove_files(
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     let name = core::str::from_utf8(&info.name[..nul]).unwrap();
     assert_eq!(name, "zzz");
-    assert_eq!(info.type_, LFS_TYPE_REG);
+    assert_eq!(info.type_, LfsType::REG);
     assert_eq!(info.size, files as u32);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
@@ -220,14 +215,11 @@ fn test_interspersed_remove_files(
 /// while all three are still open. Write another SIZE/2 bytes to all three
 /// (including removed "f"). Close all. Verify directory: "e" and "g"
 /// present, "f" absent. Read "e" and "g", verify SIZE bytes.
-#[rstest]
-fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_interspersed_remove_inconveniently(cfg: &LfsConfig, #[values(10, 100)] size: usize) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let mut files: [LfsFile; 3] = Default::default();
 
@@ -284,22 +276,22 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "e");
-    assert_eq!(info.type_, LFS_TYPE_REG);
+    assert_eq!(info.type_, LfsType::REG);
     assert_eq!(info.size, size as u32);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "g");
-    assert_eq!(info.type_, LFS_TYPE_REG);
+    assert_eq!(info.type_, LfsType::REG);
     assert_eq!(info.size, size as u32);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
@@ -332,28 +324,27 @@ fn test_interspersed_remove_inconveniently(#[values(10, 100)] size: usize) {
 /// Power-loss test. Mount-or-format. Open FILES files for append. Write
 /// SIZE bytes per file with sync after each byte when size <= i. Close.
 /// Verify directory and read 10 bytes from each.
-#[rstest]
+#[lfs_test]
 #[cfg(feature = "slow_tests")]
 fn test_interspersed_reentrant_files(
+    cfg: &LfsConfig,
+    #[values(false, true)] reentrant: bool,
     #[values(10, 100)] size: usize,
     #[values(4, 10, 26)] files: usize,
 ) {
-    let mut env = default_config(128);
-    init_context(&mut env);
-
     let lfs = &mut Lfs::default();
 
     // Mount-or-format
-    let err = lfs_mount(lfs, &env.config);
+    let err = lfs_mount(lfs, cfg);
     if err.is_err() {
-        assert_ok!(lfs_format(lfs, &env.config));
-        assert_ok!(lfs_mount(lfs, &env.config));
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
     }
 
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         assert_ok!(lfs_file_open(
             lfs,
             &mut file_handles[j],
@@ -366,7 +357,7 @@ fn test_interspersed_reentrant_files(
         for j in 0..files {
             let file_sz = lfs_file_size(lfs, &file_handles[j]);
             if (file_sz as usize) <= i {
-                let byte = [ALPHAS[j]];
+                let byte = [ALPHA[j]];
                 let n = lfs_file_write(lfs, &mut file_handles[j], &byte);
                 assert_eq!(n, Ok(1));
                 assert_ok!(lfs_file_sync(lfs, &mut file_handles[j]));
@@ -387,19 +378,19 @@ fn test_interspersed_reentrant_files(
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..1], b".");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
     assert_eq!(&info.name[..2], b"..");
-    assert_eq!(info.type_, LFS_TYPE_DIR);
+    assert_eq!(info.type_, LfsType::DIR);
 
     for j in 0..files {
-        let expected_name = String::from(ALPHAS[j] as char);
+        let expected_name = String::from(ALPHA[j] as char);
         assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
         assert_eq!(name, expected_name);
-        assert_eq!(info.type_, LFS_TYPE_REG);
+        assert_eq!(info.type_, LfsType::REG);
         assert_eq!(info.size, size as u32);
     }
     assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
@@ -409,7 +400,7 @@ fn test_interspersed_reentrant_files(
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
-        let path = &String::from(ALPHAS[j] as char);
+        let path = &String::from(ALPHA[j] as char);
         assert_ok!(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY));
     }
 
@@ -418,7 +409,7 @@ fn test_interspersed_reentrant_files(
             let mut buffer = [0u8; 1];
             let n = lfs_file_read(lfs, &mut file_handles[j], &mut buffer);
             assert_eq!(n, Ok(1));
-            assert_eq!(buffer[0], ALPHAS[j]);
+            assert_eq!(buffer[0], ALPHA[j]);
         }
     }
 

@@ -1,5 +1,6 @@
 //! Directory fetch. Per lfs.c lfs_dir_fetch, lfs_dir_getgstate, lfs_dir_getinfo.
 
+use num_enum::TryFromPrimitive as _;
 use zerocopy::IntoBytes;
 
 use crate::Storage;
@@ -11,12 +12,14 @@ use crate::dir::lfs_fcrc::lfs_fcrc_fromle32;
 use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::file::lfs_ctz::{LfsCtz, lfs_ctz_fromle32};
+use crate::lfs_error;
 use crate::lfs_gstate::LfsGstate;
 use crate::lfs_gstate::{lfs_gstate_fromle32, lfs_gstate_hasmovehere, lfs_gstate_xor};
 use crate::lfs_info::LfsInfo;
+use crate::lfs_type::LfsType;
 use crate::lfs_type::lfs_type::{
-    LFS_TYPE_CCRC, LFS_TYPE_CTZSTRUCT, LFS_TYPE_DELETE, LFS_TYPE_DIR, LFS_TYPE_FCRC,
-    LFS_TYPE_INLINESTRUCT, LFS_TYPE_NAME, LFS_TYPE_SPLICE, LFS_TYPE_STRUCT, LFS_TYPE_TAIL,
+    LFS_TYPE_CCRC, LFS_TYPE_CTZSTRUCT, LFS_TYPE_DELETE, LFS_TYPE_FCRC, LFS_TYPE_INLINESTRUCT,
+    LFS_TYPE_NAME, LFS_TYPE_SPLICE, LFS_TYPE_STRUCT, LFS_TYPE_TAIL,
 };
 use crate::tag::{
     lfs_diskoff, lfs_mktag, lfs_tag_chunk, lfs_tag_dsize, lfs_tag_id, lfs_tag_isvalid,
@@ -319,7 +322,7 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
     pair: [lfs_block_t; 2],
     fmask: lfs_tag_t,
     ftag: lfs_tag_t,
-    id: &mut Option<&mut u16>,
+    id: Option<&mut u16>,
     cb: Option<impl AsyncFn(lfs_tag_t, &lfs_diskoff) -> Result<core::cmp::Ordering, Error>>,
 ) -> Result<lfs_tag_t, Error> {
     let cfg = unsafe { lfs.cfg.as_ref() };
@@ -482,10 +485,7 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
                     tempcount = lfs_tag_id(tag) + 1;
                 }
             } else if (lfs_tag_type1(tag)) == LFS_TYPE_SPLICE {
-                // Divergence: C uses tempcount += lfs_tag_splice(tag) (unsigned wrap). We clamp
-                // to 0 to avoid underflow when splice is negative (Rule 7).
-                let delta = lfs_tag_splice(tag) as i32;
-                tempcount = (tempcount as i32 + delta).max(0) as u16;
+                tempcount = tempcount.wrapping_add(lfs_tag_splice(tag) as u16);
 
                 let delete_tag = lfs_mktag(LFS_TYPE_DELETE, 0, 0)
                     | (lfs_mktag(0, 0x3ff, 0) & tempbesttag as lfs_tag_t);
@@ -540,9 +540,10 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
                 hasfcrc = true;
             }
 
-            if (fmask & tag) == (fmask & ftag)
-                && let Some(ref cb) = cb
-            {
+            if (fmask & tag) == (fmask & ftag) {
+                debug_assert!(cb.is_some());
+                let cb = unsafe { cb.as_ref().unwrap_unchecked() };
+
                 let diskoff = crate::tag::lfs_diskoff {
                     block: dir.pair[0],
                     off: off + 4,
@@ -609,7 +610,7 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
         }
 
         if let Some(_id) = id {
-            **_id = cmp::min(lfs_tag_id(besttag as lfs_tag_t), dir.count);
+            *_id = cmp::min(lfs_tag_id(besttag as lfs_tag_t), dir.count);
         }
 
         if lfs_tag_isvalid(besttag as lfs_tag_t) {
@@ -650,6 +651,12 @@ pub async fn lfs_dir_fetchmatch<S: Storage>(
         }
     }
 
+    lfs_error!(
+        "Corrupted dir pair at {{0x{:08x}, 0x{:08x}}}",
+        dir.pair[0],
+        dir.pair[1]
+    );
+
     Err(Error::Corrupt)
 }
 
@@ -689,7 +696,7 @@ pub async fn lfs_dir_fetch<S: Storage>(
         pair,
         0xffff_ffff,
         0xffff_ffff,
-        &mut None,
+        None,
         Option::<fn(lfs_tag_t, &lfs_diskoff) -> NoneFuture<Result<core::cmp::Ordering, Error>>>::None.as_ref(),
     )
     .await;
@@ -797,7 +804,7 @@ pub async fn lfs_dir_getinfo<S: Storage>(
 ) -> Result<(), Error> {
     // C: lfs.c:1415-1420
     if id == 0x3ff {
-        info.type_ = LFS_TYPE_DIR as u8;
+        info.type_ = LfsType::DIR;
         info.name[0] = b'/';
         info.name[1] = 0;
         return Ok(());
@@ -814,7 +821,7 @@ pub async fn lfs_dir_getinfo<S: Storage>(
     )
     .await?;
 
-    info.type_ = lfs_tag_type3(tag as _) as u8;
+    info.type_ = LfsType::try_from_primitive(lfs_tag_type3(tag as _) as u8).unwrap();
 
     // C: lfs.c:1430-1441
     let mut ctz = LfsCtz { head: 0, size: 0 };

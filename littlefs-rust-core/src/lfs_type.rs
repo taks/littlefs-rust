@@ -5,21 +5,17 @@
 //! File types. Per lfs.h enum lfs_type.
 
 use bitflags::bitflags;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub enum LsfType {
+#[derive(Debug, Clone, Copy, PartialEq, Default, IntoPrimitive, TryFromPrimitive)]
+pub enum LfsType {
     #[default]
     NONE = 0x00,
     REG = 0x01,
     DIR = 0x02,
 }
 pub mod lfs_type {
-    use crate::lfs_type::LsfType;
-
-    pub const LFS_TYPE_REG: LsfType = LsfType::REG;
-    pub const LFS_TYPE_DIR: LsfType = LsfType::DIR;
-
     pub const LFS_TYPE3_REG: u16 = 0x01;
     pub const LFS_TYPE3_DIR: u16 = 0x02;
     pub const LFS_TYPE_SPLICE: u16 = 0x400;

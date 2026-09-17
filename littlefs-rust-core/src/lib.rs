@@ -16,7 +16,7 @@ mod dir;
 #[cfg(feature = "alloc")]
 mod lfs_alloc_module;
 
-pub mod error;
+mod error;
 mod file;
 mod fs;
 mod lfs_config;
@@ -34,7 +34,7 @@ mod types;
 mod util;
 
 pub use crate::dir::LfsDir;
-use crate::error::Error;
+pub use crate::error::Error;
 pub use crate::file::LfsFile;
 pub use crate::fs::Lfs;
 pub use crate::lfs_config::{LfsConfig, Storage};
@@ -76,7 +76,7 @@ pub use crate::fs::superblock::lfs_fs_prepmove;
 #[doc(hidden)]
 pub use crate::lfs_superblock::{LfsSuperblock, lfs_superblock_tole32};
 #[doc(hidden)]
-pub use crate::tag::{lfs_mattr, lfs_mktag};
+pub use crate::tag::{LfsMattr, lfs_mktag};
 use crate::types::{lfs_block_t, lfs_off_t, lfs_size_t, lfs_soff_t};
 #[doc(hidden)]
 pub use crate::util::{lfs_pair_fromle32, lfs_pair_tole32};
@@ -166,6 +166,7 @@ pub async fn lfs_removeattr<S: Storage>(
 }
 
 /// Open a file. Per lfs.h lfs_file_open (lfs.c:6140-6146).
+#[cfg(feature = "alloc")]
 #[inline]
 pub async fn lfs_file_open<'a, S: Storage>(
     lfs: &mut Lfs<S>,

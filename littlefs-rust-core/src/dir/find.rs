@@ -201,7 +201,7 @@ pub async fn lfs_dir_find<S: Storage>(
     lfs: &mut Lfs<S>,
     dir: &mut LfsMdir,
     path: &mut &str,
-    id: &mut Option<&mut u16>,
+    mut id: Option<&mut u16>,
 ) -> Result<crate::types::lfs_tag_t, Error> {
     if path.is_empty() {
         return crate::lfs_err!(Err(Error::Invalid));
@@ -305,7 +305,7 @@ pub async fn lfs_dir_find<S: Storage>(
                 dir.tail,
                 lfs_mktag(0x780, 0, 0),
                 lfs_mktag(LFS_TYPE_NAME, 0, namelen),
-                id,
+                id.as_deref_mut(),
                 Some(&cb),
             )
             .await?;

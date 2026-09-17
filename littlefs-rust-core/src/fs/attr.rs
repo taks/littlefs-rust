@@ -11,7 +11,7 @@ use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::fs::Lfs;
 use crate::lfs_type::lfs_type::LFS_TYPE_USERATTR;
-use crate::tag::{lfs_mattr, lfs_mktag, lfs_tag_id, lfs_tag_size};
+use crate::tag::{LfsMattr, lfs_mktag, lfs_tag_id, lfs_tag_size};
 use crate::types::lfs_size_t;
 
 /// Per lfs.c lfs_getattr_ (lines 4107-4135)
@@ -71,7 +71,7 @@ pub async fn lfs_getattr_<S: Storage>(
     };
 
     let mut path_ptr = path;
-    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None).await?;
+    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, None).await?;
 
     let mut id = lfs_tag_id(tag);
     if id == 0x3ff {
@@ -141,7 +141,7 @@ pub async fn lfs_commitattr<S: Storage>(
     };
 
     let mut path_ptr = path;
-    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None).await?;
+    let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, None).await?;
 
     let mut id = lfs_tag_id(tag);
     if id == 0x3ff {
@@ -150,7 +150,7 @@ pub async fn lfs_commitattr<S: Storage>(
         lfs_dir_fetch(lfs, &mut cwd, lfs_root).await?;
     }
 
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_USERATTR + r#type as u16, id as u32, size),
         buffer,
     }];

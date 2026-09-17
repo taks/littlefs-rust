@@ -8,6 +8,7 @@ use crate::{
 
 /// Per lfs.h typedef struct lfs_dir
 #[repr(C)]
+#[derive(Default)]
 pub struct LfsDir {
     pub next: *mut LfsDir,
     pub id: u16,
@@ -18,7 +19,7 @@ pub struct LfsDir {
 }
 
 impl LfsDir {
-    pub(crate) unsafe fn as_mut_lsf_mist(&mut self) -> &mut LfsMlist {
+    pub(crate) unsafe fn as_mut_lfs_mist(&mut self) -> &mut LfsMlist {
         unsafe { ::core::mem::transmute::<&mut Self, &mut LfsMlist>(self) }
     }
 }

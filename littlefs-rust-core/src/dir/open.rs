@@ -13,7 +13,8 @@ use crate::dir::lfs_mlist::lfs_mlist_remove;
 use crate::dir::traverse::lfs_dir_get;
 use crate::error::Error;
 use crate::lfs_info::LfsInfo;
-use crate::lfs_type::lfs_type::{LFS_TYPE_DIR, LFS_TYPE3_DIR};
+use crate::lfs_type::LfsType;
+use crate::lfs_type::lfs_type::LFS_TYPE3_DIR;
 use crate::tag::{lfs_mktag, lfs_tag_id, lfs_tag_type3};
 use crate::types::lfs_off_t;
 use crate::util::{lfs_pair_cmp, lfs_pair_fromle32};
@@ -73,7 +74,7 @@ pub async fn lfs_dir_open_<S: Storage>(
 ) -> Result<(), Error> {
     let mut path_ptr = path;
 
-    let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, &mut None).await?;
+    let tag = lfs_dir_find(lfs, &mut dir.m, &mut path_ptr, None).await?;
 
     if (lfs_tag_type3(tag)) != LFS_TYPE3_DIR {
         return Err(Error::NotDir);
@@ -106,8 +107,8 @@ pub async fn lfs_dir_open_<S: Storage>(
     dir.head[1] = dir.m.pair[1];
     dir.id = 0;
     dir.pos = 0;
-    dir.type_ = LFS_TYPE_DIR as u8;
-    lfs_mlist_append(lfs, unsafe { dir.as_mut_lsf_mist() });
+    dir.type_ = LfsType::DIR.into();
+    lfs_mlist_append(lfs, unsafe { dir.as_mut_lfs_mist() });
 
     Ok(())
 }
@@ -124,7 +125,7 @@ pub async fn lfs_dir_open_<S: Storage>(
 /// }
 /// ```
 pub fn lfs_dir_close_<S>(lfs: &mut crate::fs::Lfs<S>, dir: &mut LfsDir) -> Result<(), Error> {
-    lfs_mlist_remove(lfs, unsafe { dir.as_mut_lsf_mist() });
+    lfs_mlist_remove(lfs, unsafe { dir.as_mut_lfs_mist() });
 
     Ok(())
 }
@@ -184,19 +185,19 @@ pub async fn lfs_dir_read_<S: Storage>(
     info: &mut LfsInfo,
 ) -> Result<bool, Error> {
     {
-        info.type_ = 0;
+        info.type_ = LfsType::NONE;
         info.size = 0;
         info.name.fill(0);
 
         if dir.pos == 0 {
-            info.type_ = LFS_TYPE_DIR as u8;
+            info.type_ = LfsType::DIR;
             info.name[0] = b'.';
             info.name[1] = 0;
             dir.pos += 1;
             return Ok(true);
         }
         if dir.pos == 1 {
-            info.type_ = LFS_TYPE_DIR as u8;
+            info.type_ = LfsType::DIR;
             info.name[0] = b'.';
             info.name[1] = b'.';
             info.name[2] = 0;

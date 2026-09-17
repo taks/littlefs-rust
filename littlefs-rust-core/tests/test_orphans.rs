@@ -6,54 +6,43 @@
 mod common;
 
 #[cfg(feature = "slow_tests")]
-use common::powerloss::{init_powerloss_context, powerloss_config, run_powerloss_linear};
+use std::assert_matches;
+
 #[cfg(feature = "slow_tests")]
-use common::test_prng;
-use common::{
-    default_config, dir_block, erase_block_raw, init_context, init_logger, read_block_raw,
-    write_block_raw,
-};
-use littlefs_rust_core::error::Error;
+use common::{ALPHA, test_prng};
+use common::{dir_block, erase_block_raw, read_block_raw, write_block_raw};
 #[cfg(feature = "slow_tests")]
-use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_DIR;
+use littlefs_rust_core::lfs_type::LfsType;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
 use littlefs_rust_core::{
-    Lfs, LfsInfo, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit, lfs_dir_fetch,
-    lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
-    lfs_fs_preporphans, lfs_fs_size, lfs_mattr, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32,
-    lfs_remove, lfs_stat, lfs_unmount,
+    Error, Lfs, LfsConfig, LfsInfo, LfsMattr, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc,
+    lfs_dir_commit, lfs_dir_fetch, lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans,
+    lfs_fs_mkconsistent, lfs_fs_preporphans, lfs_fs_size, lfs_mkdir, lfs_mktag, lfs_mount,
+    lfs_pair_tole32, lfs_remove, lfs_stat, lfs_unmount,
 };
+use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
 
 // --- test_orphans_mkconsistent_fresh ---
 // Minimal: format, mount, mkconsistent. No mkdir/remove. Sanity check.
-#[test]
-fn test_orphans_mkconsistent_fresh() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_mkconsistent_fresh(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
-    let lfs_ptr = lfs;
-    assert_ok!(lfs_fs_mkconsistent(lfs_ptr));
-    assert_ok!(lfs_unmount(lfs_ptr));
+    assert_ok!(lfs_fs_mkconsistent(lfs));
+    assert_ok!(lfs_unmount(lfs));
 }
 
 // --- test_orphans_mkconsistent_no_orphans ---
 // With lazy force_consistency, mkdir/remove run deorphan first. So preporphans(1)
 // gets cleared before the commit. Verify: mkconsistent clears (no-op) and persists.
-#[test]
-fn test_orphans_mkconsistent_no_orphans() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_mkconsistent_no_orphans(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
     assert_ok!(lfs_fs_preporphans(lfs_ptr, 1));
@@ -68,7 +57,7 @@ fn test_orphans_mkconsistent_no_orphans() {
     );
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, &env.config));
+    assert_ok!(lfs_mount(lfs_ptr, cfg));
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "persisted gstate has no orphans"
@@ -80,7 +69,7 @@ fn test_orphans_mkconsistent_no_orphans() {
     );
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, &env.config));
+    assert_ok!(lfs_mount(lfs_ptr, cfg));
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "after remount, gstate persisted to disk has no orphans"
@@ -90,15 +79,11 @@ fn test_orphans_mkconsistent_no_orphans() {
 
 // --- test_orphans_no_orphans ---
 // preporphans(+1), mkdir+remove clears via force_consistency, unmount
-#[test]
-fn test_orphans_no_orphans() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_no_orphans(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
     assert_ok!(lfs_fs_preporphans(lfs_ptr, 1));
@@ -114,15 +99,11 @@ fn test_orphans_no_orphans() {
 // --- test_orphans_nonreentrant ---
 // Upstream: orphan operations without powerloss.
 // Uses n=1 dir to match test_dirs_many_removal (n=2+ mkdir currently fails in this crate).
-#[test]
-fn test_orphans_nonreentrant() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_nonreentrant(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
     let path = "a";
@@ -136,13 +117,11 @@ fn test_orphans_nonreentrant() {
 
 /// Upstream: [cases.test_orphans_normal]
 /// if = 'PROG_SIZE <= 0x3fe'. Corrupt child's commit to create orphan, mkdir triggers deorphan, check lfs_fs_size.
-#[test]
-fn test_orphans_normal() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-    let cfg = &env.config;
-
+#[lfs_test]
+fn test_orphans_normal(cfg: &LfsConfig) {
+    if cfg.prog_size > 0x3fe {
+        return;
+    }
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -159,7 +138,7 @@ fn test_orphans_normal() {
     let block = dir_block(lfs_ptr, "parent/child");
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    let block_size = env.config.block_size as usize;
+    let block_size = cfg.block_size as usize;
     let mut buffer = vec![0u8; block_size];
     assert_eq!(read_block_raw(cfg, block, 0, &mut buffer), Ok(()));
 
@@ -169,7 +148,7 @@ fn test_orphans_normal() {
     }
     assert!(off >= 3, "block {block} has fewer than 4 written bytes");
     let start = (off - 3) as usize;
-    buffer[start..start + 3].fill(env.config.block_size as u8);
+    buffer[start..start + 3].fill(cfg.block_size as u8);
 
     assert_eq!(erase_block_raw(cfg, block), Ok(()));
     assert_eq!(write_block_raw(cfg, block, 0, &buffer), Ok(()));
@@ -200,15 +179,11 @@ fn test_orphans_normal() {
 
 /// Upstream: [cases.test_orphans_one_orphan]
 /// Create orphan via internal APIs (lfs_dir_alloc + SOFTTAIL commit + lfs_fs_preporphans). Run lfs_fs_forceconsistency.
-#[test]
-fn test_orphans_one_orphan() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_one_orphan(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
 
@@ -242,7 +217,7 @@ fn test_orphans_one_orphan() {
     let root_pair: [u32; 2] = [0, 1];
     assert_ok!(lfs_dir_fetch(lfs_ptr, &mut mdir, root_pair));
     lfs_pair_tole32(&mut orphan.pair);
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
         buffer: orphan.pair.as_bytes(),
     }];
@@ -251,7 +226,7 @@ fn test_orphans_one_orphan() {
     assert!(lfs_fs_hasorphans(lfs_ptr), "should have orphans");
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, &env.config));
+    assert_ok!(lfs_mount(lfs_ptr, cfg));
     assert!(lfs_fs_hasorphans(lfs_ptr), "orphans should persist");
     assert_ok!(lfs_fs_forceconsistency(lfs_ptr));
     assert!(
@@ -263,15 +238,11 @@ fn test_orphans_one_orphan() {
 
 /// Upstream: [cases.test_orphans_mkconsistent_one_orphan]
 /// Same orphan creation as one_orphan. Use lfs_fs_mkconsistent + remount. Verify cleanup.
-#[test]
-fn test_orphans_mkconsistent_one_orphan() {
-    init_logger();
-    let mut env = default_config(128);
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_orphans_mkconsistent_one_orphan(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let lfs_ptr = lfs;
 
@@ -305,7 +276,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     let root_pair: [u32; 2] = [0, 1];
     assert_ok!(lfs_dir_fetch(lfs_ptr, &mut mdir, root_pair));
     lfs_pair_tole32(&mut orphan.pair);
-    let attrs = [lfs_mattr {
+    let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
         buffer: orphan.pair.as_bytes(),
     }];
@@ -314,7 +285,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     assert!(lfs_fs_hasorphans(lfs_ptr), "should have orphans");
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, &env.config));
+    assert_ok!(lfs_mount(lfs_ptr, cfg));
     assert!(lfs_fs_hasorphans(lfs_ptr), "orphans should persist");
     assert_ok!(lfs_fs_mkconsistent(lfs_ptr));
     assert!(
@@ -324,7 +295,7 @@ fn test_orphans_mkconsistent_one_orphan() {
     assert_ok!(lfs_unmount(lfs_ptr));
 
     // Remount and verify orphans are still gone
-    assert_ok!(lfs_mount(lfs_ptr, &env.config));
+    assert_ok!(lfs_mount(lfs_ptr, cfg));
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "after remount, orphans should still be gone"
@@ -334,98 +305,57 @@ fn test_orphans_mkconsistent_one_orphan() {
 
 /// Upstream: [cases.test_orphans_reentrant]
 /// FILES=[6,26], DEPTH=1; FILES=3,DEPTH=3 skipped when CACHE_SIZE!=64. reentrant, CYCLES=20.
-#[test]
+#[lfs_test]
 #[cfg(feature = "slow_tests")]
-fn test_orphans_reentrant() {
-    init_logger();
+fn test_orphans_reentrant(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
     const CYCLES: u32 = 20;
-    const ALPHA: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
 
     for (files, depth) in [(6usize, 1usize), (26, 1)] {
-        if 2 * files >= 128 {
-            continue;
+        let lfs = &mut Lfs::default();
+
+        let err = lfs_mount(lfs, cfg);
+        if err.is_err() {
+            assert_ok!(lfs_format(lfs, cfg));
+            assert_ok!(lfs_mount(lfs, cfg));
         }
-        let mut env = powerloss_config(128);
-        init_powerloss_context(&mut env);
-        let snapshot = env.snapshot();
 
-        let result = run_powerloss_linear(
-            &mut env,
-            &snapshot,
-            2000,
-            |lfs_ptr, config| {
-                let err = lfs_mount(lfs_ptr, config);
-                if err.is_err() {
-                    lfs_format(lfs_ptr, config)?;
-                    lfs_mount(lfs_ptr, config)?;
+        let mut prng: u32 = 1;
+        for _ in 0..CYCLES {
+            let mut components = Vec::with_capacity(depth);
+            for _ in 0..depth {
+                let c = ALPHA[(test_prng(&mut prng) as usize) % files];
+                components.push((c as char).to_string());
+            }
+            let full_path = "/".to_string() + &components.join("/");
+
+            let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
+            let res = lfs_stat(lfs, &full_path, info);
+            if res == Err(Error::NoEntry) {
+                for d in 0..depth {
+                    let sub = "/".to_string() + &components[..=d].join("/");
+                    assert_matches!(lfs_mkdir(lfs, &sub), Ok(()) | Err(Error::Exists));
                 }
+                for d in 0..depth {
+                    let sub = "/".to_string() + &components[..=d].join("/");
 
-                let mut prng: u32 = 1;
-                for _ in 0..CYCLES {
-                    let mut components = Vec::with_capacity(depth);
-                    for _ in 0..depth {
-                        let c = ALPHA[(test_prng(&mut prng) as usize) % files];
-                        components.push((c as char).to_string());
-                    }
-                    let full_path = "/".to_string() + &components.join("/");
+                    assert_ok!(lfs_stat(lfs, &sub, info));
 
-                    let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-                    let res = lfs_stat(lfs_ptr, &full_path, info);
-                    if res == Err(Error::NoEntry) {
-                        for d in 0..depth {
-                            let sub = "/".to_string() + &components[..=d].join("/");
-                            let err = lfs_mkdir(lfs_ptr, &sub);
-                            if err.is_err() && err != Err(Error::Exists) {
-                                return err;
-                            }
-                        }
-                        for d in 0..depth {
-                            let sub = "/".to_string() + &components[..=d].join("/");
-
-                            lfs_stat(lfs_ptr, &sub, info)?;
-
-                            let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-                            let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-                            let expected = &components[d];
-                            if name != *expected {
-                                return Err(Error::Invalid);
-                            }
-                            if info.type_ != LFS_TYPE_DIR as u8 {
-                                return Err(Error::Invalid);
-                            }
-                        }
-                    } else if res.is_ok() {
-                        let expected = &components[depth - 1];
-                        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-                        let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-                        if name != *expected || info.type_ != LFS_TYPE_DIR as u8 {
-                            return Err(Error::Invalid);
-                        }
-                        for d in (0..depth).rev() {
-                            let sub = "/".to_string() + &components[..=d].join("/");
-                            let err = lfs_remove(lfs_ptr, &sub);
-                            if err.is_err() && err != Err(Error::NotEmpty) {
-                                return err;
-                            }
-                        }
-                        let r = lfs_stat(lfs_ptr, &full_path, info);
-                        if r != Err(Error::NoEntry) {
-                            return Err(if let Err(r) = r { r } else { Error::Invalid });
-                        }
-                    } else {
-                        return res;
-                    }
+                    let expected = &components[d];
+                    assert_eq!(info.name_str(), *expected);
+                    assert_eq!(info.type_, LfsType::DIR);
                 }
-
-                if lfs_unmount(lfs_ptr).is_err() {
-                    return Err(Error::Invalid);
+            } else {
+                let expected = &components[depth - 1];
+                assert_eq!(info.name_str(), *expected);
+                assert_eq!(info.type_, LfsType::DIR);
+                for d in (0..depth).rev() {
+                    let sub = "/".to_string() + &components[..=d].join("/");
+                    assert_matches!(lfs_remove(lfs, &sub), Ok(()) | Err(Error::NotEmpty));
                 }
-                Ok(())
-            },
-            |_, _| Ok(()),
-        );
-        result.unwrap_or_else(|_| {
-            panic!("test_orphans_reentrant FILES={files} DEPTH={depth} should complete")
-        });
+                assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
+            }
+        }
+
+        assert_ok!(lfs_unmount(lfs));
     }
 }

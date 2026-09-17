@@ -41,7 +41,7 @@ pub async fn lfs_stat_<S: Storage>(
         let mut cwd = core::mem::zeroed::<crate::dir::LfsMdir>();
         let mut path_ptr = path;
 
-        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, &mut None).await?;
+        let tag = lfs_dir_find(lfs, &mut cwd, &mut path_ptr, None).await?;
 
         if path_ptr.contains('/') && lfs_tag_type3(tag) != LFS_TYPE3_DIR {
             return Err(Error::NotDir);

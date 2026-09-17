@@ -1,8 +1,6 @@
 //! Block device config. Per lfs.h struct lfs_config.
 //! Callbacks use raw function pointers for C-compatible layout.
 
-#![allow(non_camel_case_types)]
-
 use core::ptr::NonNull;
 
 use crate::{error::Error, types::lfs_size_t};
@@ -38,6 +36,7 @@ pub trait Storage {
 /// Per lfs.h struct lfs_config.
 /// Layout matches C for potential FFI. Callbacks use Option to allow null.
 #[repr(C)]
+#[derive(Debug)]
 pub struct LfsConfig<S> {
     pub context: Option<NonNull<S>>,
     pub read_size: lfs_size_t,

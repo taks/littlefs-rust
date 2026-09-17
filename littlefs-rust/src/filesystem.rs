@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 use core::cell::RefCell;
 use core::mem::ManuallyDrop;
 use core::ptr::NonNull;
-use littlefs_rust_core::error::Error;
+use littlefs_rust_core::Error;
 use littlefs_rust_core::lfs_type::OpenFlags;
 
 use littlefs_rust_core::{Lfs, LfsConfig, LfsInfo};
@@ -312,7 +312,7 @@ fn build_inner_borrowed<'a, S: Storage>(
     BorrowedFsInner {
         lfs: Lfs::default(),
         config: lfs_config,
-        storage: unsafe { core::mem::transmute(storage) },
+        storage: unsafe { core::mem::transmute::<&mut S, &mut SS<S>>(storage) },
         _read_buf: read_buf,
         _prog_buf: prog_buf,
         _lookahead_buf: lookahead_buf,

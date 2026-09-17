@@ -7,34 +7,24 @@
 
 mod common;
 
-use common::{
-    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, config_with_cache, init_context,
-    init_logger,
-};
+use common::{LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY};
 use littlefs_rust_core::{
-    Lfs, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format,
-    lfs_mount, lfs_remove, lfs_unmount,
+    Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
+    lfs_format, lfs_mount, lfs_remove, lfs_unmount,
 };
-
-fn env_with_cache_512() -> common::TestEnv {
-    config_with_cache(512, 128)
-}
-
-/// 2048 blocks matches upstream C test geometry (ERASE_COUNT=1M/512).
-fn env_with_cache_512_2048_blocks() -> common::TestEnv {
-    config_with_cache(512, 2048)
-}
+use littlefs_rust_test_macro::lfs_test;
 
 // --- test_entries_grow ---
-#[test]
-fn test_entries_grow() {
-    init_logger();
-    let mut env = env_with_cache_512();
-    init_context(&mut env);
+#[lfs_test]
+fn test_entries_grow(cfg: &LfsConfig, #[values(512)] cache_size: u32) {
+    assert_eq!(cfg.cache_size, 512);
+    if !cfg.cache_size.is_multiple_of(cfg.prog_size) {
+        return;
+    }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let buf = [b'c'; 1024];
     for i in 0..4 {
@@ -85,15 +75,11 @@ fn test_entries_grow() {
 }
 
 // --- test_entries_shrink ---
-#[test]
-fn test_entries_shrink() {
-    init_logger();
-    let mut env = env_with_cache_512();
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_entries_shrink(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let buf = [b'c'; 1024];
     for i in 0..4 {
@@ -144,15 +130,11 @@ fn test_entries_shrink() {
 }
 
 // --- test_entries_spill ---
-#[test]
-fn test_entries_spill() {
-    init_logger();
-    let mut env = env_with_cache_512();
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_entries_spill(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let buf = [b'c'; 256];
     for i in 0..4 {
@@ -184,15 +166,11 @@ fn test_entries_spill() {
 }
 
 // --- test_entries_push_spill ---
-#[test]
-fn test_entries_push_spill() {
-    init_logger();
-    let mut env = env_with_cache_512();
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_entries_push_spill(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let buf = [b'c'; 256];
     let file = &mut LfsFile::default();
@@ -252,15 +230,11 @@ fn test_entries_push_spill() {
 }
 
 // --- test_entries_drop ---
-#[test]
-fn test_entries_drop() {
-    init_logger();
-    let mut env = env_with_cache_512();
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_entries_drop(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let buf = [b'c'; 256];
     for i in 0..4 {
@@ -305,15 +279,11 @@ fn test_entries_drop() {
 
 // --- test_entries_create_too_big ---
 // Upstream: [cases.test_entries_create_too_big]
-#[test]
-fn test_entries_create_too_big() {
-    init_logger();
-    let mut env = env_with_cache_512();
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_entries_create_too_big(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = &"m".repeat(200);
     let size = 400usize;
@@ -343,15 +313,11 @@ fn test_entries_create_too_big() {
 // --- test_entries_resize_too_big ---
 // Upstream: [cases.test_entries_resize_too_big]
 // 200-byte path needs ample blocks; 2048 matches upstream geometry (ERASE_COUNT=1M/512).
-#[test]
-fn test_entries_resize_too_big() {
-    init_logger();
-    let mut env = env_with_cache_512_2048_blocks();
-    init_context(&mut env);
-
+#[lfs_test]
+fn test_entries_resize_too_big(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &env.config));
-    assert_ok!(lfs_mount(lfs, &env.config));
+    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg));
 
     let path = &"m".repeat(200);
     let wbuf = [b'c'; 1024];

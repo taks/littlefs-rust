@@ -273,7 +273,7 @@ pub async fn lfs_mount_<S: Storage>(
                 dir_tail,
                 lfs_mktag(0x7ff, 0x3ff, 0),
                 lfs_mktag(LFS_TYPE_SUPERBLOCK, 0, 8),
-                &mut None,
+                None,
                 Some(&cb),
             )
             .await;

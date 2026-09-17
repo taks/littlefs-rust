@@ -192,10 +192,8 @@ pub async fn lfs_fs_traverse_<S: Storage>(
                 )
                 .await?;
             } else if includeorphans && (lfs_tag_type3(tag)) == LFS_TYPE_DIRSTRUCT {
-                #[allow(clippy::needless_range_loop)] // Rule 2: preserve C loop structure
-                for i in 0..2 {
-                    cb(raw[i])?;
-                }
+                cb(raw[0])?;
+                cb(raw[1])?;
             }
         }
     }
@@ -203,13 +201,13 @@ pub async fn lfs_fs_traverse_<S: Storage>(
     // iterate over any open files
     use crate::file::LfsFile;
     use crate::file::ctz::lfs_ctz_traverse;
-    use crate::lfs_type::lfs_type::LFS_TYPE_REG;
+    use crate::lfs_type::LfsType;
 
     let mut m = lfs.mlist;
     while !m.is_null() {
         let f = m as *mut LfsFile;
         let f_ref = unsafe { &*f };
-        if f_ref.type_ == LFS_TYPE_REG {
+        if f_ref.type_ == LfsType::REG {
             if f_ref.flags.contains(OpenFlags::DIRTY) && !f_ref.flags.contains(OpenFlags::INLINE) {
                 lfs_ctz_traverse(
                     lfs,

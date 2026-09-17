@@ -5,7 +5,7 @@ use core::ptr::NonNull;
 use crate::bd::LfsCache;
 use crate::dir::{LfsMdir, LfsMlist};
 use crate::lfs_info::LfsFileConfig;
-use crate::lfs_type::{LsfType, OpenFlags};
+use crate::lfs_type::{LfsType, OpenFlags};
 use crate::types::{lfs_block_t, lfs_off_t};
 
 use super::lfs_ctz::LfsCtz;
@@ -15,7 +15,7 @@ use super::lfs_ctz::LfsCtz;
 pub struct LfsFile<'a> {
     pub next: *mut LfsFile<'a>,
     pub id: u16,
-    pub type_: LsfType,
+    pub type_: LfsType,
     pub m: LfsMdir,
     pub ctz: LfsCtz,
     pub flags: OpenFlags,
@@ -45,7 +45,7 @@ impl Default for LfsFile<'_> {
 }
 
 impl<'a> LfsFile<'a> {
-    pub(crate) unsafe fn as_mut_lsf_mist(&mut self) -> &mut LfsMlist {
+    pub(crate) unsafe fn as_mut_lfs_mist(&mut self) -> &mut LfsMlist {
         unsafe { ::core::mem::transmute::<&mut LfsFile<'_>, &mut LfsMlist>(self) }
     }
 }

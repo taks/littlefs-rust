@@ -270,11 +270,11 @@ pub async fn lfs_dir_getread<S: Storage>(
         }
 
         rcache.block = LFS_BLOCK_INLINE;
-        rcache.off = lfs_aligndown(off, cfg.read_size as usize);
+        rcache.off = lfs_aligndown(off as u32, cfg.read_size) as usize;
         rcache.size = core::cmp::min(
-            lfs_alignup(off + hint as usize, cfg.read_size as usize),
-            rcache.buffer.len(),
-        );
+            lfs_alignup(off as u32 + hint, cfg.read_size),
+            rcache.buffer.len() as u32,
+        ) as usize;
         let _res = lfs_dir_getslice(lfs, dir, gmask, gtag, rcache.off, unsafe {
             &mut rcache.buffer.as_mut()[..rcache.size]
         })
@@ -409,7 +409,7 @@ enum TraversePhase<'a> {
 }
 
 /// Empty attrs slice for LFS_FROM_MOVE recursion (we traverse source dir from disk only).
-const EMPTY_ATTRS: &[crate::tag::lfs_mattr] = &[];
+const EMPTY_ATTRS: &[crate::tag::LfsMattr] = &[];
 
 /// Stack frame for lfs_dir_traverse recursion. Per lfs.c struct lfs_dir_traverse.
 /// C has .buffer = buffer; we must store it for attr-backed tags (e.g. SUPERBLOCK).
@@ -681,7 +681,7 @@ pub async fn lfs_dir_traverse<'a, S: Storage>(
     dir: &LfsMdir,
     off: lfs_off_t,
     ptag: lfs_tag_t,
-    attrs_slice: &[crate::tag::lfs_mattr<'a>],
+    attrs_slice: &[crate::tag::LfsMattr<'a>],
     tmask: lfs_tag_t,
     ttag: lfs_tag_t,
     begin: u16,

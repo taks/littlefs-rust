@@ -2,18 +2,40 @@
 
 use zerocopy_derive::{Immutable, KnownLayout, TryFromBytes};
 
-use crate::types::lfs_size_t;
+use crate::{lfs_type::LfsType, types::lfs_size_t};
 
 /// Per lfs.h struct lfs_info
 #[repr(C)]
 pub struct LfsInfo {
-    pub type_: u8,
+    pub type_: LfsType,
     pub size: lfs_size_t,
     pub name: [u8; 256], // LFS_NAME_MAX+1
 }
 
+impl Default for LfsInfo {
+    fn default() -> Self {
+        Self {
+            type_: LfsType::NONE,
+            size: 0,
+            name: [0u8; _],
+        }
+    }
+}
+
+impl LfsInfo {
+    pub fn name_str(&self) -> &str {
+        let nul = self
+            .name
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(self.name.len());
+        core::str::from_utf8(&self.name[..nul]).unwrap()
+    }
+}
+
 /// Per lfs.h struct lfs_fsinfo
 #[repr(C)]
+#[derive(Default)]
 pub struct LfsFsinfo {
     pub disk_version: u32,
     pub block_size: lfs_size_t,

@@ -205,7 +205,7 @@ pub async fn lfs_fs_parent<S: Storage>(
             parent.tail,
             lfs_mktag(0x7ff, 0, 0x3ff),
             lfs_mktag(LFS_TYPE_DIRSTRUCT, 0, 8),
-            &mut None,
+            None,
             Some(&cb),
         )
         .await;
