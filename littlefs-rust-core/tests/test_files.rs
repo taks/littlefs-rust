@@ -8,11 +8,11 @@ mod common;
 use std::assert_matches;
 
 use common::{
-    LFS_O_APPEND, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, advance_prng,
-    test_prng, verify_prng_file, verify_prng_file_with_state, write_prng_file,
+    LFS_O_APPEND, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, LfsConfig,
+    advance_prng, test_prng, verify_prng_file, verify_prng_file_with_state, write_prng_file,
 };
 use littlefs_rust_core::{
-    Error, Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_size,
+    Error, Lfs, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_size,
     lfs_file_write, lfs_format, lfs_mount, lfs_type::OpenFlags, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
@@ -325,15 +325,15 @@ async fn test_files_reentrant_write<'a>(
     for i in (0..size).step_by(chunk_size) {
         let chunk = std::cmp::min(chunk_size, (size - i) as usize);
         assert_eq!(
-            lfs_file_read(lfs, file, &mut buffer[..chunk]),
+            lfs_file_read(lfs, file, &mut buffer[..chunk]).await,
             Ok(chunk as u32)
         );
         for b in &buffer[..chunk] {
             assert_eq!(*b, (test_prng(&mut prng) & 0xFF) as u8)
         }
     }
-    assert_eq!(lfs_file_read(lfs, file, &mut buffer), Ok(0));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_eq!(lfs_file_read(lfs, file, &mut buffer).await, Ok(0));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -425,7 +425,8 @@ fn test_files_reentrant_write_sync(
 ///
 /// Create 300 files of 7 bytes ("Hi %03d"), read each back immediately, verify.
 #[lfs_test]
-fn test_files_many(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_files_many<'a>(cfg: &LfsConfig<'a>) {
     const N: usize = 300;
 
     let lfs = &mut Lfs::default();
@@ -444,14 +445,14 @@ fn test_files_many(cfg: &LfsConfig) {
         let content = format!("Hi {:03}\0", i);
         let bytes = content.as_bytes();
         assert_eq!(bytes.len(), 7);
-        let n = lfs_file_write(lfs, file, bytes);
+        let n = lfs_file_write(lfs, file, bytes).await;
         assert_eq!(n, Ok(bytes.len() as u32));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
 
         let rfile = &mut LfsFile::default();
         assert_ok!(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
         let mut buf = [0u8; 32];
-        let n = lfs_file_read(lfs, rfile, &mut buf[..7]);
+        let n = lfs_file_read(lfs, rfile, &mut buf[..7]).await;
         assert_eq!(n, Ok(7));
         assert_eq!(&buf[..7], bytes);
         assert_ok!(lfs_file_close(lfs, rfile));

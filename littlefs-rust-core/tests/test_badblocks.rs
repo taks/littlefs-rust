@@ -5,9 +5,9 @@
 
 mod common;
 
-use common::{BadblockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY};
+use common::{BadblockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, Lfs};
 use littlefs_rust_core::{
-    Error, Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
+    Error, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
     lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_type::LfsType, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
@@ -293,7 +293,7 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
     }
 }
 
-fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
+async fn badblocks_verify_dirs_and_files<'a>(lfs: &mut Lfs<'a>) {
     for i in 1..10 {
         let mut buffer = [0u8; 1024];
         for b in buffer.iter_mut().take(NAMEMULT) {
@@ -316,17 +316,20 @@ fn badblocks_verify_dirs_and_files(lfs: &mut Lfs) {
         buffer[2 * NAMEMULT + 1] = 0;
 
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
-            LFS_O_RDONLY,
-        ));
+        assert_ok!(
+            lfs_file_open(
+                lfs,
+                file,
+                unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
+                LFS_O_RDONLY,
+            )
+            .await
+        );
 
         let size = NAMEMULT as u32;
         for _j in 0..(i * FILEMULT) {
             let mut rbuffer = [0u8; 1024];
-            let n = lfs_file_read(lfs, file, &mut rbuffer[..size as usize]);
+            let n = lfs_file_read(lfs, file, &mut rbuffer[..size as usize]).await;
             assert_eq!(n, Ok(size));
             assert_eq!(&rbuffer[..size as usize], &buffer[..size as usize]);
         }

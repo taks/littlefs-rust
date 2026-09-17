@@ -86,7 +86,7 @@ async fn test_alloc_parallel<'a>(
                 assert_eq!(nr, Ok(chunk as u32));
                 assert_eq!(&buf[..chunk], &name.as_bytes()[..chunk]);
             }
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
         assert_ok!(lfs_unmount(lfs));
     }
@@ -100,8 +100,9 @@ async fn test_alloc_parallel<'a>(
 /// Create breakfast dir, then for each file: mount, open, write SIZE bytes (optional GC per write),
 /// close, unmount. Remount and verify all files.
 #[lfs_test]
-async fn test_alloc_serial(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_alloc_serial<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(false, true)] gc: bool,
     #[values(false, true)] infer_bc: bool,
 ) {
@@ -116,44 +117,41 @@ async fn test_alloc_serial(
         };
 
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &cfg));
+        assert_ok!(lfs_format(lfs, &cfg).await);
 
         cfg.block_count = if infer_bc { 0 } else { block_count };
 
-        assert_ok!(lfs_mount(lfs, &cfg));
-        assert_ok!(lfs_mkdir(lfs, "breakfast"));
+        assert_ok!(lfs_mount(lfs, &cfg).await);
+        assert_ok!(lfs_mkdir(lfs, "breakfast").await);
         assert_ok!(lfs_unmount(lfs));
 
         for n in 0..FILES {
-            assert_ok!(lfs_mount(lfs, &cfg));
+            assert_ok!(lfs_mount(lfs, &cfg).await);
             let path = &format!("breakfast/{}", NAMES[n as usize]);
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-            ));
+            assert_ok!(
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await
+            );
             let name = NAMES[n as usize];
             let mut buf = [0u8; 16];
             buf[..name.len()].copy_from_slice(name.as_bytes());
             for i in (0..size).step_by(name.len()) {
                 if gc {
-                    assert_ok!(lfs_fs_gc(lfs));
+                    assert_ok!(lfs_fs_gc(lfs).await);
                 }
                 let chunk = (size - i).min(name.len());
-                let nw = lfs_file_write(lfs, file, &buf[..chunk]);
+                let nw = lfs_file_write(lfs, file, &buf[..chunk]).await;
                 assert_eq!(nw, Ok(chunk as u32));
             }
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
             assert_ok!(lfs_unmount(lfs));
         }
 
-        assert_ok!(lfs_mount(lfs, &cfg));
+        assert_ok!(lfs_mount(lfs, &cfg).await);
         for n in 0..FILES {
             let path = &format!("breakfast/{}", NAMES[n as usize]);
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
             let name = NAMES[n as usize];
             let mut buf = [0u8; 16];
             for i in (0..size).step_by(name.len()) {
@@ -162,7 +160,7 @@ async fn test_alloc_serial(
                 assert_eq!(nr, Ok(chunk as u32));
                 assert_eq!(&buf[..chunk], &name.as_bytes()[..chunk]);
             }
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
         assert_ok!(lfs_unmount(lfs));
     }
