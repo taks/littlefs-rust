@@ -141,7 +141,7 @@ impl<'d> Emubd<'d> {
 }
 
 impl Storage for Emubd<'_> {
-    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
+    async fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
         assert!(block < self.cfg.erase_count);
         assert!(offset.is_multiple_of(self.cfg.read_size));
         assert!(buf.len().is_multiple_of(self.cfg.read_size as usize));
@@ -168,7 +168,7 @@ impl Storage for Emubd<'_> {
         Ok(())
     }
 
-    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
+    async fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
         // check if write is valid
         assert!(block < self.cfg.erase_count);
         assert!(offset.is_multiple_of(self.cfg.prog_size));
@@ -215,7 +215,7 @@ impl Storage for Emubd<'_> {
         Ok(())
     }
 
-    fn erase(&mut self, block: u32) -> Result<(), Error> {
+    async fn erase(&mut self, block: u32) -> Result<(), Error> {
         assert!(block < self.cfg.erase_count);
 
         // emulate out-of-order writes? save first write
@@ -259,7 +259,7 @@ impl Storage for Emubd<'_> {
         Ok(())
     }
 
-    fn sync(&mut self) -> Result<(), Error> {
+    async fn sync(&mut self) -> Result<(), Error> {
         // emulate out-of-order writes? reset first write, writes
         // cannot be out-of-order across sync
         if self.cfg.powerloss_behavior == PowerLossBehavior::Ooo {
@@ -271,13 +271,13 @@ impl Storage for Emubd<'_> {
     }
 }
 
-pub fn lfs_emubd_wear(cfg: &LfsConfig, block: u32) -> u32 {
+pub fn lfs_emubd_wear(cfg: &LfsConfig<Emubd>, block: u32) -> u32 {
     let bd = unsafe { &mut *(cfg.context.unwrap().as_ptr() as *mut Emubd) };
 
     bd.blocks[block as usize].as_ref().map_or(0, |b| b.wear)
 }
 
-pub fn lfs_emubd_setwear(cfg: &LfsConfig, block: u32, wear: u32) {
+pub fn lfs_emubd_setwear(cfg: &LfsConfig<Emubd>, block: u32, wear: u32) {
     let bd = unsafe { &mut *(cfg.context.unwrap().as_ptr() as *mut Emubd) };
 
     let b = bd.mutblock(block as usize);

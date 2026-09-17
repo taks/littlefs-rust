@@ -21,8 +21,9 @@ async fn read_magic_region<S: Storage>(config: &LfsConfig<S>, block: u32) -> Opt
 }
 
 /// Panics if block does not contain MAGIC at MAGIC_OFFSET.
-pub fn assert_block_has_magic(config: &LfsConfig, block: u32) {
+pub async fn assert_block_has_magic<S: Storage>(config: &LfsConfig<S>, block: u32) {
     let got = read_magic_region(config, block)
+        .await
         .unwrap_or_else(|| panic!("read_block_raw failed for block {}", block));
     assert_eq!(
         &got, MAGIC,

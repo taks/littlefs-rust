@@ -100,7 +100,7 @@ pub fn lfs_test(
     quote::quote! {
         #[rstest::rstest]
         #(#attrs)*
-        fn #f_ident(#args) {
+        async fn #f_ident(#args) {
             use std::ptr::NonNull;
             use common::{init_logger, run_powerloss_none, run_powerloss_linear,
                 EmubdConfig, BadblockBehavior, PowerLossBehavior};

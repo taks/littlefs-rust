@@ -8,8 +8,8 @@ mod common;
 #[allow(unused_imports)]
 use littlefs_rust_core::lfs_type::LfsType;
 use littlefs_rust_core::{
-    Error, Lfs, LfsDir, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_format, lfs_mkdir, lfs_mount,
-    lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
+    Error, Lfs, LfsDir, LfsInfo, Storage, lfs_dir_close, lfs_dir_open, lfs_format, lfs_mkdir,
+    lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_core::{LfsConfig, LfsFile, lfs_file_close, lfs_file_open};
 use littlefs_rust_test_macro::lfs_test;
@@ -1927,10 +1927,10 @@ fn test_paths_nonprintable(cfg: &LfsConfig) {
 }
 
 #[lfs_test]
-fn test_paths_nonutf8(cfg: &LfsConfig) {
+async fn test_paths_nonutf8<S: Storage>(cfg: &LfsConfig<S>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
     #[expect(invalid_from_utf8_unchecked)]
     let name = unsafe { str::from_utf8_unchecked(b"foo\xff\xfe\xfdbar") };
     assert_ok!(lfs_mkdir(lfs, name));

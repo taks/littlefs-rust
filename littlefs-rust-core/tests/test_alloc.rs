@@ -6,10 +6,9 @@
 mod common;
 
 use common::{
-    BadblockBehavior, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY,
+    BadblockBehavior, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, LfsConfig,
 };
-#[cfg(test)]
-use littlefs_rust_core::LfsConfig;
+use littlefs_rust_core::Storage;
 use littlefs_rust_core::{
     Error, Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_size,
     lfs_file_sync, lfs_file_truncate, lfs_file_write, lfs_format, lfs_fs_gc, lfs_mkdir, lfs_mount,
@@ -27,15 +26,10 @@ const NAMES: [&str; 3] = ["bacon", "eggs", "pancakes"];
 ///
 /// Create breakfast dir, open 3 files in parallel, write SIZE bytes to each (optional GC),
 /// close, unmount, remount, read and verify.
-<<<<<<< HEAD
-#[rstest]
-#[tokio::test]
-async fn test_alloc_parallel(
-=======
 #[lfs_test]
-fn test_alloc_parallel(
-    cfg: &LfsConfig,
->>>>>>> test
+#[tokio::test]
+async fn test_alloc_parallel<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(false, true)] gc: bool,
     #[values(false, true)] infer_bc: bool,
 ) {
@@ -74,7 +68,7 @@ fn test_alloc_parallel(
             }
             for i in (0..size).step_by(name.len()) {
                 let chunk = (size - i).min(name.len());
-                let nw = lfs_file_write(lfs, file, &name.as_bytes()[..chunk]);
+                let nw = lfs_file_write(lfs, file, &name.as_bytes()[..chunk]).await;
                 assert_eq!(nw, Ok(chunk as u32));
             }
         }
@@ -87,11 +81,11 @@ fn test_alloc_parallel(
         for name in NAMES.into_iter() {
             let path = &format!("breakfast/{}", name);
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
             let mut buf = [0u8; 16];
             for i in (0..size).step_by(name.len()) {
                 let chunk = (size - i).min(name.len());
-                let nr = lfs_file_read(lfs, file, &mut buf[..chunk]);
+                let nr = lfs_file_read(lfs, file, &mut buf[..chunk]).await;
                 assert_eq!(nr, Ok(chunk as u32));
                 assert_eq!(&buf[..chunk], &name.as_bytes()[..chunk]);
             }
@@ -109,7 +103,7 @@ fn test_alloc_parallel(
 /// Create breakfast dir, then for each file: mount, open, write SIZE bytes (optional GC per write),
 /// close, unmount. Remount and verify all files.
 #[lfs_test]
-fn test_alloc_serial(
+async fn test_alloc_serial(
     cfg: &LfsConfig,
     #[values(false, true)] gc: bool,
     #[values(false, true)] infer_bc: bool,
@@ -167,7 +161,7 @@ fn test_alloc_serial(
             let mut buf = [0u8; 16];
             for i in (0..size).step_by(name.len()) {
                 let chunk = (size - i).min(name.len());
-                let nr = lfs_file_read(lfs, file, &mut buf[..chunk]);
+                let nr = lfs_file_read(lfs, file, &mut buf[..chunk]).await;
                 assert_eq!(nr, Ok(chunk as u32));
                 assert_eq!(&buf[..chunk], &name.as_bytes()[..chunk]);
             }
