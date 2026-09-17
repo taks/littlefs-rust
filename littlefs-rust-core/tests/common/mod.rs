@@ -28,21 +28,21 @@ pub fn init_logger() {
         .try_init();
 }
 
-pub fn run_powerloss_none(
-    cfg: &mut LfsConfig,
-    bdcfg: &EmubdConfig,
-    mut test: impl FnMut(&mut LfsConfig),
+pub async fn run_powerloss_none<'a>(
+    cfg: &mut LfsConfig<'a>,
+    bdcfg: &EmubdConfig<'a>,
+    mut test: impl AsyncFnMut(&mut LfsConfig),
 ) {
     let mut context =
         Emubd::new(unsafe { core::mem::transmute::<&EmubdConfig<'_>, &EmubdConfig<'_>>(bdcfg) });
     cfg.context = Some(NonNull::from_mut(&mut context));
 
-    test(cfg);
+    test(cfg).await;
 }
 
-pub fn run_powerloss_linear(
-    cfg: &mut LfsConfig,
-    bdcfg: &EmubdConfig,
+pub async fn run_powerloss_linear<'a>(
+    cfg: &mut LfsConfig<'a>,
+    bdcfg: &EmubdConfig<'a>,
     mut test: impl AsyncFnMut(&LfsConfig),
 ) {
     for powerloss_behavior in [PowerLossBehavior::Noop, PowerLossBehavior::Ooo] {
@@ -214,17 +214,17 @@ pub const LFS_FILE_MAX: i32 = 2_147_483_647;
 
 /// Get the metadata block number (`m.pair[0]`) for a directory while mounted.
 /// Caller must unmount before corrupting the returned block.
-pub fn dir_block(lfs: &mut Lfs, dir_path: &str) -> u32 {
-    dir_pair(lfs, dir_path)[0]
+pub async fn dir_block<'a>(lfs: &mut Lfs<'a>, dir_path: &str) -> u32 {
+    dir_pair(lfs, dir_path).await[0]
 }
 
 /// Get both metadata block numbers (`m.pair[0]`, `m.pair[1]`) for a directory while mounted.
 /// Used by fix_relocation tests to set wear on dir pairs.
-pub fn dir_pair(lfs: &mut Lfs, dir_path: &str) -> [u32; 2] {
+pub async fn dir_pair<'a>(lfs: &mut Lfs<'a>, dir_path: &str) -> [u32; 2] {
     use littlefs_rust_core::{LfsDir, lfs_dir_close, lfs_dir_open};
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok!(lfs_dir_open(lfs, dir, dir_path));
+    assert_ok!(lfs_dir_open(lfs, dir, dir_path).await);
     let pair = (dir).m.pair;
     assert_ok!(lfs_dir_close(lfs, dir));
     [pair[0], pair[1]]
@@ -234,10 +234,10 @@ pub fn dir_pair(lfs: &mut Lfs, dir_path: &str) -> [u32; 2] {
 /// Mirrors upstream test_move.toml corruption: find last non-erased (0xff) byte,
 /// then set bytes [off-3..off] to 0x00 (BLOCK_SIZE & 0xff for BLOCK_SIZE=512).
 /// Must be called while FS is unmounted.
-pub fn corrupt_block(cfg: &LfsConfig, block: u32) {
+pub async fn corrupt_block<'a>(cfg: &LfsConfig<'a>, block: u32) {
     let block_size = cfg.block_size as usize;
     let mut buffer = vec![0u8; block_size];
-    assert_ok!(read_block_raw(cfg, block, 0, &mut buffer));
+    assert_ok!(read_block_raw(cfg, block, 0, &mut buffer).await);
 
     let mut off = block_size as i32 - 1;
     while off >= 0 && buffer[off as usize] == 0xff {
@@ -248,8 +248,8 @@ pub fn corrupt_block(cfg: &LfsConfig, block: u32) {
     let start = (off - 3) as usize;
     buffer[start..start + 3].fill(0x00);
 
-    assert_ok!(erase_block_raw(cfg, block));
-    assert_ok!(write_block_raw(cfg, block, 0, &buffer));
+    assert_ok!(erase_block_raw(cfg, block).await);
+    assert_ok!(write_block_raw(cfg, block, 0, &buffer).await);
 }
 
 /// xorshift32 PRNG matching C littlefs TEST_PRNG exactly.

@@ -44,27 +44,24 @@ async fn test_alloc_parallel<'a>(
         };
 
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &cfg));
+        assert_ok!(lfs_format(lfs, &cfg).await);
 
         cfg.block_count = if infer_bc { 0 } else { block_count };
-        assert_ok!(lfs_mount(lfs, &cfg));
-        assert_ok!(lfs_mkdir(lfs, "breakfast"));
+        assert_ok!(lfs_mount(lfs, &cfg).await);
+        assert_ok!(lfs_mkdir(lfs, "breakfast").await);
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &cfg));
+        assert_ok!(lfs_mount(lfs, &cfg).await);
         let mut files: [LfsFile; 3] = Default::default();
         for (name, file) in NAMES.into_iter().zip(files.iter_mut()) {
             let path = &format!("breakfast/{}", name);
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-            ));
+            assert_ok!(
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await
+            );
         }
         for (name, file) in NAMES.into_iter().zip(files.iter_mut()) {
             if gc {
-                assert_ok!(lfs_fs_gc(lfs));
+                assert_ok!(lfs_fs_gc(lfs).await);
             }
             for i in (0..size).step_by(name.len()) {
                 let chunk = (size - i).min(name.len());
@@ -73,11 +70,11 @@ async fn test_alloc_parallel<'a>(
             }
         }
         for file in files.iter_mut() {
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &cfg));
+        assert_ok!(lfs_mount(lfs, &cfg).await);
         for name in NAMES.into_iter() {
             let path = &format!("breakfast/{}", name);
             let file = &mut LfsFile::default();
