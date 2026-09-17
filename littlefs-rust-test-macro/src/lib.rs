@@ -157,11 +157,11 @@ pub fn lfs_test(
                 if reentrant {
                     run_powerloss_linear(&mut cfg, &bdcfg, async |cfg| {
                         #call_fn(cfg, #args_).await;
-                    });
+                    }).await;
                 } else {
                     run_powerloss_none(&mut cfg, &bdcfg, async |cfg| {
                         #call_fn(cfg, #args_).await;
-                    });
+                    }).await;
                 }
             }
         }

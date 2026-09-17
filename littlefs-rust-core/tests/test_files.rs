@@ -276,8 +276,9 @@ fn test_files_truncate(
 /// Mount-or-format, check existing file (size 0 or SIZE), write SIZE PRNG(1),
 /// close, read back, verify. Power-loss retries until success.
 #[lfs_test]
-fn test_files_reentrant_write(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_files_reentrant_write<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(false, true)] reentrant: bool,
     #[values(32, 0, 7, 2049)] size: u32,
     #[values(31, 16, 65)] chunk_size: usize,
@@ -285,25 +286,25 @@ fn test_files_reentrant_write(
 ) {
     let lfs = &mut Lfs::default();
 
-    let err = lfs_mount(lfs, cfg);
+    let err = lfs_mount(lfs, cfg).await;
     if err.is_err() {
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
     }
 
     let path = "avacado";
     let file = &mut LfsFile::default();
     let mut buffer = [0u8; 1024];
-    let err = lfs_file_open(lfs, file, path, LFS_O_RDONLY);
+    let err = lfs_file_open(lfs, file, path, LFS_O_RDONLY).await;
     assert_matches!(err, Ok(()) | Err(Error::NoEntry));
     if err.is_ok() {
         let sz = lfs_file_size(lfs, file);
         assert!(sz == 0 || sz == size, "size must be 0 or SIZE");
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 
     // write
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
     let mut prng: u32 = 1;
     for i in (0..size).step_by(chunk_size) {
         let chunk = std::cmp::min(chunk_size, (size - i) as usize);
@@ -311,14 +312,14 @@ fn test_files_reentrant_write(
             *b = (test_prng(&mut prng) & 0xFF) as u8;
         }
         assert_eq!(
-            lfs_file_write(lfs, file, &buffer[..chunk]),
+            lfs_file_write(lfs, file, &buffer[..chunk]).await,
             Ok(chunk as u32)
         );
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     // read
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
     assert_eq!(lfs_file_size(lfs, file), size);
     prng = 1;
     for i in (0..size).step_by(chunk_size) {

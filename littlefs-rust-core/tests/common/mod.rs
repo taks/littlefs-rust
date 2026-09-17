@@ -14,6 +14,7 @@ pub use emubd::{
     BadblockBehavior, EmubdConfig, PowerLossBehavior, lfs_emubd_setwear, lfs_emubd_wear,
 };
 
+use futures::future::FutureExt;
 use littlefs_rust_core::{Error, Storage, lfs_type::OpenFlags};
 use std::{panic::AssertUnwindSafe, ptr::NonNull};
 
@@ -63,9 +64,7 @@ pub async fn run_powerloss_linear<'a>(
         cfg.context = Some(NonNull::from_mut(&mut context));
 
         loop {
-            if let Err(err) = std::panic::catch_unwind(AssertUnwindSafe(|| {
-                test(cfg);
-            })) {
+            if let Err(err) = AssertUnwindSafe(test(cfg)).catch_unwind().await {
                 if let Some(s) = (*err).downcast_ref::<String>()
                     && s.starts_with("powerloss_")
                 {
