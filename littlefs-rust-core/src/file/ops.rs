@@ -229,7 +229,7 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
     if let Err(err) = tag
         && !(err == Error::NoEntry && lfs_path_islast(path_ptr.as_bytes()))
     {
-        let _ = lfs_file_close_(lfs, file);
+        let _ = lfs_file_close_(lfs, file).await;
         return crate::lfs_pass_err!(Err(err));
     }
 
@@ -238,16 +238,16 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
 
     if tag == Err(Error::NoEntry) {
         if !flags.contains(OpenFlags::CREATE) {
-            let _ = lfs_file_close_(lfs, file);
+            let _ = lfs_file_close_(lfs, file).await;
             return crate::lfs_err!(Err(Error::NoEntry));
         }
         if lfs_path_isdir(path_ptr.as_bytes()) {
-            let _ = lfs_file_close_(lfs, file);
+            let _ = lfs_file_close_(lfs, file).await;
             return Err(Error::NotDir);
         }
         let nlen = lfs_path_namelen(path_ptr.as_bytes());
         if nlen > lfs.name_max as usize {
-            let _ = lfs_file_close_(lfs, file);
+            let _ = lfs_file_close_(lfs, file).await;
             return crate::lfs_err!(Err(Error::NameTooLong));
         }
         lfs_alloc_ckpoint(lfs);
@@ -272,14 +272,14 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
             err
         };
         if err.is_err() {
-            let _ = lfs_file_close_(lfs, file);
+            let _ = lfs_file_close_(lfs, file).await;
             return crate::lfs_pass_err!(err);
         }
     } else if flags.contains(OpenFlags::EXCL) {
-        let _ = lfs_file_close_(lfs, file);
+        let _ = lfs_file_close_(lfs, file).await;
         return crate::lfs_err!(Err(Error::Exists));
     } else if (lfs_tag_type3(tag.unwrap())) != LFS_TYPE3_REG {
-        let _ = lfs_file_close_(lfs, file);
+        let _ = lfs_file_close_(lfs, file).await;
         return crate::lfs_err!(Err(Error::IsDir));
     } else if flags.contains(OpenFlags::TRUNC) {
         // C: lfs.c:100-104 — truncate if requested
@@ -300,7 +300,7 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
         )
         .await;
         if let Err(err) = struct_tag {
-            let _ = lfs_file_close_(lfs, file);
+            let _ = lfs_file_close_(lfs, file).await;
             return Err(err);
         }
         tag = struct_tag;
@@ -326,13 +326,13 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
             if let Err(err) = res
                 && err != Error::NoEntry
             {
-                let _ = lfs_file_close_(lfs, file);
+                let _ = lfs_file_close_(lfs, file).await;
                 return Err(err);
             }
         }
         if file.flags.contains(OpenFlags::WRITE) {
             if attr.buffer.len() as u32 > lfs.attr_max {
-                let _ = lfs_file_close_(lfs, file);
+                let _ = lfs_file_close_(lfs, file).await;
                 return crate::lfs_err!(Err(Error::NoSpace));
             }
             file.flags.insert(OpenFlags::DIRTY);
@@ -358,7 +358,7 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
         }
 
         if file.cache.buffer.is_empty() {
-            let _ = lfs_file_close_(lfs, file);
+            let _ = lfs_file_close_(lfs, file).await;
             return crate::lfs_err!(Err(Error::NoMemory));
         }
     }
@@ -395,7 +395,7 @@ pub async fn lfs_file_opencfg_<'a: 'b, 'b, S: Storage>(
             )
             .await;
             if let Err(err) = res {
-                let _ = lfs_file_close_(lfs, file);
+                let _ = lfs_file_close_(lfs, file).await;
                 return Err(err);
             }
         }

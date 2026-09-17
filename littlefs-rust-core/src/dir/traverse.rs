@@ -445,10 +445,10 @@ pub(crate) enum LfsDirTraverseStackCb<S> {
 impl<S> Clone for LfsDirTraverseStackCb<S> {
     fn clone(&self) -> Self {
         match self {
-            Self::TraverseFilter(arg0) => Self::TraverseFilter(arg0.clone()),
-            Self::CommitCommit(arg0, arg1) => Self::CommitCommit(arg0.clone(), arg1.clone()),
-            Self::CommitSize(arg0) => Self::CommitSize(arg0.clone()),
-            Self::Test(arg0) => Self::Test(arg0.clone()),
+            Self::TraverseFilter(arg0) => Self::TraverseFilter(*arg0),
+            Self::CommitCommit(arg0, arg1) => Self::CommitCommit(*arg0, *arg1),
+            Self::CommitSize(arg0) => Self::CommitSize(*arg0),
+            Self::Test(arg0) => Self::Test(*arg0),
         }
     }
 }
