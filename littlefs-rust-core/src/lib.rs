@@ -24,8 +24,6 @@ mod lfs_gstate;
 mod lfs_info;
 mod lfs_superblock;
 pub mod lfs_type;
-#[cfg(test)]
-mod test;
 #[macro_use]
 mod macros;
 mod borrow_unchecked;
