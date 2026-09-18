@@ -1901,29 +1901,31 @@ fn test_paths_utf8(cfg: &LfsConfig) {
 }
 
 #[lfs_test]
-fn test_paths_spaces(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_paths_spaces<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let name = "foo bar";
-    assert_ok!(lfs_mkdir(lfs, name));
+    assert_ok!(lfs_mkdir(lfs, name).await);
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok!(lfs_stat(lfs, name, info));
+    assert_ok!(lfs_stat(lfs, name, info).await);
     assert_eq!(info.name_str(), name);
     assert_ok!(lfs_unmount(lfs));
 }
 
 #[lfs_test]
-fn test_paths_nonprintable(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_paths_nonprintable<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let mut name: Vec<u8> = vec![b'a'; 10];
     name[5] = 0x01;
     let name = unsafe { str::from_utf8_unchecked(&name) };
-    assert_ok!(lfs_mkdir(lfs, name));
+    assert_ok!(lfs_mkdir(lfs, name).await);
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok!(lfs_stat(lfs, name, info));
+    assert_ok!(lfs_stat(lfs, name, info).await);
     assert_ok!(lfs_unmount(lfs));
 }
 

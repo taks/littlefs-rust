@@ -97,9 +97,10 @@ fn test_traverse_filter_gets_superblock_after_push(cfg: &LfsConfig) {
 // --- test_superblocks_invalid_mount ---
 // Upstream: mount on blank device => LFS_ERR_CORRUPT
 #[lfs_test]
-fn test_superblocks_invalid_mount(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_superblocks_invalid_mount<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    let err = lfs_mount(lfs, cfg);
+    let err = lfs_mount(lfs, cfg).await;
     assert_err!(Error::Corrupt, err);
 }
 
@@ -126,16 +127,17 @@ fn test_superblocks_stat(cfg: &LfsConfig) {
 /// Upstream: [cases.test_superblocks_mount_unknown_block_count]
 /// Mount with block_count=0; verify lfs.block_count is set from superblock.
 #[lfs_test]
-fn test_superblocks_mount_unknown_block_count(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_superblocks_mount_unknown_block_count<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
     let tweaked_cfg = LfsConfig {
         block_count: 0,
         ..*cfg
     };
 
-    assert_ok!(lfs_mount(lfs, &tweaked_cfg));
+    assert_ok!(lfs_mount(lfs, &tweaked_cfg).await);
     assert_eq!(lfs.block_count, cfg.block_count);
     assert_ok!(lfs_unmount(lfs));
 }
@@ -729,7 +731,8 @@ fn test_superblocks_shrink(cfg: &LfsConfig, #[values(true, false)] known_block_c
 /// METADATA_MAX = [lfs_max(512, PROG_SIZE), lfs_max(BLOCK_SIZE/2, PROG_SIZE), BLOCK_SIZE]
 /// With BLOCK_SIZE=512, PROG_SIZE=16: [512, 256, 512]. N = [10, 100, 1000].
 #[lfs_test]
-fn test_superblocks_metadata_max(cfg: &LfsConfig, #[values(10, 100, 1000)] n: u32) {
+#[tokio::test]
+async fn test_superblocks_metadata_max<'a>(cfg: &LfsConfig<'a>, #[values(10, 100, 1000)] n: u32) {
     for metadata_max in [
         max(512, cfg.prog_size),
         max(cfg.block_size / 2, cfg.prog_size),
@@ -741,8 +744,8 @@ fn test_superblocks_metadata_max(cfg: &LfsConfig, #[values(10, 100, 1000)] n: u3
         };
 
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &cfg));
-        assert_ok!(lfs_mount(lfs, &cfg));
+        assert_ok!(lfs_format(lfs, &cfg).await);
+        assert_ok!(lfs_mount(lfs, &cfg).await);
 
         for i in 0..n {
             let name = &format!("hello{:03x}", i);
@@ -752,10 +755,10 @@ fn test_superblocks_metadata_max(cfg: &LfsConfig, #[values(10, 100, 1000)] n: u3
                 file,
                 name,
                 LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
+            ).await);
+            assert_ok!(lfs_file_close(lfs, file).await);
             let info = &mut LfsInfo::default();
-            assert_ok!(lfs_stat(lfs, name, info));
+            assert_ok!(lfs_stat(lfs, name, info).await);
             assert_eq!(info.name_str(), name);
             assert_eq!(info.type_, LfsType::REG);
         }

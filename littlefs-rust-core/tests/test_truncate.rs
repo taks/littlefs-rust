@@ -166,14 +166,15 @@ fn test_truncate_read(
 /// Upstream: [cases.test_truncate_write_read]
 /// No defines. Sequential buffer, chop last 1/4, read 3/4, seek to 1/4, chop to half, read second quarter.
 #[lfs_test]
-fn test_truncate_write_read(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_truncate_write_read<'a>(cfg: &LfsConfig<'a>) {
     let cache_size = cfg.cache_size;
     let size = core::cmp::min(cache_size, 512); // buffer size
     let qsize = size / 4;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "sequence";
     let file = &mut LfsFile::default();
@@ -182,7 +183,7 @@ fn test_truncate_write_read(cfg: &LfsConfig) {
         file,
         path,
         LFS_O_RDWR | LFS_O_CREAT | LFS_O_TRUNC,
-    ));
+    ).await);
 
     let mut wb = vec![0u8; size as usize];
     let mut rb = vec![0u8; size as usize];
@@ -190,43 +191,43 @@ fn test_truncate_write_read(cfg: &LfsConfig) {
         wb[j as usize] = j as u8;
     }
 
-    let n = lfs_file_write(lfs, file, &wb);
+    let n = lfs_file_write(lfs, file, &wb).await;
     assert_eq!(n, Ok(size as u32));
     assert_eq!(lfs_file_size(lfs, file), size);
     assert_eq!(lfs_file_tell(lfs, file), size);
 
-    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
+    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET).await, Ok(0));
     assert_eq!(lfs_file_tell(lfs, file), 0);
 
     let trunc = size - qsize;
-    assert_ok!(lfs_file_truncate(lfs, file, trunc));
+    assert_ok!(lfs_file_truncate(lfs, file, trunc).await);
     assert_eq!(lfs_file_tell(lfs, file), 0);
     assert_eq!(lfs_file_size(lfs, file), trunc);
 
-    let n = lfs_file_read(lfs, file, &mut rb[..size as usize]);
+    let n = lfs_file_read(lfs, file, &mut rb[..size as usize]).await;
     assert_eq!(n, Ok(trunc as u32));
     assert_eq!(&rb[..trunc as usize], &wb[..trunc as usize]);
 
     assert_eq!(lfs_file_size(lfs, file), trunc);
     assert_eq!(
-        lfs_file_seek(lfs, file, qsize as i32, LFS_SEEK_SET),
+        lfs_file_seek(lfs, file, qsize as i32, LFS_SEEK_SET).await,
         Ok(qsize as u32)
     );
     assert_eq!(lfs_file_tell(lfs, file), qsize);
 
     let trunc2 = trunc - qsize;
-    assert_ok!(lfs_file_truncate(lfs, file, trunc2));
+    assert_ok!(lfs_file_truncate(lfs, file, trunc2).await);
     assert_eq!(lfs_file_tell(lfs, file), qsize);
     assert_eq!(lfs_file_size(lfs, file), trunc2);
 
-    let n = lfs_file_read(lfs, file, &mut rb[..size as usize]);
+    let n = lfs_file_read(lfs, file, &mut rb[..size as usize]).await;
     assert_eq!(n, Ok((trunc2 - qsize) as u32));
     assert_eq!(
         &rb[..(trunc2 - qsize) as usize],
         &wb[(qsize as usize)..(trunc2 as usize)]
     );
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -235,64 +236,65 @@ fn test_truncate_write_read(cfg: &LfsConfig) {
 #[case(31, 32)]
 #[case(32, 512)]
 #[case(2048, 8192)]
-fn test_truncate_write(cfg: &LfsConfig, #[case] medium: u32, #[case] large: u32) {
+#[tokio::test]
+async fn test_truncate_write<'a>(cfg: &LfsConfig<'a>, #[case] medium: u32, #[case] large: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "baldywrite";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
 
     let size = HAIR.len() as u32;
     let mut j: u32 = 0;
     while j < large {
         let chunk = min(size, large - j);
-        let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]);
+        let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]).await;
         assert_eq!(n, Ok(chunk));
         j += chunk;
     }
     assert_eq!(lfs_file_size(lfs, file), large);
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR).await);
     assert_eq!(lfs_file_size(lfs, file), large);
 
-    assert_ok!(lfs_file_truncate(lfs, file, medium));
+    assert_ok!(lfs_file_truncate(lfs, file, medium).await);
     assert_eq!(lfs_file_size(lfs, file), medium);
 
     j = 0;
     while j < medium {
         let chunk = min(BALD.len() as u32, medium - j);
-        let n = lfs_file_write(lfs, file, &BALD[..chunk as usize]);
+        let n = lfs_file_write(lfs, file, &BALD[..chunk as usize]).await;
         assert_eq!(n, Ok(chunk));
         j += chunk;
     }
     assert_eq!(lfs_file_size(lfs, file), medium);
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
     assert_eq!(lfs_file_size(lfs, file), medium);
 
     let mut buf = [0u8; 16];
     j = 0;
     while j < medium {
         let chunk = min(BALD.len() as u32, medium - j);
-        let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
+        let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]).await;
         assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &BALD[..chunk as usize]);
         j += chunk;
     }
-    let n = lfs_file_read(lfs, file, &mut buf[..BALD.len()]);
+    let n = lfs_file_read(lfs, file, &mut buf[..BALD.len()]).await;
     assert_eq!(n, Ok(0));
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -452,12 +454,9 @@ async fn test_truncate_aggressive<'a>(cfg: &LfsConfig<'a>) {
         for i in 0..COUNT {
             let path = &format!("hairyhead{}", i);
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-            ).await);
+            assert_ok!(
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,).await
+            );
 
             let size = HAIR.len() as u32;
             let mut j: u32 = 0;
@@ -569,60 +568,61 @@ async fn test_truncate_aggressive<'a>(cfg: &LfsConfig<'a>) {
 #[case(2049)]
 #[case(8192)]
 #[case(8193)]
-fn test_truncate_nop(cfg: &LfsConfig, #[case] medium: u32) {
+#[tokio::test]
+async fn test_truncate_nop<'a>(cfg: &LfsConfig<'a>, #[case] medium: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "baldynoop";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR | LFS_O_CREAT));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR | LFS_O_CREAT).await);
 
     let size = HAIR.len() as u32;
     let mut j: u32 = 0;
     while j < medium {
         let chunk = min(size, medium - j);
-        let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]);
+        let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]).await;
         assert_eq!(n, Ok(chunk));
-        assert_ok!(lfs_file_truncate(lfs, file, j + chunk));
+        assert_ok!(lfs_file_truncate(lfs, file, j + chunk).await);
         j += chunk;
     }
     assert_eq!(lfs_file_size(lfs, file), medium);
 
-    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
-    assert_ok!(lfs_file_truncate(lfs, file, medium));
+    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET).await, Ok(0));
+    assert_ok!(lfs_file_truncate(lfs, file, medium).await);
     assert_eq!(lfs_file_size(lfs, file), medium);
 
     let mut buf = [0u8; 16];
     j = 0;
     while j < medium {
         let chunk = min(size, medium - j);
-        let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
+        let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]).await;
         assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &HAIR[..chunk as usize]);
         j += chunk;
     }
-    let n = lfs_file_read(lfs, file, &mut buf[..size as usize]);
+    let n = lfs_file_read(lfs, file, &mut buf[..size as usize]).await;
     assert_eq!(n, Ok(0));
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR).await);
     assert_eq!(lfs_file_size(lfs, file), medium);
 
     j = 0;
     while j < medium {
         let chunk = min(size, medium - j);
-        let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
+        let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]).await;
         assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &HAIR[..chunk as usize]);
         j += chunk;
     }
-    let n = lfs_file_read(lfs, file, &mut buf[..size as usize]);
+    let n = lfs_file_read(lfs, file, &mut buf[..size as usize]).await;
     assert_eq!(n, Ok(0));
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }

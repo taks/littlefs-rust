@@ -392,12 +392,15 @@ async fn test_exhaustion_wear_distribution<'a>(
             let size: u32 = 1 << 4;
 
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                common::LFS_O_WRONLY | common::LFS_O_CREAT | common::LFS_O_TRUNC,
-            ).await);
+            assert_ok!(
+                lfs_file_open(
+                    lfs,
+                    file,
+                    path,
+                    common::LFS_O_WRONLY | common::LFS_O_CREAT | common::LFS_O_TRUNC,
+                )
+                .await
+            );
 
             for _ in 0..size {
                 let c = b'a' + (test_prng(&mut prng) % 26) as u8;

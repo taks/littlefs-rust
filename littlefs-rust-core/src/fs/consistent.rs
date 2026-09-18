@@ -129,9 +129,9 @@ pub async fn lfs_fs_gc_<S: Storage>(lfs: &mut super::lfs::Lfs<S>) -> Result<(), 
     use crate::util::lfs_pair_isnull;
 
     crate::lfs_trace!("lfs_fs_gc: start");
-    let err = super::superblock::lfs_fs_forceconsistency(lfs);
+    let err = super::superblock::lfs_fs_forceconsistency(lfs).await;
     crate::lfs_trace!("lfs_fs_gc: after forceconsistency err={:?}", err);
-    crate::lfs_pass_err!(err).await?;
+    crate::lfs_pass_err!(err)?;
 
     unsafe {
         let cfg = lfs.cfg.as_ref();

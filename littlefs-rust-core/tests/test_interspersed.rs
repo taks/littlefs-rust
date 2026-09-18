@@ -12,9 +12,9 @@ use common::{ALPHA, LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, LfsConf
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_file_size;
 use littlefs_rust_core::{
-    Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
-    lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format,
-    lfs_mount, lfs_remove, lfs_type::LfsType, lfs_unmount,
+    Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read, lfs_file_close,
+    lfs_file_open, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mount, lfs_remove,
+    lfs_type::LfsType, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 
@@ -40,12 +40,15 @@ async fn test_interspersed_files<'a>(
 
     for j in 0..files {
         let path = &String::from(ALPHA[j] as char);
-        assert_ok!(lfs_file_open(
-            lfs,
-            &mut file_handles[j],
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ).await);
+        assert_ok!(
+            lfs_file_open(
+                lfs,
+                &mut file_handles[j],
+                path,
+                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+            )
+            .await
+        );
     }
 
     for _i in 0..size {
@@ -134,12 +137,7 @@ async fn test_interspersed_remove_files<'a>(
     for j in 0..files {
         let path = &String::from(ALPHA[j] as char);
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ).await);
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
         for _i in 0..size {
             let byte = [ALPHA[j]];
             let n = lfs_file_write(lfs, file, &byte).await;
@@ -153,12 +151,7 @@ async fn test_interspersed_remove_files<'a>(
     assert_ok!(lfs_mount(lfs, cfg).await);
     let zzz_path = "zzz";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        zzz_path,
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ).await);
+    assert_ok!(lfs_file_open(lfs, file, zzz_path, LFS_O_WRONLY | LFS_O_CREAT,).await);
 
     for j in 0..files {
         let tilde = b"~";

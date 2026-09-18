@@ -586,12 +586,7 @@ async fn test_alloc_two_files_ctz<'a>(cfg: &LfsConfig<'a>) {
     assert_ok!(lfs_mount(lfs, cfg).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "pacman",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ).await);
+    assert_ok!(lfs_file_open(lfs, file, "pacman", LFS_O_WRONLY | LFS_O_CREAT,).await);
     let waka = b"waka";
     let mut filesize: usize = 0;
     loop {
@@ -605,12 +600,15 @@ async fn test_alloc_two_files_ctz<'a>(cfg: &LfsConfig<'a>) {
     assert_ok!(lfs_file_close(lfs, file).await);
 
     filesize -= 3 * block_size;
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "pacman",
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-    ).await);
+    assert_ok!(
+        lfs_file_open(
+            lfs,
+            file,
+            "pacman",
+            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
+        )
+        .await
+    );
     for _ in (0..filesize).step_by(waka.len()) {
         let n = lfs_file_write(lfs, file, waka).await;
         assert_eq!(n, Ok(waka.len() as u32));
@@ -621,12 +619,7 @@ async fn test_alloc_two_files_ctz<'a>(cfg: &LfsConfig<'a>) {
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, cfg).await);
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "ghost",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ).await);
+    assert_ok!(lfs_file_open(lfs, file, "ghost", LFS_O_WRONLY | LFS_O_CREAT,).await);
     let chomp = b"chomp";
     loop {
         let res = lfs_file_write(lfs, file, chomp).await;
@@ -957,24 +950,14 @@ async fn test_alloc_outdated_lookahead_split_dir<'a>(
     let blah = b"blahblahblahblah";
     let chunk = blah.len();
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion1",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ).await);
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion1", LFS_O_WRONLY | LFS_O_CREAT,).await);
     for _ in (0..size1_full).step_by(chunk) {
         let n = lfs_file_write(lfs, file, &blah[..chunk]).await;
         assert_eq!(n, Ok(chunk as u32));
     }
     assert_ok!(lfs_file_close(lfs, file).await);
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion2",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ).await);
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion2", LFS_O_WRONLY | LFS_O_CREAT,).await);
     for _ in (0..size2).step_by(chunk) {
         let n = lfs_file_write(lfs, file, &blah[..chunk]).await;
         assert_eq!(n, Ok(chunk as u32));
@@ -984,12 +967,7 @@ async fn test_alloc_outdated_lookahead_split_dir<'a>(
     assert_ok!(lfs_unmount(lfs));
     assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion1",
-        LFS_O_WRONLY | LFS_O_TRUNC,
-    ).await);
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion1", LFS_O_WRONLY | LFS_O_TRUNC,).await);
     assert_ok!(lfs_file_sync(lfs, file).await);
     for _ in (0..size1_hole).step_by(chunk) {
         let n = lfs_file_write(lfs, file, &blah[..chunk]).await;
@@ -1000,12 +978,7 @@ async fn test_alloc_outdated_lookahead_split_dir<'a>(
     let err = lfs_mkdir(lfs, "split").await;
     assert_err!(Error::NoSpace, err);
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "notasplit",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ).await);
+    assert_ok!(lfs_file_open(lfs, file, "notasplit", LFS_O_WRONLY | LFS_O_CREAT,).await);
     let n = lfs_file_write(lfs, file, b"hi").await;
     assert_eq!(n, Ok(2));
     assert_ok!(lfs_file_close(lfs, file).await);
