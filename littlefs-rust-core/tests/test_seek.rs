@@ -4,10 +4,10 @@ mod common;
 
 use common::{
     ALPHA, LFS_FILE_MAX, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_RDWR, LFS_O_WRONLY,
-    LFS_SEEK_CUR, LFS_SEEK_END, LFS_SEEK_SET,
+    LFS_SEEK_CUR, LFS_SEEK_END, LFS_SEEK_SET, LfsConfig,
 };
 use littlefs_rust_core::{
-    Error, Lfs, LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_rewind,
+    Error, Lfs, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_rewind,
     lfs_file_seek, lfs_file_size, lfs_file_sync, lfs_file_tell, lfs_file_write, lfs_format,
     lfs_mount, lfs_unmount,
 };
@@ -29,90 +29,92 @@ const PORCUPINE: &[u8] = b"porcupineee";
 #[case(200, 100)]
 #[case(4, 1)]
 #[case(4, 2)]
-fn test_seek_read(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u32) {
+#[tokio::test]
+async fn test_seek_read<'a>(cfg: &LfsConfig<'a>, #[case] count: u32, #[case] skip: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "kitty";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await);
     for _ in 0..count {
-        let n = lfs_file_write(lfs, file, KITTY);
+        let n = lfs_file_write(lfs, file, KITTY).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
 
     let mut buf = [0u8; 32];
     let mut pos: i32 = -1;
     for _ in 0..skip {
-        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
         assert_eq!(&buf[..KITTY.len()], KITTY);
         pos = lfs_file_tell(lfs, file) as i32;
     }
     assert!(pos >= 0);
 
-    assert_eq!(lfs_file_seek(lfs, file, pos, LFS_SEEK_SET), Ok(pos as u32));
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
-    assert_eq!(n, Ok(KITTY.len() as u32));
-    assert_eq!(&buf[..KITTY.len()], KITTY);
-
-    assert_ok!(lfs_file_rewind(lfs, file));
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
-    assert_eq!(n, Ok(KITTY.len() as u32));
-    assert_eq!(&buf[..KITTY.len()], KITTY);
-
     assert_eq!(
-        lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR),
-        Ok(KITTY.len() as u32)
-    );
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
-    assert_eq!(n, Ok(KITTY.len() as u32));
-    assert_eq!(&buf[..KITTY.len()], KITTY);
-
-    assert_eq!(
-        lfs_file_seek(lfs, file, KITTY.len() as i32, LFS_SEEK_CUR),
-        Ok(3 * KITTY.len() as u32)
-    );
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
-    assert_eq!(n, Ok(KITTY.len() as u32));
-    assert_eq!(&buf[..KITTY.len()], KITTY);
-
-    assert_eq!(lfs_file_seek(lfs, file, pos, LFS_SEEK_SET), Ok(pos as u32));
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
-    assert_eq!(n, Ok(KITTY.len() as u32));
-    assert_eq!(&buf[..KITTY.len()], KITTY);
-
-    assert_eq!(
-        lfs_file_seek(lfs, file, -(KITTY.len() as i32), LFS_SEEK_CUR),
+        lfs_file_seek(lfs, file, pos, LFS_SEEK_SET).await,
         Ok(pos as u32)
     );
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
     assert_eq!(n, Ok(KITTY.len() as u32));
     assert_eq!(&buf[..KITTY.len()], KITTY);
 
-    assert!(lfs_file_seek(lfs, file, -(KITTY.len() as i32), LFS_SEEK_END).is_ok());
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+    assert_ok!(lfs_file_rewind(lfs, file).await);
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
+    assert_eq!(n, Ok(KITTY.len() as u32));
+    assert_eq!(&buf[..KITTY.len()], KITTY);
+
+    assert_eq!(
+        lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR).await,
+        Ok(KITTY.len() as u32)
+    );
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
+    assert_eq!(n, Ok(KITTY.len() as u32));
+    assert_eq!(&buf[..KITTY.len()], KITTY);
+
+    assert_eq!(
+        lfs_file_seek(lfs, file, KITTY.len() as i32, LFS_SEEK_CUR).await,
+        Ok(3 * KITTY.len() as u32)
+    );
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
+    assert_eq!(n, Ok(KITTY.len() as u32));
+    assert_eq!(&buf[..KITTY.len()], KITTY);
+
+    assert_eq!(
+        lfs_file_seek(lfs, file, pos, LFS_SEEK_SET).await,
+        Ok(pos as u32)
+    );
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
+    assert_eq!(n, Ok(KITTY.len() as u32));
+    assert_eq!(&buf[..KITTY.len()], KITTY);
+
+    assert_eq!(
+        lfs_file_seek(lfs, file, -(KITTY.len() as i32), LFS_SEEK_CUR).await,
+        Ok(pos as u32)
+    );
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
+    assert_eq!(n, Ok(KITTY.len() as u32));
+    assert_eq!(&buf[..KITTY.len()], KITTY);
+
+    assert_ok!(lfs_file_seek(lfs, file, -(KITTY.len() as i32), LFS_SEEK_END).await);
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
     assert_eq!(n, Ok(KITTY.len() as u32));
     assert_eq!(&buf[..KITTY.len()], KITTY);
 
     assert_eq!(lfs_file_size(lfs, file), (count * KITTY.len() as u32));
     assert_eq!(
-        lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR),
+        lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR).await,
         Ok(count * KITTY.len() as u32)
     );
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -124,100 +126,101 @@ fn test_seek_read(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u32) {
 #[case(200, 100)]
 #[case(4, 1)]
 #[case(4, 2)]
-fn test_seek_write(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u32) {
+#[tokio::test]
+async fn test_seek_write<'a>(cfg: &LfsConfig<'a>, #[case] count: u32, #[case] skip: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "kitty";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await);
     for _ in 0..count {
-        let n = lfs_file_write(lfs, file, KITTY);
+        let n = lfs_file_write(lfs, file, KITTY).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR).await);
 
     let mut buf = [0u8; 32];
     let mut pos: i32 = -1;
     for _ in 0..skip {
-        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
         assert_eq!(&buf[..KITTY.len()], KITTY);
         pos = lfs_file_tell(lfs, file) as i32;
     }
     assert!(pos >= 0);
 
-    assert_eq!(lfs_file_seek(lfs, file, pos, LFS_SEEK_SET), Ok(pos as u32));
-    let n = lfs_file_write(lfs, file, DOGGO);
+    assert_eq!(
+        lfs_file_seek(lfs, file, pos, LFS_SEEK_SET).await,
+        Ok(pos as u32)
+    );
+    let n = lfs_file_write(lfs, file, DOGGO).await;
     assert_eq!(n, Ok(DOGGO.len() as u32));
 
-    assert_eq!(lfs_file_seek(lfs, file, pos, LFS_SEEK_SET), Ok(pos as u32));
-    let n = lfs_file_read(lfs, file, &mut buf[..DOGGO.len()]);
+    assert_eq!(
+        lfs_file_seek(lfs, file, pos, LFS_SEEK_SET).await,
+        Ok(pos as u32)
+    );
+    let n = lfs_file_read(lfs, file, &mut buf[..DOGGO.len()]).await;
     assert_eq!(n, Ok(DOGGO.len() as u32));
     assert_eq!(&buf[..DOGGO.len()], DOGGO);
 
-    assert_ok!(lfs_file_rewind(lfs, file));
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+    assert_ok!(lfs_file_rewind(lfs, file).await);
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
     assert_eq!(n, Ok(KITTY.len() as u32));
     assert_eq!(&buf[..KITTY.len()], KITTY);
 
-    assert_eq!(lfs_file_seek(lfs, file, pos, LFS_SEEK_SET), Ok(pos as u32));
-    let n = lfs_file_read(lfs, file, &mut buf[..DOGGO.len()]);
+    assert_eq!(
+        lfs_file_seek(lfs, file, pos, LFS_SEEK_SET).await,
+        Ok(pos as u32)
+    );
+    let n = lfs_file_read(lfs, file, &mut buf[..DOGGO.len()]).await;
     assert_eq!(n, Ok(DOGGO.len() as u32));
     assert_eq!(&buf[..DOGGO.len()], DOGGO);
 
-    assert!(lfs_file_seek(lfs, file, -(KITTY.len() as i32), LFS_SEEK_END).is_ok());
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+    assert_ok!(lfs_file_seek(lfs, file, -(KITTY.len() as i32), LFS_SEEK_END).await);
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
     assert_eq!(n, Ok(KITTY.len() as u32));
     assert_eq!(&buf[..KITTY.len()], KITTY);
 
     assert_eq!(lfs_file_size(lfs, file), (count * KITTY.len() as u32));
     assert_eq!(
-        lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR),
+        lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR).await,
         Ok(count * KITTY.len() as u32)
     );
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_seek_boundary_read]
 /// defines.COUNT = 132
 #[lfs_test]
-fn test_seek_boundary_read(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_seek_boundary_read<'a>(cfg: &LfsConfig<'a>) {
     const COUNT: u32 = 132;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "kitty";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await);
     for _ in 0..COUNT {
-        let n = lfs_file_write(lfs, file, KITTY);
+        let n = lfs_file_write(lfs, file, KITTY).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
 
     let size = KITTY.len() as i64;
     let pattern = b"kittycatcatkittycatcat";
@@ -243,10 +246,10 @@ fn test_seek_boundary_read(cfg: &LfsConfig) {
             continue;
         }
         assert_eq!(
-            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET),
+            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET).await,
             Ok(off as u32)
         );
-        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
         let base = (off % size) as usize;
         assert_eq!(
@@ -259,10 +262,10 @@ fn test_seek_boundary_read(cfg: &LfsConfig) {
         let off_after = off + size + 1;
         if off_after >= 0 && off_after + size <= COUNT as i64 * size {
             assert_eq!(
-                lfs_file_seek(lfs, file, off_after as i32, LFS_SEEK_SET),
+                lfs_file_seek(lfs, file, off_after as i32, LFS_SEEK_SET).await,
                 Ok(off_after as u32)
             );
-            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
             assert_eq!(n, Ok(KITTY.len() as u32));
             let base = ((off + 1) % size) as usize;
             assert_eq!(&buf[..KITTY.len()], &pattern[base..base + KITTY.len()]);
@@ -271,25 +274,25 @@ fn test_seek_boundary_read(cfg: &LfsConfig) {
         let off_before = off - size - 1;
         if off_before >= 0 {
             assert_eq!(
-                lfs_file_seek(lfs, file, off_before as i32, LFS_SEEK_SET),
+                lfs_file_seek(lfs, file, off_before as i32, LFS_SEEK_SET).await,
                 Ok(off_before as u32)
             );
-            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
             assert_eq!(n, Ok(KITTY.len() as u32));
             let base = ((off - 1).rem_euclid(size)) as usize;
             assert_eq!(&buf[..KITTY.len()], &pattern[base..base + KITTY.len()]);
         }
 
-        assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
-        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+        assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET).await, Ok(0));
+        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
         assert_eq!(&buf[..KITTY.len()], KITTY);
 
         assert_eq!(
-            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET),
+            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET).await,
             Ok(off as u32)
         );
-        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
         let base = (off % size) as usize;
         assert_eq!(&buf[..KITTY.len()], &pattern[base..base + KITTY.len()]);
@@ -297,10 +300,10 @@ fn test_seek_boundary_read(cfg: &LfsConfig) {
         let off_after = off + size + 1;
         if off_after >= 0 && off_after + size <= COUNT as i64 * size {
             assert_eq!(
-                lfs_file_seek(lfs, file, off_after as i32, LFS_SEEK_SET),
+                lfs_file_seek(lfs, file, off_after as i32, LFS_SEEK_SET).await,
                 Ok(off_after as u32)
             );
-            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
             assert_eq!(n, Ok(KITTY.len() as u32));
             let base = ((off + 1) % size) as usize;
             assert_eq!(&buf[..KITTY.len()], &pattern[base..base + KITTY.len()]);
@@ -309,27 +312,27 @@ fn test_seek_boundary_read(cfg: &LfsConfig) {
         let off_before = off - size - 1;
         if off_before >= 0 {
             assert_eq!(
-                lfs_file_seek(lfs, file, off_before as i32, LFS_SEEK_SET),
+                lfs_file_seek(lfs, file, off_before as i32, LFS_SEEK_SET).await,
                 Ok(off_before as u32)
             );
-            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
             assert_eq!(n, Ok(KITTY.len() as u32));
             let base = ((off - 1).rem_euclid(size)) as usize;
             assert_eq!(&buf[..KITTY.len()], &pattern[base..base + KITTY.len()]);
         }
 
-        assert_ok!(lfs_file_sync(lfs, file));
+        assert_ok!(lfs_file_sync(lfs, file).await);
 
-        assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
-        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+        assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET).await, Ok(0));
+        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
         assert_eq!(&buf[..KITTY.len()], KITTY);
 
         assert_eq!(
-            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET),
+            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET).await,
             Ok(off as u32)
         );
-        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
         let base = (off % size) as usize;
         assert_eq!(&buf[..KITTY.len()], &pattern[base..base + KITTY.len()]);
@@ -337,10 +340,10 @@ fn test_seek_boundary_read(cfg: &LfsConfig) {
         let off_after = off + size + 1;
         if off_after >= 0 && off_after + size <= COUNT as i64 * size {
             assert_eq!(
-                lfs_file_seek(lfs, file, off_after as i32, LFS_SEEK_SET),
+                lfs_file_seek(lfs, file, off_after as i32, LFS_SEEK_SET).await,
                 Ok(off_after as u32)
             );
-            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
             assert_eq!(n, Ok(KITTY.len() as u32));
             let base = ((off + 1) % size) as usize;
             assert_eq!(&buf[..KITTY.len()], &pattern[base..base + KITTY.len()]);
@@ -349,17 +352,17 @@ fn test_seek_boundary_read(cfg: &LfsConfig) {
         let off_before = off - size - 1;
         if off_before >= 0 {
             assert_eq!(
-                lfs_file_seek(lfs, file, off_before as i32, LFS_SEEK_SET),
+                lfs_file_seek(lfs, file, off_before as i32, LFS_SEEK_SET).await,
                 Ok(off_before as u32)
             );
-            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+            let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
             assert_eq!(n, Ok(KITTY.len() as u32));
             let base = ((off - 1).rem_euclid(size)) as usize;
             assert_eq!(&buf[..KITTY.len()], &pattern[base..base + KITTY.len()]);
         }
     }
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 

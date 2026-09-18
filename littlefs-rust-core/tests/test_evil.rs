@@ -7,15 +7,16 @@
 mod common;
 
 use common::{
-    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, erase_block_raw, read_block_raw, write_block_raw,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, LfsConfig, erase_block_raw, read_block_raw,
+    write_block_raw,
 };
 use littlefs_rust_core::Error;
 use littlefs_rust_core::lfs_type::{LfsType, lfs_type::*};
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMattr, LfsMdir, lfs_ctz_fromle32,
-    lfs_deinit, lfs_dir_commit, lfs_dir_fetch, lfs_dir_get, lfs_dir_open, lfs_file_close,
-    lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_fs_prepmove, lfs_init, lfs_mkdir,
-    lfs_mktag, lfs_mount, lfs_pair_fromle32, lfs_stat, lfs_unmount,
+    Lfs, LfsCtz, LfsDir, LfsFile, LfsInfo, LfsMattr, LfsMdir, lfs_ctz_fromle32, lfs_deinit,
+    lfs_dir_commit, lfs_dir_fetch, lfs_dir_get, lfs_dir_open, lfs_file_close, lfs_file_open,
+    lfs_file_read, lfs_file_write, lfs_format, lfs_fs_prepmove, lfs_init, lfs_mkdir, lfs_mktag,
+    lfs_mount, lfs_pair_fromle32, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
@@ -28,18 +29,19 @@ use zerocopy::IntoBytes;
 /// Format, then commit a TAIL_TYPE tag with invalid pair to root metadata.
 /// Expect lfs_mount to return Error::Corrupt.
 #[lfs_test]
-fn test_evil_invalid_tail_pointer(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_evil_invalid_tail_pointer<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(LFS_TYPE_HARDTAIL, LFS_TYPE_SOFTTAIL)] tail_type: u16,
     #[values(0x03, 0x01, 0x02)] invalset: u32,
 ) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
     assert_ok!(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(lfs, mdir, pair));
+    assert_ok!(lfs_dir_fetch(lfs, mdir, pair).await);
 
     let invalid_pair: [u32; 2] = [
         if invalset & 0x1 != 0 { 0xcccccccc } else { 0 },
@@ -49,10 +51,10 @@ fn test_evil_invalid_tail_pointer(
         tag: lfs_mktag(tail_type, 0x3ff, 8),
         buffer: invalid_pair.as_bytes(),
     }];
-    assert_ok!(lfs_dir_commit(lfs, mdir, &attrs));
+    assert_ok!(lfs_dir_commit(lfs, mdir, &attrs).await);
     assert_ok!(lfs_deinit(lfs));
 
-    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg));
+    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg).await);
 }
 
 /// Upstream: [cases.test_evil_invalid_dir_pointer]

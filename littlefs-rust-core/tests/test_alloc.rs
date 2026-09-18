@@ -577,12 +577,13 @@ fn test_alloc_dir_exhaustion(cfg: &LfsConfig, #[values(false, true)] infer_bc: b
 // --- test_alloc_two_files_ctz ---
 // Reproduces dir corruption: pacman fill+shrink, ghost fill to NOSPC, GC, read pacman.
 #[lfs_test]
-fn test_alloc_two_files_ctz(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_alloc_two_files_ctz<'a>(cfg: &LfsConfig<'a>) {
     let block_size = cfg.block_size as usize;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -590,18 +591,18 @@ fn test_alloc_two_files_ctz(cfg: &LfsConfig) {
         file,
         "pacman",
         LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    ).await);
     let waka = b"waka";
     let mut filesize: usize = 0;
     loop {
-        let res = lfs_file_write(lfs, file, waka);
+        let res = lfs_file_write(lfs, file, waka).await;
         if res == Err(Error::NoSpace) {
             break;
         }
         assert_eq!(res, Ok(waka.len() as u32));
         filesize += waka.len();
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     filesize -= 3 * block_size;
     assert_ok!(lfs_file_open(
@@ -609,44 +610,44 @@ fn test_alloc_two_files_ctz(cfg: &LfsConfig) {
         file,
         "pacman",
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-    ));
+    ).await);
     for _ in (0..filesize).step_by(waka.len()) {
-        let n = lfs_file_write(lfs, file, waka);
+        let n = lfs_file_write(lfs, file, waka).await;
         assert_eq!(n, Ok(waka.len() as u32));
     }
-    assert_ok!(lfs_file_sync(lfs, file));
+    assert_ok!(lfs_file_sync(lfs, file).await);
     let pacman_head = file.ctz.head;
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(
         lfs,
         file,
         "ghost",
         LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    ).await);
     let chomp = b"chomp";
     loop {
-        let res = lfs_file_write(lfs, file, chomp);
+        let res = lfs_file_write(lfs, file, chomp).await;
         if res == Err(Error::NoSpace) {
             break;
         }
         assert_eq!(res, Ok(chomp.len() as u32));
     }
-    assert_ok!(lfs_fs_gc(lfs));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_fs_gc(lfs).await);
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, "pacman", LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, "pacman", LFS_O_RDONLY).await);
     let open_head = file.ctz.head;
     assert_eq!(
         open_head, pacman_head,
         "pacman ctz.head after ghost fill+GC: expected {} got {}",
         pacman_head, open_head
     );
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -660,51 +661,50 @@ const MAX_FILL_ITER: u32 = 50_000;
 ///
 /// Fill pacman, shrink, mark block bad, ghost write until CORRUPT, clear bad, ghost to NOSPC, GC, verify pacman.
 #[lfs_test]
-fn test_alloc_bad_blocks(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_alloc_bad_blocks<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(0xffffffff)] erase_cycles: u32,
     #[values(BadblockBehavior::ReadError)] badblock_behavior: BadblockBehavior,
 ) {
     let block_size = cfg.block_size as usize;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "pacman",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "pacman", LFS_O_WRONLY | LFS_O_CREAT,).await);
 
     let waka = b"waka";
     let mut filesize: usize = 0;
     loop {
-        let res = lfs_file_write(lfs, file, waka);
+        let res = lfs_file_write(lfs, file, waka).await;
         if res == Err(Error::NoSpace) {
             break;
         }
         assert_eq!(res, Ok(waka.len() as u32));
         filesize += waka.len();
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     filesize -= 3 * block_size;
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "pacman",
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-    ));
+    assert_ok!(
+        lfs_file_open(
+            lfs,
+            file,
+            "pacman",
+            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
+        )
+        .await
+    );
     for _ in (0..filesize).step_by(waka.len()) {
-        let n = lfs_file_write(lfs, file, waka);
+        let n = lfs_file_write(lfs, file, waka).await;
         assert_eq!(n, Ok(waka.len() as u32));
     }
 
-    assert_ok!(lfs_file_sync(lfs, file));
+    assert_ok!(lfs_file_sync(lfs, file).await);
     let fileblock = { file.ctz.head };
     let block_count = cfg.block_count;
     assert!(
@@ -713,18 +713,13 @@ fn test_alloc_bad_blocks(
         fileblock,
         block_count
     );
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     // Open ghost, write until CORRUPT (alloc hits bad block), close.
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "ghost",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "ghost", LFS_O_WRONLY | LFS_O_CREAT,).await);
     let chomp = b"chomp";
     let mut iter: u32 = 0;
     loop {
@@ -734,21 +729,16 @@ fn test_alloc_bad_blocks(
             MAX_FILL_ITER
         );
         iter += 1;
-        let res = lfs_file_write(lfs, file, chomp);
+        let res = lfs_file_write(lfs, file, chomp).await;
         if res == Err(Error::Corrupt) || res == Err(Error::NoSpace) {
             break;
         }
         assert_eq!(res, Ok(chomp.len() as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     // Write ghost to NOSPC, then GC, close, unmount.
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "ghost",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "ghost", LFS_O_WRONLY | LFS_O_CREAT,).await);
     let mut iter: u32 = 0;
     loop {
         assert!(
@@ -757,18 +747,18 @@ fn test_alloc_bad_blocks(
             MAX_FILL_ITER
         );
         iter += 1;
-        let res = lfs_file_write(lfs, file, chomp);
+        let res = lfs_file_write(lfs, file, chomp).await;
         if res == Err(Error::NoSpace) {
             break;
         }
         assert_eq!(res, Ok(chomp.len() as u32));
     }
-    assert_ok!(lfs_fs_gc(lfs));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_fs_gc(lfs).await);
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, "pacman", LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, "pacman", LFS_O_RDONLY).await);
     let open_head = { file.ctz.head };
     assert!(
         open_head < cfg.block_count,
@@ -778,7 +768,7 @@ fn test_alloc_bad_blocks(
     );
     let mut rbuf = [0u8; 4];
     for _ in (0..filesize).step_by(waka.len()) {
-        let n = lfs_file_read(lfs, file, &mut rbuf[..waka.len()]);
+        let n = lfs_file_read(lfs, file, &mut rbuf[..waka.len()]).await;
         if n != Ok(waka.len() as u32) {
             // common::dump::dump_fs(
             //     &env.badblock_ram.ram.data,
@@ -794,7 +784,7 @@ fn test_alloc_bad_blocks(
         }
         assert_eq!(&rbuf[..waka.len()], waka);
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -804,35 +794,31 @@ fn test_alloc_bad_blocks(
 ///
 /// Find max file size, chained dir fails, truncate until mkdir succeeds.
 #[lfs_test]
-fn test_alloc_chained_dir_exhaustion(cfg: &LfsConfig, #[values(1024)] erase_count: u32) {
+#[tokio::test]
+async fn test_alloc_chained_dir_exhaustion<'a>(
+    cfg: &LfsConfig<'a>,
+    #[values(1024)] erase_count: u32,
+) {
     if cfg.block_size != 512 {
         return;
     }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "exhaustiondir"));
+    assert_ok!(lfs_mkdir(lfs, "exhaustiondir").await);
     for i in 0..10 {
-        assert_ok!(lfs_mkdir(
-            lfs,
-            &format!("dirwithanexhaustivelylongnameforpadding{i}"),
-        ));
+        assert_ok!(lfs_mkdir(lfs, &format!("dirwithanexhaustivelylongnameforpadding{i}"),).await);
     }
 
     let file = &mut LfsFile::default();
     let blah = b"blahblahblahblah";
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_WRONLY | LFS_O_CREAT,).await);
 
     let mut count = 0i32;
     loop {
-        let err = lfs_file_write(lfs, file, blah);
+        let err = lfs_file_write(lfs, file, blah).await;
         if err.is_err() {
             assert_err!(Error::NoSpace, err);
             break;
@@ -840,55 +826,44 @@ fn test_alloc_chained_dir_exhaustion(cfg: &LfsConfig, #[values(1024)] erase_coun
         count += 1;
     }
 
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_remove(lfs, "exhaustion"));
-    assert_ok!(lfs_remove(lfs, "exhaustiondir"));
+    assert_ok!(lfs_file_close(lfs, file).await);
+    assert_ok!(lfs_remove(lfs, "exhaustion").await);
+    assert_ok!(lfs_remove(lfs, "exhaustiondir").await);
     for i in 0..10 {
-        assert_ok!(lfs_remove(
-            lfs,
-            &format!("dirwithanexhaustivelylongnameforpadding{i}"),
-        ));
+        assert_ok!(lfs_remove(lfs, &format!("dirwithanexhaustivelylongnameforpadding{i}"),).await);
     }
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_WRONLY | LFS_O_CREAT,).await);
     for _ in 0..(count + 1) {
-        let n = lfs_file_write(lfs, file, blah);
+        let n = lfs_file_write(lfs, file, blah).await;
         assert_eq!(n, Ok(blah.len() as u32));
     }
-    assert_ok!(lfs_file_sync(lfs, file));
+    assert_ok!(lfs_file_sync(lfs, file).await);
 
     for i in 0..10 {
-        assert_ok!(lfs_mkdir(
-            lfs,
-            &format!("dirwithanexhaustivelylongnameforpadding{i}"),
-        ));
+        assert_ok!(lfs_mkdir(lfs, &format!("dirwithanexhaustivelylongnameforpadding{i}"),).await);
     }
 
-    let mut err = lfs_mkdir(lfs, "exhaustiondir");
+    let mut err = lfs_mkdir(lfs, "exhaustiondir").await;
     assert_err!(Error::NoSpace, err);
 
     loop {
-        err = lfs_mkdir(lfs, "exhaustiondir");
+        err = lfs_mkdir(lfs, "exhaustiondir").await;
         if err != Err(Error::NoSpace) {
             break;
         }
         let filesize = lfs_file_size(lfs, file);
         assert!(filesize > 0, "need positive file size to truncate");
         let new_size = filesize - blah.len() as u32;
-        assert_ok!(lfs_file_truncate(lfs, file, new_size));
-        assert_ok!(lfs_file_sync(lfs, file));
+        assert_ok!(lfs_file_truncate(lfs, file, new_size).await);
+        assert_ok!(lfs_file_sync(lfs, file).await);
     }
     assert_ok!(err);
 
-    err = lfs_mkdir(lfs, "exhaustiondir2");
+    err = lfs_mkdir(lfs, "exhaustiondir2").await;
     assert_err!(Error::NoSpace, err);
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -898,7 +873,8 @@ fn test_alloc_chained_dir_exhaustion(cfg: &LfsConfig, #[values(1024)] erase_coun
 ///
 /// Fill two files, remount, truncate+rewrite both; verify lookahead uses fresh population.
 #[lfs_test]
-fn test_alloc_outdated_lookahead(cfg: &LfsConfig, #[values(1024)] erase_count: u32) {
+#[tokio::test]
+async fn test_alloc_outdated_lookahead<'a>(cfg: &LfsConfig<'a>, #[values(1024)] erase_count: u32) {
     if cfg.block_size != 512 {
         return;
     }
@@ -909,65 +885,45 @@ fn test_alloc_outdated_lookahead(cfg: &LfsConfig, #[values(1024)] erase_count: u
     let size2 = (block_count - 2).div_ceil(2) * (block_size - 8);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let file = &mut LfsFile::default();
     let blah = b"blahblahblahblah";
     let chunk = blah.len();
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion1",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion1", LFS_O_WRONLY | LFS_O_CREAT,).await);
     for _ in (0..size1).step_by(chunk) {
-        let n = lfs_file_write(lfs, file, &blah[..chunk]);
+        let n = lfs_file_write(lfs, file, &blah[..chunk]).await;
         assert_eq!(n, Ok(chunk as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion2",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion2", LFS_O_WRONLY | LFS_O_CREAT,).await);
     for _ in (0..size2).step_by(chunk) {
-        let n = lfs_file_write(lfs, file, &blah[..chunk]);
+        let n = lfs_file_write(lfs, file, &blah[..chunk]).await;
         assert_eq!(n, Ok(chunk as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     assert_ok!(lfs_unmount(lfs));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion1",
-        LFS_O_WRONLY | LFS_O_TRUNC,
-    ));
-    assert_ok!(lfs_file_sync(lfs, file));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion1", LFS_O_WRONLY | LFS_O_TRUNC,).await);
+    assert_ok!(lfs_file_sync(lfs, file).await);
     for _ in (0..size1).step_by(chunk) {
-        let n = lfs_file_write(lfs, file, &blah[..chunk]);
+        let n = lfs_file_write(lfs, file, &blah[..chunk]).await;
         assert_eq!(n, Ok(chunk as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion2",
-        LFS_O_WRONLY | LFS_O_TRUNC,
-    ));
-    assert_ok!(lfs_file_sync(lfs, file));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion2", LFS_O_WRONLY | LFS_O_TRUNC,).await);
+    assert_ok!(lfs_file_sync(lfs, file).await);
     for _ in (0..size2).step_by(chunk) {
-        let n = lfs_file_write(lfs, file, &blah[..chunk]);
+        let n = lfs_file_write(lfs, file, &blah[..chunk]).await;
         assert_eq!(n, Ok(chunk as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     assert_ok!(lfs_unmount(lfs));
 }
@@ -978,7 +934,11 @@ fn test_alloc_outdated_lookahead(cfg: &LfsConfig, #[values(1024)] erase_count: u
 ///
 /// Fill two files, remount, truncate one with hole; mkdir fails NOSPC, file create succeeds.
 #[lfs_test]
-fn test_alloc_outdated_lookahead_split_dir(cfg: &LfsConfig, #[values(1024)] erase_count: u32) {
+#[tokio::test]
+async fn test_alloc_outdated_lookahead_split_dir<'a>(
+    cfg: &LfsConfig<'a>,
+    #[values(1024)] erase_count: u32,
+) {
     if cfg.block_size != 512 {
         return;
     }
@@ -990,8 +950,8 @@ fn test_alloc_outdated_lookahead_split_dir(cfg: &LfsConfig, #[values(1024)] eras
     let size1_hole = ((block_count - 2) / 2 - 1) * (block_size - 8);
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let file = &mut LfsFile::default();
     let blah = b"blahblahblahblah";
@@ -1002,42 +962,42 @@ fn test_alloc_outdated_lookahead_split_dir(cfg: &LfsConfig, #[values(1024)] eras
         file,
         "exhaustion1",
         LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    ).await);
     for _ in (0..size1_full).step_by(chunk) {
-        let n = lfs_file_write(lfs, file, &blah[..chunk]);
+        let n = lfs_file_write(lfs, file, &blah[..chunk]).await;
         assert_eq!(n, Ok(chunk as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     assert_ok!(lfs_file_open(
         lfs,
         file,
         "exhaustion2",
         LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    ).await);
     for _ in (0..size2).step_by(chunk) {
-        let n = lfs_file_write(lfs, file, &blah[..chunk]);
+        let n = lfs_file_write(lfs, file, &blah[..chunk]).await;
         assert_eq!(n, Ok(chunk as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     assert_ok!(lfs_unmount(lfs));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     assert_ok!(lfs_file_open(
         lfs,
         file,
         "exhaustion1",
         LFS_O_WRONLY | LFS_O_TRUNC,
-    ));
-    assert_ok!(lfs_file_sync(lfs, file));
+    ).await);
+    assert_ok!(lfs_file_sync(lfs, file).await);
     for _ in (0..size1_hole).step_by(chunk) {
-        let n = lfs_file_write(lfs, file, &blah[..chunk]);
+        let n = lfs_file_write(lfs, file, &blah[..chunk]).await;
         assert_eq!(n, Ok(chunk as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
-    let err = lfs_mkdir(lfs, "split");
+    let err = lfs_mkdir(lfs, "split").await;
     assert_err!(Error::NoSpace, err);
 
     assert_ok!(lfs_file_open(
@@ -1045,10 +1005,10 @@ fn test_alloc_outdated_lookahead_split_dir(cfg: &LfsConfig, #[values(1024)] eras
         file,
         "notasplit",
         LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    let n = lfs_file_write(lfs, file, b"hi");
+    ).await);
+    let n = lfs_file_write(lfs, file, b"hi").await;
     assert_eq!(n, Ok(2));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     assert_ok!(lfs_unmount(lfs));
 }

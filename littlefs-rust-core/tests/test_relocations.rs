@@ -13,11 +13,10 @@ mod common;
 use std::assert_matches;
 use std::fmt::Write;
 
-use common::{ALPHA, LFS_O_CREAT, LFS_O_WRONLY, test_prng};
+use common::{ALPHA, LFS_O_CREAT, LFS_O_WRONLY, LfsConfig, test_prng};
 use littlefs_rust_core::{
-    Error, Lfs, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_write,
-    lfs_format, lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_type::LfsType,
-    lfs_unmount,
+    Error, Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_write, lfs_format,
+    lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_type::LfsType, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 
@@ -31,25 +30,29 @@ const COUNT: usize = 10;
 ///
 /// Fill FS, create many files in child dir. Triggers split when metadata overflows.
 #[lfs_test]
-fn test_relocations_dangling_split_dir(cfg: &LfsConfig, #[values(8, 1)] block_cycles: i32) {
+#[tokio::test]
+async fn test_relocations_dangling_split_dir<'a>(
+    cfg: &LfsConfig<'a>,
+    #[values(8, 1)] block_cycles: i32,
+) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "d0"));
+    assert_ok!(lfs_mkdir(lfs, "d0").await);
     for i in 0..COUNT {
         let path = &format!("d0/f{i}");
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
-        let n = lfs_file_write(lfs, file, b"x");
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
+        let n = lfs_file_write(lfs, file, b"x").await;
         assert_eq!(n, Ok(1));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 
     for i in 0..COUNT {
         let path = &format!("d0/f{i}");
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
         assert_eq!(info.name_str(), format!("f{i}"));
     }
 
@@ -62,28 +65,32 @@ fn test_relocations_dangling_split_dir(cfg: &LfsConfig, #[values(8, 1)] block_cy
 ///
 /// Split dir handling: multiple dirs, nested sub with many files.
 #[lfs_test]
-fn test_relocations_outdated_head(cfg: &LfsConfig, #[values(8, 1)] block_cycles: i32) {
+#[tokio::test]
+async fn test_relocations_outdated_head<'a>(
+    cfg: &LfsConfig<'a>,
+    #[values(8, 1)] block_cycles: i32,
+) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     for i in 0..3 {
-        assert_ok!(lfs_mkdir(lfs, &format!("d{i}")));
+        assert_ok!(lfs_mkdir(lfs, &format!("d{i}")).await);
     }
-    assert_ok!(lfs_mkdir(lfs, "d0/sub"));
+    assert_ok!(lfs_mkdir(lfs, "d0/sub").await);
     for i in 0..COUNT {
         let path = &format!("d0/sub/f{i}");
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
-        let n = lfs_file_write(lfs, file, b"x");
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
+        let n = lfs_file_write(lfs, file, b"x").await;
         assert_eq!(n, Ok(1));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 
     for i in 0..COUNT {
         let path = &format!("d0/sub/f{i}");
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
         assert_eq!(info.name_str(), format!("f{i}"));
     }
 

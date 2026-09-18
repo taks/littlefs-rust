@@ -5,15 +5,15 @@
 
 mod common;
 
-use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, read_block_raw};
+use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, LfsConfig, read_block_raw};
 use littlefs_rust_core::lfs_type::lfs_type::{
     LFS_TYPE_CREATE, LFS_TYPE_INLINESTRUCT, LFS_TYPE_SUPERBLOCK,
 };
 use littlefs_rust_core::{
-    Error, LFS_DISK_VERSION, Lfs, LfsConfig, LfsFile, LfsFsinfo, LfsInfo, LfsMattr, LfsMdir,
-    LfsSuperblock, lfs_deinit, lfs_dir_commit, lfs_file_close, lfs_file_open, lfs_file_read,
-    lfs_file_write, lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_init, lfs_mktag, lfs_mount,
-    lfs_remove, lfs_stat, lfs_superblock_tole32, lfs_type::LfsType, lfs_unmount,
+    Error, LFS_DISK_VERSION, Lfs, LfsFile, LfsFsinfo, LfsInfo, LfsMattr, LfsMdir, LfsSuperblock,
+    lfs_deinit, lfs_dir_commit, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
+    lfs_format, lfs_fs_grow, lfs_fs_stat, lfs_init, lfs_mktag, lfs_mount, lfs_remove, lfs_stat,
+    lfs_superblock_tole32, lfs_type::LfsType, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 use std::cmp::max;
@@ -22,32 +22,35 @@ use zerocopy::IntoBytes;
 // --- test_superblocks_format ---
 // Upstream: lfs_format(&lfs, cfg) => 0
 #[lfs_test]
-fn test_superblocks_format(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_superblocks_format<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 }
 
 // --- test_superblocks_mount ---
 // Upstream: format, mount, unmount
 #[lfs_test]
-fn test_superblocks_mount(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_superblocks_mount<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
 // --- test_superblocks_magic ---
 // Upstream: format, then raw read to verify "littlefs" at MAGIC_OFFSET in both blocks.
 #[lfs_test]
-fn test_superblocks_magic(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_superblocks_magic<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
     let mut magic = vec![0u8; max(16, cfg.read_size as usize)];
-    assert_ok!(read_block_raw(cfg, 0, 0, &mut magic));
+    assert_ok!(read_block_raw(cfg, 0, 0, &mut magic).await);
     assert_eq!(&magic[8..16], b"littlefs");
-    assert_ok!(read_block_raw(cfg, 1, 0, &mut magic));
+    assert_ok!(read_block_raw(cfg, 1, 0, &mut magic).await);
     assert_eq!(&magic[8..16], b"littlefs");
 }
 

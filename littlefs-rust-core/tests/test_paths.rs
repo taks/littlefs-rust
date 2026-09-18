@@ -11,10 +11,10 @@ use littlefs_rust_core::{
     Error, Lfs, LfsDir, LfsInfo, Storage, lfs_dir_close, lfs_dir_open, lfs_format, lfs_mkdir,
     lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
-use littlefs_rust_core::{LfsConfig, LfsFile, lfs_file_close, lfs_file_open};
+use littlefs_rust_core::{LfsFile, lfs_file_close, lfs_file_open};
 use littlefs_rust_test_macro::lfs_test;
 
-use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY};
+use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, LfsConfig};
 
 const PATHS: &[&str] = &[
     "drip",
@@ -27,19 +27,20 @@ const PATHS: &[&str] = &[
 
 // --- test_paths_simple_dirs ---
 #[lfs_test]
-fn test_paths_simple_dirs(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_paths_simple_dirs<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let coffee = "coffee";
-    assert_ok!(lfs_mkdir(lfs, coffee));
+    assert_ok!(lfs_mkdir(lfs, coffee).await);
 
     for name in PATHS {
         let path = &format!("coffee/{name}");
-        assert_ok!(lfs_mkdir(lfs, path));
+        assert_ok!(lfs_mkdir(lfs, path).await);
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
         assert_eq!(info.name_str(), *name);
         assert_eq!(info.type_, LfsType::DIR);
     }
@@ -1928,7 +1929,7 @@ fn test_paths_nonprintable(cfg: &LfsConfig) {
 
 #[lfs_test]
 #[tokio::test]
-async fn test_paths_nonutf8<S: Storage>(cfg: &LfsConfig<S>) {
+async fn test_paths_nonutf8<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg).await);
     assert_ok!(lfs_mount(lfs, cfg).await);
