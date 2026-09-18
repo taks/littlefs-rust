@@ -349,6 +349,7 @@ pub fn lfs_dir_commitcrc(lfs: &mut crate::fs::Lfs, commit: &mut LfsCommit) -> Re
                 commit.block,
                 noff,
                 eperturb.as_mut_bytes(),
+                None,
             );
             if let Err(err) = ret
                 && err != Error::Corrupt

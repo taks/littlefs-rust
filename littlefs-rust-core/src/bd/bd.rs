@@ -141,6 +141,7 @@ pub fn lfs_bd_read(
     block: lfs_block_t,
     off: usize,
     buffer: &mut [u8],
+    sw: Option<&mut stopwatch::Stopwatch>,
 ) -> Result<(), Error> {
     let cfg = unsafe { lfs.cfg.as_ref() };
 
