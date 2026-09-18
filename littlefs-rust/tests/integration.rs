@@ -109,7 +109,7 @@ async fn test_multiple_open_files() {
 }
 
 #[tokio::test]
-fn test_seek_tell_size() {
+async fn test_seek_tell_size() {
     let fs = format_and_mount().await;
 
     let mut file = fs
@@ -146,42 +146,43 @@ async fn test_truncate() {
         .open("/trunc.txt", OpenFlags::WRITE | OpenFlags::CREATE)
         .await
         .unwrap();
-    file.write(b"hello world").unwrap();
-    file.close().unwrap();
+    file.write(b"hello world").await.unwrap();
+    file.close().await.unwrap();
 
-    let mut file = fs.open("/trunc.txt", OpenFlags::WRITE).unwrap();
-    file.truncate(5).unwrap();
+    let mut file = fs.open("/trunc.txt", OpenFlags::WRITE).await.unwrap();
+    file.truncate(5).await.unwrap();
     assert_eq!(file.size(), 5);
-    file.close().unwrap();
+    file.close().await.unwrap();
 
-    let data = fs.read_to_vec("/trunc.txt").unwrap();
+    let data = fs.read_to_vec("/trunc.txt").await.unwrap();
     assert_eq!(data, b"hello");
 
     fs.unmount().unwrap();
 }
 
 #[tokio::test]
-fn test_file_drop_closes() {
+async fn test_file_drop_closes() {
     let fs = format_and_mount().await;
 
     {
         let mut file = fs
             .open("/drop.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+            .await
             .unwrap();
-        file.write(b"dropped").unwrap();
+        file.write(b"dropped").await.unwrap();
         // file dropped here without explicit close
     }
 
-    let data = fs.read_to_vec("/drop.txt").unwrap();
+    let data = fs.read_to_vec("/drop.txt").await.unwrap();
     assert_eq!(data, b"dropped");
 
     fs.unmount().unwrap();
 }
 
 #[tokio::test]
-fn test_open_nonexistent_fails() {
+async fn test_open_nonexistent_fails() {
     let fs = format_and_mount().await;
-    let result = fs.open("/nope.txt", OpenFlags::READ);
+    let result = fs.open("/nope.txt", OpenFlags::READ).await;
     assert!(result.is_err());
     assert_eq!(result.err().unwrap(), Error::NoEntry);
     fs.unmount().unwrap();
@@ -191,10 +192,10 @@ fn test_open_nonexistent_fails() {
 async fn test_mkdir_and_list() {
     let fs = format_and_mount().await;
 
-    fs.mkdir("/docs").unwrap();
-    fs.mkdir("/src").unwrap();
+    fs.mkdir("/docs").await.unwrap();
+    fs.mkdir("/src").await.unwrap();
 
-    let entries = fs.list_dir("/").unwrap();
+    let entries = fs.list_dir("/").await.unwrap();
     let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
     assert!(names.contains(&"docs"));
     assert!(names.contains(&"src"));
@@ -207,14 +208,14 @@ async fn test_mkdir_and_list() {
 }
 
 #[tokio::test]
-fn test_remove_file() {
+async fn test_remove_file() {
     let fs = format_and_mount().await;
 
-    fs.write_file("/temp.txt", b"temp").unwrap();
-    assert!(fs.exists("/temp.txt"));
+    fs.write_file("/temp.txt", b"temp").await.unwrap();
+    assert!(fs.exists("/temp.txt").await);
 
-    fs.remove("/temp.txt").unwrap();
-    assert!(!fs.exists("/temp.txt"));
+    fs.remove("/temp.txt").await.unwrap();
+    assert!(!fs.exists("/temp.txt").await);
 
     fs.unmount().unwrap();
 }
@@ -223,11 +224,11 @@ fn test_remove_file() {
 async fn test_remove_dir() {
     let fs = format_and_mount().await;
 
-    fs.mkdir("/empty").unwrap();
-    assert!(fs.exists("/empty"));
+    fs.mkdir("/empty").await.unwrap();
+    assert!(fs.exists("/empty").await);
 
-    fs.remove("/empty").unwrap();
-    assert!(!fs.exists("/empty"));
+    fs.remove("/empty").await.unwrap();
+    assert!(!fs.exists("/empty").await);
 
     fs.unmount().unwrap();
 }
@@ -236,11 +237,11 @@ async fn test_remove_dir() {
 async fn test_rename() {
     let fs = format_and_mount().await;
 
-    fs.write_file("/old.txt", b"content").unwrap();
-    fs.rename("/old.txt", "/new.txt").unwrap();
+    fs.write_file("/old.txt", b"content").await.unwrap();
+    fs.rename("/old.txt", "/new.txt").await.unwrap();
 
-    assert!(!fs.exists("/old.txt"));
-    let data = fs.read_to_vec("/new.txt").unwrap();
+    assert!(!fs.exists("/old.txt").await);
+    let data = fs.read_to_vec("/new.txt").await.unwrap();
     assert_eq!(data, b"content");
 
     fs.unmount().unwrap();
@@ -250,13 +251,13 @@ async fn test_rename() {
 async fn test_stat() {
     let fs = format_and_mount().await;
 
-    fs.write_file("/info.txt", b"12345").unwrap();
-    let meta = fs.stat("/info.txt").unwrap();
+    fs.write_file("/info.txt", b"12345").await.unwrap();
+    let meta = fs.stat("/info.txt").await.unwrap();
     assert_eq!(meta.file_type, FileType::File);
     assert_eq!(meta.size, 5);
 
-    fs.mkdir("/subdir").unwrap();
-    let meta = fs.stat("/subdir").unwrap();
+    fs.mkdir("/subdir").await.unwrap();
+    let meta = fs.stat("/subdir").await.unwrap();
     assert_eq!(meta.file_type, FileType::Dir);
 
     fs.unmount().unwrap();
@@ -265,9 +266,9 @@ async fn test_stat() {
 #[tokio::test]
 async fn test_exists() {
     let fs = format_and_mount().await;
-    assert!(!fs.exists("/nope"));
-    fs.write_file("/yes.txt", b"y").unwrap();
-    assert!(fs.exists("/yes.txt"));
+    assert!(!fs.exists("/nope").await);
+    fs.write_file("/yes.txt", b"y").await.unwrap();
+    assert!(fs.exists("/yes.txt").await);
     fs.unmount().unwrap();
 }
 
@@ -280,7 +281,7 @@ async fn test_read_dir_iterator() {
     fs.mkdir("/c").await.unwrap();
 
     let names: Vec<String> = {
-        let dir = fs.read_dir("/").unwrap();
+        let dir = fs.read_dir("/").await.unwrap();
         let mut names = Vec::new();
         for entry in dir {
             names.push(entry.unwrap().name);
