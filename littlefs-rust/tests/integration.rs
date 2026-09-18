@@ -4,20 +4,23 @@ use littlefs_rust::{Config, Error, FileType, Filesystem, OpenFlags, SeekFrom};
 
 type RamStorage = littlefs_rust::RamStorage<512, 128>;
 
-fn format_and_mount() -> Filesystem<RamStorage> {
+async fn format_and_mount() -> Filesystem<RamStorage> {
     let mut storage = RamStorage::new();
     let config = Config::new(512, 128);
-    Filesystem::format(&mut storage, &config).expect("format");
+    Filesystem::format(&mut storage, &config)
+        .await
+        .expect("format");
     Filesystem::mount(storage, config)
+        .await
         .map_err(|(e, _)| e)
         .expect("mount")
 }
 
 #[test]
-fn test_format_mount_unmount() {
+async fn test_format_mount_unmount() {
     let mut storage = RamStorage::new();
     let config = Config::new(512, 128);
-    Filesystem::format(&mut storage, &config).unwrap();
+    Filesystem::format(&mut storage, &config).await.unwrap();
     let fs = Filesystem::mount(storage, config)
         .map_err(|(e, _)| e)
         .unwrap();
@@ -34,43 +37,45 @@ fn test_mount_unformatted_fails() {
     assert_eq!(recovered.block_size(), 512);
 }
 
-#[test]
+#[tokio::test]
 async fn test_drop_unmounts() {
     let mut storage = RamStorage::new();
     let config = Config::new(512, 128);
     Filesystem::format(&mut storage, &config).await.unwrap();
     {
         let _fs = Filesystem::mount(storage, config)
+            .await
             .map_err(|(e, _)| e)
             .unwrap();
     }
     // No panic — Drop ran unmount
 }
 
-#[test]
-fn test_format_does_not_consume_storage() {
+#[tokio::test]
+async fn test_format_does_not_consume_storage() {
     let mut storage = RamStorage::new();
     let config = Config::new(512, 128);
-    Filesystem::format(&mut storage, &config).unwrap();
+    Filesystem::format(&mut storage, &config).await.unwrap();
     assert_eq!(storage.block_size(), 512);
 }
 
-#[test]
-fn test_write_read_roundtrip() {
-    let fs = format_and_mount();
+#[tokio::test]
+async fn test_write_read_roundtrip() {
+    let fs = format_and_mount().await;
     let data = b"Hello, littlefs!";
 
     let mut file = fs
         .open("/hello.txt", OpenFlags::WRITE | OpenFlags::CREATE)
+        .await
         .unwrap();
-    file.write(data).unwrap();
-    file.close().unwrap();
+    file.write(data).await.unwrap();
+    file.close().await.unwrap();
 
-    let mut file = fs.open("/hello.txt", OpenFlags::READ).unwrap();
+    let mut file = fs.open("/hello.txt", OpenFlags::READ).await.unwrap();
     let mut buf = vec![0u8; 64];
-    let n = file.read(&mut buf).unwrap();
+    let n = file.read(&mut buf).await.unwrap();
     assert_eq!(&buf[..n as usize], data);
-    file.close().unwrap();
+    file.close().await.unwrap();
 
     fs.unmount().unwrap();
 }
@@ -355,11 +360,11 @@ fn test_fs_size() {
     fs.unmount().unwrap();
 }
 
-#[test]
-fn test_nested_dirs() {
+#[tokio::test]
+async fn test_nested_dirs() {
     let fs = format_and_mount();
 
-    fs.mkdir("/a").unwrap();
+    fs.mkdir("/a").await.unwrap();
     fs.mkdir("/a/b").unwrap();
     fs.write_file("/a/b/file.txt", b"nested").unwrap();
 

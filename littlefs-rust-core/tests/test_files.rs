@@ -430,18 +430,13 @@ async fn test_files_many<'a>(cfg: &LfsConfig<'a>) {
     const N: usize = 300;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     for i in 0..N {
         let path = &format!("file_{:03}", i);
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
         let content = format!("Hi {:03}\0", i);
         let bytes = content.as_bytes();
         assert_eq!(bytes.len(), 7);
@@ -450,12 +445,12 @@ async fn test_files_many<'a>(cfg: &LfsConfig<'a>) {
         assert_ok!(lfs_file_close(lfs, file).await);
 
         let rfile = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY).await);
         let mut buf = [0u8; 32];
         let n = lfs_file_read(lfs, rfile, &mut buf[..7]).await;
         assert_eq!(n, Ok(7));
         assert_eq!(&buf[..7], bytes);
-        assert_ok!(lfs_file_close(lfs, rfile));
+        assert_ok!(lfs_file_close(lfs, rfile).await);
     }
     assert_ok!(lfs_unmount(lfs));
 }

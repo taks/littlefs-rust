@@ -26,7 +26,7 @@ async fn run_exhaustion<'a>(
 ) -> u32 {
     let mut cycle: u32 = 0;
     'outer: loop {
-        assert_ok!(lfs_mount(lfs, config));
+        assert_ok!(lfs_mount(lfs, config).await);
 
         for i in 0..files {
             let path = &format!("{prefix}/test{i}");
@@ -34,12 +34,15 @@ async fn run_exhaustion<'a>(
             let size = 1u32 << ((test_prng(&mut prng) % 10) + 2);
 
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                common::LFS_O_WRONLY | common::LFS_O_CREAT | common::LFS_O_TRUNC,
-            ));
+            assert_ok!(
+                lfs_file_open(
+                    lfs,
+                    file,
+                    path,
+                    common::LFS_O_WRONLY | common::LFS_O_CREAT | common::LFS_O_TRUNC,
+                )
+                .await
+            );
 
             for _ in 0..size {
                 let c = b'a' + (test_prng(&mut prng) % 26) as u8;
@@ -177,7 +180,7 @@ fn test_exhaustion_superblocks(
 async fn run_exhaustion_root<'a>(lfs: &mut Lfs<'a>, config: &LfsConfig<'a>, files: u32) -> u32 {
     let mut cycle: u32 = 0;
     'outer: loop {
-        assert_ok!(lfs_mount(lfs, config));
+        assert_ok!(lfs_mount(lfs, config).await);
 
         for i in 0..files {
             let path = &format!("test{i}");
@@ -221,7 +224,7 @@ async fn run_exhaustion_root<'a>(lfs: &mut Lfs<'a>, config: &LfsConfig<'a>, file
             let size = 1u32 << ((test_prng(&mut prng) % 10) + 2);
 
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(lfs, file, path, common::LFS_O_RDONLY));
+            assert_ok!(lfs_file_open(lfs, file, path, common::LFS_O_RDONLY).await);
 
             for _ in 0..size {
                 let expected = b'a' + (test_prng(&mut prng) % 26) as u8;
@@ -231,7 +234,7 @@ async fn run_exhaustion_root<'a>(lfs: &mut Lfs<'a>, config: &LfsConfig<'a>, file
                 assert_eq!(r[0], expected);
             }
 
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
 
         assert_ok!(lfs_unmount(lfs));
@@ -241,11 +244,11 @@ async fn run_exhaustion_root<'a>(lfs: &mut Lfs<'a>, config: &LfsConfig<'a>, file
 }
 
 async fn verify_after_exhaustion_root<'a>(lfs: &mut Lfs<'a>, config: &LfsConfig<'a>, files: u32) {
-    assert_ok!(lfs_mount(lfs, config));
+    assert_ok!(lfs_mount(lfs, config).await);
     for i in 0..files {
         let path = &format!("test{i}");
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
     }
     assert_ok!(lfs_unmount(lfs));
 }

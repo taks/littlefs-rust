@@ -257,7 +257,7 @@ fn test_badblocks_superblocks(
 
 // ── Helpers shared by region/alternating tests ──────────────────────────────
 
-fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
+async fn badblocks_create_dirs_and_files<'a>(lfs: &mut Lfs<'a>) {
     for i in 1..10 {
         let mut buffer = [0u8; 1024];
         for b in buffer.iter_mut().take(NAMEMULT) {
@@ -265,9 +265,12 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         }
         buffer[NAMEMULT] = 0;
 
-        assert_ok!(lfs_mkdir(lfs, unsafe {
-            str::from_utf8_unchecked(&buffer[..NAMEMULT])
-        }));
+        assert_ok!(
+            lfs_mkdir(lfs, unsafe {
+                str::from_utf8_unchecked(&buffer[..NAMEMULT])
+            })
+            .await
+        );
 
         buffer[NAMEMULT] = b'/';
         for j in 0..NAMEMULT {
@@ -276,20 +279,23 @@ fn badblocks_create_dirs_and_files(lfs: &mut Lfs) {
         buffer[2 * NAMEMULT + 1] = 0;
 
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
-            LFS_O_WRONLY | LFS_O_CREAT,
-        ));
+        assert_ok!(
+            lfs_file_open(
+                lfs,
+                file,
+                unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
+                LFS_O_WRONLY | LFS_O_CREAT,
+            )
+            .await
+        );
 
         let size = NAMEMULT as u32;
         for _j in 0..(i * FILEMULT) {
-            let n = lfs_file_write(lfs, file, &buffer[..size as usize]);
+            let n = lfs_file_write(lfs, file, &buffer[..size as usize]).await;
             assert_eq!(n, Ok(size));
         }
 
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 }
 
@@ -302,11 +308,14 @@ async fn badblocks_verify_dirs_and_files<'a>(lfs: &mut Lfs<'a>) {
         buffer[NAMEMULT] = 0;
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok!(lfs_stat(
-            lfs,
-            unsafe { str::from_utf8_unchecked(&buffer[..(NAMEMULT)]) },
-            info,
-        ));
+        assert_ok!(
+            lfs_stat(
+                lfs,
+                unsafe { str::from_utf8_unchecked(&buffer[..(NAMEMULT)]) },
+                info,
+            )
+            .await
+        );
         assert_eq!(info.type_, LfsType::DIR);
 
         buffer[NAMEMULT] = b'/';
@@ -334,6 +343,6 @@ async fn badblocks_verify_dirs_and_files<'a>(lfs: &mut Lfs<'a>) {
             assert_eq!(&rbuffer[..size as usize], &buffer[..size as usize]);
         }
 
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 }
