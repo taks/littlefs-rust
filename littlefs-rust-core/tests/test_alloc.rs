@@ -7,6 +7,7 @@ mod common;
 
 use common::{
     BadblockBehavior, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY,
+    lfs_emubd_setwear,
 };
 #[cfg(test)]
 use littlefs_rust_core::LfsConfig;
@@ -650,10 +651,6 @@ fn test_alloc_two_files_ctz(cfg: &LfsConfig) {
     assert_ok!(lfs_unmount(lfs));
 }
 
-// Max iterations for write-until-NOSPC/CORRUPT loops. With 48 blocks * 512 = 24KB,
-// ~5000 writes suffice. 50_000 caps infinite loops and causes a fast failure.
-const MAX_FILL_ITER: u32 = 50_000;
-
 // --- test_alloc_bad_blocks ---
 /// Upstream: [cases.test_alloc_bad_blocks]
 /// defines.ERASE_CYCLES = 0xffffffff, defines.BADBLOCK_BEHAVIOR = LFS_EMUBD_BADBLOCK_READERROR
@@ -700,12 +697,11 @@ fn test_alloc_bad_blocks(
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
     ));
     for _ in (0..filesize).step_by(waka.len()) {
-        let n = lfs_file_write(lfs, file, waka);
-        assert_eq!(n, Ok(waka.len() as u32));
+        assert_eq!(lfs_file_write(lfs, file, waka), Ok(waka.len() as u32));
     }
 
     assert_ok!(lfs_file_sync(lfs, file));
-    let fileblock = { file.ctz.head };
+    let fileblock = file.ctz.head;
     let block_count = cfg.block_count;
     assert!(
         fileblock < block_count,
@@ -716,7 +712,12 @@ fn test_alloc_bad_blocks(
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
+    // remount to force an alloc scan
     assert_ok!(lfs_mount(lfs, cfg));
+
+    // but mark the head of our file as a "bad block", this is force our
+    // scan to bail early
+    lfs_emubd_setwear(cfg, fileblock, 0xffffffff);
 
     // Open ghost, write until CORRUPT (alloc hits bad block), close.
     assert_ok!(lfs_file_open(
@@ -726,73 +727,43 @@ fn test_alloc_bad_blocks(
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
     let chomp = b"chomp";
-    let mut iter: u32 = 0;
     loop {
-        assert!(
-            iter < MAX_FILL_ITER,
-            "ghost fill (until CORRUPT/NOSPC) exceeded {} iterations",
-            MAX_FILL_ITER
-        );
-        iter += 1;
         let res = lfs_file_write(lfs, file, chomp);
-        if res == Err(Error::Corrupt) || res == Err(Error::NoSpace) {
+        assert!(res == Ok(chomp.len() as u32) || res == Err(Error::Corrupt));
+        if res == Err(Error::Corrupt) {
             break;
         }
-        assert_eq!(res, Ok(chomp.len() as u32));
     }
     assert_ok!(lfs_file_close(lfs, file));
 
-    // Write ghost to NOSPC, then GC, close, unmount.
+    // now reverse the "bad block" and try to write the file again until we
+    // run out of space
+    lfs_emubd_setwear(cfg, fileblock, 0);
     assert_ok!(lfs_file_open(
         lfs,
         file,
         "ghost",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let mut iter: u32 = 0;
     loop {
-        assert!(
-            iter < MAX_FILL_ITER,
-            "ghost fill (until NOSPC) exceeded {} iterations",
-            MAX_FILL_ITER
-        );
-        iter += 1;
         let res = lfs_file_write(lfs, file, chomp);
+        assert!(res == Ok(chomp.len() as u32) || res == Err(Error::NoSpace));
         if res == Err(Error::NoSpace) {
             break;
         }
-        assert_eq!(res, Ok(chomp.len() as u32));
     }
     assert_ok!(lfs_fs_gc(lfs));
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
+    // check that the disk isn't hurt
     assert_ok!(lfs_mount(lfs, cfg));
     assert_ok!(lfs_file_open(lfs, file, "pacman", LFS_O_RDONLY));
-    let open_head = { file.ctz.head };
-    assert!(
-        open_head < cfg.block_count,
-        "pacman ctz.head={} must be < block_count {} (dir corruption when ghost present)",
-        open_head,
-        cfg.block_count
-    );
+
     let mut rbuf = [0u8; 4];
     for _ in (0..filesize).step_by(waka.len()) {
-        let n = lfs_file_read(lfs, file, &mut rbuf[..waka.len()]);
-        if n != Ok(waka.len() as u32) {
-            // common::dump::dump_fs(
-            //     &env.badblock_ram.ram.data,
-            //     env.config.block_size,
-            //     env.config.block_count,
-            // );
-            panic!(
-                "lfs_file_read returned {:?} (expected {}; LFS_ERR_CORRUPT={:?})",
-                n,
-                waka.len(),
-                Error::Corrupt
-            );
-        }
-        assert_eq!(&rbuf[..waka.len()], waka);
+        assert_eq!(lfs_file_read(lfs, file, &mut rbuf), Ok(4));
+        assert_eq!(&rbuf, waka);
     }
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
