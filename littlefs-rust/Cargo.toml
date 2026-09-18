@@ -23,7 +23,7 @@ embassy-futures = { version = "0.1" }
 [dev-dependencies]
 divan = { version = "5.0.1", package = "codspeed-divan-compat" }
 env_logger = "0.10"
-tokio = { version = "1.53.1", features = ["rt", "macros"] }
+tokio = { version = "1.53.1", features = ["full"] }
 
 [[bench]]
 name = "filesystem"

@@ -2,7 +2,8 @@
 
 use littlefs_rust::{Config, Filesystem, RamStorage};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // RamStorage is an in-memory block device — useful for tests and examples.
     // 128 blocks of 512 bytes each = 64 KB.
     const BLOCK_SIZE: u32 = 512;
@@ -11,17 +12,21 @@ fn main() {
     let config = Config::new(BLOCK_SIZE, BLOCK_COUNT);
 
     // Format lays down the superblock; mount opens the filesystem for use.
-    Filesystem::format(&mut storage, &config).expect("format failed");
+    Filesystem::format(&mut storage, &config)
+        .await
+        .expect("format failed");
     let fs = Filesystem::mount(storage, config)
+        .await
         .map_err(|(e, _)| e)
         .expect("mount failed");
 
     // write_file / read_to_vec are convenience wrappers that handle
     // open, write/read, and close in one call.
     fs.write_file("/hello.txt", b"Hello, littlefs!")
+        .await
         .expect("write failed");
 
-    let data = fs.read_to_vec("/hello.txt").expect("read failed");
+    let data = fs.read_to_vec("/hello.txt").await.expect("read failed");
     println!("{}", core::str::from_utf8(&data).unwrap());
 
     // Unmount returns ownership of the storage back to the caller.
