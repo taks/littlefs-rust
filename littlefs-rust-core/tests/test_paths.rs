@@ -49,26 +49,22 @@ async fn test_paths_simple_dirs<'a>(cfg: &LfsConfig<'a>) {
 
 // --- test_paths_simple_files ---
 #[lfs_test]
-fn test_paths_simple_files(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_paths_simple_files<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let coffee = "coffee";
-    assert_ok!(lfs_mkdir(lfs, coffee));
+    assert_ok!(lfs_mkdir(lfs, coffee).await);
 
     for name in PATHS {
         let path = &format!("coffee/{name}");
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
+        assert_ok!(lfs_file_close(lfs, file).await);
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
         assert_eq!(info.name_str(), *name);
         assert_eq!(info.type_, LfsType::REG);
     }
@@ -77,29 +73,25 @@ fn test_paths_simple_files(cfg: &LfsConfig) {
 
 // --- test_paths_absolute_files ---
 #[lfs_test]
-fn test_paths_absolute_files(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_paths_absolute_files<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let coffee = "coffee";
-    assert_ok!(lfs_mkdir(lfs, coffee));
+    assert_ok!(lfs_mkdir(lfs, coffee).await);
 
     for name in PATHS {
         let path = &format!("/coffee/{name}");
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
     for name in PATHS {
         let path = &format!("/coffee/{name}");
-        let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        let info = &mut LfsInfo::default();
+        assert_ok!(lfs_stat(lfs, path, info).await);
         assert_eq!(info.name_str(), *name);
         assert_eq!(info.type_, LfsType::REG);
     }

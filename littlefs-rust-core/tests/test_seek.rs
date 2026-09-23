@@ -472,10 +472,11 @@ fn test_seek_boundary_write(cfg: &LfsConfig) {
 #[case(200, 100)]
 #[case(4, 2)]
 #[case(4, 3)]
-fn test_seek_out_of_bounds(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u32) {
+#[tokio::test]
+async fn test_seek_out_of_bounds<'a>(cfg: &LfsConfig<'a>, #[case] count: u32, #[case] skip: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "kitty";
     let file = &mut LfsFile::default();
@@ -486,43 +487,43 @@ fn test_seek_out_of_bounds(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u3
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
     ));
     for _ in 0..count {
-        let n = lfs_file_write(lfs, file, KITTY);
+        let n = lfs_file_write(lfs, file, KITTY).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
     }
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR).await);
 
     let size = KITTY.len() as i64;
     let hole_offset = (count as i64 + skip as i64) * size;
 
     assert_eq!(lfs_file_size(lfs, file), (count * KITTY.len() as u32));
     assert_eq!(
-        lfs_file_seek(lfs, file, hole_offset as i32, LFS_SEEK_SET,),
+        lfs_file_seek(lfs, file, hole_offset as i32, LFS_SEEK_SET,).await,
         Ok(hole_offset as u32)
     );
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
     assert_eq!(n, Ok(0));
 
-    let n = lfs_file_write(lfs, file, PORCUPINE);
+    let n = lfs_file_write(lfs, file, PORCUPINE).await;
     assert_eq!(n, Ok(PORCUPINE.len() as u32));
 
     assert_eq!(
-        lfs_file_seek(lfs, file, hole_offset as i32, LFS_SEEK_SET,),
+        lfs_file_seek(lfs, file, hole_offset as i32, LFS_SEEK_SET,).await,
         Ok(hole_offset as u32)
     );
-    let n = lfs_file_read(lfs, file, &mut buf[..PORCUPINE.len()]);
+    let n = lfs_file_read(lfs, file, &mut buf[..PORCUPINE.len()]).await;
     assert_eq!(n, Ok(PORCUPINE.len() as u32));
     assert_eq!(&buf[..PORCUPINE.len()], PORCUPINE);
 
     assert_eq!(
-        lfs_file_seek(lfs, file, (count as i32) * (size as i32), LFS_SEEK_SET,),
+        lfs_file_seek(lfs, file, (count as i32) * (size as i32), LFS_SEEK_SET,).await,
         Ok(count * (size as u32))
     );
-    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+    let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
     assert_eq!(n, Ok(KITTY.len() as u32));
     assert!(
         buf[..KITTY.len()].iter().all(|&b| b == 0),
@@ -532,7 +533,7 @@ fn test_seek_out_of_bounds(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u3
 
     // After read at count*size we're at (count+1)*size
     assert_eq!(
-        lfs_file_seek(lfs, file, -(hole_offset as i32), LFS_SEEK_CUR,),
+        lfs_file_seek(lfs, file, -(hole_offset as i32), LFS_SEEK_CUR,).await,
         Err(Error::Invalid)
     );
     assert_eq!(lfs_file_tell(lfs, file), (count + 1) * (size as u32));
@@ -543,12 +544,12 @@ fn test_seek_out_of_bounds(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u3
             file,
             -((count as i32 + 2 * skip as i32) * (size as i32)),
             LFS_SEEK_END,
-        ),
+        ).await,
         Err(Error::Invalid)
     );
     assert_eq!(lfs_file_tell(lfs, file), (count + 1) * (size as u32));
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -559,64 +560,65 @@ fn test_seek_out_of_bounds(cfg: &LfsConfig, #[case] count: u32, #[case] skip: u3
 #[case(4)]
 #[case(128)]
 #[case(132)]
-fn test_seek_inline_write(cfg: &LfsConfig, #[case] size: u32) {
+#[tokio::test]
+async fn test_seek_inline_write<'a>(cfg: &LfsConfig<'a>, #[case] size: u32) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "tinykitty";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR | LFS_O_CREAT));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR | LFS_O_CREAT).await);
 
     let mut j = 0usize;
     let mut k = 0usize;
 
     for i in 0..size {
         let c = ALPHA[j % 26];
-        let n = lfs_file_write(lfs, file, &[c]);
+        let n = lfs_file_write(lfs, file, &[c]).await;
         assert_eq!(n, Ok(1));
         assert_eq!(lfs_file_tell(lfs, file), (i + 1));
         assert_eq!(lfs_file_size(lfs, file), (i + 1));
         j += 1;
     }
 
-    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
+    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET).await, Ok(0));
     assert_eq!(lfs_file_tell(lfs, file), 0);
     assert_eq!(lfs_file_size(lfs, file), size);
 
     let mut c = [0u8; 1];
     for _ in 0..size {
-        let n = lfs_file_read(lfs, file, &mut c);
+        let n = lfs_file_read(lfs, file, &mut c).await;
         assert_eq!(n, Ok(1));
         assert_eq!(c[0], ALPHA[k % 26]);
         k += 1;
     }
 
-    assert_ok!(lfs_file_sync(lfs, file));
+    assert_ok!(lfs_file_sync(lfs, file).await);
     assert_eq!(lfs_file_tell(lfs, file), size);
     assert_eq!(lfs_file_size(lfs, file), size);
 
-    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
+    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET).await, Ok(0));
 
     for i in 0..size {
         let c = ALPHA[j % 26];
-        let n = lfs_file_write(lfs, file, &[c]);
+        let n = lfs_file_write(lfs, file, &[c]).await;
         assert_eq!(n, Ok(1));
         assert_eq!(lfs_file_tell(lfs, file), (i + 1));
         assert_eq!(lfs_file_size(lfs, file), size);
-        assert_ok!(lfs_file_sync(lfs, file));
+        assert_ok!(lfs_file_sync(lfs, file).await);
         assert_eq!(lfs_file_tell(lfs, file), (i + 1));
         assert_eq!(lfs_file_size(lfs, file), size);
 
         if i < size - 2 {
             let mut buf3 = [0u8; 3];
-            assert_eq!(lfs_file_seek(lfs, file, -1, LFS_SEEK_CUR), Ok(i));
-            let n = lfs_file_read(lfs, file, &mut buf3);
+            assert_eq!(lfs_file_seek(lfs, file, -1, LFS_SEEK_CUR).await, Ok(i));
+            let n = lfs_file_read(lfs, file, &mut buf3).await;
             assert_eq!(n, Ok(3));
             assert_eq!(lfs_file_tell(lfs, file), (i + 3));
             assert_eq!(lfs_file_size(lfs, file), size);
             assert_eq!(
-                lfs_file_seek(lfs, file, (i + 1) as i32, LFS_SEEK_SET),
+                lfs_file_seek(lfs, file, (i + 1) as i32, LFS_SEEK_SET).await,
                 Ok(i + 1)
             );
             assert_eq!(lfs_file_tell(lfs, file), (i + 1));
@@ -625,23 +627,23 @@ fn test_seek_inline_write(cfg: &LfsConfig, #[case] size: u32) {
         j += 1;
     }
 
-    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
+    assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET).await, Ok(0));
     assert_eq!(lfs_file_tell(lfs, file), 0);
     assert_eq!(lfs_file_size(lfs, file), size);
 
     let mut c = [0u8; 1];
     for _ in 0..size {
-        let n = lfs_file_read(lfs, file, &mut c);
+        let n = lfs_file_read(lfs, file, &mut c).await;
         assert_eq!(n, Ok(1));
         assert_eq!(c[0], ALPHA[k % 26]);
         k += 1;
     }
 
-    assert_ok!(lfs_file_sync(lfs, file));
+    assert_ok!(lfs_file_sync(lfs, file).await);
     assert_eq!(lfs_file_tell(lfs, file), size);
     assert_eq!(lfs_file_size(lfs, file), size);
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -784,66 +786,58 @@ fn test_seek_reentrant_write(
 
 /// Upstream: [cases.test_seek_filemax]
 #[lfs_test]
-fn test_seek_filemax(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_seek_filemax<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "kitty";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-    ));
-    let n = lfs_file_write(lfs, file, KITTY);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await);
+    let n = lfs_file_write(lfs, file, KITTY).await;
     assert_eq!(n, Ok(KITTY.len() as u32));
 
     assert_eq!(
-        lfs_file_seek(lfs, file, LFS_FILE_MAX, LFS_SEEK_SET),
+        lfs_file_seek(lfs, file, LFS_FILE_MAX, LFS_SEEK_SET).await,
         Ok(LFS_FILE_MAX as u32)
     );
 
     assert_eq!(
-        lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR),
+        lfs_file_seek(lfs, file, 0, LFS_SEEK_CUR).await,
         Ok(LFS_FILE_MAX as u32)
     );
 
     assert_eq!(
-        lfs_file_seek(lfs, file, 10, LFS_SEEK_END),
+        lfs_file_seek(lfs, file, 10, LFS_SEEK_END).await,
         Ok(KITTY.len() as u32 + 10)
     );
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_seek_underflow]
 #[lfs_test]
-fn test_seek_underflow(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_seek_underflow<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "kitty";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-    ));
-    let n = lfs_file_write(lfs, file, KITTY);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await);
+    let n = lfs_file_write(lfs, file, KITTY).await;
     assert_eq!(n, Ok(KITTY.len() as u32));
     let size = KITTY.len() as i32;
 
     assert_eq!(
-        lfs_file_seek(lfs, file, -(size + 10), LFS_SEEK_CUR),
+        lfs_file_seek(lfs, file, -(size + 10), LFS_SEEK_CUR).await,
         Err(Error::Invalid)
     );
     assert_eq!(
-        lfs_file_seek(lfs, file, -LFS_FILE_MAX, LFS_SEEK_CUR),
+        lfs_file_seek(lfs, file, -LFS_FILE_MAX, LFS_SEEK_CUR).await,
         Err(Error::Invalid)
     );
     assert_eq!(
@@ -852,16 +846,17 @@ fn test_seek_underflow(cfg: &LfsConfig) {
             file,
             i32::MIN, // -(size + LFS_FILE_MAX) overflows; use MIN to trigger underflow
             LFS_SEEK_CUR,
-        ),
+        )
+        .await,
         Err(Error::Invalid)
     );
 
     assert_eq!(
-        lfs_file_seek(lfs, file, -(size + 10), LFS_SEEK_END),
+        lfs_file_seek(lfs, file, -(size + 10), LFS_SEEK_END).await,
         Err(Error::Invalid)
     );
     assert_eq!(
-        lfs_file_seek(lfs, file, -LFS_FILE_MAX, LFS_SEEK_END),
+        lfs_file_seek(lfs, file, -LFS_FILE_MAX, LFS_SEEK_END).await,
         Err(Error::Invalid)
     );
     assert_eq!(
@@ -870,51 +865,48 @@ fn test_seek_underflow(cfg: &LfsConfig) {
             file,
             i32::MIN, // -(size + LFS_FILE_MAX) overflows; use MIN
             LFS_SEEK_END,
-        ),
+        )
+        .await,
         Err(Error::Invalid)
     );
 
     assert_eq!(lfs_file_tell(lfs, file), size as u32);
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
 /// Upstream: [cases.test_seek_overflow]
 #[lfs_test]
-fn test_seek_overflow(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_seek_overflow<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "kitty";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-    ));
-    let n = lfs_file_write(lfs, file, KITTY);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await);
+    let n = lfs_file_write(lfs, file, KITTY).await;
     assert_eq!(n, Ok(KITTY.len() as u32));
     let size = KITTY.len() as u32;
 
     assert_eq!(
-        lfs_file_seek(lfs, file, LFS_FILE_MAX, LFS_SEEK_SET),
+        lfs_file_seek(lfs, file, LFS_FILE_MAX, LFS_SEEK_SET).await,
         Ok(LFS_FILE_MAX as u32)
     );
 
     assert_eq!(
-        lfs_file_seek(lfs, file, 10, LFS_SEEK_CUR),
+        lfs_file_seek(lfs, file, 10, LFS_SEEK_CUR).await,
         Err(Error::Invalid)
     );
     assert_eq!(
-        lfs_file_seek(lfs, file, LFS_FILE_MAX, LFS_SEEK_CUR),
+        lfs_file_seek(lfs, file, LFS_FILE_MAX, LFS_SEEK_CUR).await,
         Err(Error::Invalid)
     );
 
     assert_eq!(
-        lfs_file_seek(lfs, file, LFS_FILE_MAX.wrapping_add(10), LFS_SEEK_SET,),
+        lfs_file_seek(lfs, file, LFS_FILE_MAX.wrapping_add(10), LFS_SEEK_SET,).await,
         Err(Error::Invalid)
     );
     assert_eq!(
@@ -923,7 +915,8 @@ fn test_seek_overflow(cfg: &LfsConfig) {
             file,
             LFS_FILE_MAX.wrapping_add(LFS_FILE_MAX),
             LFS_SEEK_SET,
-        ),
+        )
+        .await,
         Err(Error::Invalid)
     );
 
@@ -933,7 +926,8 @@ fn test_seek_overflow(cfg: &LfsConfig) {
             file,
             LFS_FILE_MAX.wrapping_sub(size as i32).wrapping_add(10),
             LFS_SEEK_END,
-        ),
+        )
+        .await,
         Err(Error::Invalid)
     );
     assert_eq!(
@@ -944,12 +938,13 @@ fn test_seek_overflow(cfg: &LfsConfig) {
                 .wrapping_sub(size as i32)
                 .wrapping_add(LFS_FILE_MAX),
             LFS_SEEK_END,
-        ),
+        )
+        .await,
         Err(Error::Invalid)
     );
 
     assert_eq!(lfs_file_tell(lfs, file), LFS_FILE_MAX as u32);
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }

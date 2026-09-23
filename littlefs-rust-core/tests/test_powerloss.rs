@@ -6,26 +6,28 @@
 mod common;
 
 use common::{
-    LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, erase_block_raw, read_block_raw,
-    write_block_raw,
+    LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, LfsConfig, erase_block_raw,
+    read_block_raw, write_block_raw,
 };
 use littlefs_rust_core::{
-    Lfs, LfsConfig, LfsDir, LfsFile, lfs_dir_close, lfs_dir_open, lfs_file_close, lfs_file_open,
+    Lfs, LfsDir, LfsFile, lfs_dir_close, lfs_dir_open, lfs_file_close, lfs_file_open,
     lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_unmount,
 };
+use littlefs_rust_core::Storage as _;
 use littlefs_rust_test_macro::lfs_test;
 
 // --- test_powerloss_only_rev ---
 // Upstream: write rev+1 to one block of dir pair; mount picks higher rev, read/write still works.
 #[lfs_test]
-fn test_powerloss_only_rev(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_powerloss_only_rev<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path_nb = "notebook";
     let path_paper = "notebook/paper";
-    assert_ok!(lfs_mkdir(lfs, path_nb));
+    assert_ok!(lfs_mkdir(lfs, path_nb).await);
 
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -33,30 +35,30 @@ fn test_powerloss_only_rev(cfg: &LfsConfig) {
         file,
         path_paper,
         LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-    ));
+    ).await);
     let buf = b"hello";
     for _ in 0..5 {
-        let n = lfs_file_write(lfs, file, buf);
+        let n = lfs_file_write(lfs, file, buf).await;
         assert_eq!(n, Ok(buf.len() as u32));
         assert_ok!(lfs_file_sync(lfs, file));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY).await);
     let mut rbuf = [0u8; 256];
     for _ in 0..5 {
-        let n = lfs_file_read(lfs, file, &mut rbuf[..5]);
+        let n = lfs_file_read(lfs, file, &mut rbuf[..5]).await;
         assert_eq!(n, Ok(5));
         assert_eq!(&rbuf[..5], b"hello");
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
     // Get dir pair and rev from a fresh mount, then corrupt rev
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok!(lfs_dir_open(lfs, dir, path_nb));
+    assert_ok!(lfs_dir_open(lfs, dir, path_nb).await);
     let pair = dir.m.pair;
     let rev = dir.m.rev;
     assert_ok!(lfs_dir_close(lfs, dir));
@@ -82,11 +84,11 @@ fn test_powerloss_only_rev(cfg: &LfsConfig) {
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY));
     for _ in 0..5 {
-        let n = lfs_file_read(lfs, file, &mut rbuf[..5]);
+        let n = lfs_file_read(lfs, file, &mut rbuf[..5]).await;
         assert_eq!(n, Ok(5));
         assert_eq!(&rbuf[..5], b"hello");
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(
@@ -94,28 +96,28 @@ fn test_powerloss_only_rev(cfg: &LfsConfig) {
         file,
         path_paper,
         LFS_O_WRONLY | LFS_O_APPEND
-    ));
+    ).await);
     let buf2 = b"goodbye";
     for _ in 0..5 {
-        let n = lfs_file_write(lfs, file, buf2);
+        let n = lfs_file_write(lfs, file, buf2).await;
         assert_eq!(n, Ok(buf2.len() as u32));
-        assert_ok!(lfs_file_sync(lfs, file));
+        assert_ok!(lfs_file_sync(lfs, file).await);
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY).await);
     for _ in 0..5 {
-        let n = lfs_file_read(lfs, file, &mut rbuf[..5]);
+        let n = lfs_file_read(lfs, file, &mut rbuf[..5]).await;
         assert_eq!(n, Ok(5));
         assert_eq!(&rbuf[..5], b"hello");
     }
     for _ in 0..5 {
-        let n = lfs_file_read(lfs, file, &mut rbuf[..7]);
+        let n = lfs_file_read(lfs, file, &mut rbuf[..7]).await;
         assert_eq!(n, Ok(7));
         assert_eq!(&rbuf[..7], b"goodbye");
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 

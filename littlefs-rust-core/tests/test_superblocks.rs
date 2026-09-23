@@ -750,12 +750,9 @@ async fn test_superblocks_metadata_max<'a>(cfg: &LfsConfig<'a>, #[values(10, 100
         for i in 0..n {
             let name = &format!("hello{:03x}", i);
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                name,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ).await);
+            assert_ok!(
+                lfs_file_open(lfs, file, name, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await
+            );
             assert_ok!(lfs_file_close(lfs, file).await);
             let info = &mut LfsInfo::default();
             assert_ok!(lfs_stat(lfs, name, info).await);

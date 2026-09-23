@@ -340,7 +340,7 @@ mod workload {
         let data = payload(2048);
         bencher.with_inputs(mounted).bench_refs(|fs| {
             for _ in 0..8 {
-                fs.write_file("/churn.bin", black_box(&data)).unwrap();
+                fs.write_file("/churn.bin", black_box(&data)).await.unwrap();
             }
         });
     }

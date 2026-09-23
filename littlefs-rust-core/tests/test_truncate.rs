@@ -178,12 +178,7 @@ async fn test_truncate_write_read<'a>(cfg: &LfsConfig<'a>) {
 
     let path = "sequence";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_RDWR | LFS_O_CREAT | LFS_O_TRUNC,
-    ).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR | LFS_O_CREAT | LFS_O_TRUNC,).await);
 
     let mut wb = vec![0u8; size as usize];
     let mut rb = vec![0u8; size as usize];

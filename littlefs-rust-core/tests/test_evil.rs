@@ -152,12 +152,7 @@ async fn test_evil_invalid_file_pointer<'a>(
 
     let file_name = "file_here";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        file_name,
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ).await);
+    assert_ok!(lfs_file_open(lfs, file, file_name, LFS_O_WRONLY | LFS_O_CREAT,).await);
     assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
