@@ -124,16 +124,17 @@ fn test_paths_absolute_dirs(cfg: &LfsConfig) {
 
 // --- test_paths_noent ---
 #[lfs_test]
-fn test_paths_noent(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_paths_noent<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let coffee = "coffee";
-    assert_ok!(lfs_mkdir(lfs, coffee));
+    assert_ok!(lfs_mkdir(lfs, coffee).await);
     for name in PATHS {
         let path = &format!("coffee/{name}");
-        assert_ok!(lfs_mkdir(lfs, path));
+        assert_ok!(lfs_mkdir(lfs, path).await);
     }
 
     for bad in &[
@@ -146,11 +147,11 @@ fn test_paths_noent(cfg: &LfsConfig) {
     ] {
         let path = &format!("coffee/{bad}");
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        let err = lfs_stat(lfs, path, info);
+        let err = lfs_stat(lfs, path, info).await;
         assert_err!(Error::NoEntry, err);
 
         let file = &mut LfsFile::default();
-        let err = lfs_file_open(lfs, file, path, LFS_O_RDONLY);
+        let err = lfs_file_open(lfs, file, path, LFS_O_RDONLY).await;
         assert_err!(Error::NoEntry, err);
     }
     assert_ok!(lfs_unmount(lfs));
@@ -951,25 +952,23 @@ fn test_paths_dotdotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_noent_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_noent_trailing_slashes<'a>(cfg: &LfsConfig<'a>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "coffee"));
+    assert_ok!(lfs_mkdir(lfs, "coffee").await);
     for name in PATHS {
         let path = &format!("coffee/{name}");
         if dir_mode {
-            assert_ok!(lfs_mkdir(lfs, path));
+            assert_ok!(lfs_mkdir(lfs, path).await);
         } else {
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await
+            );
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
     }
     // C: 6 malformed paths with trailing slashes — stat => NOENT
@@ -984,13 +983,16 @@ fn test_paths_noent_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
     for bad in bad_stat {
         let path = bad;
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_err!(Error::NoEntry, lfs_stat(lfs, path, info));
+        assert_err!(Error::NoEntry, lfs_stat(lfs, path, info).await);
     }
     // file_open RDONLY => NOENT
     for bad in bad_stat {
         let path = bad;
         let file = &mut LfsFile::default();
-        assert_err!(Error::NoEntry, lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+        assert_err!(
+            Error::NoEntry,
+            lfs_file_open(lfs, file, path, LFS_O_RDONLY).await
+        );
     }
     // file_open WRONLY|CREAT => NOTDIR
     for bad in bad_stat {
@@ -998,7 +1000,7 @@ fn test_paths_noent_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
         let file = &mut LfsFile::default();
         assert_err!(
             Error::NotDir,
-            lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT),
+            lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await,
         );
     }
     // file_open WRONLY|CREAT|EXCL => NOTDIR
@@ -1007,120 +1009,120 @@ fn test_paths_noent_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
         let file = &mut LfsFile::default();
         assert_err!(
             Error::NotDir,
-            lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
+            lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL).await,
         );
     }
     // dir_open => NOENT
     for bad in bad_stat {
         let path = bad;
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_err!(Error::NoEntry, lfs_dir_open(lfs, dir, path));
+        assert_err!(Error::NoEntry, lfs_dir_open(lfs, dir, path).await);
     }
     // rename: bad source
-    assert_ok!(lfs_mkdir(lfs, "espresso"));
+    assert_ok!(lfs_mkdir(lfs, "espresso").await);
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/_rip//////", "espresso/espresso"),
+        lfs_rename(lfs, "coffee/_rip//////", "espresso/espresso").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/c_ldbrew/////", "espresso/americano"),
+        lfs_rename(lfs, "coffee/c_ldbrew/////", "espresso/americano").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/tu_kish////", "espresso/macchiato"),
+        lfs_rename(lfs, "coffee/tu_kish////", "espresso/macchiato").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/tub_uk///", "espresso/latte"),
+        lfs_rename(lfs, "coffee/tub_uk///", "espresso/latte").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/_vietnamese//", "espresso/cappuccino"),
+        lfs_rename(lfs, "coffee/_vietnamese//", "espresso/cappuccino").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/thai_/", "espresso/mocha"),
+        lfs_rename(lfs, "coffee/thai_/", "espresso/mocha").await,
     );
     // rename: bad destination (trailing slash on dest)
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/_rip", "espresso/espresso/"),
+        lfs_rename(lfs, "coffee/_rip", "espresso/espresso/").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/c_ldbrew", "espresso/americano//"),
+        lfs_rename(lfs, "coffee/c_ldbrew", "espresso/americano//").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/tu_kish", "espresso/macchiato///"),
+        lfs_rename(lfs, "coffee/tu_kish", "espresso/macchiato///").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/tub_uk", "espresso/latte////"),
+        lfs_rename(lfs, "coffee/tub_uk", "espresso/latte////").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/_vietnamese", "espresso/cappuccino/////"),
+        lfs_rename(lfs, "coffee/_vietnamese", "espresso/cappuccino/////").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/thai_", "espresso/mocha//////"),
+        lfs_rename(lfs, "coffee/thai_", "espresso/mocha//////").await,
     );
     // rename: bad source and bad destination
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/_rip//////", "espresso/espresso/"),
+        lfs_rename(lfs, "coffee/_rip//////", "espresso/espresso/").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/c_ldbrew/////", "espresso/americano//"),
+        lfs_rename(lfs, "coffee/c_ldbrew/////", "espresso/americano//").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/tu_kish////", "espresso/macchiato///"),
+        lfs_rename(lfs, "coffee/tu_kish////", "espresso/macchiato///").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/tub_uk///", "espresso/latte////"),
+        lfs_rename(lfs, "coffee/tub_uk///", "espresso/latte////").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/_vietnamese//", "espresso/cappuccino/////"),
+        lfs_rename(lfs, "coffee/_vietnamese//", "espresso/cappuccino/////").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/thai_/", "espresso/mocha//////"),
+        lfs_rename(lfs, "coffee/thai_/", "espresso/mocha//////").await,
     );
     // rename noop (same bad path both sides) => NOENT
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/_rip//////", "coffee/_rip//////"),
+        lfs_rename(lfs, "coffee/_rip//////", "coffee/_rip//////").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/c_ldbrew/////", "coffee/c_ldbrew/////"),
+        lfs_rename(lfs, "coffee/c_ldbrew/////", "coffee/c_ldbrew/////").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/tu_kish////", "coffee/tu_kish////"),
+        lfs_rename(lfs, "coffee/tu_kish////", "coffee/tu_kish////").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/tub_uk///", "coffee/tub_uk///"),
+        lfs_rename(lfs, "coffee/tub_uk///", "coffee/tub_uk///").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/_vietnamese//", "coffee/_vietnamese//"),
+        lfs_rename(lfs, "coffee/_vietnamese//", "coffee/_vietnamese//").await,
     );
     assert_err!(
         Error::NoEntry,
-        lfs_rename(lfs, "coffee/thai_/", "coffee/thai_/"),
+        lfs_rename(lfs, "coffee/thai_/", "coffee/thai_/").await,
     );
     // remove => NOENT
     for bad in bad_stat {
         let path = bad;
-        assert_err!(Error::NoEntry, lfs_remove(lfs, path));
+        assert_err!(Error::NoEntry, lfs_remove(lfs, path).await);
     }
     // stat espresso/* (renames failed so these don't exist) => NOENT
     for name in [
@@ -1134,7 +1136,7 @@ fn test_paths_noent_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
     ] {
         let path = name;
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        let err = lfs_stat(lfs, path, info);
+        let err = lfs_stat(lfs, path, info).await;
         if name == "espresso" {
             assert_ok!(err);
         } else {
@@ -1145,7 +1147,7 @@ fn test_paths_noent_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
     for name in PATHS {
         let path = &format!("coffee/{name}");
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
         assert_eq!(info.name_str(), *name);
         assert_eq!(
             info.type_,

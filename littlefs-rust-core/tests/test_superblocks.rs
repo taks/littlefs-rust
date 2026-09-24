@@ -57,11 +57,12 @@ async fn test_superblocks_magic<'a>(cfg: &LfsConfig<'a>) {
 // --- test_traverse_attrs_callback_order ---
 // Unit test (in integration harness): traverse with tmask=0 passes SUPERBLOCK correctly.
 #[lfs_test]
-fn test_traverse_attrs_callback_order(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_traverse_attrs_callback_order<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
     let mut out = littlefs_rust_core::TraverseTestOut::default();
 
-    assert_ok!(unsafe { littlefs_rust_core::test_traverse_format_attrs(lfs, cfg, &mut out) });
+    assert_ok!(unsafe { littlefs_rust_core::test_traverse_format_attrs(lfs, cfg, &mut out).await });
 
     assert_eq!(out.call_count, 3);
     assert_eq!(out.tags[1], 0x0ff, "second callback should be SUPERBLOCK");
@@ -71,12 +72,14 @@ fn test_traverse_attrs_callback_order(cfg: &LfsConfig) {
 // --- test_traverse_filter_gets_superblock_after_push ---
 // Unit test: traverse with tmask (compact-style) triggers push; callback receives SUPERBLOCK with 'l'.
 #[lfs_test]
-fn test_traverse_filter_gets_superblock_after_push(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_traverse_filter_gets_superblock_after_push<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
     let mut out = littlefs_rust_core::TraverseTestOut::default();
 
     assert_ok!(unsafe {
         littlefs_rust_core::test_traverse_filter_gets_superblock_after_push(lfs, cfg, &mut out)
+            .await
     });
 
     let has_superblock = out.tags[..out.call_count as usize].contains(&0x0ff);
@@ -107,13 +110,14 @@ async fn test_superblocks_invalid_mount<'a>(cfg: &LfsConfig<'a>) {
 // --- test_superblocks_stat ---
 // Upstream: fs_stat after format/mount returns correct values
 #[lfs_test]
-fn test_superblocks_stat(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_superblocks_stat<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
+    assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
     assert_eq!(fsinfo.block_size, cfg.block_size);
     assert_eq!(fsinfo.block_count, cfg.block_count);
     assert_eq!(fsinfo.disk_version, 0x0002_0001);

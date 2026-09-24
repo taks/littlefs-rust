@@ -9,11 +9,11 @@ use common::{
     LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, LfsConfig, erase_block_raw,
     read_block_raw, write_block_raw,
 };
+use littlefs_rust_core::Storage as _;
 use littlefs_rust_core::{
     Lfs, LfsDir, LfsFile, lfs_dir_close, lfs_dir_open, lfs_file_close, lfs_file_open,
     lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_unmount,
 };
-use littlefs_rust_core::Storage as _;
 use littlefs_rust_test_macro::lfs_test;
 
 // --- test_powerloss_only_rev ---
@@ -30,17 +30,20 @@ async fn test_powerloss_only_rev<'a>(cfg: &LfsConfig<'a>) {
     assert_ok!(lfs_mkdir(lfs, path_nb).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path_paper,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-    ).await);
+    assert_ok!(
+        lfs_file_open(
+            lfs,
+            file,
+            path_paper,
+            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
+        )
+        .await
+    );
     let buf = b"hello";
     for _ in 0..5 {
         let n = lfs_file_write(lfs, file, buf).await;
         assert_eq!(n, Ok(buf.len() as u32));
-        assert_ok!(lfs_file_sync(lfs, file));
+        assert_ok!(lfs_file_sync(lfs, file).await);
     }
     assert_ok!(lfs_file_close(lfs, file).await);
 
@@ -79,10 +82,10 @@ async fn test_powerloss_only_rev<'a>(cfg: &LfsConfig<'a>) {
     let _ = unsafe { cfg.context.unwrap().as_mut().erase(pair[1]) };
     let _ = unsafe { cfg.context.unwrap().as_mut().write(pair[1], 0, &block_buf) };
 
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, path_paper, LFS_O_RDONLY).await);
     for _ in 0..5 {
         let n = lfs_file_read(lfs, file, &mut rbuf[..5]).await;
         assert_eq!(n, Ok(5));
@@ -91,12 +94,7 @@ async fn test_powerloss_only_rev<'a>(cfg: &LfsConfig<'a>) {
     assert_ok!(lfs_file_close(lfs, file).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path_paper,
-        LFS_O_WRONLY | LFS_O_APPEND
-    ).await);
+    assert_ok!(lfs_file_open(lfs, file, path_paper, LFS_O_WRONLY | LFS_O_APPEND).await);
     let buf2 = b"goodbye";
     for _ in 0..5 {
         let n = lfs_file_write(lfs, file, buf2).await;

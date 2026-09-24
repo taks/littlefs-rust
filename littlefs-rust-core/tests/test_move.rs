@@ -11,11 +11,11 @@ mod common;
 use std::assert_matches;
 
 use common::{
-    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, corrupt_block, dir_block,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY, LfsConfig, corrupt_block, dir_block,
     dir_entry_names, dir_pair, lfs_emubd_setwear,
 };
 use littlefs_rust_core::{
-    Error, Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
+    Error, Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
     lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write, lfs_format, lfs_mkdir, lfs_mount,
     lfs_remove, lfs_rename, lfs_stat, lfs_type::LfsType, lfs_unmount,
 };
@@ -24,25 +24,26 @@ use littlefs_rust_test_macro::lfs_test;
 // --- test_move_nop ---
 // Rename to self is legal
 #[lfs_test]
-fn test_move_nop(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_move_nop<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let hi = "hi";
-    assert_ok!(lfs_mkdir(lfs, hi));
-    assert_ok!(lfs_rename(lfs, hi, hi));
+    assert_ok!(lfs_mkdir(lfs, hi).await);
+    assert_ok!(lfs_rename(lfs, hi, hi).await);
 
     let hi_hi = "hi/hi";
-    assert_ok!(lfs_mkdir(lfs, hi_hi));
-    assert_ok!(lfs_rename(lfs, hi_hi, hi_hi));
+    assert_ok!(lfs_mkdir(lfs, hi_hi).await);
+    assert_ok!(lfs_rename(lfs, hi_hi, hi_hi).await);
 
     let hi_hi_hi = "hi/hi/hi";
-    assert_ok!(lfs_mkdir(lfs, hi_hi_hi));
-    assert_ok!(lfs_rename(lfs, hi_hi_hi, hi_hi_hi));
+    assert_ok!(lfs_mkdir(lfs, hi_hi_hi).await);
+    assert_ok!(lfs_rename(lfs, hi_hi_hi, hi_hi_hi).await);
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok!(lfs_stat(lfs, hi_hi_hi, info));
+    assert_ok!(lfs_stat(lfs, hi_hi_hi, info).await);
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "hi");
     assert_eq!(info.type_, LfsType::DIR);

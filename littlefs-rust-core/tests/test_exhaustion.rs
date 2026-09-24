@@ -117,8 +117,9 @@ async fn verify_after_exhaustion<'a>(
 /// ERASE_CYCLES=10, BLOCK_CYCLES=5, ERASE_COUNT=256, FILES=10
 /// Write random files under "roadrunner/" until NOSPC, verify after exhaustion.
 #[lfs_test]
-fn test_exhaustion_normal(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_exhaustion_normal<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(10)] erase_cycles: u32,
     #[values(256)] erase_count: u32,
     #[values(5)] block_cycles: i32,
@@ -135,15 +136,15 @@ fn test_exhaustion_normal(
 
     let lfs = &mut Lfs::default();
 
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_mkdir(lfs, "roadrunner"));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_mkdir(lfs, "roadrunner").await);
     assert_ok!(lfs_unmount(lfs));
 
-    let cycle = run_exhaustion(lfs, cfg, "roadrunner", files);
+    let cycle = run_exhaustion(lfs, cfg, "roadrunner", files).await;
     eprintln!("test_exhaustion_normal({behavior:?}): completed {cycle} cycles");
 
-    verify_after_exhaustion(lfs, cfg, "roadrunner", files);
+    verify_after_exhaustion(lfs, cfg, "roadrunner", files).await;
 }
 
 /// Upstream: [cases.test_exhaustion_superblocks]

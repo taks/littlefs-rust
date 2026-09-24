@@ -480,17 +480,12 @@ async fn test_seek_out_of_bounds<'a>(cfg: &LfsConfig<'a>, #[case] count: u32, #[
 
     let path = "kitty";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await);
     for _ in 0..count {
         let n = lfs_file_write(lfs, file, KITTY).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, cfg).await);
@@ -544,7 +539,8 @@ async fn test_seek_out_of_bounds<'a>(cfg: &LfsConfig<'a>, #[case] count: u32, #[
             file,
             -((count as i32 + 2 * skip as i32) * (size as i32)),
             LFS_SEEK_END,
-        ).await,
+        )
+        .await,
         Err(Error::Invalid)
     );
     assert_eq!(lfs_file_tell(lfs, file), (count + 1) * (size as u32));

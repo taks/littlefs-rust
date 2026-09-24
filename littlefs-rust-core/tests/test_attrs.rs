@@ -5,11 +5,11 @@
 
 mod common;
 
-use common::{LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY};
+use common::{LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, LfsConfig};
 use littlefs_rust_core::{
-    Error, Lfs, LfsAttr, LfsConfig, LfsFile, LfsFileConfig, lfs_file_close, lfs_file_open,
-    lfs_file_opencfg, lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_getattr,
-    lfs_mkdir, lfs_mount, lfs_removeattr, lfs_setattr, lfs_unmount,
+    Error, Lfs, LfsAttr, LfsFile, LfsFileConfig, lfs_file_close, lfs_file_open, lfs_file_opencfg,
+    lfs_file_read, lfs_file_sync, lfs_file_write, lfs_format, lfs_getattr, lfs_mkdir, lfs_mount,
+    lfs_removeattr, lfs_setattr, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
@@ -19,71 +19,67 @@ const ATTR_MAX: usize = 1022;
 
 // --- test_attrs_get_set ---
 #[lfs_test]
-fn test_attrs_get_set(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_attrs_get_set<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "hello"));
+    assert_ok!(lfs_mkdir(lfs, "hello").await);
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "hello/hello",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    let n = lfs_file_write(lfs, file, b"hello");
+    assert_ok!(lfs_file_open(lfs, file, "hello/hello", LFS_O_WRONLY | LFS_O_CREAT,).await);
+    let n = lfs_file_write(lfs, file, b"hello").await;
     assert_eq!(n, Ok(5));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let mut buffer = [0u8; 1024];
 
-    assert_ok!(lfs_setattr(lfs, "hello", b'A', b"aaaa", 4));
-    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"bbbbbb", 6));
-    assert_ok!(lfs_setattr(lfs, "hello", b'C', b"ccccc", 5));
+    assert_ok!(lfs_setattr(lfs, "hello", b'A', b"aaaa", 4).await);
+    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"bbbbbb", 6).await);
+    assert_ok!(lfs_setattr(lfs, "hello", b'C', b"ccccc", 5).await);
 
-    let n = lfs_getattr(lfs, "hello", b'A', &mut buffer[..4]);
+    let n = lfs_getattr(lfs, "hello", b'A', &mut buffer[..4]).await;
     assert_eq!(n, Ok(4));
-    let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]);
+    let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]).await;
     assert_eq!(n, Ok(6));
-    let n = lfs_getattr(lfs, "hello", b'C', &mut buffer[10..15]);
+    let n = lfs_getattr(lfs, "hello", b'C', &mut buffer[10..15]).await;
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[0..4], b"aaaa");
     assert_eq!(&buffer[4..10], b"bbbbbb");
     assert_eq!(&buffer[10..15], b"ccccc");
 
-    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"", 0));
-    let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]);
+    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"", 0).await);
+    let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]).await;
     assert_eq!(n, Ok(0));
     assert_eq!(&buffer[4..10], b"\0\0\0\0\0\0");
 
-    assert_ok!(lfs_removeattr(lfs, "hello", b'B'));
-    let err = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]);
+    assert_ok!(lfs_removeattr(lfs, "hello", b'B').await);
+    let err = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]).await;
     assert_err!(Error::NoAttribute, err);
 
-    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"dddddd", 6));
-    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"eee", 3));
+    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"dddddd", 6).await);
+    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"eee", 3).await);
 
     let oversized = vec![0u8; ATTR_MAX + 1];
-    let err = lfs_setattr(lfs, "hello", b'A', &oversized, ATTR_MAX + 1);
+    let err = lfs_setattr(lfs, "hello", b'A', &oversized, ATTR_MAX + 1).await;
     assert_err!(Error::NoSpace, err);
 
-    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"fffffffff", 9));
+    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"fffffffff", 9).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..13]);
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..13]).await;
     assert_eq!(n, Ok(9));
     assert_eq!(&buffer[4..13], b"fffffffff");
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, "hello/hello", LFS_O_RDONLY));
-    let n = lfs_file_read(lfs, file, &mut buffer[..32]);
+    assert_ok!(lfs_file_open(lfs, file, "hello/hello", LFS_O_RDONLY).await);
+    let n = lfs_file_read(lfs, file, &mut buffer[..32]).await;
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
