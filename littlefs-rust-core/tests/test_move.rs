@@ -1098,8 +1098,7 @@ fn test_move_fix_relocation(cfg: &LfsConfig, #[values(0xffffffff)] erase_cycles:
             if n == Ok(false) {
                 break;
             }
-            let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-            let name = core::str::from_utf8(&info.name[..nul]).unwrap();
+            let name = info.name_str();
             if name == "." || name == ".." {
                 continue;
             }
