@@ -460,14 +460,15 @@ async fn test_files_many<'a>(cfg: &LfsConfig<'a>) {
 ///
 /// Create 300 files, unmount/remount after each. Verify on final mount.
 #[lfs_test]
-fn test_files_many_power_cycle(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_files_many_power_cycle<'a>(cfg: &LfsConfig<'a>) {
     const N: usize = 300;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
     for i in 0..N {
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         let path = &format!("file_{:03}", i);
         let file = &mut LfsFile::default();
         assert_ok!(lfs_file_open(
@@ -479,19 +480,19 @@ fn test_files_many_power_cycle(cfg: &LfsConfig) {
         let content = format!("Hi {:03}\0", i);
         let bytes = content.as_bytes();
         assert_eq!(bytes.len(), 7);
-        let n = lfs_file_write(lfs, file, bytes);
+        let n = lfs_file_write(lfs, file, bytes).await;
         assert_eq!(n, Ok(bytes.len() as u32));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         let rfile = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, rfile, path, LFS_O_RDONLY).await);
         let mut buf = [0u8; 32];
-        let n = lfs_file_read(lfs, rfile, &mut buf[..7]);
+        let n = lfs_file_read(lfs, rfile, &mut buf[..7]).await;
         assert_eq!(n, Ok(7));
         assert_eq!(&buf[..7], bytes);
-        assert_ok!(lfs_file_close(lfs, rfile));
+        assert_ok!(lfs_file_close(lfs, rfile).await);
     }
     assert_ok!(lfs_unmount(lfs));
 }

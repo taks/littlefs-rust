@@ -8,10 +8,10 @@ mod common;
 #[cfg(feature = "slow_tests")]
 use std::assert_matches;
 
-use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, dir_entry_names};
+use common::{LFS_O_CREAT, LFS_O_EXCL, LFS_O_RDONLY, LFS_O_WRONLY, LfsConfig, dir_entry_names};
 use littlefs_rust_core::lfs_type::LfsType;
 use littlefs_rust_core::{
-    Error, Lfs, LfsConfig, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
+    Error, Lfs, LfsDir, LfsFile, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_dir_read,
     lfs_dir_rewind, lfs_dir_seek, lfs_dir_tell, lfs_file_close, lfs_file_open, lfs_format,
     lfs_mkdir, lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
@@ -151,27 +151,33 @@ fn test_dirs_many_removal(cfg: &LfsConfig, #[values(3, 14, 25, 36, 47, 58, 69, 8
 ///
 /// Create N dirs test000.., rename to tedd000.., verify.
 #[lfs_test]
-fn test_dirs_many_rename(cfg: &LfsConfig, #[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize) {
+#[tokio::test]
+async fn test_dirs_many_rename<'a>(
+    cfg: &LfsConfig<'a>,
+    #[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize,
+) {
     if n >= cfg.block_count as usize / 2 {
         return;
     }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     for i in 0..n {
         let path = &format!("test{i:03}");
-        assert_ok!(lfs_mkdir(lfs, path));
+        assert_ok!(lfs_mkdir(lfs, path).await);
     }
     for i in 0..n {
         let old_path = &format!("test{i:03}");
         let new_path = &format!("tedd{i:03}");
-        let err = lfs_rename(lfs, old_path, new_path);
+        let err = lfs_rename(lfs, old_path, new_path).await;
         assert_ok!(err);
     }
 
-    let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "/")
+        .await
+        .expect("dir_entry_names");
     assert_eq!(names.len(), n);
     let mut names_sorted = names.clone();
     names_sorted.sort();

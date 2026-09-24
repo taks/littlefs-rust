@@ -5,10 +5,10 @@
 
 mod common;
 
-use common::{BadblockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, Lfs};
+use common::{BadblockBehavior, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, Lfs, LfsConfig};
 use littlefs_rust_core::{
-    Error, LfsConfig, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read,
-    lfs_file_write, lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_type::LfsType, lfs_unmount,
+    Error, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
+    lfs_format, lfs_mkdir, lfs_mount, lfs_stat, lfs_type::LfsType, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 
@@ -29,8 +29,9 @@ const FILEMULT: usize = 1;
 /// block b-1 as fresh (0). Format, mount, create 9 dirs with files, unmount,
 /// remount, stat/read all dirs and files.
 #[lfs_test]
-fn test_badblocks_single(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_badblocks_single<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(Some(0x00), Some(0xff), None)] erase_value: Option<u8>,
     #[values(256)] erase_count: u32,
     #[values(0xffffffff)] erase_cycles: u32,
@@ -50,8 +51,8 @@ fn test_badblocks_single(
         lfs_emubd_setwear(cfg, badblock, 0xffffffff);
 
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
 
         for i in 1..10 {
             let mut buffer = [0u8; 1024];
@@ -61,9 +62,12 @@ fn test_badblocks_single(
             buffer[NAMEMULT] = 0;
 
             // mkdir
-            assert_ok!(lfs_mkdir(lfs, unsafe {
-                str::from_utf8_unchecked(&buffer[..NAMEMULT])
-            }));
+            assert_ok!(
+                lfs_mkdir(lfs, unsafe {
+                    str::from_utf8_unchecked(&buffer[..NAMEMULT])
+                })
+                .await
+            );
 
             // Build file path: "dirname/dirname"
             buffer[NAMEMULT] = b'/';
@@ -73,25 +77,28 @@ fn test_badblocks_single(
             buffer[2 * NAMEMULT + 1] = 0;
 
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
-                LFS_O_WRONLY | LFS_O_CREAT,
-            ));
+            assert_ok!(
+                lfs_file_open(
+                    lfs,
+                    file,
+                    unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
+                    LFS_O_WRONLY | LFS_O_CREAT,
+                )
+                .await
+            );
 
             let size = NAMEMULT as u32;
             for _j in 0..(i * FILEMULT) {
-                let n = lfs_file_write(lfs, file, &buffer[..size as usize]);
+                let n = lfs_file_write(lfs, file, &buffer[..size as usize]).await;
                 assert_eq!(n, Ok(size));
             }
 
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
         assert_ok!(lfs_unmount(lfs));
 
         // Remount and verify
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
 
         for i in 1..10 {
             let mut buffer = [0u8; 1024];
@@ -100,11 +107,14 @@ fn test_badblocks_single(
             }
 
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-            assert_ok!(lfs_stat(
-                lfs,
-                unsafe { str::from_utf8_unchecked(&buffer[..NAMEMULT]) },
-                info,
-            ));
+            assert_ok!(
+                lfs_stat(
+                    lfs,
+                    unsafe { str::from_utf8_unchecked(&buffer[..NAMEMULT]) },
+                    info,
+                )
+                .await
+            );
             assert_eq!(info.type_, LfsType::DIR);
 
             buffer[NAMEMULT] = b'/';
@@ -114,22 +124,25 @@ fn test_badblocks_single(
             buffer[2 * NAMEMULT + 1] = 0;
 
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
-                LFS_O_RDONLY,
-            ));
+            assert_ok!(
+                lfs_file_open(
+                    lfs,
+                    file,
+                    unsafe { str::from_utf8_unchecked(&buffer[..(2 * NAMEMULT + 1)]) },
+                    LFS_O_RDONLY,
+                )
+                .await
+            );
 
             let size = NAMEMULT as u32;
             for _j in 0..(i * FILEMULT) {
                 let mut rbuffer = [0u8; 1024];
-                let n = lfs_file_read(lfs, file, &mut rbuffer[..size as usize]);
+                let n = lfs_file_read(lfs, file, &mut rbuffer[..size as usize]).await;
                 assert_eq!(n, Ok(size));
                 assert_eq!(&rbuffer[..size as usize], &buffer[..size as usize]);
             }
 
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
         assert_ok!(lfs_unmount(lfs));
     }

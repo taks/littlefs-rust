@@ -258,8 +258,9 @@ async fn test_alloc_parallel_reuse<'a>(
 ///
 /// CYCLES iterations: create breakfast, write each file serially, read back, remove all.
 #[lfs_test]
-fn test_alloc_serial_reuse(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_alloc_serial_reuse<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(1, 10)] cycles: u32,
     #[values(false, true)] infer_bc: bool,
 ) {
@@ -268,7 +269,7 @@ fn test_alloc_serial_reuse(
     let size: usize = ((block_size - 8) as usize * (block_count - 6) as usize) / FILES as usize;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
     let mount_cfg = LfsConfig {
         block_count: if infer_bc { 0 } else { block_count },
@@ -276,55 +277,52 @@ fn test_alloc_serial_reuse(
     };
 
     for _c in 0..cycles {
-        assert_ok!(lfs_mount(lfs, &mount_cfg));
-        assert_ok!(lfs_mkdir(lfs, "breakfast"));
+        assert_ok!(lfs_mount(lfs, &mount_cfg).await);
+        assert_ok!(lfs_mkdir(lfs, "breakfast").await);
         assert_ok!(lfs_unmount(lfs));
 
         for n in 0..FILES {
-            assert_ok!(lfs_mount(lfs, &mount_cfg));
+            assert_ok!(lfs_mount(lfs, &mount_cfg).await);
             let path = &format!("breakfast/{}", NAMES[n as usize]);
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-            ));
+            assert_ok!(
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await
+            );
             let name = NAMES[n as usize];
             let mut buf = [0u8; 16];
             buf[..name.len()].copy_from_slice(name.as_bytes());
             for i in (0..size).step_by(name.len()) {
                 let chunk = (size - i).min(name.len());
-                let nw = lfs_file_write(lfs, file, &buf[..chunk]);
+                let nw = lfs_file_write(lfs, file, &buf[..chunk]).await;
                 assert_eq!(nw, Ok(chunk as u32));
             }
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
             assert_ok!(lfs_unmount(lfs));
         }
 
-        assert_ok!(lfs_mount(lfs, &mount_cfg));
+        assert_ok!(lfs_mount(lfs, &mount_cfg).await);
         for n in 0..FILES {
             let path = &format!("breakfast/{}", NAMES[n as usize]);
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
             let name = NAMES[n as usize];
             let mut buf = [0u8; 16];
             for i in (0..size).step_by(name.len()) {
                 let chunk = (size - i).min(name.len());
-                let nr = lfs_file_read(lfs, file, &mut buf[..chunk]);
+                let nr = lfs_file_read(lfs, file, &mut buf[..chunk]).await;
                 assert_eq!(nr, Ok(chunk as u32));
                 assert_eq!(&buf[..chunk], &name.as_bytes()[..chunk]);
             }
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &mount_cfg));
+        assert_ok!(lfs_mount(lfs, &mount_cfg).await);
         for n in 0..FILES {
             let path = &format!("breakfast/{}", NAMES[n as usize]);
-            assert_ok!(lfs_remove(lfs, path));
+            assert_ok!(lfs_remove(lfs, path).await);
         }
-        assert_ok!(lfs_remove(lfs, "breakfast"));
+        assert_ok!(lfs_remove(lfs, "breakfast").await);
         assert_ok!(lfs_unmount(lfs));
     }
 }
@@ -336,31 +334,27 @@ fn test_alloc_serial_reuse(
 /// Create file "exhaustion", write "exhaustion" then "blahblahblahblah" until NOSPC, GC, close,
 /// remount, read back and verify.
 #[lfs_test]
-fn test_alloc_exhaustion(cfg: &LfsConfig, #[values(false, true)] infer_bc: bool) {
+#[tokio::test]
+async fn test_alloc_exhaustion<'a>(cfg: &LfsConfig<'a>, #[values(false, true)] infer_bc: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
     let mount_cfg = LfsConfig {
         block_count: if infer_bc { 0 } else { cfg.block_count },
         ..*cfg
     };
-    assert_ok!(lfs_mount(lfs, &mount_cfg));
+    assert_ok!(lfs_mount(lfs, &mount_cfg).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_WRONLY | LFS_O_CREAT,).await);
     let exhaustion = b"exhaustion";
-    let n = lfs_file_write(lfs, file, exhaustion);
+    let n = lfs_file_write(lfs, file, exhaustion).await;
     assert_eq!(n, Ok(exhaustion.len() as u32));
-    assert_ok!(lfs_file_sync(lfs, file));
+    assert_ok!(lfs_file_sync(lfs, file).await);
 
     let blah = b"blahblahblahblah";
     loop {
-        let res = lfs_file_write(lfs, file, blah);
+        let res = lfs_file_write(lfs, file, blah).await;
         if res.is_err() {
             assert_err!(Error::NoSpace, res);
             break;
@@ -368,19 +362,19 @@ fn test_alloc_exhaustion(cfg: &LfsConfig, #[values(false, true)] infer_bc: bool)
         assert_eq!(res, Ok(blah.len() as u32));
     }
 
-    assert_ok!(lfs_fs_gc(lfs));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_fs_gc(lfs).await);
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &mount_cfg));
-    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, &mount_cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_RDONLY).await);
     let fsize = lfs_file_size(lfs, file);
     assert!(fsize >= exhaustion.len() as u32);
     let mut buf = [0u8; 16];
-    let n = lfs_file_read(lfs, file, &mut buf[..exhaustion.len()]);
+    let n = lfs_file_read(lfs, file, &mut buf[..exhaustion.len()]).await;
     assert_eq!(n, Ok(exhaustion.len() as u32));
     assert_eq!(&buf[..exhaustion.len()], exhaustion);
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -390,24 +384,25 @@ fn test_alloc_exhaustion(cfg: &LfsConfig, #[values(false, true)] infer_bc: bool)
 ///
 /// Create dir with files, verify stat. (Geometry-specific; uses default_config.)
 #[lfs_test]
-fn test_alloc_split_dir(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_alloc_split_dir<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "d"));
+    assert_ok!(lfs_mkdir(lfs, "d").await);
     for i in 0..8 {
         let path = &format!("d/f{i}");
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
-        let n = lfs_file_write(lfs, file, b"x");
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
+        let n = lfs_file_write(lfs, file, b"x").await;
         assert_eq!(n, Ok(1));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
     for i in 0..8 {
         let path = &format!("d/f{i}");
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(
             core::str::from_utf8(&info.name[..nul]).unwrap(),

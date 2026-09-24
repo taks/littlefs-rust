@@ -5,9 +5,10 @@
 mod common;
 
 use common::{
-    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, test_prng, verify_prng_file, write_prng_file,
+    LFS_O_CREAT, LFS_O_RDONLY, LFS_O_WRONLY, LfsConfig, test_prng, verify_prng_file,
+    write_prng_file,
 };
-use littlefs_rust_core::{Lfs, LfsConfig, LfsFile};
+use littlefs_rust_core::{Lfs, LfsFile};
 use littlefs_rust_test_macro::lfs_test;
 
 // ── PRNG tests ──────────────────────────────────────────────────────────────
@@ -46,34 +47,27 @@ fn test_prng_deterministic() {
 
 /// Round-trip test: write PRNG data to a file, close, reopen, verify.
 #[lfs_test]
-fn test_write_verify_prng_file(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_write_verify_prng_file<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
-    assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
+    assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg).await);
+    assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg).await);
 
     let path = "prng_test";
     let file = &mut LfsFile::default();
 
     // Write 256 bytes in 31-byte chunks with seed=1
-    assert_ok!(littlefs_rust_core::lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(
+        littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT,).await
+    );
     write_prng_file(lfs, file, 256, 31, 1);
-    assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file));
+    assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file).await);
     assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
 
     // Remount and verify
-    assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
-    assert_ok!(littlefs_rust_core::lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_RDONLY,
-    ));
+    assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg).await);
+    assert_ok!(littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY,).await);
     verify_prng_file(lfs, file, 256, 31, 1);
-    assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file));
+    assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file).await);
     assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
 }
