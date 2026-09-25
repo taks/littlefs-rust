@@ -218,7 +218,7 @@ async fn test_dirs_many_rename_append<'a>(cfg: &LfsConfig<'a>, #[values(5, 7, 9,
 
     assert_ok!(lfs_mount(lfs, cfg).await);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH).await);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
@@ -248,7 +248,7 @@ async fn test_dirs_many_rename_append<'a>(cfg: &LfsConfig<'a>, #[values(5, 7, 9,
     }
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
 
     assert_ok!(lfs_dir_close(lfs, dir));
     assert_ok!(lfs_unmount(lfs));
