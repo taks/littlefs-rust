@@ -93,8 +93,9 @@ async fn test_truncate_simple<'a>(cfg: &LfsConfig<'a>, #[case] medium: u32, #[ca
 
 /// Upstream: [cases.test_truncate_read]
 #[lfs_test]
-fn test_truncate_read(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_truncate_read<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(31, 32, 33, 511, 512, 513, 2047, 2048, 2049)] medium: u32,
     #[values(32, 33, 512, 513, 2048, 2049, 8192, 8193)] large: u32,
 ) {
@@ -102,64 +103,64 @@ fn test_truncate_read(
         return;
     }
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "baldyread";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
 
     let size = HAIR.len() as u32;
     let mut j: u32 = 0;
     while j < large {
         let chunk = min(size, large - j);
-        let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]);
+        let n = lfs_file_write(lfs, file, &HAIR[..chunk as usize]).await;
         assert_eq!(n, Ok(chunk));
         j += chunk;
     }
     assert_eq!(lfs_file_size(lfs, file), large);
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR).await);
     assert_eq!(lfs_file_size(lfs, file), large);
 
-    assert_ok!(lfs_file_truncate(lfs, file, medium));
+    assert_ok!(lfs_file_truncate(lfs, file, medium).await);
     assert_eq!(lfs_file_size(lfs, file), medium);
 
     let mut buf = [0u8; 16];
     j = 0;
     while j < medium {
         let chunk = min(size, medium - j);
-        let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
+        let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]).await;
         assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &HAIR[..chunk as usize]);
         j += chunk;
     }
-    let n = lfs_file_read(lfs, file, &mut buf[..size as usize]);
+    let n = lfs_file_read(lfs, file, &mut buf[..size as usize]).await;
     assert_eq!(n, Ok(0));
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
     assert_eq!(lfs_file_size(lfs, file), medium);
 
     j = 0;
     while j < medium {
         let chunk = min(size, medium - j);
-        let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]);
+        let n = lfs_file_read(lfs, file, &mut buf[..chunk as usize]).await;
         assert_eq!(n, Ok(chunk));
         assert_eq!(&buf[..chunk as usize], &HAIR[..chunk as usize]);
         j += chunk;
     }
-    let n = lfs_file_read(lfs, file, &mut buf[..size as usize]);
+    let n = lfs_file_read(lfs, file, &mut buf[..size as usize]).await;
     assert_eq!(n, Ok(0));
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 

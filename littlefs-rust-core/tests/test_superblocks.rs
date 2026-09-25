@@ -187,43 +187,34 @@ fn test_superblocks_stat_tweaked(cfg: &LfsConfig) {
 /// Upstream: [cases.test_superblocks_expand]
 /// Create/remove dummy file N times; verify superblock survives compaction.
 #[lfs_test]
-fn test_superblocks_expand(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_superblocks_expand<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(32, 33, 1)] block_cycles: i32,
     #[values(10, 100, 1000)] n: u32,
 ) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let dummy = "dummy";
     for _ in 0..n {
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            dummy,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_open(lfs, file, dummy, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
+        assert_ok!(lfs_file_close(lfs, file).await);
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok!(lfs_stat(lfs, dummy, info));
+        assert_ok!(lfs_stat(lfs, dummy, info).await);
         assert_eq!(info.type_, LfsType::REG);
-        assert_ok!(lfs_remove(lfs, dummy));
+        assert_ok!(lfs_remove(lfs, dummy).await);
     }
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        dummy,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-    ));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_open(lfs, file, dummy, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
+    assert_ok!(lfs_file_close(lfs, file).await);
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    assert_ok!(lfs_stat(lfs, dummy, info));
+    assert_ok!(lfs_stat(lfs, dummy, info).await);
     assert_eq!(info.type_, LfsType::REG);
     assert_ok!(lfs_unmount(lfs));
 }
@@ -231,81 +222,73 @@ fn test_superblocks_expand(
 /// Upstream: [cases.test_superblocks_magic_expand]
 /// Same as expand + magic check after.
 #[lfs_test]
-fn test_superblocks_magic_expand(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_superblocks_magic_expand<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(32, 33, 1)] block_cycles: i32,
     #[values(10, 100, 1000)] n: u32,
 ) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let dummy = "dummy";
     for _ in 0..n {
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            dummy,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_open(lfs, file, dummy, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
+        assert_ok!(lfs_file_close(lfs, file).await);
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok!(lfs_stat(lfs, dummy, info));
+        assert_ok!(lfs_stat(lfs, dummy, info).await);
         assert_eq!(info.type_, LfsType::REG);
-        assert_ok!(lfs_remove(lfs, dummy));
+        assert_ok!(lfs_remove(lfs, dummy).await);
     }
     assert_ok!(lfs_unmount(lfs));
 
     let mut magic = vec![0u8; max(16, cfg.read_size as usize)];
-    assert_ok!(read_block_raw(cfg, 0, 0, &mut magic));
+    assert_ok!(read_block_raw(cfg, 0, 0, &mut magic).await);
     assert_eq!(&magic[8..16], b"littlefs");
-    assert_ok!(read_block_raw(cfg, 1, 0, &mut magic));
+    assert_ok!(read_block_raw(cfg, 1, 0, &mut magic).await);
     assert_eq!(&magic[8..16], b"littlefs");
 }
 
 /// Upstream: [cases.test_superblocks_expand_power_cycle]
 /// Same as expand but unmount/remount after each iteration.
 #[lfs_test]
-fn test_superblocks_expand_power_cycle(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_superblocks_expand_power_cycle<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(32, 33, 1)] block_cycles: i32,
     #[values(10, 100, 1000)] n: u32,
 ) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
     let dummy = "dummy";
     for i in 0..n {
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        let err = lfs_stat(lfs, dummy, info);
+        let err = lfs_stat(lfs, dummy, info).await;
         assert!(
             err.is_ok() || (err == Err(Error::NoEntry) && i == 0),
             "stat dummy: err={err:?} i={i}"
         );
         if err.is_ok() {
             assert_eq!(info.type_, LfsType::REG);
-            assert_ok!(lfs_remove(lfs, dummy));
+            assert_ok!(lfs_remove(lfs, dummy).await);
         }
 
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            dummy,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_open(lfs, file, dummy, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
+        assert_ok!(lfs_file_close(lfs, file).await);
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok!(lfs_stat(lfs, dummy, info));
+        assert_ok!(lfs_stat(lfs, dummy, info).await);
         assert_eq!(info.type_, LfsType::REG);
         assert_ok!(lfs_unmount(lfs));
     }
 
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    assert_ok!(lfs_stat(lfs, dummy, info));
+    assert_ok!(lfs_stat(lfs, dummy, info).await);
     assert_eq!(info.type_, LfsType::REG);
     assert_ok!(lfs_unmount(lfs));
 }
