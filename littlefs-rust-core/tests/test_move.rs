@@ -993,21 +993,16 @@ async fn test_move_fix_relocation<'a>(
 ) {
     for relocations in 0..4u32 {
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
 
-        assert_ok!(lfs_mkdir(lfs, "parent"));
-        assert_ok!(lfs_mkdir(lfs, "parent/child"));
+        assert_ok!(lfs_mkdir(lfs, "parent").await);
+        assert_ok!(lfs_mkdir(lfs, "parent/child").await);
 
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            "parent/1.move_me",
-            LFS_O_WRONLY | LFS_O_CREAT,
-        ));
-        assert_eq!(lfs_file_write(lfs, file, b"move me\0"), Ok(8));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_open(lfs, file, "parent/1.move_me", LFS_O_WRONLY | LFS_O_CREAT,).await);
+        assert_eq!(lfs_file_write(lfs, file, b"move me\0").await, Ok(8));
+        assert_ok!(lfs_file_close(lfs, file).await);
 
         for (path, content) in [
             ("parent/0.before", b"test.1\0"),
@@ -1015,9 +1010,9 @@ async fn test_move_fix_relocation<'a>(
             ("parent/child/0.before", b"test.3\0"),
             ("parent/child/2.after", b"test.4\0"),
         ] {
-            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
-            assert_eq!(lfs_file_write(lfs, file, content), Ok(7));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
+            assert_eq!(lfs_file_write(lfs, file, content).await, Ok(7));
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
 
         let mut files = [
@@ -1033,45 +1028,40 @@ async fn test_move_fix_relocation<'a>(
             "parent/child/2.after",
         ];
         for (f, p) in files.iter_mut().zip(paths) {
-            assert_ok!(lfs_file_open(lfs, f, p, LFS_O_WRONLY | LFS_O_TRUNC));
+            assert_ok!(lfs_file_open(lfs, f, p, LFS_O_WRONLY | LFS_O_TRUNC).await);
         }
         for (f, content) in
             files
                 .iter_mut()
                 .zip([b"test.5\0", b"test.6\0", b"test.7\0", b"test.8\0"])
         {
-            assert_eq!(lfs_file_write(lfs, f, content), Ok(7));
+            assert_eq!(lfs_file_write(lfs, f, content).await, Ok(7));
         }
 
         if relocations & 1 != 0 {
-            let pair = dir_pair(lfs, "parent");
-
+            let pair = dir_pair(lfs, "parent").await;
             lfs_emubd_setwear(cfg, pair[0], 0xffffffff);
             lfs_emubd_setwear(cfg, pair[1], 0xffffffff);
         }
         if relocations & 2 != 0 {
-            let pair = dir_pair(lfs, "parent/child");
+            let pair = dir_pair(lfs, "parent/child").await;
             lfs_emubd_setwear(cfg, pair[0], 0xffffffff);
             lfs_emubd_setwear(cfg, pair[1], 0xffffffff);
         }
 
-        assert_ok!(lfs_rename(
-            lfs,
-            "parent/1.move_me",
-            "parent/child/1.move_me",
-        ));
+        assert_ok!(lfs_rename(lfs, "parent/1.move_me", "parent/child/1.move_me",).await);
 
         for f in &mut files {
-            assert_ok!(lfs_file_close(lfs, f));
+            assert_ok!(lfs_file_close(lfs, f).await);
         }
 
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_ok!(lfs_dir_open(lfs, dir, "parent"));
+        assert_ok!(lfs_dir_open(lfs, dir, "parent").await);
         let expect_parent = ["0.before", "2.after", "child"];
         let mut idx = 0;
         loop {
-            let n = lfs_dir_read(lfs, dir, info);
+            let n = lfs_dir_read(lfs, dir, info).await;
             assert!(n.is_ok());
             if n == Ok(false) {
                 break;
@@ -1091,10 +1081,10 @@ async fn test_move_fix_relocation<'a>(
             idx += 1;
         }
         assert_eq!(idx, expect_parent.len());
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+        assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
         assert_ok!(lfs_dir_close(lfs, dir));
 
-        assert_ok!(lfs_dir_open(lfs, dir, "parent/child"));
+        assert_ok!(lfs_dir_open(lfs, dir, "parent/child").await);
         let expect_child = ["0.before", "1.move_me", "2.after"];
         let mut idx = 0;
         loop {

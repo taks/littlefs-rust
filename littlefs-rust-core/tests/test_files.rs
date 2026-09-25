@@ -471,12 +471,7 @@ async fn test_files_many_power_cycle<'a>(cfg: &LfsConfig<'a>) {
         assert_ok!(lfs_mount(lfs, cfg).await);
         let path = &format!("file_{:03}", i);
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
         let content = format!("Hi {:03}\0", i);
         let bytes = content.as_bytes();
         assert_eq!(bytes.len(), 7);
@@ -502,8 +497,9 @@ async fn test_files_many_power_cycle<'a>(cfg: &LfsConfig<'a>) {
 ///
 /// Reentrant creation of 300 files with power-loss simulation.
 /// Can take 30+ seconds due to iteration over power-loss points.
-#[lfs_test()]
 #[cfg(feature = "slow_tests")]
+#[lfs_test()]
+#[tokio::test]
 fn test_files_many_power_loss(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
     const N: usize = 300;
     let lfs = &mut Lfs::default();
@@ -539,30 +535,26 @@ fn test_files_many_power_loss(cfg: &LfsConfig, #[values(false, true)] reentrant:
 // Bug reproducers, debug helpers, unit tests. Not in upstream.
 
 #[lfs_test]
-fn test_files_same_session(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_files_same_session<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "hello";
     let data = b"Hello World!\0";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        OpenFlags::CREATE | OpenFlags::WRITE
-    ));
-    let n = lfs_file_write(lfs, file, data);
+    assert_ok!(lfs_file_open(lfs, file, path, OpenFlags::CREATE | OpenFlags::WRITE).await);
+    let n = lfs_file_write(lfs, file, data).await;
     assert_eq!(n, Ok(data.len() as u32));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let file2 = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file2, path, OpenFlags::READ));
+    assert_ok!(lfs_file_open(lfs, file2, path, OpenFlags::READ).await);
     assert_eq!(lfs_file_size(lfs, file2), 13);
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file2, &mut buf[..32]);
+    let n = lfs_file_read(lfs, file2, &mut buf[..32]).await;
     assert_eq!(n, Ok(13));
     assert_eq!(&buf[..13], b"Hello World!\0");
-    assert_ok!(lfs_file_close(lfs, file2));
+    assert_ok!(lfs_file_close(lfs, file2).await);
 }

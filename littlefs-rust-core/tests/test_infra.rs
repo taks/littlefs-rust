@@ -60,14 +60,14 @@ async fn test_write_verify_prng_file<'a>(cfg: &LfsConfig<'a>) {
     assert_ok!(
         littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT,).await
     );
-    write_prng_file(lfs, file, 256, 31, 1);
+    write_prng_file(lfs, file, 256, 31, 1).await;
     assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file).await);
     assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
 
     // Remount and verify
     assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg).await);
     assert_ok!(littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY,).await);
-    verify_prng_file(lfs, file, 256, 31, 1);
+    verify_prng_file(lfs, file, 256, 31, 1).await;
     assert_ok!(littlefs_rust_core::lfs_file_close(lfs, file).await);
     assert_ok!(littlefs_rust_core::lfs_unmount(lfs));
 }

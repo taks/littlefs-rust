@@ -196,37 +196,38 @@ async fn test_dirs_many_rename<'a>(
 /// Format, create N dirs a00..a{N-1}, unmount, mount, rename a→z, unmount,
 /// mount, verify dir_read shows z00..z{N-1} in order.
 #[lfs_test]
-fn test_dirs_many_rename_append(cfg: &LfsConfig, #[values(5, 7, 9, 11)] n: usize) {
+#[tokio::test]
+async fn test_dirs_many_rename_append<'a>(cfg: &LfsConfig<'a>, #[values(5, 7, 9, 11)] n: usize) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     for i in 0..n {
         let path = &format!("a{i:02}");
-        assert_ok!(lfs_mkdir(lfs, path));
+        assert_ok!(lfs_mkdir(lfs, path).await);
     }
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
     for i in 0..n {
         let old = &format!("a{i:02}");
         let new = &format!("z{i:02}");
-        assert_ok!(lfs_rename(lfs, old, new));
+        assert_ok!(lfs_rename(lfs, old, new).await);
     }
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
     assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
     assert_eq!(info.type_, LfsType::DIR);
     assert_eq!(info.name[0], b'.');
     assert_eq!(info.name[1], 0);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
     assert_eq!(info.type_, LfsType::DIR);
     assert_eq!(info.name[0], b'.');
     assert_eq!(info.name[1], b'.');
@@ -236,7 +237,7 @@ fn test_dirs_many_rename_append(cfg: &LfsConfig, #[values(5, 7, 9, 11)] n: usize
         let expected = format!("z{i:02}");
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         assert_eq!(
-            lfs_dir_read(lfs, dir, info),
+            lfs_dir_read(lfs, dir, info).await,
             Ok(true),
             "N={n}, expected entry {i}"
         );

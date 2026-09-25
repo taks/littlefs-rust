@@ -159,8 +159,9 @@ async fn test_badblocks_single<'a>(
 /// Mark first half of blocks (starting at 2) as worn. Format, create
 /// 9 dirs+files, unmount, remount, verify.
 #[lfs_test]
-fn test_badblocks_region_corruption(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_badblocks_region_corruption<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(Some(0x00), Some(0xff), None)] erase_value: Option<u8>,
     #[values(256)] erase_count: u32,
     #[values(0xffffffff)] erase_cycles: u32,
@@ -182,14 +183,14 @@ fn test_badblocks_region_corruption(
     }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    badblocks_create_dirs_and_files(lfs);
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    badblocks_create_dirs_and_files(lfs).await;
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    badblocks_verify_dirs_and_files(lfs);
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    badblocks_verify_dirs_and_files(lfs).await;
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -204,8 +205,9 @@ fn test_badblocks_region_corruption(
 /// Mark every other block starting at 2 as worn. Format, create
 /// 9 dirs+files, unmount, remount, verify.
 #[lfs_test]
-fn test_badblocks_alternating_corruption(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_badblocks_alternating_corruption<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(Some(0x00), Some(0xff), None)] erase_value: Option<u8>,
     #[values(256)] erase_count: u32,
     #[values(0xffffffff)] erase_cycles: u32,
@@ -227,14 +229,14 @@ fn test_badblocks_alternating_corruption(
     }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    badblocks_create_dirs_and_files(lfs);
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    badblocks_create_dirs_and_files(lfs).await;
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    badblocks_verify_dirs_and_files(lfs);
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    badblocks_verify_dirs_and_files(lfs).await;
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -247,8 +249,9 @@ fn test_badblocks_alternating_corruption(
 /// Expect lfs_format to fail with LFS_ERR_NOSPC.
 /// Expect lfs_mount to fail with LFS_ERR_CORRUPT.
 #[lfs_test]
-fn test_badblocks_superblocks(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_badblocks_superblocks<'a>(
+    cfg: &LfsConfig<'a>,
     #[values(0xffffffff)] erase_cycles: u32,
     #[values(Some(0x00), Some(0xff), None)] erase_value: Option<u8>,
     #[values(
@@ -264,8 +267,8 @@ fn test_badblocks_superblocks(
     lfs_emubd_setwear(cfg, 1, 0xffffffff);
 
     let lfs = &mut Lfs::default();
-    assert_eq!(lfs_format(lfs, cfg), Err(Error::NoSpace));
-    assert_eq!(lfs_mount(lfs, cfg), Err(Error::Corrupt));
+    assert_eq!(lfs_format(lfs, cfg).await, Err(Error::NoSpace));
+    assert_eq!(lfs_mount(lfs, cfg).await, Err(Error::Corrupt));
 }
 
 // ── Helpers shared by region/alternating tests ──────────────────────────────

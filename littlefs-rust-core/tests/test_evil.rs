@@ -220,34 +220,30 @@ async fn test_evil_invalid_file_pointer<'a>(
 /// invalid block pointers into it. Mount + stat succeed. File read fails
 /// with Error::Corrupt. If SIZE > 2*BLOCK_SIZE, mkdir also fails.
 #[lfs_test]
-fn test_evil_invalid_ctz_pointer(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_evil_invalid_ctz_pointer<'a>(cfg: &LfsConfig<'a>) {
     let block_size = cfg.block_size;
     for &size in &[2 * block_size, 3 * block_size, 4 * block_size] {
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
 
         let file_name = "file_here";
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            file_name,
-            LFS_O_WRONLY | LFS_O_CREAT,
-        ));
+        assert_ok!(lfs_file_open(lfs, file, file_name, LFS_O_WRONLY | LFS_O_CREAT,).await);
         for _ in 0..size {
             let c: u8 = b'c';
-            let n = lfs_file_write(lfs, file, &[c]);
+            let n = lfs_file_write(lfs, file, &[c]).await;
             assert_eq!(n, Ok(1));
         }
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
         assert_ok!(lfs_unmount(lfs));
 
         // Read the CTZ struct and corrupt the head block
         assert_ok!(lfs_init(lfs, cfg));
         let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
         let pair: [u32; 2] = [0, 1];
-        assert_ok!(lfs_dir_fetch(lfs, mdir, pair));
+        assert_ok!(lfs_dir_fetch(lfs, mdir, pair).await);
 
         // Verify id 1 == our file
         let mut buffer = vec![0u8; 4 * cfg.block_size as usize];
@@ -257,7 +253,8 @@ fn test_evil_invalid_ctz_pointer(cfg: &LfsConfig) {
             lfs_mktag(0x700, 0x3ff, 0),
             lfs_mktag(LFS_TYPE_NAME, 1, 9),
             buffer.as_mut_bytes(),
-        );
+        )
+        .await;
         assert_eq!(tag, Ok(lfs_mktag(LFS_TYPE3_REG, 1, 9) as u32));
         assert_eq!(&buffer[..9], b"file_here");
 
@@ -269,7 +266,8 @@ fn test_evil_invalid_ctz_pointer(cfg: &LfsConfig) {
             lfs_mktag(0x700, 0x3ff, 0),
             lfs_mktag(LFS_TYPE_STRUCT, 1, core::mem::size_of::<LfsCtz>()),
             ctz.as_mut_bytes(),
-        );
+        )
+        .await;
         assert_eq!(
             tag,
             Ok(lfs_mktag(LFS_TYPE_CTZSTRUCT, 1, core::mem::size_of::<LfsCtz>()) as u32)
@@ -278,34 +276,34 @@ fn test_evil_invalid_ctz_pointer(cfg: &LfsConfig) {
 
         // Rewrite ctz.head block with bad pointers at offsets 0 and 4
         let mut bbuffer = vec![0u8; cfg.block_size as usize];
-        assert_ok!(read_block_raw(cfg, ctz.head, 0, &mut bbuffer));
+        assert_ok!(read_block_raw(cfg, ctz.head, 0, &mut bbuffer).await);
         let bad = 0xcccccccc_u32.to_le();
         bbuffer[0..4].copy_from_slice(&bad.to_ne_bytes());
         bbuffer[4..8].copy_from_slice(&bad.to_ne_bytes());
-        assert_ok!(erase_block_raw(cfg, ctz.head));
-        assert_ok!(write_block_raw(cfg, ctz.head, 0, &bbuffer));
+        assert_ok!(erase_block_raw(cfg, ctz.head).await);
+        assert_ok!(write_block_raw(cfg, ctz.head, 0, &bbuffer).await);
         assert_ok!(lfs_deinit(lfs));
 
         // Verify corruption behavior
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
 
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, file_name, info));
+        assert_ok!(lfs_stat(lfs, file_name, info).await);
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         assert_eq!(&info.name[..nul], b"file_here");
         assert_eq!(info.type_, LfsType::REG);
         assert_eq!(info.size, size);
 
-        assert_ok!(lfs_file_open(lfs, file, file_name, LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, file, file_name, LFS_O_RDONLY).await);
         assert_err!(
             Error::Corrupt,
-            lfs_file_read(lfs, file, &mut buffer[..size as usize]),
+            lfs_file_read(lfs, file, &mut buffer[..size as usize]).await,
         );
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
 
         if size > 2 * cfg.block_size {
             let dir_name = "dir_here";
-            assert_err!(Error::Corrupt, lfs_mkdir(lfs, dir_name));
+            assert_err!(Error::Corrupt, lfs_mkdir(lfs, dir_name).await);
         }
 
         assert_ok!(lfs_unmount(lfs));

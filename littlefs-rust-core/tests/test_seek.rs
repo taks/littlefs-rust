@@ -369,30 +369,26 @@ async fn test_seek_boundary_read<'a>(cfg: &LfsConfig<'a>) {
 /// Upstream: [cases.test_seek_boundary_write]
 /// defines.COUNT = 132
 #[lfs_test]
-fn test_seek_boundary_write(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_seek_boundary_write<'a>(cfg: &LfsConfig<'a>) {
     const COUNT: u32 = 132;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "kitty";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,).await);
     for _ in 0..COUNT {
-        let n = lfs_file_write(lfs, file, KITTY);
+        let n = lfs_file_write(lfs, file, KITTY).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR).await);
 
     let size = KITTY.len() as i64;
     let offsets: [i64; 13] = [
@@ -417,50 +413,50 @@ fn test_seek_boundary_write(cfg: &LfsConfig) {
             continue;
         }
         assert_eq!(
-            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET),
+            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET).await,
             Ok(off as u32)
         );
-        let n = lfs_file_write(lfs, file, HEDGEHOG);
+        let n = lfs_file_write(lfs, file, HEDGEHOG).await;
         assert_eq!(n, Ok(HEDGEHOG.len() as u32));
 
         assert_eq!(
-            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET),
+            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET).await,
             Ok(off as u32)
         );
-        let n = lfs_file_read(lfs, file, &mut buf[..HEDGEHOG.len()]);
+        let n = lfs_file_read(lfs, file, &mut buf[..HEDGEHOG.len()]).await;
         assert_eq!(n, Ok(HEDGEHOG.len() as u32));
         assert_eq!(&buf[..HEDGEHOG.len()], HEDGEHOG);
 
-        assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
-        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+        assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET).await, Ok(0));
+        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
         assert_eq!(&buf[..KITTY.len()], KITTY);
 
         assert_eq!(
-            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET),
+            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET).await,
             Ok(off as u32)
         );
-        let n = lfs_file_read(lfs, file, &mut buf[..HEDGEHOG.len()]);
+        let n = lfs_file_read(lfs, file, &mut buf[..HEDGEHOG.len()]).await;
         assert_eq!(n, Ok(HEDGEHOG.len() as u32));
         assert_eq!(&buf[..HEDGEHOG.len()], HEDGEHOG);
 
-        assert_ok!(lfs_file_sync(lfs, file));
+        assert_ok!(lfs_file_sync(lfs, file).await);
 
-        assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET), Ok(0));
-        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]);
+        assert_eq!(lfs_file_seek(lfs, file, 0, LFS_SEEK_SET).await, Ok(0));
+        let n = lfs_file_read(lfs, file, &mut buf[..KITTY.len()]).await;
         assert_eq!(n, Ok(KITTY.len() as u32));
         assert_eq!(&buf[..KITTY.len()], KITTY);
 
         assert_eq!(
-            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET),
+            lfs_file_seek(lfs, file, off as i32, LFS_SEEK_SET).await,
             Ok(off as u32)
         );
-        let n = lfs_file_read(lfs, file, &mut buf[..HEDGEHOG.len()]);
+        let n = lfs_file_read(lfs, file, &mut buf[..HEDGEHOG.len()]).await;
         assert_eq!(n, Ok(HEDGEHOG.len() as u32));
         assert_eq!(&buf[..HEDGEHOG.len()], HEDGEHOG);
     }
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 

@@ -419,50 +419,44 @@ async fn test_alloc_split_dir<'a>(cfg: &LfsConfig<'a>) {
 ///
 /// Fill padding file, remove, create exhaustion file, write until NOSPC, GC, remount, verify.
 #[lfs_test]
-fn test_alloc_exhaustion_wraparound(cfg: &LfsConfig, #[values(false, true)] infer_bc: bool) {
+#[tokio::test]
+async fn test_alloc_exhaustion_wraparound<'a>(
+    cfg: &LfsConfig<'a>,
+    #[values(false, true)] infer_bc: bool,
+) {
     let block_size = cfg.block_size;
     let block_count = cfg.block_count;
     let size: usize = ((block_size - 8) as usize * (block_count - 4) as usize) / 3;
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
     let mount_cfg = LfsConfig {
         block_count: if infer_bc { 0 } else { cfg.block_count },
         ..*cfg
     };
-    assert_ok!(lfs_mount(lfs, &mount_cfg));
+    assert_ok!(lfs_mount(lfs, &mount_cfg).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "padding",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "padding", LFS_O_WRONLY | LFS_O_CREAT,).await);
     let buffering = b"buffering";
     for i in (0..size).step_by(buffering.len()) {
         let chunk = (size - i).min(buffering.len());
-        let n = lfs_file_write(lfs, file, &buffering[..chunk]);
+        let n = lfs_file_write(lfs, file, &buffering[..chunk]).await;
         assert_eq!(n, Ok(chunk as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_remove(lfs, "padding"));
+    assert_ok!(lfs_file_close(lfs, file).await);
+    assert_ok!(lfs_remove(lfs, "padding").await);
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_WRONLY | LFS_O_CREAT,).await);
     let exhaustion = b"exhaustion";
-    let n = lfs_file_write(lfs, file, exhaustion);
+    let n = lfs_file_write(lfs, file, exhaustion).await;
     assert_eq!(n, Ok(exhaustion.len() as u32));
-    assert_ok!(lfs_file_sync(lfs, file));
+    assert_ok!(lfs_file_sync(lfs, file).await);
 
     let blah = b"blahblahblahblah";
     loop {
-        let res = lfs_file_write(lfs, file, blah);
+        let res = lfs_file_write(lfs, file, blah).await;
         if let Err(err) = res {
             assert_eq!(err, Error::NoSpace);
             break;
@@ -470,20 +464,20 @@ fn test_alloc_exhaustion_wraparound(cfg: &LfsConfig, #[values(false, true)] infe
         assert_eq!(res, Ok(blah.len() as u32));
     }
 
-    assert_ok!(lfs_fs_gc(lfs));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_fs_gc(lfs).await);
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, &mount_cfg));
-    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_RDONLY));
+    assert_ok!(lfs_mount(lfs, &mount_cfg).await);
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_RDONLY).await);
     let fsize = lfs_file_size(lfs, file);
     assert!(fsize >= exhaustion.len() as u32);
     let mut buf = [0u8; 16];
-    let n = lfs_file_read(lfs, file, &mut buf[..exhaustion.len()]);
+    let n = lfs_file_read(lfs, file, &mut buf[..exhaustion.len()]).await;
     assert_eq!(n, Ok(exhaustion.len() as u32));
     assert_eq!(&buf[..exhaustion.len()], exhaustion);
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_remove(lfs, "exhaustion"));
+    assert_ok!(lfs_file_close(lfs, file).await);
+    assert_ok!(lfs_remove(lfs, "exhaustion").await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -493,7 +487,8 @@ fn test_alloc_exhaustion_wraparound(cfg: &LfsConfig, #[values(false, true)] infe
 ///
 /// Find max file size, verify mkdir fits with count writes, fails with count+1.
 #[lfs_test]
-fn test_alloc_dir_exhaustion(cfg: &LfsConfig, #[values(false, true)] infer_bc: bool) {
+#[tokio::test]
+async fn test_alloc_dir_exhaustion<'a>(cfg: &LfsConfig<'a>, #[values(false, true)] infer_bc: bool) {
     let block_count = cfg.block_count;
     let mount_cfg = LfsConfig {
         block_count: if infer_bc { 0 } else { block_count },
@@ -501,23 +496,18 @@ fn test_alloc_dir_exhaustion(cfg: &LfsConfig, #[values(false, true)] infer_bc: b
     };
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, &mount_cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, &mount_cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "exhaustiondir"));
+    assert_ok!(lfs_mkdir(lfs, "exhaustiondir").await);
 
     let file = &mut LfsFile::default();
     let blah = b"blahblahblahblah";
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_WRONLY | LFS_O_CREAT,).await);
 
     let mut count = 0i32;
     loop {
-        let err = lfs_file_write(lfs, file, blah);
+        let err = lfs_file_write(lfs, file, blah).await;
         if err.is_err() {
             assert_err!(Error::NoSpace, err);
             break;
@@ -526,44 +516,34 @@ fn test_alloc_dir_exhaustion(cfg: &LfsConfig, #[values(false, true)] infer_bc: b
         count += 1;
     }
 
-    assert_ok!(lfs_fs_gc(lfs));
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_remove(lfs, "exhaustion"));
-    assert_ok!(lfs_remove(lfs, "exhaustiondir"));
+    assert_ok!(lfs_fs_gc(lfs).await);
+    assert_ok!(lfs_file_close(lfs, file).await);
+    assert_ok!(lfs_remove(lfs, "exhaustion").await);
+    assert_ok!(lfs_remove(lfs, "exhaustiondir").await);
 
     // Recreate with count writes; mkdir should succeed
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_WRONLY | LFS_O_CREAT,).await);
     for _ in 0..count {
-        let n = lfs_file_write(lfs, file, blah);
+        let n = lfs_file_write(lfs, file, blah).await;
         assert_eq!(n, Ok(blah.len() as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
-    assert_ok!(lfs_mkdir(lfs, "exhaustiondir"));
-    assert_ok!(lfs_remove(lfs, "exhaustiondir"));
-    assert_ok!(lfs_remove(lfs, "exhaustion"));
+    assert_ok!(lfs_file_close(lfs, file).await);
+    assert_ok!(lfs_mkdir(lfs, "exhaustiondir").await);
+    assert_ok!(lfs_remove(lfs, "exhaustiondir").await);
+    assert_ok!(lfs_remove(lfs, "exhaustion").await);
 
     // Recreate with count+1 writes; mkdir should fail NOSPC
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "exhaustion",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, file, "exhaustion", LFS_O_WRONLY | LFS_O_CREAT,).await);
     for _ in 0..(count + 1) {
-        let n = lfs_file_write(lfs, file, blah);
+        let n = lfs_file_write(lfs, file, blah).await;
         assert_eq!(n, Ok(blah.len() as u32));
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
-    let err = lfs_mkdir(lfs, "exhaustiondir");
+    let err = lfs_mkdir(lfs, "exhaustiondir").await;
     assert_err!(Error::NoSpace, err);
 
-    assert_ok!(lfs_remove(lfs, "exhaustion"));
+    assert_ok!(lfs_remove(lfs, "exhaustion").await);
     assert_ok!(lfs_unmount(lfs));
 }
 
