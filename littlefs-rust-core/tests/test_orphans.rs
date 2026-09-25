@@ -10,15 +10,15 @@ use std::assert_matches;
 
 #[cfg(feature = "slow_tests")]
 use common::{ALPHA, test_prng};
-use common::{dir_block, erase_block_raw, read_block_raw, write_block_raw};
+use common::{LfsConfig, dir_block, erase_block_raw, read_block_raw, write_block_raw};
 #[cfg(feature = "slow_tests")]
 use littlefs_rust_core::lfs_type::LfsType;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_SOFTTAIL;
 use littlefs_rust_core::{
-    Error, Lfs, LfsConfig, LfsInfo, LfsMattr, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc,
-    lfs_dir_commit, lfs_dir_fetch, lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans,
-    lfs_fs_mkconsistent, lfs_fs_preporphans, lfs_fs_size, lfs_mkdir, lfs_mktag, lfs_mount,
-    lfs_pair_tole32, lfs_remove, lfs_stat, lfs_unmount,
+    Error, Lfs, LfsInfo, LfsMattr, LfsMdir, lfs_alloc_ckpoint, lfs_dir_alloc, lfs_dir_commit,
+    lfs_dir_fetch, lfs_format, lfs_fs_forceconsistency, lfs_fs_hasorphans, lfs_fs_mkconsistent,
+    lfs_fs_preporphans, lfs_fs_size, lfs_mkdir, lfs_mktag, lfs_mount, lfs_pair_tole32, lfs_remove,
+    lfs_stat, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
@@ -26,12 +26,13 @@ use zerocopy::IntoBytes;
 // --- test_orphans_mkconsistent_fresh ---
 // Minimal: format, mount, mkconsistent. No mkdir/remove. Sanity check.
 #[lfs_test]
-fn test_orphans_mkconsistent_fresh(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_orphans_mkconsistent_fresh<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_fs_mkconsistent(lfs));
+    assert_ok!(lfs_fs_mkconsistent(lfs).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -39,37 +40,38 @@ fn test_orphans_mkconsistent_fresh(cfg: &LfsConfig) {
 // With lazy force_consistency, mkdir/remove run deorphan first. So preporphans(1)
 // gets cleared before the commit. Verify: mkconsistent clears (no-op) and persists.
 #[lfs_test]
-fn test_orphans_mkconsistent_no_orphans(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_orphans_mkconsistent_no_orphans<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let lfs_ptr = lfs;
     assert_ok!(lfs_fs_preporphans(lfs_ptr, 1));
     assert!(lfs_fs_hasorphans(lfs_ptr));
 
     let path = "_p";
-    assert_ok!(lfs_mkdir(lfs_ptr, path));
-    assert_ok!(lfs_remove(lfs_ptr, path));
+    assert_ok!(lfs_mkdir(lfs_ptr, path).await);
+    assert_ok!(lfs_remove(lfs_ptr, path).await);
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "force_consistency before mkdir clears orphans"
     );
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, cfg));
+    assert_ok!(lfs_mount(lfs_ptr, cfg).await);
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "persisted gstate has no orphans"
     );
-    assert_ok!(lfs_fs_mkconsistent(lfs_ptr));
+    assert_ok!(lfs_fs_mkconsistent(lfs_ptr).await);
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "after mkconsistent, gstate should have no orphans"
     );
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, cfg));
+    assert_ok!(lfs_mount(lfs_ptr, cfg).await);
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "after remount, gstate persisted to disk has no orphans"
@@ -80,18 +82,19 @@ fn test_orphans_mkconsistent_no_orphans(cfg: &LfsConfig) {
 // --- test_orphans_no_orphans ---
 // preporphans(+1), mkdir+remove clears via force_consistency, unmount
 #[lfs_test]
-fn test_orphans_no_orphans(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_orphans_no_orphans<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let lfs_ptr = lfs;
     assert_ok!(lfs_fs_preporphans(lfs_ptr, 1));
     assert!(lfs_fs_hasorphans(lfs_ptr));
 
     let path = "_x";
-    assert_ok!(lfs_mkdir(lfs_ptr, path));
-    assert_ok!(lfs_remove(lfs_ptr, path));
+    assert_ok!(lfs_mkdir(lfs_ptr, path).await);
+    assert_ok!(lfs_remove(lfs_ptr, path).await);
     assert!(!lfs_fs_hasorphans(lfs_ptr));
     assert_ok!(lfs_unmount(lfs_ptr));
 }
@@ -100,15 +103,16 @@ fn test_orphans_no_orphans(cfg: &LfsConfig) {
 // Upstream: orphan operations without powerloss.
 // Uses n=1 dir to match test_dirs_many_removal (n=2+ mkdir currently fails in this crate).
 #[lfs_test]
-fn test_orphans_nonreentrant(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_orphans_nonreentrant<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let lfs_ptr = lfs;
     let path = "a";
-    assert_ok!(lfs_mkdir(lfs_ptr, path));
-    assert_ok!(lfs_remove(lfs_ptr, path));
+    assert_ok!(lfs_mkdir(lfs_ptr, path).await);
+    assert_ok!(lfs_remove(lfs_ptr, path).await);
     assert!(!lfs_fs_hasorphans(lfs_ptr));
     assert_ok!(lfs_unmount(lfs_ptr));
 }
@@ -118,29 +122,30 @@ fn test_orphans_nonreentrant(cfg: &LfsConfig) {
 /// Upstream: [cases.test_orphans_normal]
 /// if = 'PROG_SIZE <= 0x3fe'. Corrupt child's commit to create orphan, mkdir triggers deorphan, check lfs_fs_size.
 #[lfs_test]
-fn test_orphans_normal(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_orphans_normal<'a>(cfg: &LfsConfig<'a>) {
     if cfg.prog_size > 0x3fe {
         return;
     }
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let lfs_ptr = lfs;
-    assert_ok!(lfs_mkdir(lfs_ptr, "parent"));
-    assert_ok!(lfs_mkdir(lfs_ptr, "parent/orphan"));
-    assert_ok!(lfs_mkdir(lfs_ptr, "parent/child"));
-    assert_ok!(lfs_remove(lfs_ptr, "parent/orphan"));
+    assert_ok!(lfs_mkdir(lfs_ptr, "parent").await);
+    assert_ok!(lfs_mkdir(lfs_ptr, "parent/orphan").await);
+    assert_ok!(lfs_mkdir(lfs_ptr, "parent/child").await);
+    assert_ok!(lfs_remove(lfs_ptr, "parent/orphan").await);
     assert_ok!(lfs_unmount(lfs_ptr));
 
     // Mount to get child dir block, then corrupt it
-    assert_ok!(lfs_mount(lfs_ptr, cfg));
-    let block = dir_block(lfs_ptr, "parent/child");
+    assert_ok!(lfs_mount(lfs_ptr, cfg).await);
+    let block = dir_block(lfs_ptr, "parent/child").await;
     assert_ok!(lfs_unmount(lfs_ptr));
 
     let block_size = cfg.block_size as usize;
     let mut buffer = vec![0u8; block_size];
-    assert_eq!(read_block_raw(cfg, block, 0, &mut buffer), Ok(()));
+    assert_eq!(read_block_raw(cfg, block, 0, &mut buffer).await, Ok(()));
 
     let mut off = block_size as i32 - 1;
     while off >= 0 && buffer[off as usize] == 0xff {
@@ -150,40 +155,41 @@ fn test_orphans_normal(cfg: &LfsConfig) {
     let start = (off - 3) as usize;
     buffer[start..start + 3].fill(cfg.block_size as u8);
 
-    assert_eq!(erase_block_raw(cfg, block), Ok(()));
-    assert_eq!(write_block_raw(cfg, block, 0, &buffer), Ok(()));
+    assert_eq!(erase_block_raw(cfg, block).await, Ok(()));
+    assert_eq!(write_block_raw(cfg, block, 0, &buffer).await, Ok(()));
 
     // Mount and verify orphan is gone, child exists, size is 8
-    assert_ok!(lfs_mount(lfs_ptr, cfg));
+    assert_ok!(lfs_mount(lfs_ptr, cfg).await);
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     assert_eq!(
-        lfs_stat(lfs_ptr, "parent/orphan", info),
+        lfs_stat(lfs_ptr, "parent/orphan", info).await,
         Err(Error::NoEntry)
     );
-    assert_ok!(lfs_stat(lfs_ptr, "parent/child", info));
-    assert_eq!(lfs_fs_size(lfs_ptr), Ok(8));
+    assert_ok!(lfs_stat(lfs_ptr, "parent/child", info).await);
+    assert_eq!(lfs_fs_size(lfs_ptr).await, Ok(8));
     assert_ok!(lfs_unmount(lfs_ptr));
 
     // mkdir parent/otherchild triggers deorphan, size still 8
-    assert_ok!(lfs_mount(lfs_ptr, cfg));
-    assert_ok!(lfs_mkdir(lfs_ptr, "parent/otherchild"));
+    assert_ok!(lfs_mount(lfs_ptr, cfg).await);
+    assert_ok!(lfs_mkdir(lfs_ptr, "parent/otherchild").await);
     assert_eq!(
-        lfs_stat(lfs_ptr, "parent/orphan", info),
+        lfs_stat(lfs_ptr, "parent/orphan", info).await,
         Err(Error::NoEntry)
     );
-    assert_ok!(lfs_stat(lfs_ptr, "parent/child", info));
-    assert_ok!(lfs_stat(lfs_ptr, "parent/otherchild", info));
-    assert_eq!(lfs_fs_size(lfs_ptr), Ok(8));
+    assert_ok!(lfs_stat(lfs_ptr, "parent/child", info).await);
+    assert_ok!(lfs_stat(lfs_ptr, "parent/otherchild", info).await);
+    assert_eq!(lfs_fs_size(lfs_ptr).await, Ok(8));
     assert_ok!(lfs_unmount(lfs_ptr));
 }
 
 /// Upstream: [cases.test_orphans_one_orphan]
 /// Create orphan via internal APIs (lfs_dir_alloc + SOFTTAIL commit + lfs_fs_preporphans). Run lfs_fs_forceconsistency.
 #[lfs_test]
-fn test_orphans_one_orphan(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_orphans_one_orphan<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let lfs_ptr = lfs;
 
@@ -199,8 +205,8 @@ fn test_orphans_one_orphan(cfg: &LfsConfig) {
         tail: [0, 0],
     };
     lfs_alloc_ckpoint(lfs_ptr);
-    assert_ok!(lfs_dir_alloc(lfs_ptr, &mut orphan));
-    assert_ok!(lfs_dir_commit(lfs_ptr, &mut orphan, &[]));
+    assert_ok!(lfs_dir_alloc(lfs_ptr, &mut orphan).await);
+    assert_ok!(lfs_dir_commit(lfs_ptr, &mut orphan, &[]).await);
 
     // Append orphan to root and mark FS as having orphans
     assert_ok!(lfs_fs_preporphans(lfs_ptr, 1));
@@ -215,20 +221,20 @@ fn test_orphans_one_orphan(cfg: &LfsConfig) {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(lfs_ptr, &mut mdir, root_pair));
+    assert_ok!(lfs_dir_fetch(lfs_ptr, &mut mdir, root_pair).await);
     lfs_pair_tole32(&mut orphan.pair);
     let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
         buffer: orphan.pair.as_bytes(),
     }];
-    assert_ok!(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
+    assert_ok!(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs).await);
 
     assert!(lfs_fs_hasorphans(lfs_ptr), "should have orphans");
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, cfg));
+    assert_ok!(lfs_mount(lfs_ptr, cfg).await);
     assert!(lfs_fs_hasorphans(lfs_ptr), "orphans should persist");
-    assert_ok!(lfs_fs_forceconsistency(lfs_ptr));
+    assert_ok!(lfs_fs_forceconsistency(lfs_ptr).await);
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "forceconsistency should clear orphans"
@@ -239,10 +245,11 @@ fn test_orphans_one_orphan(cfg: &LfsConfig) {
 /// Upstream: [cases.test_orphans_mkconsistent_one_orphan]
 /// Same orphan creation as one_orphan. Use lfs_fs_mkconsistent + remount. Verify cleanup.
 #[lfs_test]
-fn test_orphans_mkconsistent_one_orphan(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_orphans_mkconsistent_one_orphan<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let lfs_ptr = lfs;
 
@@ -258,8 +265,8 @@ fn test_orphans_mkconsistent_one_orphan(cfg: &LfsConfig) {
         tail: [0, 0],
     };
     lfs_alloc_ckpoint(lfs_ptr);
-    assert_ok!(lfs_dir_alloc(lfs_ptr, &mut orphan));
-    assert_ok!(lfs_dir_commit(lfs_ptr, &mut orphan, &[]));
+    assert_ok!(lfs_dir_alloc(lfs_ptr, &mut orphan).await);
+    assert_ok!(lfs_dir_commit(lfs_ptr, &mut orphan, &[]).await);
 
     // Append orphan to root and mark FS as having orphans
     assert_ok!(lfs_fs_preporphans(lfs_ptr, 1));
@@ -274,20 +281,20 @@ fn test_orphans_mkconsistent_one_orphan(cfg: &LfsConfig) {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(lfs_ptr, &mut mdir, root_pair));
+    assert_ok!(lfs_dir_fetch(lfs_ptr, &mut mdir, root_pair).await);
     lfs_pair_tole32(&mut orphan.pair);
     let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_SOFTTAIL, 0x3ff, 8),
         buffer: orphan.pair.as_bytes(),
     }];
-    assert_ok!(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs));
+    assert_ok!(lfs_dir_commit(lfs_ptr, &mut mdir, &attrs).await);
 
     assert!(lfs_fs_hasorphans(lfs_ptr), "should have orphans");
     assert_ok!(lfs_unmount(lfs_ptr));
 
-    assert_ok!(lfs_mount(lfs_ptr, cfg));
+    assert_ok!(lfs_mount(lfs_ptr, cfg).await);
     assert!(lfs_fs_hasorphans(lfs_ptr), "orphans should persist");
-    assert_ok!(lfs_fs_mkconsistent(lfs_ptr));
+    assert_ok!(lfs_fs_mkconsistent(lfs_ptr).await);
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "mkconsistent should clear orphans"
@@ -295,7 +302,7 @@ fn test_orphans_mkconsistent_one_orphan(cfg: &LfsConfig) {
     assert_ok!(lfs_unmount(lfs_ptr));
 
     // Remount and verify orphans are still gone
-    assert_ok!(lfs_mount(lfs_ptr, cfg));
+    assert_ok!(lfs_mount(lfs_ptr, cfg).await);
     assert!(
         !lfs_fs_hasorphans(lfs_ptr),
         "after remount, orphans should still be gone"

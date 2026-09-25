@@ -113,35 +113,31 @@ async fn test_entries_shrink<'a>(cfg: &LfsConfig<'a>) {
 
 // --- test_entries_spill ---
 #[lfs_test]
-fn test_entries_spill(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_entries_spill<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let buf = [b'c'; 256];
     for i in 0..4 {
         let path = &format!("hi{i}");
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-        ));
-        let n = lfs_file_write(lfs, file, &buf[..200]);
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,).await);
+        let n = lfs_file_write(lfs, file, &buf[..200]).await;
         assert_eq!(n, Ok(200));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 
     let mut rb = [0u8; 256];
     for i in 0..4 {
         let path = &format!("hi{i}");
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-        let n = lfs_file_read(lfs, file, &mut rb[..200]);
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
+        let n = lfs_file_read(lfs, file, &mut rb[..200]).await;
         assert_eq!(n, Ok(200));
         assert_eq!(&rb[..200], &buf[..200]);
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 
     assert_ok!(lfs_unmount(lfs));
@@ -149,63 +145,49 @@ fn test_entries_spill(cfg: &LfsConfig) {
 
 // --- test_entries_push_spill ---
 #[lfs_test]
-fn test_entries_push_spill(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_entries_push_spill<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let buf = [b'c'; 256];
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "hi0",
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-    ));
-    let n = lfs_file_write(lfs, file, &buf[..200]);
+    assert_ok!(lfs_file_open(lfs, file, "hi0", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,).await);
+    let n = lfs_file_write(lfs, file, &buf[..200]).await;
     assert_eq!(n, Ok(200));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     for i in 1..4 {
         let path = &format!("hi{i}");
         let size = if i == 1 { 20 } else { 200 };
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-        ));
-        let n = lfs_file_write(lfs, file, &buf[..size]);
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,).await);
+        let n = lfs_file_write(lfs, file, &buf[..size]).await;
         assert_eq!(n, Ok(size as u32));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, "hi1", LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, "hi1", LFS_O_RDONLY).await);
     let mut rb = [0u8; 256];
-    let n = lfs_file_read(lfs, file, &mut rb[..20]);
+    let n = lfs_file_read(lfs, file, &mut rb[..20]).await;
     assert_eq!(n, Ok(20));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "hi1",
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-    ));
-    let n = lfs_file_write(lfs, file, &buf[..200]);
+    assert_ok!(lfs_file_open(lfs, file, "hi1", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,).await);
+    let n = lfs_file_write(lfs, file, &buf[..200]).await;
     assert_eq!(n, Ok(200));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     for i in 0..4 {
         let path = &format!("hi{i}");
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-        let n = lfs_file_read(lfs, file, &mut rb[..200]);
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
+        let n = lfs_file_read(lfs, file, &mut rb[..200]).await;
         assert_eq!(n, Ok(200));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 
     assert_ok!(lfs_unmount(lfs));
@@ -213,47 +195,38 @@ fn test_entries_push_spill(cfg: &LfsConfig) {
 
 // --- test_entries_drop ---
 #[lfs_test]
-fn test_entries_drop(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_entries_drop<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let buf = [b'c'; 256];
     for i in 0..4 {
         let path = &format!("hi{i}");
         let size = if i == 1 { 200 } else { 20 };
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-        ));
-        let n = lfs_file_write(lfs, file, &buf[..size]);
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,).await);
+        let n = lfs_file_write(lfs, file, &buf[..size]).await;
         assert_eq!(n, Ok(size as u32));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 
-    assert_ok!(lfs_remove(lfs, "hi1"));
+    assert_ok!(lfs_remove(lfs, "hi1").await);
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "hi1",
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-    ));
-    let n = lfs_file_write(lfs, file, &buf[..20]);
+    assert_ok!(lfs_file_open(lfs, file, "hi1", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,).await);
+    let n = lfs_file_write(lfs, file, &buf[..20]).await;
     assert_eq!(n, Ok(20));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let mut rb = [0u8; 256];
     for i in 0..4 {
         let path = &format!("hi{i}");
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-        let n = lfs_file_read(lfs, file, &mut rb[..20]);
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
+        let n = lfs_file_read(lfs, file, &mut rb[..20]).await;
         assert_eq!(n, Ok(20));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 
     assert_ok!(lfs_unmount(lfs));

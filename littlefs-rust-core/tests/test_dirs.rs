@@ -330,37 +330,38 @@ fn test_dirs_many_reentrant(
 /// defines.N = range(3, 100, 11), if = 'N < BLOCK_COUNT/2'
 /// Create N empty files, unmount, mount, verify dir_read shows all with LFS_TYPE_REG.
 #[lfs_test]
-fn test_dirs_file_creation(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_dirs_file_creation<'a>(cfg: &LfsConfig<'a>) {
     for n in [3usize, 14, 25, 36, 47, 58, 69, 80, 91] {
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
 
         for i in 0..n {
             let path = &format!("file{i:03}");
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
+        assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH).await);
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
         assert_eq!({ info.type_ }, LfsType::DIR);
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
         assert_eq!(info.type_, LfsType::DIR);
 
         for i in 0..n {
             let expected = format!("file{i:03}");
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
             assert_eq!(
-                lfs_dir_read(lfs, dir, info),
+                lfs_dir_read(lfs, dir, info).await,
                 Ok(true),
                 "N={n}, expected entry {i}"
             );
@@ -371,7 +372,7 @@ fn test_dirs_file_creation(cfg: &LfsConfig) {
         }
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+        assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
 
         assert_ok!(lfs_dir_close(lfs, dir));
         assert_ok!(lfs_unmount(lfs));
