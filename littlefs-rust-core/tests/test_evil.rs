@@ -317,7 +317,8 @@ async fn test_evil_invalid_ctz_pointer<'a>(cfg: &LfsConfig<'a>) {
 /// Corrupt gstate via lfs_fs_prepmove with invalid move pointer.
 /// Mount may succeed but first lfs_mkdir fails with Error::Corrupt.
 #[lfs_test]
-fn test_evil_invalid_gstate_pointer(cfg: &LfsConfig, #[values(0x3, 0x1, 0x2)] invalset: u32) {
+#[tokio::test]
+async fn test_evil_invalid_gstate_pointer(cfg: &LfsConfig, #[values(0x3, 0x1, 0x2)] invalset: u32) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
@@ -345,7 +346,8 @@ fn test_evil_invalid_gstate_pointer(cfg: &LfsConfig, #[values(0x3, 0x1, 0x2)] in
 /// Change root tail to point at (0, 1) (itself), forming a 1-length
 /// metadata loop. Expect mount to fail with Error::Corrupt.
 #[lfs_test]
-fn test_evil_mdir_loop(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_evil_mdir_loop(cfg: &LfsConfig) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
 
@@ -362,7 +364,7 @@ fn test_evil_mdir_loop(cfg: &LfsConfig) {
     assert_ok!(lfs_dir_commit(lfs, mdir, &attrs));
     assert_ok!(lfs_deinit(lfs));
 
-    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg));
+    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg).await);
 }
 
 /// Upstream: [cases.test_evil_mdir_loop2]
@@ -370,19 +372,20 @@ fn test_evil_mdir_loop(cfg: &LfsConfig) {
 /// Create "child" dir. Corrupt child's tail to point at root (0, 1),
 /// forming a 2-length loop. Expect mount to fail with Error::Corrupt.
 #[lfs_test]
-fn test_evil_mdir_loop2(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_evil_mdir_loop2<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let child = "child";
-    assert_ok!(lfs_mkdir(lfs, child));
+    assert_ok!(lfs_mkdir(lfs, child).await);
     assert_ok!(lfs_unmount(lfs));
 
     // Find child's block pair
     assert_ok!(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(lfs, mdir, root_pair));
+    assert_ok!(lfs_dir_fetch(lfs, mdir, root_pair).await);
 
     let mut child_pair: [u32; 2] = [0; 2];
     let tag = lfs_dir_get(
@@ -391,7 +394,8 @@ fn test_evil_mdir_loop2(cfg: &LfsConfig) {
         lfs_mktag(0x7ff, 0x3ff, 0),
         lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()),
         child_pair.as_mut_bytes(),
-    );
+    )
+    .await;
     assert_eq!(
         tag,
         Ok(lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()) as u32)
@@ -399,16 +403,16 @@ fn test_evil_mdir_loop2(cfg: &LfsConfig) {
     lfs_pair_fromle32(&mut child_pair);
 
     // Corrupt child's tail to point at root
-    assert_ok!(lfs_dir_fetch(lfs, mdir, child_pair));
+    assert_ok!(lfs_dir_fetch(lfs, mdir, child_pair).await);
     let root_ptr: [u32; 2] = [0, 1];
     let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: root_ptr.as_bytes(),
     }];
-    assert_ok!(lfs_dir_commit(lfs, mdir, &attrs));
+    assert_ok!(lfs_dir_commit(lfs, mdir, &attrs).await);
     assert_ok!(lfs_deinit(lfs));
 
-    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg));
+    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg).await);
 }
 
 /// Upstream: [cases.test_evil_mdir_loop_child]
@@ -417,19 +421,20 @@ fn test_evil_mdir_loop2(cfg: &LfsConfig) {
 /// own block pair), forming a 1-length child loop. Expect mount to fail
 /// with Error::Corrupt.
 #[lfs_test]
-fn test_evil_mdir_loop_child(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_evil_mdir_loop_child<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let child = "child";
-    assert_ok!(lfs_mkdir(lfs, child));
+    assert_ok!(lfs_mkdir(lfs, child).await);
     assert_ok!(lfs_unmount(lfs));
 
     // Find child's block pair
     assert_ok!(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(lfs, mdir, root_pair));
+    assert_ok!(lfs_dir_fetch(lfs, mdir, root_pair).await);
 
     let mut child_pair: [u32; 2] = [0; 2];
     let tag = lfs_dir_get(
@@ -438,7 +443,8 @@ fn test_evil_mdir_loop_child(cfg: &LfsConfig) {
         lfs_mktag(0x7ff, 0x3ff, 0),
         lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()),
         child_pair.as_mut_bytes(),
-    );
+    )
+    .await;
     assert_eq!(
         tag,
         Ok(lfs_mktag(LFS_TYPE_DIRSTRUCT, 1, core::mem::size_of::<[u32; 2]>()) as u32)
@@ -446,13 +452,13 @@ fn test_evil_mdir_loop_child(cfg: &LfsConfig) {
     lfs_pair_fromle32(&mut child_pair);
 
     // Corrupt child's tail to point at itself
-    assert_ok!(lfs_dir_fetch(lfs, mdir, child_pair));
+    assert_ok!(lfs_dir_fetch(lfs, mdir, child_pair).await);
     let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: child_pair.as_bytes(),
     }];
-    assert_ok!(lfs_dir_commit(lfs, mdir, &attrs));
+    assert_ok!(lfs_dir_commit(lfs, mdir, &attrs).await);
     assert_ok!(lfs_deinit(lfs));
 
-    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg));
+    assert_err!(Error::Corrupt, lfs_mount(lfs, cfg).await);
 }

@@ -618,7 +618,8 @@ fn test_move_file_after_corrupt(cfg: &LfsConfig) {
 // --- test_move_reentrant_file ---
 // Power-loss at rename points; verify FS consistent after each simulated power loss.
 #[lfs_test]
-fn test_move_reentrant_file(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
+#[tokio::test]
+async fn test_move_reentrant_file(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
     let lfs = &mut Lfs::default();
     let err = lfs_mount(lfs, cfg);
     if err.is_err() {
@@ -725,31 +726,32 @@ fn test_move_reentrant_file(cfg: &LfsConfig, #[values(false, true)] reentrant: b
 // Upstream: test_move_dir_corrupt_source
 // Corrupt source dir after dir rename; rename should stick.
 #[lfs_test]
-fn test_move_dir_corrupt_source(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_move_dir_corrupt_source<'a>(cfg: &LfsConfig<'a>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_mkdir(lfs, "a"));
-    assert_ok!(lfs_mkdir(lfs, "b"));
-    assert_ok!(lfs_mkdir(lfs, "c"));
-    assert_ok!(lfs_mkdir(lfs, "d"));
-    assert_ok!(lfs_mkdir(lfs, "a/hi"));
-    assert_ok!(lfs_mkdir(lfs, "a/hi/hola"));
-    assert_ok!(lfs_mkdir(lfs, "a/hi/bonjour"));
-    assert_ok!(lfs_mkdir(lfs, "a/hi/ohayo"));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_mkdir(lfs, "a").await);
+    assert_ok!(lfs_mkdir(lfs, "b").await);
+    assert_ok!(lfs_mkdir(lfs, "c").await);
+    assert_ok!(lfs_mkdir(lfs, "d").await);
+    assert_ok!(lfs_mkdir(lfs, "a/hi").await);
+    assert_ok!(lfs_mkdir(lfs, "a/hi/hola").await);
+    assert_ok!(lfs_mkdir(lfs, "a/hi/bonjour").await);
+    assert_ok!(lfs_mkdir(lfs, "a/hi/ohayo").await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_rename(lfs, "a/hi", "c/hi"));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_rename(lfs, "a/hi", "c/hi").await);
 
-    let ablock = dir_block(lfs, "a");
+    let ablock = dir_block(lfs, "a").await;
     assert_ok!(lfs_unmount(lfs));
     corrupt_block(cfg, ablock);
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    let a_names = dir_entry_names(lfs, cfg, "a").unwrap();
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    let a_names = dir_entry_names(lfs, cfg, "a").await.unwrap();
     assert_eq!(a_names.len(), 0);
-    let c_names = dir_entry_names(lfs, cfg, "c").unwrap();
+    let c_names = dir_entry_names(lfs, cfg, "c").await.unwrap();
     assert_eq!(c_names.len(), 1);
     assert_eq!(c_names[0], "hi");
 

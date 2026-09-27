@@ -13,7 +13,7 @@ use common::{
 };
 use littlefs_rust_core::{
     Error, Lfs, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_size,
-    lfs_file_write, lfs_format, lfs_mount, lfs_type::OpenFlags, lfs_unmount,
+    lfs_file_sync, lfs_file_write, lfs_format, lfs_mount, lfs_type::OpenFlags, lfs_unmount,
 };
 use littlefs_rust_test_macro::lfs_test;
 
@@ -24,7 +24,8 @@ use littlefs_rust_test_macro::lfs_test;
 ///
 /// Create, write "Hello World!\0", close, unmount, mount, read, verify.
 #[lfs_test]
-fn test_files_simple(cfg: &LfsConfig, #[values(0, u32::MAX, 8)] inline_max: u32) {
+#[tokio::test]
+async fn test_files_simple(cfg: &LfsConfig, #[values(0, u32::MAX, 8)] inline_max: u32) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -62,7 +63,8 @@ fn test_files_simple(cfg: &LfsConfig, #[values(0, u32::MAX, 8)] inline_max: u32)
 /// Write SIZE bytes of PRNG(seed=1) in CHUNKSIZE chunks, unmount, remount,
 /// verify file_size == SIZE, read back and verify. Final read past EOF returns 0.
 #[lfs_test]
-fn test_files_large(
+#[tokio::test]
+async fn test_files_large(
     cfg: &LfsConfig,
     #[values(32, 8192, 262144, 0, 7, 8193)] size: u32,
     #[values(31, 16, 33, 1, 1023)] chunk_size: u32,
@@ -107,7 +109,8 @@ fn test_files_large(
 /// Write SIZE1, read back, rewrite with SIZE2 (WRONLY, no TRUNC), read:
 /// first SIZE2 bytes PRNG(2), remaining (SIZE2..SIZE1) PRNG(1) from offset SIZE2.
 #[lfs_test]
-fn test_files_rewrite(
+#[tokio::test]
+async fn test_files_rewrite(
     cfg: &LfsConfig,
     #[values(32, 8192, 131072, 0, 7, 8193)] size1: u32,
     #[values(32, 8192, 131072, 0, 7, 8193)] size2: u32,
@@ -173,7 +176,8 @@ fn test_files_rewrite(
 ///
 /// Write SIZE1, append SIZE2 (PRNG seed 2). Read: first SIZE1 = PRNG(1), next SIZE2 = PRNG(2).
 #[lfs_test]
-fn test_files_append(
+#[tokio::test]
+async fn test_files_append(
     cfg: &LfsConfig,
     #[values(32, 8192, 131072, 0, 7, 8193)] size1: u32,
     #[values(32, 8192, 131072, 0, 7, 8193)] size2: u32,
@@ -223,7 +227,8 @@ fn test_files_append(
 ///
 /// Write SIZE1, truncate+write SIZE2 (TRUNC|WRONLY). Read: SIZE2 bytes PRNG(2). Final read returns 0.
 #[lfs_test]
-fn test_files_truncate(
+#[tokio::test]
+async fn test_files_truncate(
     cfg: &LfsConfig,
     #[values(32, 8192, 131072, 0, 7, 8193)] size1: u32,
     #[values(32, 8192, 131072, 0, 7, 8193)] size2: u32,
@@ -341,7 +346,8 @@ async fn test_files_reentrant_write<'a>(
 /// Three modes: APPEND, TRUNC, plain write. SIZE/CHUNKSIZE/INLINE_MAX vary per mode.
 /// Power-loss after each sync. Stub: implement APPEND mode with SIZE=[32,0,7,2049].
 #[lfs_test]
-fn test_files_reentrant_write_sync(
+#[tokio::test]
+async fn test_files_reentrant_write_sync(
     cfg: &LfsConfig,
     #[values(false, true)] reentrant: bool,
     #[values(OpenFlags::APPEND, OpenFlags::TRUNC, OpenFlags::empty())] mode: OpenFlags,
@@ -405,18 +411,21 @@ fn test_files_reentrant_write_sync(
         for slot in buf[..chunk as usize].iter_mut() {
             *slot = (common::test_prng(&mut prng) & 0xff) as u8;
         }
-        assert_eq!(lfs_file_write(lfs, file, &buf[..chunk as usize]), Ok(chunk));
+        assert_eq!(
+            lfs_file_write(lfs, file, &buf[..chunk as usize]).await,
+            Ok(chunk)
+        );
 
-        assert_ok!(littlefs_rust_core::lfs_file_sync(lfs, file));
+        assert_ok!(lfs_file_sync(lfs, file).await);
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
 
-    assert_eq!(littlefs_rust_core::lfs_file_size(lfs, file), size);
+    assert_eq!(lfs_file_size(lfs, file), size);
     verify_prng_file(lfs, file, size, chunk_size, 1);
 
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
