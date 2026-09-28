@@ -297,8 +297,9 @@ async fn test_superblocks_expand_power_cycle<'a>(
 /// BLOCK_CYCLES = [2, 1], N = 24, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
 #[lfs_test]
 #[cfg(feature = "slow_tests")]
-fn test_superblocks_reentrant_expand(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_superblocks_reentrant_expand(
+    cfg: &LfsConfig<'_>,
     #[values(false, true)] reentrant: bool,
     #[values(2, 1)] block_cycles: i32,
 ) {
@@ -308,40 +309,35 @@ fn test_superblocks_reentrant_expand(
 
     let dummy = "dummy";
 
-    let err = lfs_mount(lfs, cfg);
+    let err = lfs_mount(lfs, cfg).await;
     if err.is_err() {
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
     }
     for i in 0..N {
         let info = &mut LfsInfo::default();
-        let err = lfs_stat(lfs, dummy, info);
+        let err = lfs_stat(lfs, dummy, info).await;
         assert!(err.is_ok() || (err == Err(Error::NoEntry) && i == 0));
         if err.is_ok() {
             assert_eq!(info.name_str(), dummy);
             assert_eq!(info.type_, LfsType::REG);
-            assert_ok!(lfs_remove(lfs, dummy));
+            assert_ok!(lfs_remove(lfs, dummy).await);
         }
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            dummy,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_open(lfs, file, dummy, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
+        assert_ok!(lfs_file_close(lfs, file).await);
 
         let info = &mut LfsInfo::default();
-        assert_ok!(lfs_stat(lfs, dummy, info));
+        assert_ok!(lfs_stat(lfs, dummy, info).await);
         assert_eq!(info.name_str(), dummy);
         assert_eq!(info.type_, LfsType::REG);
         assert_ok!(lfs_unmount(lfs));
     }
 
     // one last check after power-cycle
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let info = &mut LfsInfo::default();
-    assert_ok!(lfs_stat(lfs, dummy, info));
+    assert_ok!(lfs_stat(lfs, dummy, info).await);
     assert_eq!(info.name_str(), dummy);
     assert_eq!(info.type_, LfsType::REG);
     assert_ok!(lfs_unmount(lfs));

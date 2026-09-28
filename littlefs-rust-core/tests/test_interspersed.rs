@@ -321,8 +321,9 @@ fn test_interspersed_remove_inconveniently(cfg: &LfsConfig, #[values(10, 100)] s
 /// Verify directory and read 10 bytes from each.
 #[lfs_test]
 #[cfg(feature = "slow_tests")]
-fn test_interspersed_reentrant_files(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_interspersed_reentrant_files(
+    cfg: &LfsConfig<'_>,
     #[values(false, true)] reentrant: bool,
     #[values(10, 100)] size: usize,
     #[values(4, 10, 26)] files: usize,
@@ -330,22 +331,25 @@ fn test_interspersed_reentrant_files(
     let lfs = &mut Lfs::default();
 
     // Mount-or-format
-    let err = lfs_mount(lfs, cfg);
+    let err = lfs_mount(lfs, cfg).await;
     if err.is_err() {
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
     }
 
     let mut file_handles: Vec<LfsFile> = (0..files).map(|_| LfsFile::default()).collect();
 
     for j in 0..files {
         let path = &String::from(ALPHA[j] as char);
-        assert_ok!(lfs_file_open(
-            lfs,
-            &mut file_handles[j],
-            path,
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
-        ));
+        assert_ok!(
+            lfs_file_open(
+                lfs,
+                &mut file_handles[j],
+                path,
+                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND,
+            )
+            .await
+        );
     }
 
     for i in 0..size {
@@ -353,42 +357,42 @@ fn test_interspersed_reentrant_files(
             let file_sz = lfs_file_size(lfs, &file_handles[j]);
             if (file_sz as usize) <= i {
                 let byte = [ALPHA[j]];
-                let n = lfs_file_write(lfs, &mut file_handles[j], &byte);
+                let n = lfs_file_write(lfs, &mut file_handles[j], &byte).await;
                 assert_eq!(n, Ok(1));
-                assert_ok!(lfs_file_sync(lfs, &mut file_handles[j]));
+                assert_ok!(lfs_file_sync(lfs, &mut file_handles[j]).await);
             }
         }
     }
 
     for j in 0..files {
-        assert_ok!(lfs_file_close(lfs, &mut file_handles[j]));
+        assert_ok!(lfs_file_close(lfs, &mut file_handles[j]).await);
     }
 
     // Verify directory
     let root = "/";
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok!(lfs_dir_open(lfs, dir, root));
+    assert_ok!(lfs_dir_open(lfs, dir, root).await);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
     assert_eq!(&info.name[..1], b".");
     assert_eq!(info.type_, LfsType::DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
     assert_eq!(&info.name[..2], b"..");
     assert_eq!(info.type_, LfsType::DIR);
 
     for j in 0..files {
         let expected_name = String::from(ALPHA[j] as char);
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
         let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
         let name = core::str::from_utf8(&info.name[..nul]).unwrap();
         assert_eq!(name, expected_name);
         assert_eq!(info.type_, LfsType::REG);
         assert_eq!(info.size, size as u32);
     }
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     // Read first 10 bytes from each
@@ -396,20 +400,20 @@ fn test_interspersed_reentrant_files(
 
     for j in 0..files {
         let path = &String::from(ALPHA[j] as char);
-        assert_ok!(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, &mut file_handles[j], path, LFS_O_RDONLY).await);
     }
 
     for _i in 0..10 {
         for j in 0..files {
             let mut buffer = [0u8; 1];
-            let n = lfs_file_read(lfs, &mut file_handles[j], &mut buffer);
+            let n = lfs_file_read(lfs, &mut file_handles[j], &mut buffer).await;
             assert_eq!(n, Ok(1));
             assert_eq!(buffer[0], ALPHA[j]);
         }
     }
 
     for j in 0..files {
-        assert_ok!(lfs_file_close(lfs, &mut file_handles[j]));
+        assert_ok!(lfs_file_close(lfs, &mut file_handles[j]).await);
     }
 
     assert_ok!(lfs_unmount(lfs));

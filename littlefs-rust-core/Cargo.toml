@@ -30,7 +30,7 @@ futures = "0.3"
 littlefs-rust-test-macro = { path = "../littlefs-rust-test-macro" }
 
 [features]
-default = ["alloc"]
+default = ["alloc", "slow_tests"]
 alloc = []
 # Enable for debugging: RUST_LOG=littlefs_rust=trace cargo test --features log ...
 std = []

@@ -123,7 +123,8 @@ async fn test_powerloss_only_rev<'a>(cfg: &LfsConfig<'a>) {
 /// defines.PROG_SIZE < BLOCK_SIZE, BYTE_OFF = [0, PROG_SIZE-1, PROG_SIZE/2], BYTE_VALUE = [0x33, 0xcc].
 /// Corrupt one byte in a directory block at BYTE_OFF with BYTE_VALUE. Verify mount and read/write still work.
 #[lfs_test]
-fn test_powerloss_partial_prog(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_powerloss_partial_prog(cfg: &LfsConfig<'_>) {
     if cfg.prog_size >= cfg.block_size {
         return;
     }
@@ -135,38 +136,41 @@ fn test_powerloss_partial_prog(cfg: &LfsConfig) {
     for &byte_off in &byte_offs {
         for &byte_value in &byte_values {
             let lfs = &mut Lfs::default();
-            assert_ok!(lfs_format(lfs, cfg));
-            assert_ok!(lfs_mount(lfs, cfg));
-            assert_ok!(lfs_mkdir(lfs, "notebook"));
+            assert_ok!(lfs_format(lfs, cfg).await);
+            assert_ok!(lfs_mount(lfs, cfg).await);
+            assert_ok!(lfs_mkdir(lfs, "notebook").await);
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                "notebook/paper",
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND
-            ));
+            assert_ok!(
+                lfs_file_open(
+                    lfs,
+                    file,
+                    "notebook/paper",
+                    LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND
+                )
+                .await
+            );
             for _ in 0..5 {
-                assert_eq!(lfs_file_write(lfs, file, b"hello"), Ok(5));
-                assert_ok!(lfs_file_sync(lfs, file));
+                assert_eq!(lfs_file_write(lfs, file, b"hello").await, Ok(5));
+                assert_ok!(lfs_file_sync(lfs, file).await);
             }
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
 
-            assert_ok!(lfs_file_open(lfs, file, "notebook/paper", LFS_O_RDONLY));
+            assert_ok!(lfs_file_open(lfs, file, "notebook/paper", LFS_O_RDONLY).await);
             for _ in 0..5 {
                 let mut rbuffer = [0u8; 5];
-                assert_eq!(lfs_file_read(lfs, file, &mut rbuffer), Ok(5));
+                assert_eq!(lfs_file_read(lfs, file, &mut rbuffer).await, Ok(5));
                 assert_eq!(&rbuffer, b"hello");
             }
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
             assert_ok!(lfs_unmount(lfs));
 
             // imitate a partial prog, value should not matter, if littlefs
             // doesn't notice the partial prog testbd will assert
 
             // get offset to next prog
-            assert_ok!(lfs_mount(lfs, cfg));
+            assert_ok!(lfs_mount(lfs, cfg).await);
             let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-            assert_ok!(lfs_dir_open(lfs, dir, "notebook"));
+            assert_ok!(lfs_dir_open(lfs, dir, "notebook").await);
             let block = dir.m.pair[0];
             let off = dir.m.off;
             assert_ok!(lfs_dir_close(lfs, dir));
@@ -174,48 +178,45 @@ fn test_powerloss_partial_prog(cfg: &LfsConfig) {
 
             // tweak byte
             let mut bbuffer = vec![0u8; cfg.block_size as usize];
-            assert_ok!(read_block_raw(cfg, block, 0, &mut bbuffer));
+            assert_ok!(read_block_raw(cfg, block, 0, &mut bbuffer).await);
             bbuffer[(off + byte_off) as usize] = byte_value;
 
-            assert_ok!(erase_block_raw(cfg, block));
-            assert_ok!(write_block_raw(cfg, block, 0, &bbuffer));
+            assert_ok!(erase_block_raw(cfg, block).await);
+            assert_ok!(write_block_raw(cfg, block, 0, &bbuffer).await);
 
-            assert_ok!(lfs_mount(lfs, cfg));
+            assert_ok!(lfs_mount(lfs, cfg).await);
 
             // can read?
-            assert_ok!(lfs_file_open(lfs, file, "notebook/paper", LFS_O_RDONLY));
+            assert_ok!(lfs_file_open(lfs, file, "notebook/paper", LFS_O_RDONLY).await);
             for _ in 0..5 {
                 let mut rbuffer = [0u8; 5];
-                assert_eq!(lfs_file_read(lfs, file, &mut rbuffer), Ok(5));
+                assert_eq!(lfs_file_read(lfs, file, &mut rbuffer).await, Ok(5));
                 assert_eq!(&rbuffer, b"hello");
             }
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
 
             // can write?
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                "notebook/paper",
-                LFS_O_WRONLY | LFS_O_APPEND
-            ));
+            assert_ok!(
+                lfs_file_open(lfs, file, "notebook/paper", LFS_O_WRONLY | LFS_O_APPEND).await
+            );
             for _ in 0..5 {
-                assert_eq!(lfs_file_write(lfs, file, b"goodbye"), Ok(7));
-                assert_ok!(lfs_file_sync(lfs, file));
+                assert_eq!(lfs_file_write(lfs, file, b"goodbye").await, Ok(7));
+                assert_ok!(lfs_file_sync(lfs, file).await);
             }
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
 
-            assert_ok!(lfs_file_open(lfs, file, "notebook/paper", LFS_O_RDONLY));
+            assert_ok!(lfs_file_open(lfs, file, "notebook/paper", LFS_O_RDONLY).await);
             for _ in 0..5 {
                 let mut rbuffer = [0u8; 5];
-                assert_eq!(lfs_file_read(lfs, file, &mut rbuffer), Ok(5));
+                assert_eq!(lfs_file_read(lfs, file, &mut rbuffer).await, Ok(5));
                 assert_eq!(&rbuffer, b"hello");
             }
             for _ in 0..5 {
                 let mut rbuffer = [0u8; 7];
-                assert_eq!(lfs_file_read(lfs, file, &mut rbuffer), Ok(7));
+                assert_eq!(lfs_file_read(lfs, file, &mut rbuffer).await, Ok(7));
                 assert_eq!(&rbuffer, b"goodbye");
             }
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_close(lfs, file).await);
             assert_ok!(lfs_unmount(lfs));
         }
     }

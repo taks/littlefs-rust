@@ -197,7 +197,7 @@ async fn test_dirs_many_rename<'a>(
 /// mount, verify dir_read shows z00..z{N-1} in order.
 #[lfs_test]
 #[tokio::test]
-async fn test_dirs_many_rename_append<'a>(cfg: &LfsConfig<'a>, #[values(5, 7, 9, 11)] n: usize) {
+async fn test_dirs_many_rename_append(cfg: &LfsConfig<'_>, #[values(5, 7, 9, 11)] n: usize) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg).await);
     assert_ok!(lfs_mount(lfs, cfg).await);

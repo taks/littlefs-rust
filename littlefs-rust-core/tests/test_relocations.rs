@@ -298,10 +298,10 @@ fn test_relocations_reentrant(
     }
 
     let lfs = &mut Lfs::default();
-    let err = littlefs_rust_core::lfs_mount(lfs, cfg);
+    let err = lfs_mount(lfs, cfg);
     if err.is_err() {
-        assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
-        assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg));
     }
 
     let mut prng: u32 = 1;
@@ -360,8 +360,9 @@ fn test_relocations_reentrant(
 #[case(26, 1, 20)]
 #[case(3, 3, 20)]
 #[cfg(feature = "slow_tests")]
-fn test_relocations_reentrant_renames(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_relocations_reentrant_renames(
+    cfg: &LfsConfig<'_>,
     #[values(false, true)] reentrant: bool,
     #[case] files: usize,
     #[case] depth: usize,
@@ -379,10 +380,10 @@ fn test_relocations_reentrant_renames(
 
     let lfs = &mut Lfs::default();
 
-    let err = littlefs_rust_core::lfs_mount(lfs, cfg);
+    let err = lfs_mount(lfs, cfg).await;
     if err.is_err() {
-        assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
-        assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
     }
 
     let mut prng: u32 = 1;
@@ -400,18 +401,18 @@ fn test_relocations_reentrant_renames(
 
         // if it does not exist, we create it, else we destroy
         let info = &mut LfsInfo::default();
-        let res = lfs_stat(lfs, &full_path, info);
+        let res = lfs_stat(lfs, &full_path, info).await;
         assert!(res.is_ok() || res == Err(Error::NoEntry));
         if res == Err(Error::NoEntry) {
             // create each directory in turn, ignore if dir already exists
             for d in 0..depth {
                 assert_matches!(
-                    lfs_mkdir(lfs, &full_path[..(2 * d + 2)]),
+                    lfs_mkdir(lfs, &full_path[..(2 * d + 2)]).await,
                     Ok(()) | Err(Error::Exists)
                 );
             }
             for d in 0..depth {
-                assert_ok!(lfs_stat(lfs, &full_path[..(2 * d + 2)], info));
+                assert_ok!(lfs_stat(lfs, &full_path[..(2 * d + 2)], info).await);
                 assert_eq!(info.name_str(), &full_path[(2 * d + 1)..(2 * d + 2)]);
                 assert_eq!(info.type_, LfsType::DIR);
             }
@@ -430,7 +431,7 @@ fn test_relocations_reentrant_renames(
             }
 
             // if new path does not exist, rename, otherwise destroy
-            let res = lfs_stat(lfs, &new_path, info);
+            let res = lfs_stat(lfs, &new_path, info).await;
             assert_matches!(res, Ok(()) | Err(Error::NoEntry));
             if res == Err(Error::NoEntry) {
                 // stop once some dir is renamed
@@ -439,7 +440,7 @@ fn test_relocations_reentrant_renames(
                 for d in 0..depth {
                     from.push_str(&full_path[(2 * d)..(2 * d + 2)]);
                     to.push_str(&new_path[(2 * d)..(2 * d + 2)]);
-                    let ret = lfs_rename(lfs, &from, &to);
+                    let ret = lfs_rename(lfs, &from, &to).await;
                     assert_matches!(ret, Ok(()) | Err(Error::NotEmpty));
                     if ret.is_ok() {
                         from.clear();
@@ -447,19 +448,19 @@ fn test_relocations_reentrant_renames(
                     }
                 }
                 for d in 0..depth {
-                    assert_ok!(lfs_stat(lfs, &new_path[..(2 * d + 2)], info));
+                    assert_ok!(lfs_stat(lfs, &new_path[..(2 * d + 2)], info).await);
                     assert_eq!(info.name_str(), &new_path[(2 * d + 1)..(2 * d + 2)]);
                     assert_eq!(info.type_, LfsType::DIR);
                 }
 
-                assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
+                assert_eq!(lfs_stat(lfs, &full_path, info).await, Err(Error::NoEntry));
             } else {
                 // try to delete path in reverse order,
                 // ignore if dir is not empty
                 let mut d = depth - 1;
                 loop {
                     assert_matches!(
-                        lfs_remove(lfs, &full_path[..(2 * d + 2)]),
+                        lfs_remove(lfs, &full_path[..(2 * d + 2)]).await,
                         Ok(()) | Err(Error::NotEmpty)
                     );
                     if d == 0 {
@@ -468,7 +469,7 @@ fn test_relocations_reentrant_renames(
                     d -= 1;
                 }
 
-                assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
+                assert_eq!(lfs_stat(lfs, &full_path, info).await, Err(Error::NoEntry));
             }
         }
     }

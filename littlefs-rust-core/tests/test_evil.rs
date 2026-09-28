@@ -318,26 +318,29 @@ async fn test_evil_invalid_ctz_pointer<'a>(cfg: &LfsConfig<'a>) {
 /// Mount may succeed but first lfs_mkdir fails with Error::Corrupt.
 #[lfs_test]
 #[tokio::test]
-async fn test_evil_invalid_gstate_pointer(cfg: &LfsConfig, #[values(0x3, 0x1, 0x2)] invalset: u32) {
+async fn test_evil_invalid_gstate_pointer(
+    cfg: &LfsConfig<'_>,
+    #[values(0x3, 0x1, 0x2)] invalset: u32,
+) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
     assert_ok!(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(lfs, mdir, pair));
+    assert_ok!(lfs_dir_fetch(lfs, mdir, pair).await);
 
     let invalid_pair: [u32; 2] = [
         if invalset & 0x1 != 0 { 0xcccccccc } else { 0 },
         if invalset & 0x2 != 0 { 0xcccccccc } else { 0 },
     ];
     lfs_fs_prepmove(lfs, 1, Some(&invalid_pair));
-    assert_ok!(lfs_dir_commit(lfs, mdir, &[]));
+    assert_ok!(lfs_dir_commit(lfs, mdir, &[]).await);
     assert_ok!(lfs_deinit(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let dir_name = "should_fail";
-    assert_err!(Error::Corrupt, lfs_mkdir(lfs, dir_name));
+    assert_err!(Error::Corrupt, lfs_mkdir(lfs, dir_name).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -347,21 +350,21 @@ async fn test_evil_invalid_gstate_pointer(cfg: &LfsConfig, #[values(0x3, 0x1, 0x
 /// metadata loop. Expect mount to fail with Error::Corrupt.
 #[lfs_test]
 #[tokio::test]
-async fn test_evil_mdir_loop(cfg: &LfsConfig) {
+async fn test_evil_mdir_loop(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
 
     assert_ok!(lfs_init(lfs, cfg));
     let mdir = &mut unsafe { core::mem::MaybeUninit::<LfsMdir>::zeroed().assume_init() };
     let pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(lfs, mdir, pair));
+    assert_ok!(lfs_dir_fetch(lfs, mdir, pair).await);
 
     let self_pair: [u32; 2] = [0, 1];
     let attrs = [LfsMattr {
         tag: lfs_mktag(LFS_TYPE_HARDTAIL, 0x3ff, 8),
         buffer: self_pair.as_bytes(),
     }];
-    assert_ok!(lfs_dir_commit(lfs, mdir, &attrs));
+    assert_ok!(lfs_dir_commit(lfs, mdir, &attrs).await);
     assert_ok!(lfs_deinit(lfs));
 
     assert_err!(Error::Corrupt, lfs_mount(lfs, cfg).await);

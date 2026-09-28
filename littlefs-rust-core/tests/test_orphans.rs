@@ -314,16 +314,17 @@ async fn test_orphans_mkconsistent_one_orphan<'a>(cfg: &LfsConfig<'a>) {
 /// FILES=[6,26], DEPTH=1; FILES=3,DEPTH=3 skipped when CACHE_SIZE!=64. reentrant, CYCLES=20.
 #[lfs_test]
 #[cfg(feature = "slow_tests")]
-fn test_orphans_reentrant(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
+#[tokio::test]
+async fn test_orphans_reentrant(cfg: &LfsConfig<'_>, #[values(false, true)] reentrant: bool) {
     const CYCLES: u32 = 20;
 
     for (files, depth) in [(6usize, 1usize), (26, 1)] {
         let lfs = &mut Lfs::default();
 
-        let err = lfs_mount(lfs, cfg);
+        let err = lfs_mount(lfs, cfg).await;
         if err.is_err() {
-            assert_ok!(lfs_format(lfs, cfg));
-            assert_ok!(lfs_mount(lfs, cfg));
+            assert_ok!(lfs_format(lfs, cfg).await);
+            assert_ok!(lfs_mount(lfs, cfg).await);
         }
 
         let mut prng: u32 = 1;
@@ -336,16 +337,16 @@ fn test_orphans_reentrant(cfg: &LfsConfig, #[values(false, true)] reentrant: boo
             let full_path = "/".to_string() + &components.join("/");
 
             let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-            let res = lfs_stat(lfs, &full_path, info);
+            let res = lfs_stat(lfs, &full_path, info).await;
             if res == Err(Error::NoEntry) {
                 for d in 0..depth {
                     let sub = "/".to_string() + &components[..=d].join("/");
-                    assert_matches!(lfs_mkdir(lfs, &sub), Ok(()) | Err(Error::Exists));
+                    assert_matches!(lfs_mkdir(lfs, &sub).await, Ok(()) | Err(Error::Exists));
                 }
                 for d in 0..depth {
                     let sub = "/".to_string() + &components[..=d].join("/");
 
-                    assert_ok!(lfs_stat(lfs, &sub, info));
+                    assert_ok!(lfs_stat(lfs, &sub, info).await);
 
                     let expected = &components[d];
                     assert_eq!(info.name_str(), *expected);
@@ -357,9 +358,9 @@ fn test_orphans_reentrant(cfg: &LfsConfig, #[values(false, true)] reentrant: boo
                 assert_eq!(info.type_, LfsType::DIR);
                 for d in (0..depth).rev() {
                     let sub = "/".to_string() + &components[..=d].join("/");
-                    assert_matches!(lfs_remove(lfs, &sub), Ok(()) | Err(Error::NotEmpty));
+                    assert_matches!(lfs_remove(lfs, &sub).await, Ok(()) | Err(Error::NotEmpty));
                 }
-                assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
+                assert_eq!(lfs_stat(lfs, &full_path, info).await, Err(Error::NoEntry));
             }
         }
 
