@@ -73,7 +73,7 @@ async fn test_files_large(
     let path = "avacado";
     let file = &mut LfsFile::default();
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
-    write_prng_file(lfs, file, size, chunk_size, 1);
+    write_prng_file(lfs, file, size, chunk_size, 1).await;
     assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
@@ -81,7 +81,7 @@ async fn test_files_large(
     assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
     assert_eq!(lfs_file_size(lfs, file), size);
-    verify_prng_file(lfs, file, size, chunk_size, 1);
+    verify_prng_file(lfs, file, size, chunk_size, 1).await;
     // Final read past EOF returns 0
     let mut buf = [0u8; 1024];
     let n = lfs_file_read(lfs, file, &mut buf[..chunk_size as usize]).await;
@@ -100,8 +100,8 @@ async fn test_files_large(
 /// first SIZE2 bytes PRNG(2), remaining (SIZE2..SIZE1) PRNG(1) from offset SIZE2.
 #[lfs_test]
 #[tokio::test]
-async fn test_files_rewrite<'a>(
-    cfg: &LfsConfig<'a>,
+async fn test_files_rewrite(
+    cfg: &LfsConfig<'_>,
     #[values(32, 8192, 131072, 0, 7, 8193)] size1: u32,
     #[values(32, 8192, 131072, 0, 7, 8193)] size2: u32,
     #[values(31, 16, 1)] chunk_size: u32,
@@ -116,7 +116,7 @@ async fn test_files_rewrite<'a>(
     // write SIZE1
     assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
-    write_prng_file(lfs, file, size1, chunk_size, 1);
+    write_prng_file(lfs, file, size1, chunk_size, 1).await;
     assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
@@ -124,7 +124,7 @@ async fn test_files_rewrite<'a>(
     assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
     assert_eq!(lfs_file_size(lfs, file), size1);
-    verify_prng_file(lfs, file, size1, chunk_size, 1);
+    verify_prng_file(lfs, file, size1, chunk_size, 1).await;
     assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
@@ -139,11 +139,11 @@ async fn test_files_rewrite<'a>(
     assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
     assert_eq!(lfs_file_size(lfs, file), size1.max(size2));
-    verify_prng_file(lfs, file, size2, chunk_size, 2);
+    verify_prng_file(lfs, file, size2, chunk_size, 2).await;
     if size1 > size2 {
         let mut prng = 1u32;
         advance_prng(&mut prng, size2);
-        verify_prng_file_with_state(lfs, file, size1 - size2, chunk_size, &mut prng);
+        verify_prng_file_with_state(lfs, file, size1 - size2, chunk_size, &mut prng).await;
     }
     // Final read past EOF returns 0
     let mut buf = [0u8; 1024];
@@ -178,14 +178,14 @@ async fn test_files_append<'a>(
     // write SIZE1
     assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
-    write_prng_file(lfs, file, size1, chunk_size, 1);
+    write_prng_file(lfs, file, size1, chunk_size, 1).await;
     assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
     // append SIZE2
     assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_APPEND).await);
-    write_prng_file(lfs, file, size2, chunk_size, 2);
+    write_prng_file(lfs, file, size2, chunk_size, 2).await;
     assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
@@ -193,8 +193,8 @@ async fn test_files_append<'a>(
     assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
     assert_eq!(lfs_file_size(lfs, file), size1 + size2);
-    verify_prng_file(lfs, file, size1, chunk_size, 1);
-    verify_prng_file(lfs, file, size2, chunk_size, 2);
+    verify_prng_file(lfs, file, size1, chunk_size, 1).await;
+    verify_prng_file(lfs, file, size2, chunk_size, 2).await;
     assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
@@ -224,7 +224,7 @@ async fn test_files_truncate<'a>(
     // write SIZE1
     assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await);
-    write_prng_file(lfs, file, size1, chunk_size, 1);
+    write_prng_file(lfs, file, size1, chunk_size, 1).await;
     assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 

@@ -9,7 +9,6 @@ use common::{
     BadblockBehavior, LFS_O_APPEND, LFS_O_CREAT, LFS_O_RDONLY, LFS_O_TRUNC, LFS_O_WRONLY,
     LfsConfig, lfs_emubd_setwear,
 };
-use littlefs_rust_core::Storage;
 use littlefs_rust_core::{
     Error, Lfs, LfsFile, LfsInfo, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_size,
     lfs_file_sync, lfs_file_truncate, lfs_file_write, lfs_format, lfs_fs_gc, lfs_mkdir, lfs_mount,
