@@ -741,7 +741,7 @@ async fn test_move_dir_corrupt_source(cfg: &LfsConfig<'_>) {
 
     let ablock = dir_block(lfs, "a").await;
     assert_ok!(lfs_unmount(lfs));
-    corrupt_block(cfg, ablock);
+    corrupt_block(cfg, ablock).await;
 
     assert_ok!(lfs_mount(lfs, cfg).await);
     let a_names = dir_entry_names(lfs, cfg, "a").await.unwrap();

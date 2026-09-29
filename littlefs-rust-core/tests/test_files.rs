@@ -231,7 +231,7 @@ async fn test_files_truncate<'a>(
     // truncate + write SIZE2
     assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_TRUNC).await);
-    write_prng_file(lfs, file, size2, chunk_size, 2);
+    write_prng_file(lfs, file, size2, chunk_size, 2).await;
     assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
@@ -239,7 +239,7 @@ async fn test_files_truncate<'a>(
     assert_ok!(lfs_mount(lfs, cfg).await);
     assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
     assert_eq!(lfs_file_size(lfs, file), size2);
-    verify_prng_file(lfs, file, size2, chunk_size, 2);
+    verify_prng_file(lfs, file, size2, chunk_size, 2).await;
     let mut buf = [0u8; 1024];
     let n = lfs_file_read(lfs, file, &mut buf[..chunk_size as usize]).await;
     assert_eq!(n, Ok(0));

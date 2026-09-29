@@ -526,7 +526,11 @@ async fn test_superblocks_more_blocks<'a>(cfg: &LfsConfig<'a>) {
 /// defines.BLOCK_COUNT = [ERASE_COUNT/2, ERASE_COUNT/4, 2], BLOCK_COUNT_2 = ERASE_COUNT,
 /// KNOWN_BLOCK_COUNT = [true, false]. lfs_fs_grow from smaller to larger block count.
 #[lfs_test]
-fn test_superblocks_grow(cfg: &LfsConfig, #[values(false, true)] known_block_count: bool) {
+#[tokio::test]
+async fn test_superblocks_grow(
+    cfg: &LfsConfig<'_>,
+    #[values(false, true)] known_block_count: bool,
+) {
     let erase_count = cfg.block_count;
     for block_count in [erase_count / 2, erase_count / 4, 2] {
         let mut cfg = LfsConfig {
@@ -535,7 +539,7 @@ fn test_superblocks_grow(cfg: &LfsConfig, #[values(false, true)] known_block_cou
         };
 
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, &cfg));
+        assert_ok!(lfs_format(lfs, &cfg).await);
         if !known_block_count {
             cfg.block_count = 0;
         }
@@ -543,57 +547,54 @@ fn test_superblocks_grow(cfg: &LfsConfig, #[values(false, true)] known_block_cou
         let fsinfo = &mut LfsFsinfo::default();
 
         // grow to new size
-        assert_ok!(lfs_mount(lfs, &cfg));
-        assert_ok!(lfs_fs_grow(lfs, erase_count));
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_mount(lfs, &cfg).await);
+        assert_ok!(lfs_fs_grow(lfs, erase_count).await);
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, erase_count);
         assert_ok!(lfs_unmount(lfs));
 
         cfg.block_count = if known_block_count { erase_count } else { 0 };
 
-        assert_ok!(lfs_mount(lfs, &cfg));
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_mount(lfs, &cfg).await);
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, erase_count);
         assert_ok!(lfs_unmount(lfs));
 
         // mounting with the previous size should fail
         cfg.block_count = block_count;
-        assert_eq!(lfs_mount(lfs, &cfg), Err(Error::Invalid));
+        assert_eq!(lfs_mount(lfs, &cfg).await, Err(Error::Invalid));
 
         cfg.block_count = if known_block_count { erase_count } else { 0 };
 
         // same size is a noop
-        assert_ok!(lfs_mount(lfs, &cfg));
-        assert_ok!(lfs_fs_grow(lfs, erase_count));
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_mount(lfs, &cfg).await);
+        assert_ok!(lfs_fs_grow(lfs, erase_count).await);
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, erase_count);
         assert_ok!(lfs_unmount(lfs));
 
         // do some work
-        assert_ok!(lfs_mount(lfs, &cfg));
+        assert_ok!(lfs_mount(lfs, &cfg).await);
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            "test",
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_eq!(lfs_file_write(lfs, file, b"hello!"), Ok(6));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(
+            lfs_file_open(lfs, file, "test", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await
+        );
+        assert_eq!(lfs_file_write(lfs, file, b"hello!").await, Ok(6));
+        assert_ok!(lfs_file_close(lfs, file).await);
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, &cfg));
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_mount(lfs, &cfg).await);
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, erase_count);
-        assert_ok!(lfs_file_open(lfs, file, "test", LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, file, "test", LFS_O_RDONLY).await);
         let mut rbuf = [0u8; 16];
-        assert_eq!(lfs_file_read(lfs, file, &mut rbuf), Ok(6));
+        assert_eq!(lfs_file_read(lfs, file, &mut rbuf).await, Ok(6));
         assert_eq!(&rbuf[..6], b"hello!");
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
         assert_ok!(lfs_unmount(lfs));
     }
 }
