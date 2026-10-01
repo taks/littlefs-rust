@@ -128,25 +128,31 @@ async fn test_dirs_many_creation(
 ///
 /// Create N dirs removeme000.., verify, remove all, verify empty.
 #[lfs_test]
-fn test_dirs_many_removal(cfg: &LfsConfig, #[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize) {
+#[tokio::test]
+async fn test_dirs_many_removal(
+    cfg: &LfsConfig<'_>,
+    #[values(3, 14, 25, 36, 47, 58, 69, 80, 91)] n: usize,
+) {
     if n >= cfg.block_count as usize / 2 {
         return;
     }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     for i in 0..n {
         let path = &format!("removeme{i:03}");
-        assert_ok!(lfs_mkdir(lfs, path));
+        assert_ok!(lfs_mkdir(lfs, path).await);
     }
     for i in 0..n {
         let path = &format!("removeme{i:03}");
-        assert_ok!(lfs_remove(lfs, path));
+        assert_ok!(lfs_remove(lfs, path).await);
     }
 
-    let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "/")
+        .await
+        .expect("dir_entry_names");
     assert!(names.is_empty());
 
     assert_ok!(lfs_unmount(lfs));
@@ -263,10 +269,11 @@ async fn test_dirs_many_rename_append(cfg: &LfsConfig<'_>, #[values(5, 7, 9, 11)
 
 /// Upstream: [cases.test_dirs_many_reentrant]
 /// defines.N = [5, 11], BLOCK_COUNT >= 4*N, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
-#[lfs_test]
 #[cfg(feature = "slow_tests")]
-fn test_dirs_many_reentrant(
-    cfg: &LfsConfig,
+#[lfs_test]
+#[tokio::test]
+async fn test_dirs_many_reentrant(
+    cfg: &LfsConfig<'_>,
     #[values(false, true)] reentrant: bool,
     #[values(5, 11)] n: usize,
 ) {
@@ -275,60 +282,60 @@ fn test_dirs_many_reentrant(
     }
     let lfs = &mut Lfs::default();
 
-    let err = littlefs_rust_core::lfs_mount(lfs, cfg);
+    let err = littlefs_rust_core::lfs_mount(lfs, cfg).await;
     if err.is_err() {
-        assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
-        assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
+        assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg).await);
+        assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg).await);
     }
 
     for i in 0..n {
         let path = &format!("hi{i:03}");
-        assert_matches!(lfs_mkdir(lfs, path), Ok(()) | Err(Error::Exists));
+        assert_matches!(lfs_mkdir(lfs, path).await, Ok(()) | Err(Error::Exists));
     }
     for i in 0..n {
         let path = &format!("hello{i:03}");
-        assert_matches!(lfs_remove(lfs, path), Ok(()) | Err(Error::NoEntry));
+        assert_matches!(lfs_remove(lfs, path).await, Ok(()) | Err(Error::NoEntry));
     }
 
     let dir = &mut LfsDir::default();
-    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH).await);
     let info = &mut LfsInfo::default();
-    let _ = lfs_dir_read(lfs, dir, info);
-    let _ = lfs_dir_read(lfs, dir, info);
+    let _ = lfs_dir_read(lfs, dir, info).await;
+    let _ = lfs_dir_read(lfs, dir, info).await;
     for i in 0..n {
         let expected = format!("hi{i:03}");
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
         assert_eq!(info.name_str(), expected);
     }
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     for i in 0..n {
         let old = &format!("hi{i:03}");
         let new = &format!("hello{i:03}");
-        assert_ok!(lfs_rename(lfs, old, new));
+        assert_ok!(lfs_rename(lfs, old, new).await);
     }
 
-    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
-    let _ = lfs_dir_read(lfs, dir, info);
-    let _ = lfs_dir_read(lfs, dir, info);
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH).await);
+    let _ = lfs_dir_read(lfs, dir, info).await;
+    let _ = lfs_dir_read(lfs, dir, info).await;
     for i in 0..n {
         let expected = format!("hello{i:03}");
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
         assert_eq!(info.name_str(), expected);
     }
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     for i in 0..n {
         let path = &format!("hello{i:03}");
-        assert_ok!(lfs_remove(lfs, path));
+        assert_ok!(lfs_remove(lfs, path).await);
     }
 
-    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
-    let _ = lfs_dir_read(lfs, dir, info);
-    let _ = lfs_dir_read(lfs, dir, info);
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH).await);
+    let _ = lfs_dir_read(lfs, dir, info).await;
+    let _ = lfs_dir_read(lfs, dir, info).await;
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
     assert_ok!(lfs_unmount(lfs));
 }
