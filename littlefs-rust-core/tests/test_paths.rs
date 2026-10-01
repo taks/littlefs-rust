@@ -8,8 +8,8 @@ mod common;
 #[allow(unused_imports)]
 use littlefs_rust_core::lfs_type::LfsType;
 use littlefs_rust_core::{
-    Error, Lfs, LfsDir, LfsInfo, Storage, lfs_dir_close, lfs_dir_open, lfs_format, lfs_mkdir,
-    lfs_mount, lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
+    Error, Lfs, LfsDir, LfsInfo, lfs_dir_close, lfs_dir_open, lfs_format, lfs_mkdir, lfs_mount,
+    lfs_remove, lfs_rename, lfs_stat, lfs_unmount,
 };
 use littlefs_rust_core::{LfsFile, lfs_file_close, lfs_file_open};
 use littlefs_rust_test_macro::lfs_test;

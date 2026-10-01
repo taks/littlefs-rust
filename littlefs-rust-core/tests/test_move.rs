@@ -549,7 +549,8 @@ fn test_move_file_corrupt_source_dest(cfg: &LfsConfig) {
 // Upstream: test_move_file_after_corrupt
 // Corrupt both, then redo rename; rename should succeed.
 #[lfs_test]
-fn test_move_file_after_corrupt(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_move_file_after_corrupt(cfg: &LfsConfig<'_>) {
     if cfg.prog_size > 0x3fe {
         return;
     }
@@ -885,7 +886,8 @@ async fn test_move_dir_after_corrupt(cfg: &LfsConfig<'_>) {
 // --- test_reentrant_dir ---
 // Power-loss at cross-dir dir rename points; verify FS consistent after each.
 #[lfs_test]
-fn test_reentrant_dir(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
+#[tokio::test]
+async fn test_reentrant_dir(cfg: &LfsConfig<'_>, #[values(false, true)] reentrant: bool) {
     let lfs = &mut Lfs::default();
     let err = littlefs_rust_core::lfs_mount(lfs, cfg);
     if err.is_err() {

@@ -235,7 +235,8 @@ async fn test_entries_drop<'a>(cfg: &LfsConfig<'a>) {
 // --- test_entries_create_too_big ---
 // Upstream: [cases.test_entries_create_too_big]
 #[lfs_test]
-fn test_entries_create_too_big(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_entries_create_too_big(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));

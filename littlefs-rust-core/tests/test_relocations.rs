@@ -172,9 +172,10 @@ fn test_relocations_nonreentrant(
 #[case(6, 1, 2000)]
 #[case(26, 1, 2000)]
 #[case(3, 3, 2000)]
+#[tokio::test]
 #[cfg(feature = "slow_tests")]
-fn test_relocations_nonreentrant_renames(
-    cfg: &LfsConfig,
+async fn test_relocations_nonreentrant_renames(
+    cfg: &LfsConfig<'_>,
     #[case] files: usize,
     #[case] depth: usize,
     #[case] cycles: usize,

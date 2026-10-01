@@ -69,7 +69,8 @@ async fn test_compat_major_incompat(cfg: &LfsConfig<'_>) {
 ///
 /// Bump minor version in superblock beyond what we support, verify mount rejects.
 #[lfs_test]
-fn test_compat_minor_incompat(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_compat_minor_incompat(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
