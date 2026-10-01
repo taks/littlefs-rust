@@ -166,9 +166,9 @@ pub async fn lfs_removeattr<S: Storage>(
 /// Open a file. Per lfs.h lfs_file_open (lfs.c:6140-6146).
 #[cfg(feature = "alloc")]
 #[inline]
-pub async fn lfs_file_open<'a, S: Storage>(
+pub async fn lfs_file_open<S: Storage>(
     lfs: &mut Lfs<S>,
-    file: &mut LfsFile<'a>,
+    file: &mut LfsFile<'_>,
     path: &str,
     flags: OpenFlags,
 ) -> Result<(), Error> {
@@ -207,9 +207,9 @@ pub async fn lfs_file_sync<'a, S: Storage>(
 
 /// Read data from file. Per lfs.h lfs_file_read (lfs.c:6210-6224).
 #[inline]
-pub async fn lfs_file_read<'a, S: Storage>(
+pub async fn lfs_file_read<S: Storage>(
     lfs: &mut Lfs<S>,
-    file: &mut LfsFile<'a>,
+    file: &mut LfsFile<'_>,
     buffer: &mut [u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
     crate::file::ops::lfs_file_read_(lfs, file, buffer).await
@@ -217,9 +217,9 @@ pub async fn lfs_file_read<'a, S: Storage>(
 
 /// Write data to file. Per lfs.h lfs_file_write (lfs.c:6228-6242).
 #[inline]
-pub async fn lfs_file_write<'a, S: Storage>(
+pub async fn lfs_file_write<S: Storage>(
     lfs: &mut Lfs<S>,
-    file: &mut LfsFile<'a>,
+    file: &mut LfsFile<'_>,
     buffer: &[u8],
 ) -> Result<crate::types::lfs_size_t, Error> {
     crate::file::ops::lfs_file_write_(lfs, file, buffer).await
@@ -227,9 +227,9 @@ pub async fn lfs_file_write<'a, S: Storage>(
 
 /// Change the position of the file. Per lfs.h lfs_file_seek (lfs.c:6246-6260).
 #[inline]
-pub async fn lfs_file_seek<'a, S: Storage>(
+pub async fn lfs_file_seek<S: Storage>(
     lfs: &mut Lfs<S>,
-    file: &mut LfsFile<'a>,
+    file: &mut LfsFile<'_>,
     off: lfs_soff_t,
     whence: i32,
 ) -> Result<crate::types::lfs_off_t, Error> {

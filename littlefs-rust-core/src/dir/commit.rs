@@ -1441,10 +1441,10 @@ pub async fn lfs_dir_compact<'a, S: Storage>(
 ///     return lfs_dir_compact(lfs, dir, attrs, attrcount, source, begin, end);
 /// }
 /// ```
-pub async fn lfs_dir_splittingcompact<'a, S: Storage>(
+pub async fn lfs_dir_splittingcompact<S: Storage>(
     lfs: &mut Lfs<S>,
     dir: &mut LfsMdir,
-    attrs: &[crate::tag::LfsMattr<'a>],
+    attrs: &[crate::tag::LfsMattr<'_>],
     source: &LfsMdir,
     begin: u16,
     end: u16,

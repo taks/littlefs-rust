@@ -6,6 +6,8 @@
 
 mod common;
 
+use common::LfsConfig;
+
 use littlefs_rust_core::lfs_type::OpenFlags;
 use littlefs_rust_core::lfs_type::lfs_type::LFS_TYPE_INLINESTRUCT;
 use littlefs_rust_core::{
@@ -13,9 +15,7 @@ use littlefs_rust_core::{
     lfs_dir_fetch, lfs_format, lfs_fs_stat, lfs_mktag, lfs_mount, lfs_superblock_tole32,
     lfs_unmount,
 };
-use littlefs_rust_core::{
-    LfsConfig, LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write,
-};
+use littlefs_rust_core::{LfsFile, lfs_file_close, lfs_file_open, lfs_file_read, lfs_file_write};
 use littlefs_rust_test_macro::lfs_test;
 use zerocopy::IntoBytes;
 
@@ -113,7 +113,8 @@ fn test_compat_minor_incompat(cfg: &LfsConfig) {
 ///
 /// Downgrade minor version in superblock, mount works, write triggers minor bump.
 #[lfs_test]
-fn test_compat_minor_bump(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_compat_minor_bump(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -125,8 +126,8 @@ fn test_compat_minor_bump(cfg: &LfsConfig) {
         "test",
         OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::EXCL,
     ));
-    assert_eq!(lfs_file_write(lfs, file, b"testtest",), Ok(8));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_eq!(lfs_file_write(lfs, file, b"testtest").await, Ok(8));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
     // Write old minor version to superblock

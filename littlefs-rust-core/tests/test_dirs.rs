@@ -658,6 +658,7 @@ fn test_dirs_recursive_remove(cfg: &LfsConfig, #[values(10, 100)] n: usize) {
 /// Create N dirs under prickly-pear/. Nested loop: open dir, iterate to j, remove dir k, iterate rest,
 /// close, recreate k, unmount. Requires lfs_dir_seek.
 #[lfs_test]
+
 fn test_dirs_remove_read(cfg: &LfsConfig) {
     const N: usize = 10;
 
@@ -693,105 +694,104 @@ fn test_dirs_remove_read(cfg: &LfsConfig) {
 /// Upstream: [cases.test_dirs_other_errors]
 /// Tests various error conditions for dirs and files.
 #[lfs_test]
-fn test_dirs_other_errors(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_dirs_other_errors(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "potato"));
+    assert_ok!(lfs_mkdir(lfs, "potato").await);
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "burito",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_open(lfs, file, "burito", LFS_O_WRONLY | LFS_O_CREAT,).await);
+    assert_ok!(lfs_file_close(lfs, file).await);
 
-    assert_err!(Error::Exists, lfs_mkdir(lfs, "potato"));
-    assert_err!(Error::Exists, lfs_mkdir(lfs, "burito"));
+    assert_err!(Error::Exists, lfs_mkdir(lfs, "potato").await);
+    assert_err!(Error::Exists, lfs_mkdir(lfs, "burito").await);
 
     let file = &mut LfsFile::default();
     assert_err!(
         Error::Exists,
-        lfs_file_open(lfs, file, "burito", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
+        lfs_file_open(lfs, file, "burito", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL).await,
     );
     let file = &mut LfsFile::default();
     assert_err!(
         Error::Exists,
-        lfs_file_open(lfs, file, "potato", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
+        lfs_file_open(lfs, file, "potato", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL).await,
     );
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_err!(Error::NoEntry, lfs_dir_open(lfs, dir, "tomato"));
+    assert_err!(Error::NoEntry, lfs_dir_open(lfs, dir, "tomato").await);
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_err!(Error::NotDir, lfs_dir_open(lfs, dir, "burito"));
+    assert_err!(Error::NotDir, lfs_dir_open(lfs, dir, "burito").await);
 
     let file = &mut LfsFile::default();
     assert_err!(
         Error::NoEntry,
-        lfs_file_open(lfs, file, "tomato", LFS_O_RDONLY),
+        lfs_file_open(lfs, file, "tomato", LFS_O_RDONLY).await,
     );
     let file = &mut LfsFile::default();
     assert_err!(
         Error::IsDir,
-        lfs_file_open(lfs, file, "potato", LFS_O_RDONLY),
+        lfs_file_open(lfs, file, "potato", LFS_O_RDONLY).await,
     );
 
     let file = &mut LfsFile::default();
     assert_err!(
         Error::NoEntry,
-        lfs_file_open(lfs, file, "tomato", LFS_O_WRONLY),
+        lfs_file_open(lfs, file, "tomato", LFS_O_WRONLY).await,
     );
     let file = &mut LfsFile::default();
     assert_err!(
         Error::IsDir,
-        lfs_file_open(lfs, file, "potato", LFS_O_WRONLY),
+        lfs_file_open(lfs, file, "potato", LFS_O_WRONLY).await,
     );
 
     let file = &mut LfsFile::default();
     assert_err!(
         Error::IsDir,
-        lfs_file_open(lfs, file, "potato", LFS_O_WRONLY | LFS_O_CREAT),
+        lfs_file_open(lfs, file, "potato", LFS_O_WRONLY | LFS_O_CREAT).await,
     );
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "tacoto",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_open(lfs, file, "tacoto", LFS_O_WRONLY | LFS_O_CREAT,).await);
+    assert_ok!(lfs_file_close(lfs, file).await);
 
-    assert_err!(Error::IsDir, lfs_rename(lfs, "tacoto", "potato"));
-    assert_err!(Error::NotDir, lfs_rename(lfs, "potato", "tacoto"));
+    assert_err!(Error::IsDir, lfs_rename(lfs, "tacoto", "potato").await);
+    assert_err!(Error::NotDir, lfs_rename(lfs, "potato", "tacoto").await);
 
-    assert_err!(Error::Exists, lfs_mkdir(lfs, "/"));
+    assert_err!(Error::Exists, lfs_mkdir(lfs, "/").await);
     let file = &mut LfsFile::default();
     assert_err!(
         Error::Exists,
-        lfs_file_open(lfs, file, "/", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
+        lfs_file_open(lfs, file, "/", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL).await,
     );
-    let file = &mut LfsFile::default();
-    assert_err!(Error::IsDir, lfs_file_open(lfs, file, "/", LFS_O_RDONLY));
-    let file = &mut LfsFile::default();
-    assert_err!(Error::IsDir, lfs_file_open(lfs, file, "/", LFS_O_WRONLY));
     let file = &mut LfsFile::default();
     assert_err!(
         Error::IsDir,
-        lfs_file_open(lfs, file, "/", LFS_O_WRONLY | LFS_O_CREAT),
+        lfs_file_open(lfs, file, "/", LFS_O_RDONLY).await
+    );
+    let file = &mut LfsFile::default();
+    assert_err!(
+        Error::IsDir,
+        lfs_file_open(lfs, file, "/", LFS_O_WRONLY).await
+    );
+    let file = &mut LfsFile::default();
+    assert_err!(
+        Error::IsDir,
+        lfs_file_open(lfs, file, "/", LFS_O_WRONLY | LFS_O_CREAT).await,
     );
 
-    let names = dir_entry_names(lfs, cfg, "/").expect("root listing");
+    let names = dir_entry_names(lfs, cfg, "/").await.expect("root listing");
     let mut names_sorted = names.clone();
     names_sorted.sort();
     assert_eq!(names_sorted, vec!["burito", "potato", "tacoto"]);
 
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    let names = dir_entry_names(lfs, cfg, "/").expect("root listing after remount");
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    let names = dir_entry_names(lfs, cfg, "/")
+        .await
+        .expect("root listing after remount");
     let mut names_sorted = names.clone();
     names_sorted.sort();
     assert_eq!(names_sorted, vec!["burito", "potato", "tacoto"]);

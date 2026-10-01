@@ -1346,9 +1346,9 @@ pub async fn lfs_file_write_<'a, S: Storage>(
 /// May avoid flush if new pos is in current cache (reading path).
 ///
 /// C: lfs.c:3700-3751
-pub async fn lfs_file_seek_<'a, S: Storage>(
+pub async fn lfs_file_seek_<S: Storage>(
     lfs: &mut crate::fs::Lfs<S>,
-    file: &mut LfsFile<'a>,
+    file: &mut LfsFile<'_>,
     off: crate::types::lfs_soff_t,
     whence: i32,
 ) -> Result<crate::types::lfs_off_t, Error> {
