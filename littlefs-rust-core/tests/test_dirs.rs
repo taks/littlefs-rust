@@ -23,28 +23,29 @@ static ROOT_PATH: &str = "/"; // [b'/', 0];
 // --- test_dirs_root ---
 // Upstream: dir_open("/"), dir_read returns ".", "..", then 0
 #[lfs_test]
-fn test_dirs_root(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_dirs_root(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH).await);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    let n = lfs_dir_read(lfs, dir, info);
+    let n = lfs_dir_read(lfs, dir, info).await;
     assert_eq!(n, Ok(true));
     assert_eq!(info.name_str(), ".");
     assert_eq!(info.type_, LfsType::DIR);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    let n = lfs_dir_read(lfs, dir, info);
+    let n = lfs_dir_read(lfs, dir, info).await;
     assert_eq!(n, Ok(true));
     assert_eq!(info.name_str(), "..");
     assert_eq!(info.type_, LfsType::DIR);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    let n = lfs_dir_read(lfs, dir, info);
+    let n = lfs_dir_read(lfs, dir, info).await;
     assert_eq!(n, Ok(false));
 
     assert_ok!(lfs_dir_close(lfs, dir));
@@ -54,21 +55,24 @@ fn test_dirs_root(cfg: &LfsConfig) {
 // --- test_dirs_one_mkdir ---
 // Upstream: [cases.test_dirs_one_mkdir] mkdir("d0"), stat, dir_read
 #[lfs_test]
-fn test_dirs_one_mkdir(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_dirs_one_mkdir(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = "d0";
-    assert_ok!(lfs_mkdir(lfs, path));
+    assert_ok!(lfs_mkdir(lfs, path).await);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    assert_ok!(lfs_stat(lfs, path, info));
+    assert_ok!(lfs_stat(lfs, path, info).await);
     let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
     assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "d0");
     assert_eq!(info.type_, LfsType::DIR);
 
-    let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "/")
+        .await
+        .expect("dir_entry_names");
     assert_eq!(names.len(), 1);
     assert_eq!(names[0], "d0");
 
@@ -81,8 +85,9 @@ fn test_dirs_one_mkdir(cfg: &LfsConfig) {
 ///
 /// Create N dirs dir000..dir{N-1}, unmount, mount, verify dir_read.
 #[lfs_test]
-fn test_dirs_many_creation(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_dirs_many_creation(
+    cfg: &LfsConfig<'_>,
     #[values(
         3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69,
         72, 75, 78, 81, 84, 87, 90, 93, 96, 99
@@ -94,16 +99,18 @@ fn test_dirs_many_creation(
     }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     for i in 0..n {
         let path = &format!("dir{i:03}");
-        let err = lfs_mkdir(lfs, path);
+        let err = lfs_mkdir(lfs, path).await;
         assert_ok!(err);
     }
 
-    let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "/")
+        .await
+        .expect("dir_entry_names");
     assert_eq!(names.len(), n);
     let mut names_sorted = names.clone();
     names_sorted.sort();
@@ -795,45 +802,43 @@ fn test_dirs_other_errors(cfg: &LfsConfig) {
 /// defines.COUNT = [4, 128, 132], if = 'COUNT < BLOCK_COUNT/2'
 /// Create COUNT entries in a child dir. Exercise lfs_dir_seek, lfs_dir_tell, lfs_dir_rewind.
 #[lfs_test]
-fn test_dirs_seek(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_dirs_seek(cfg: &LfsConfig<'_>) {
     for count in [4usize, 128, 132] {
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
 
-        assert_ok!(lfs_mkdir(lfs, "child"));
+        assert_ok!(lfs_mkdir(lfs, "child").await);
         for i in 0..count {
             let path = &format!("child/entry{i:03}");
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await
+            );
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
 
         let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-        assert_ok!(lfs_dir_open(lfs, dir, "child"));
-        assert_ok!(lfs_dir_rewind(lfs, dir));
+        assert_ok!(lfs_dir_open(lfs, dir, "child").await);
+        assert_ok!(lfs_dir_rewind(lfs, dir).await);
         let pos0 = lfs_dir_tell(lfs, dir);
         assert!(pos0 >= 0, "tell after rewind");
 
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
         let mut n = 0usize;
-        while lfs_dir_read(lfs, dir, info) == Ok(true) {
+        while lfs_dir_read(lfs, dir, info).await == Ok(true) {
             n += 1;
         }
         assert_eq!(n, count + 2, "COUNT={count}: . and .. plus {count} entries");
 
-        assert_ok!(lfs_dir_rewind(lfs, dir));
+        assert_ok!(lfs_dir_rewind(lfs, dir).await);
         let half = (count + 2) / 2;
-        assert_ok!(lfs_dir_seek(lfs, dir, half as u32));
+        assert_ok!(lfs_dir_seek(lfs, dir, half as u32).await);
         let pos_half = lfs_dir_tell(lfs, dir);
         assert!(pos_half >= 0, "tell after seek");
 
-        assert_ok!(lfs_dir_rewind(lfs, dir));
+        assert_ok!(lfs_dir_rewind(lfs, dir).await);
         let pos_rewind = lfs_dir_tell(lfs, dir);
         assert_eq!(pos_rewind, pos0, "tell after rewind matches initial");
 

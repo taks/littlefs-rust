@@ -1802,16 +1802,17 @@ async fn test_paths_empty<'a>(cfg: &LfsConfig<'a>, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_root_aliases(cfg: &LfsConfig, #[case] _dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_root_aliases(cfg: &LfsConfig<'_>, #[case] _dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let aliases = &["/", ".", "./", "/.", "//"];
     for alias in aliases {
         let path = alias;
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
         assert_eq!(info.name_str(), "/");
         assert_eq!(info.type_, LfsType::DIR);
     }
