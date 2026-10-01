@@ -186,8 +186,8 @@ async fn test_relocations_nonreentrant_renames(
     }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let mut prng: u32 = 1;
 
@@ -204,18 +204,18 @@ async fn test_relocations_nonreentrant_renames(
 
         // if it does not exist, we create it, else we destroy
         let info = &mut LfsInfo::default();
-        let res = lfs_stat(lfs, &full_path, info);
+        let res = lfs_stat(lfs, &full_path, info).await;
         assert!(res.is_ok() || res == Err(Error::NoEntry));
         if res == Err(Error::NoEntry) {
             // create each directory in turn, ignore if dir already exists
             for d in 0..depth {
                 assert_matches!(
-                    lfs_mkdir(lfs, &full_path[..(2 * d + 2)]),
+                    lfs_mkdir(lfs, &full_path[..(2 * d + 2)]).await,
                     Ok(()) | Err(Error::Exists)
                 );
             }
             for d in 0..depth {
-                assert_ok!(lfs_stat(lfs, &full_path[..(2 * d + 2)], info));
+                assert_ok!(lfs_stat(lfs, &full_path[..(2 * d + 2)], info).await);
                 assert_eq!(info.name_str(), &full_path[(2 * d + 1)..(2 * d + 2)]);
                 assert_eq!(info.type_, LfsType::DIR);
             }
@@ -234,7 +234,7 @@ async fn test_relocations_nonreentrant_renames(
             }
 
             // if new path does not exist, rename, otherwise destroy
-            let res = lfs_stat(lfs, &new_path, info);
+            let res = lfs_stat(lfs, &new_path, info).await;
             assert_matches!(res, Ok(()) | Err(Error::NoEntry));
             if res == Err(Error::NoEntry) {
                 // stop once some dir is renamed
@@ -243,7 +243,7 @@ async fn test_relocations_nonreentrant_renames(
                 for d in 0..depth {
                     from.push_str(&full_path[(2 * d)..(2 * d + 2)]);
                     to.push_str(&new_path[(2 * d)..(2 * d + 2)]);
-                    let ret = lfs_rename(lfs, &from, &to);
+                    let ret = lfs_rename(lfs, &from, &to).await;
                     assert_matches!(ret, Ok(()) | Err(Error::NotEmpty));
                     if ret.is_ok() {
                         from.clear();
@@ -251,19 +251,19 @@ async fn test_relocations_nonreentrant_renames(
                     }
                 }
                 for d in 0..depth {
-                    assert_ok!(lfs_stat(lfs, &new_path[..(2 * d + 2)], info));
+                    assert_ok!(lfs_stat(lfs, &new_path[..(2 * d + 2)], info).await);
                     assert_eq!(info.name_str(), &new_path[(2 * d + 1)..(2 * d + 2)]);
                     assert_eq!(info.type_, LfsType::DIR);
                 }
 
-                assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
+                assert_eq!(lfs_stat(lfs, &full_path, info).await, Err(Error::NoEntry));
             } else {
                 // try to delete path in reverse order,
                 // ignore if dir is not empty
                 let mut d = depth - 1;
                 loop {
                     assert_matches!(
-                        lfs_remove(lfs, &full_path[..(2 * d + 2)]),
+                        lfs_remove(lfs, &full_path[..(2 * d + 2)]).await,
                         Ok(()) | Err(Error::NotEmpty)
                     );
                     if d == 0 {
@@ -272,7 +272,7 @@ async fn test_relocations_nonreentrant_renames(
                     d -= 1;
                 }
 
-                assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
+                assert_eq!(lfs_stat(lfs, &full_path, info).await, Err(Error::NoEntry));
             }
         }
     }

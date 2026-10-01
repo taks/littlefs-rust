@@ -297,8 +297,9 @@ async fn test_truncate_write<'a>(cfg: &LfsConfig<'a>, #[case] medium: u32, #[cas
 /// Upstream: [cases.test_truncate_reentrant_write]
 #[cfg(feature = "slow_tests")]
 #[lfs_test]
-fn test_truncate_reentrant_write(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_truncate_reentrant_write(
+    cfg: &LfsConfig<'_>,
     #[values(false, true)] reentrant: bool,
     #[values(4, 512)] small_size: u32,
     #[values(0u32, 3, 4, 5, 31, 32, 33, 511, 512, 513, 1023, 1024, 1025)] medium_size: u32,
@@ -311,15 +312,15 @@ fn test_truncate_reentrant_write(
 
     let lfs = &mut Lfs::default();
 
-    let err = littlefs_rust_core::lfs_mount(lfs, cfg);
+    let err = lfs_mount(lfs, cfg).await;
     if err.is_err() {
-        assert_ok!(littlefs_rust_core::lfs_format(lfs, cfg));
-        assert_ok!(littlefs_rust_core::lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
     }
 
     let path = "baldy";
     let file = &mut LfsFile::default();
-    let open_err = littlefs_rust_core::lfs_file_open(lfs, file, path, LFS_O_RDONLY);
+    let open_err = lfs_file_open(lfs, file, path, LFS_O_RDONLY).await;
     if open_err.is_ok() {
         let sz = littlefs_rust_core::lfs_file_size(lfs, file);
         assert!(sz == 0 || sz == LARGE || sz == medium_size || sz == small_size);
@@ -328,7 +329,7 @@ fn test_truncate_reentrant_write(
         for j in (0..sz).step_by(4) {
             let chunk = min(4, sz as u32 - j);
             assert_eq!(
-                lfs_file_read(lfs, file, &mut buf[..chunk as usize]),
+                lfs_file_read(lfs, file, &mut buf[..chunk as usize]).await,
                 Ok(chunk)
             );
 
@@ -340,50 +341,45 @@ fn test_truncate_reentrant_write(
             );
         }
 
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC
-    ));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC).await);
 
     for j in (0..LARGE).step_by(HAIR.len()) {
         let chunk = min(HAIR.len(), (LARGE - j) as usize);
         assert_eq!(
-            littlefs_rust_core::lfs_file_write(lfs, file, &HAIR[..chunk]),
+            lfs_file_write(lfs, file, &HAIR[..chunk]).await,
             Ok(chunk as u32)
         );
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
-    assert_ok!(lfs_file_truncate(lfs, file, medium_size));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR).await);
+    assert_ok!(lfs_file_truncate(lfs, file, medium_size).await);
 
     let mut j: u32 = 0;
     while j < medium_size {
         let chunk = min(BALD.len() as u32, medium_size - j);
         assert_eq!(
-            lfs_file_write(lfs, file, &BALD[..chunk as usize]),
+            lfs_file_write(lfs, file, &BALD[..chunk as usize]).await,
             Ok(chunk)
         );
 
         j += chunk;
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR));
-    assert_ok!(lfs_file_truncate(lfs, file, small_size));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDWR).await);
+    assert_ok!(lfs_file_truncate(lfs, file, small_size).await);
     for j in (0..small_size).step_by(COMB.len()) {
         let chunk = min(COMB.len() as u32, small_size - j);
         assert_eq!(
-            lfs_file_write(lfs, file, &COMB[..chunk as usize]),
+            lfs_file_write(lfs, file, &COMB[..chunk as usize]).await,
             Ok(chunk)
         );
     }
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 

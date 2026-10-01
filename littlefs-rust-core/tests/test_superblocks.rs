@@ -149,13 +149,17 @@ async fn test_superblocks_mount_unknown_block_count<'a>(cfg: &LfsConfig<'a>) {
 /// Upstream: [cases.test_superblocks_reentrant_format]
 /// reentrant = true, POWERLOSS_BEHAVIOR = [NOOP, OOO]. Format under power-loss, then mount.
 #[lfs_test]
+#[tokio::test]
 #[cfg(feature = "slow_tests")]
-fn test_superblocks_reentrant_format(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
+async fn test_superblocks_reentrant_format(
+    cfg: &LfsConfig<'_>,
+    #[values(false, true)] reentrant: bool,
+) {
     let lfs = &mut Lfs::default();
-    let err = lfs_mount(lfs, cfg);
+    let err = lfs_mount(lfs, cfg).await;
     if err.is_err() {
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
     }
     assert_ok!(lfs_unmount(lfs));
 }
@@ -163,7 +167,8 @@ fn test_superblocks_reentrant_format(cfg: &LfsConfig, #[values(false, true)] ree
 /// Upstream: [cases.test_superblocks_stat_tweaked]
 /// Format with name_max=63, file_max=65535, attr_max=512; mount with default; verify fsinfo.
 #[lfs_test]
-fn test_superblocks_stat_tweaked(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_superblocks_stat_tweaked(cfg: &LfsConfig<'_>) {
     let tweaked_cfg = LfsConfig {
         name_max: 63,
         file_max: 65535,
@@ -172,12 +177,11 @@ fn test_superblocks_stat_tweaked(cfg: &LfsConfig) {
     };
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, &tweaked_cfg));
-
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, &tweaked_cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-    assert_ok!(lfs_fs_stat(lfs, fsinfo));
+    assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
     assert_eq!(fsinfo.name_max, 63);
     assert_eq!(fsinfo.file_max, 65535);
     assert_eq!(fsinfo.attr_max, 512);

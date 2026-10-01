@@ -238,30 +238,25 @@ async fn test_entries_drop<'a>(cfg: &LfsConfig<'a>) {
 #[tokio::test]
 async fn test_entries_create_too_big(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = &"m".repeat(200);
     let size = 400usize;
     let wbuf = [b'c'; 1024];
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-    ));
-    let n = lfs_file_write(lfs, file, &wbuf[..size]);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,).await);
+    let n = lfs_file_write(lfs, file, &wbuf[..size]).await;
     assert_eq!(n, Ok(size as u32));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
     let mut rbuf = [0u8; 1024];
-    let n = lfs_file_read(lfs, file, &mut rbuf[..size]);
+    let n = lfs_file_read(lfs, file, &mut rbuf[..size]).await;
     assert_eq!(n, Ok(size as u32));
     assert_eq!(&rbuf[..size], &wbuf[..size]);
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     assert_ok!(lfs_unmount(lfs));
 }
@@ -270,10 +265,11 @@ async fn test_entries_create_too_big(cfg: &LfsConfig<'_>) {
 // Upstream: [cases.test_entries_resize_too_big]
 // 200-byte path needs ample blocks; 2048 matches upstream geometry (ERASE_COUNT=1M/512).
 #[lfs_test]
-fn test_entries_resize_too_big(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_entries_resize_too_big(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let path = &"m".repeat(200);
     let wbuf = [b'c'; 1024];
@@ -281,43 +277,33 @@ fn test_entries_resize_too_big(cfg: &LfsConfig) {
 
     // Create with 40 bytes
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-    ));
-    let n = lfs_file_write(lfs, file, &wbuf[..40]);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,).await);
+    let n = lfs_file_write(lfs, file, &wbuf[..40]).await;
     assert_eq!(n, Ok(40));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     // Read 40 bytes
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    let n = lfs_file_read(lfs, file, &mut rbuf[..40]);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
+    let n = lfs_file_read(lfs, file, &mut rbuf[..40]).await;
     assert_eq!(n, Ok(40));
     assert_eq!(&rbuf[..40], &wbuf[..40]);
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     // Truncate and write 400 bytes
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        path,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-    ));
-    let n = lfs_file_write(lfs, file, &wbuf[..400]);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,).await);
+    let n = lfs_file_write(lfs, file, &wbuf[..400]).await;
     assert_eq!(n, Ok(400));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     // Read 400 bytes
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-    let n = lfs_file_read(lfs, file, &mut rbuf[..400]);
+    assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
+    let n = lfs_file_read(lfs, file, &mut rbuf[..400]).await;
     assert_eq!(n, Ok(400));
     assert_eq!(&rbuf[..400], &wbuf[..400]);
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     assert_ok!(lfs_unmount(lfs));
 }

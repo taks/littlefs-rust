@@ -72,8 +72,8 @@ async fn test_compat_major_incompat(cfg: &LfsConfig<'_>) {
 #[tokio::test]
 async fn test_compat_minor_incompat(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let mut mdir = LfsMdir {
         pair: [0, 0],
@@ -86,7 +86,7 @@ async fn test_compat_minor_incompat(cfg: &LfsConfig<'_>) {
         tail: [0, 0],
     };
     let root_pair: [u32; 2] = [0, 1];
-    assert_ok!(lfs_dir_fetch(lfs, &mut mdir, root_pair));
+    assert_ok!(lfs_dir_fetch(lfs, &mut mdir, root_pair).await);
 
     let mut superblock = LfsSuperblock {
         version: LFS_DISK_VERSION + 0x0000_0001,
@@ -105,10 +105,10 @@ async fn test_compat_minor_incompat(cfg: &LfsConfig<'_>) {
         ),
         buffer: superblock.as_bytes(),
     }];
-    assert_ok!(lfs_dir_commit(lfs, &mut mdir, &attrs));
+    assert_ok!(lfs_dir_commit(lfs, &mut mdir, &attrs).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_err!(Error::Invalid, lfs_mount(lfs, cfg));
+    assert_err!(Error::Invalid, lfs_mount(lfs, cfg).await);
 }
 
 /// Upstream: [cases.test_compat_minor_bump]
