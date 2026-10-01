@@ -280,7 +280,8 @@ async fn test_move_create_delete_same(cfg: &LfsConfig<'_>) {
 
 // --- test_move_create_delete_delete_same ---
 #[lfs_test]
-fn test_move_create_delete_delete_same(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_move_create_delete_delete_same(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));

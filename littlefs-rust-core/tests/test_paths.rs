@@ -1510,13 +1510,14 @@ fn test_paths_oopsallspaces(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_oopsalldels(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_oopsalldels(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let root = &[0x7f];
-    assert_ok!(lfs_mkdir(lfs, unsafe { str::from_utf8_unchecked(root) }));
+    assert_ok!(lfs_mkdir(lfs, unsafe { str::from_utf8_unchecked(root) }).await);
     let mut child_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
     for n in 1..=6 {
         let p: Vec<u8> = (0..n).map(|_| 0x7f).collect();
@@ -1526,16 +1527,19 @@ fn test_paths_oopsalldels(cfg: &LfsConfig, #[case] dir_mode: bool) {
         let mut full: Vec<u8> = vec![0x7f, b'/'];
         full.extend_from_slice(cp);
         if dir_mode {
-            assert_ok!(lfs_mkdir(lfs, unsafe { str::from_utf8_unchecked(&full) }));
+            assert_ok!(lfs_mkdir(lfs, unsafe { str::from_utf8_unchecked(&full) }).await);
         } else {
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                unsafe { str::from_utf8_unchecked(&full) },
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(
+                lfs_file_open(
+                    lfs,
+                    file,
+                    unsafe { str::from_utf8_unchecked(&full) },
+                    LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+                )
+                .await
+            );
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
     }
     let mut full_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
@@ -1546,7 +1550,7 @@ fn test_paths_oopsalldels(cfg: &LfsConfig, #[case] dir_mode: bool) {
     }
     for fp in &full_paths {
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, unsafe { str::from_utf8_unchecked(fp) }, info));
+        assert_ok!(lfs_stat(lfs, unsafe { str::from_utf8_unchecked(fp) }, info).await);
     }
     if dir_mode {
         for fp in &full_paths {
@@ -1558,57 +1562,57 @@ fn test_paths_oopsalldels(cfg: &LfsConfig, #[case] dir_mode: bool) {
                     file,
                     unsafe { str::from_utf8_unchecked(fp) },
                     LFS_O_RDONLY,
-                ),
+                )
+                .await,
             );
             let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-            assert_ok!(lfs_dir_open(lfs, dir, unsafe {
-                str::from_utf8_unchecked(fp)
-            }));
+            assert_ok!(lfs_dir_open(lfs, dir, unsafe { str::from_utf8_unchecked(fp) }).await);
             assert_ok!(lfs_dir_close(lfs, dir));
         }
     } else {
         for fp in &full_paths {
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                unsafe { str::from_utf8_unchecked(fp) },
-                LFS_O_RDONLY,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(
+                lfs_file_open(
+                    lfs,
+                    file,
+                    unsafe { str::from_utf8_unchecked(fp) },
+                    LFS_O_RDONLY,
+                )
+                .await
+            );
+            assert_ok!(lfs_file_close(lfs, file).await);
             assert_err!(
                 Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     unsafe { &mut *core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr() },
                     unsafe { str::from_utf8_unchecked(fp) },
-                ),
+                )
+                .await,
             );
         }
     }
     let new_root = &[0x7f, 0x7f];
-    assert_ok!(lfs_mkdir(lfs, unsafe {
-        str::from_utf8_unchecked(new_root)
-    }));
+    assert_ok!(lfs_mkdir(lfs, unsafe { str::from_utf8_unchecked(new_root) }).await);
     for (n, fp) in full_paths.iter().enumerate() {
         let new_name_len = 6 - n;
         let mut new_path = vec![0x7f, 0x7f, b'/'];
         new_path.extend((0..new_name_len).map(|_| 0x7f));
-        assert_ok!(lfs_rename(
-            lfs,
-            unsafe { str::from_utf8_unchecked(fp) },
-            unsafe { str::from_utf8_unchecked(&new_path) },
-        ));
+        assert_ok!(
+            lfs_rename(lfs, unsafe { str::from_utf8_unchecked(fp) }, unsafe {
+                str::from_utf8_unchecked(&new_path)
+            })
+            .await
+        );
     }
     for n in 1..=6 {
         let mut p = vec![0x7f, 0x7f, b'/'];
         p.extend((0..n).map(|_| 0x7f));
-        assert_ok!(lfs_remove(lfs, unsafe { str::from_utf8_unchecked(&p) }));
+        assert_ok!(lfs_remove(lfs, unsafe { str::from_utf8_unchecked(&p) }).await);
     }
-    assert_ok!(lfs_remove(lfs, unsafe {
-        str::from_utf8_unchecked(new_root)
-    }));
-    assert_ok!(lfs_remove(lfs, unsafe { str::from_utf8_unchecked(root) }));
+    assert_ok!(lfs_remove(lfs, unsafe { str::from_utf8_unchecked(new_root) }).await);
+    assert_ok!(lfs_remove(lfs, unsafe { str::from_utf8_unchecked(root) }).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -1617,14 +1621,15 @@ fn test_paths_oopsalldels(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_oopsallffs(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_oopsallffs(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     #[expect(invalid_from_utf8_unchecked)]
     let root = unsafe { str::from_utf8_unchecked(&[0xff]) };
-    assert_ok!(lfs_mkdir(lfs, root));
+    assert_ok!(lfs_mkdir(lfs, root).await);
     let mut child_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
     for n in 1..=6 {
         let p: Vec<u8> = (0..n).map(|_| 0xff).collect();
@@ -1634,16 +1639,19 @@ fn test_paths_oopsallffs(cfg: &LfsConfig, #[case] dir_mode: bool) {
         let mut full: Vec<u8> = vec![0xff, b'/'];
         full.extend_from_slice(cp);
         if dir_mode {
-            assert_ok!(lfs_mkdir(lfs, unsafe { str::from_utf8_unchecked(&full) }));
+            assert_ok!(lfs_mkdir(lfs, unsafe { str::from_utf8_unchecked(&full) }).await);
         } else {
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                unsafe { str::from_utf8_unchecked(&full) },
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(
+                lfs_file_open(
+                    lfs,
+                    file,
+                    unsafe { str::from_utf8_unchecked(&full) },
+                    LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+                )
+                .await
+            );
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
     }
     let mut full_paths: Vec<Vec<u8>> = Vec::with_capacity(6);
@@ -1654,7 +1662,7 @@ fn test_paths_oopsallffs(cfg: &LfsConfig, #[case] dir_mode: bool) {
     }
     for fp in &full_paths {
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, unsafe { str::from_utf8_unchecked(fp) }, info));
+        assert_ok!(lfs_stat(lfs, unsafe { str::from_utf8_unchecked(fp) }, info).await);
     }
     if dir_mode {
         for fp in &full_paths {
@@ -1666,54 +1674,58 @@ fn test_paths_oopsallffs(cfg: &LfsConfig, #[case] dir_mode: bool) {
                     file,
                     unsafe { str::from_utf8_unchecked(fp) },
                     LFS_O_RDONLY,
-                ),
+                )
+                .await,
             );
             let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-            assert_ok!(lfs_dir_open(lfs, dir, unsafe {
-                str::from_utf8_unchecked(fp)
-            }));
+            assert_ok!(lfs_dir_open(lfs, dir, unsafe { str::from_utf8_unchecked(fp) }).await);
             assert_ok!(lfs_dir_close(lfs, dir));
         }
     } else {
         for fp in &full_paths {
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                unsafe { str::from_utf8_unchecked(fp) },
-                LFS_O_RDONLY,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(
+                lfs_file_open(
+                    lfs,
+                    file,
+                    unsafe { str::from_utf8_unchecked(fp) },
+                    LFS_O_RDONLY,
+                )
+                .await
+            );
+            assert_ok!(lfs_file_close(lfs, file).await);
             assert_err!(
                 Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     unsafe { &mut *core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr() },
                     unsafe { str::from_utf8_unchecked(fp) },
-                ),
+                )
+                .await
             );
         }
     }
     #[expect(invalid_from_utf8_unchecked)]
     let new_root = unsafe { str::from_utf8_unchecked(&[0xff, 0xff]) };
-    assert_ok!(lfs_mkdir(lfs, new_root));
+    assert_ok!(lfs_mkdir(lfs, new_root).await);
     for (n, fp) in full_paths.iter().enumerate() {
         let new_name_len = 6 - n;
         let mut new_path = vec![0xff, 0xff, b'/'];
         new_path.extend((0..new_name_len).map(|_| 0xff));
-        assert_ok!(lfs_rename(
-            lfs,
-            unsafe { str::from_utf8_unchecked(fp) },
-            unsafe { str::from_utf8_unchecked(&new_path) },
-        ));
+        assert_ok!(
+            lfs_rename(lfs, unsafe { str::from_utf8_unchecked(fp) }, unsafe {
+                str::from_utf8_unchecked(&new_path)
+            },)
+            .await
+        );
     }
     for n in 1..=6 {
         let mut p = vec![0xff, 0xff, b'/'];
         p.extend((0..n).map(|_| 0xff));
-        assert_ok!(lfs_remove(lfs, unsafe { str::from_utf8_unchecked(&p) }));
+        assert_ok!(lfs_remove(lfs, unsafe { str::from_utf8_unchecked(&p) }).await);
     }
-    assert_ok!(lfs_remove(lfs, new_root));
-    assert_ok!(lfs_remove(lfs, root));
+    assert_ok!(lfs_remove(lfs, new_root).await);
+    assert_ok!(lfs_remove(lfs, root).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
