@@ -283,95 +283,55 @@ async fn test_move_create_delete_same(cfg: &LfsConfig<'_>) {
 #[tokio::test]
 async fn test_move_create_delete_delete_same(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "1.move_me",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_open(lfs, file, "1.move_me", LFS_O_WRONLY | LFS_O_CREAT,).await);
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "3.move_me",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    let n = lfs_file_write(lfs, file, b"remove me");
+    assert_ok!(lfs_file_open(lfs, file, "3.move_me", LFS_O_WRONLY | LFS_O_CREAT,).await);
+    let n = lfs_file_write(lfs, file, b"remove me").await;
     assert_eq!(n, Ok(9));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "0.before",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    let n = lfs_file_write(lfs, file, b"test.1");
+    assert_ok!(lfs_file_open(lfs, file, "0.before", LFS_O_WRONLY | LFS_O_CREAT,).await);
+    let n = lfs_file_write(lfs, file, b"test.1").await;
     assert_eq!(n, Ok(6));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "2.in_between",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    let n = lfs_file_write(lfs, file, b"test.2");
+    assert_ok!(lfs_file_open(lfs, file, "2.in_between", LFS_O_WRONLY | LFS_O_CREAT,).await);
+    let n = lfs_file_write(lfs, file, b"test.2").await;
     assert_eq!(n, Ok(6));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        "4.after",
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    let n = lfs_file_write(lfs, file, b"test.3");
+    assert_ok!(lfs_file_open(lfs, file, "4.after", LFS_O_WRONLY | LFS_O_CREAT,).await);
+    let n = lfs_file_write(lfs, file, b"test.3").await;
     assert_eq!(n, Ok(6));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
     let fa = &mut LfsFile::default();
     let fb = &mut LfsFile::default();
     let fc = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        fa,
-        "0.before",
-        LFS_O_WRONLY | LFS_O_TRUNC,
-    ));
-    assert_ok!(lfs_file_open(
-        lfs,
-        fb,
-        "2.in_between",
-        LFS_O_WRONLY | LFS_O_TRUNC,
-    ));
-    assert_ok!(lfs_file_open(
-        lfs,
-        fc,
-        "4.after",
-        LFS_O_WRONLY | LFS_O_TRUNC,
-    ));
-    let _ = lfs_file_write(lfs, fa, b"test.4");
-    let _ = lfs_file_write(lfs, fb, b"test.5");
-    let _ = lfs_file_write(lfs, fc, b"test.6");
+    assert_ok!(lfs_file_open(lfs, fa, "0.before", LFS_O_WRONLY | LFS_O_TRUNC).await);
+    assert_ok!(lfs_file_open(lfs, fb, "2.in_between", LFS_O_WRONLY | LFS_O_TRUNC).await);
+    assert_ok!(lfs_file_open(lfs, fc, "4.after", LFS_O_WRONLY | LFS_O_TRUNC).await);
+    let _ = lfs_file_write(lfs, fa, b"test.4").await;
+    let _ = lfs_file_write(lfs, fb, b"test.5").await;
+    let _ = lfs_file_write(lfs, fc, b"test.6").await;
 
-    assert_ok!(lfs_rename(lfs, "1.move_me", "3.move_me"));
+    assert_ok!(lfs_rename(lfs, "1.move_me", "3.move_me").await);
 
-    assert_ok!(lfs_file_close(lfs, fa));
-    assert_ok!(lfs_file_close(lfs, fb));
-    assert_ok!(lfs_file_close(lfs, fc));
+    assert_ok!(lfs_file_close(lfs, fa).await);
+    assert_ok!(lfs_file_close(lfs, fb).await);
+    assert_ok!(lfs_file_close(lfs, fc).await);
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok!(lfs_stat(lfs, "3.move_me", info));
+    assert_ok!(lfs_stat(lfs, "3.move_me", info).await);
     assert_eq!(info.size, 0);
 
     assert_ok!(lfs_unmount(lfs));
