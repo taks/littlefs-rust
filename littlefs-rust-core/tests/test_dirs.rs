@@ -397,22 +397,25 @@ async fn test_dirs_file_creation<'a>(cfg: &LfsConfig<'a>) {
 /// defines.N = range(3, 100, 11), if = 'N < BLOCK_COUNT/2'
 /// Create N files, verify present, remove all, verify empty.
 #[lfs_test]
-fn test_dirs_file_removal(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_dirs_file_removal(cfg: &LfsConfig<'_>) {
     for n in [3usize, 14, 25, 36, 47, 58, 69, 80, 91] {
         let lfs = &mut Lfs::default();
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
 
         for i in 0..n {
             let path = &format!("removeme{i:03}");
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, cfg));
-        let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
+        assert_ok!(lfs_mount(lfs, cfg).await);
+        let names = dir_entry_names(lfs, cfg, "/")
+            .await
+            .expect("dir_entry_names");
         let mut names_sorted = names.clone();
         names_sorted.sort();
         let mut expected: Vec<String> = (0..n).map(|i| format!("removeme{i:03}")).collect();
@@ -420,15 +423,17 @@ fn test_dirs_file_removal(cfg: &LfsConfig) {
         assert_eq!(names_sorted, expected, "N={n} before removal");
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         for i in 0..n {
             let path = &format!("removeme{i:03}");
-            assert_ok!(lfs_remove(lfs, path));
+            assert_ok!(lfs_remove(lfs, path).await);
         }
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, cfg));
-        let names = dir_entry_names(lfs, cfg, "/").expect("dir_entry_names");
+        assert_ok!(lfs_mount(lfs, cfg).await);
+        let names = dir_entry_names(lfs, cfg, "/")
+            .await
+            .expect("dir_entry_names");
         assert!(names.is_empty(), "N={n} after removal: {names:?}");
         assert_ok!(lfs_unmount(lfs));
     }

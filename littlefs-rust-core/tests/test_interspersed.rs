@@ -211,7 +211,11 @@ async fn test_interspersed_remove_files<'a>(
 /// (including removed "f"). Close all. Verify directory: "e" and "g"
 /// present, "f" absent. Read "e" and "g", verify SIZE bytes.
 #[lfs_test]
-fn test_interspersed_remove_inconveniently(cfg: &LfsConfig, #[values(10, 100)] size: usize) {
+#[tokio::test]
+async fn test_interspersed_remove_inconveniently(
+    cfg: &LfsConfig<'_>,
+    #[values(10, 100)] size: usize,
+) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -243,9 +247,9 @@ fn test_interspersed_remove_inconveniently(cfg: &LfsConfig, #[values(10, 100)] s
 
     // Write SIZE/2 bytes to each
     for _i in 0..(size / 2) {
-        assert_eq!(lfs_file_write(lfs, &mut files[0], b"e"), Ok(1));
-        assert_eq!(lfs_file_write(lfs, &mut files[1], b"f"), Ok(1));
-        assert_eq!(lfs_file_write(lfs, &mut files[2], b"g"), Ok(1));
+        assert_eq!(lfs_file_write(lfs, &mut files[0], b"e").await, Ok(1));
+        assert_eq!(lfs_file_write(lfs, &mut files[1], b"f").await, Ok(1));
+        assert_eq!(lfs_file_write(lfs, &mut files[2], b"g").await, Ok(1));
     }
 
     // Remove "f" while it's still open
@@ -253,9 +257,9 @@ fn test_interspersed_remove_inconveniently(cfg: &LfsConfig, #[values(10, 100)] s
 
     // Write another SIZE/2 bytes to all three
     for _i in 0..(size / 2) {
-        assert_eq!(lfs_file_write(lfs, &mut files[0], b"e"), Ok(1));
-        assert_eq!(lfs_file_write(lfs, &mut files[1], b"f"), Ok(1));
-        assert_eq!(lfs_file_write(lfs, &mut files[2], b"g"), Ok(1));
+        assert_eq!(lfs_file_write(lfs, &mut files[0], b"e").await, Ok(1));
+        assert_eq!(lfs_file_write(lfs, &mut files[1], b"f").await, Ok(1));
+        assert_eq!(lfs_file_write(lfs, &mut files[2], b"g").await, Ok(1));
     }
 
     assert_ok!(lfs_file_close(lfs, &mut files[0]));
@@ -269,27 +273,25 @@ fn test_interspersed_remove_inconveniently(cfg: &LfsConfig, #[values(10, 100)] s
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-    assert_eq!(&info.name[..1], b".");
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), ".");
     assert_eq!(info.type_, LfsType::DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-    assert_eq!(&info.name[..2], b"..");
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "..");
     assert_eq!(info.type_, LfsType::DIR);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-    let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-    assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "e");
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "e");
     assert_eq!(info.type_, LfsType::REG);
     assert_eq!(info.size, size as u32);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
-    let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-    assert_eq!(core::str::from_utf8(&info.name[..nul]).unwrap(), "g");
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "g");
     assert_eq!(info.type_, LfsType::REG);
     assert_eq!(info.size, size as u32);
 
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     // Read "e" and "g", verify SIZE bytes
@@ -299,9 +301,9 @@ fn test_interspersed_remove_inconveniently(cfg: &LfsConfig, #[values(10, 100)] s
 
     for _i in 0..size {
         let mut buffer = [0u8; 1];
-        assert_eq!(lfs_file_read(lfs, &mut files_r[0], &mut buffer), Ok(1));
+        assert_eq!(lfs_file_read(lfs, &mut files_r[0], &mut buffer).await, Ok(1));
         assert_eq!(buffer[0], b'e');
-        assert_eq!(lfs_file_read(lfs, &mut files_r[1], &mut buffer), Ok(1));
+        assert_eq!(lfs_file_read(lfs, &mut files_r[1], &mut buffer).await, Ok(1));
         assert_eq!(buffer[0], b'g');
     }
     assert_ok!(lfs_file_close(lfs, &mut files_r[0]));

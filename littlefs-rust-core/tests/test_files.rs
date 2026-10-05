@@ -477,35 +477,38 @@ async fn test_files_many_power_cycle<'a>(cfg: &LfsConfig<'a>) {
 /// Reentrant creation of 300 files with power-loss simulation.
 /// Can take 30+ seconds due to iteration over power-loss points.
 #[cfg(feature = "slow_tests")]
-#[lfs_test()]
+#[lfs_test]
 #[tokio::test]
-fn test_files_many_power_loss(cfg: &LfsConfig, #[values(false, true)] reentrant: bool) {
+async fn test_files_many_power_loss(cfg: &LfsConfig<'_>, #[values(false, true)] reentrant: bool) {
     const N: usize = 300;
     let lfs = &mut Lfs::default();
 
-    let err = littlefs_rust_core::lfs_mount(lfs, cfg);
+    let err = littlefs_rust_core::lfs_mount(lfs, cfg).await;
     if err.is_err() {
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
     }
     for i in 0..N {
         let path = &format!("file_{:03}", i);
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
         let content = format!("Hi {:03}\0", i);
         let bytes = content.as_bytes();
         let sz = lfs_file_size(lfs, file);
         if sz != bytes.len() as u32 {
-            assert_eq!(lfs_file_write(lfs, file, bytes), Ok(bytes.len() as u32));
+            assert_eq!(
+                lfs_file_write(lfs, file, bytes).await,
+                Ok(bytes.len() as u32)
+            );
         }
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
 
-        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
         let mut buf = [0u8; 7];
 
-        assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(7));
+        assert_eq!(lfs_file_read(lfs, file, &mut buf).await, Ok(7));
         assert_eq!(&buf, bytes);
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
     assert_ok!(lfs_unmount(lfs));
 }

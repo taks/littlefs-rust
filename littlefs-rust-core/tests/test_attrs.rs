@@ -85,7 +85,8 @@ async fn test_attrs_get_set<'a>(cfg: &LfsConfig<'a>) {
 
 // --- test_attrs_get_set_root ---
 #[lfs_test]
-fn test_attrs_get_set_root(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_attrs_get_set_root(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -145,10 +146,11 @@ fn test_attrs_get_set_root(cfg: &LfsConfig) {
 // --- test_attrs_get_set_file ---
 // Uses lfs_file_opencfg with attrs: WRONLY writes attrs on close, RDONLY reads on open.
 #[lfs_test]
-fn test_attrs_get_set_file(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_attrs_get_set_file(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     assert_ok!(lfs_mkdir(lfs, "hello"));
     let file = &mut LfsFile::default();
@@ -158,8 +160,7 @@ fn test_attrs_get_set_file(cfg: &LfsConfig) {
         "hello/hello",
         LFS_O_WRONLY | LFS_O_CREAT,
     ));
-    let n = lfs_file_write(lfs, file, b"hello");
-    assert_eq!(n, Ok(5));
+    assert_eq!(lfs_file_write(lfs, file, b"hello").await, Ok(5));
     assert_ok!(lfs_file_close(lfs, file));
     assert_ok!(lfs_unmount(lfs));
 
@@ -236,11 +237,11 @@ fn test_attrs_get_set_file(cfg: &LfsConfig) {
 
     assert_ok!(lfs_mount(lfs, cfg));
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, "hello/hello", LFS_O_RDONLY));
-    let n = lfs_file_read(lfs, file, &mut buffer[..32]);
+    assert_ok!(lfs_file_open(lfs, file, "hello/hello", LFS_O_RDONLY).await);
+    let n = lfs_file_read(lfs, file, &mut buffer[..32]).await;
     assert_eq!(n, Ok(5));
     assert_eq!(&buffer[..5], b"hello");
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
