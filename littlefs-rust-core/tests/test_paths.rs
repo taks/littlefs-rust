@@ -1834,35 +1834,36 @@ async fn test_paths_root_aliases(cfg: &LfsConfig<'_>, #[case] _dir_mode: bool) {
 }
 
 #[lfs_test]
-fn test_paths_magic_noent(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_paths_magic_noent(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     // stat littlefs, which shouldn't exist
     let info = &mut LfsInfo::default();
-    assert_err!(Error::NoEntry, lfs_stat(lfs, "littlefs", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "littlefs", info).await);
 
     // file open littlefs, which shouldn't exist
     let file = &mut LfsFile::default();
     assert_err!(
         Error::NoEntry,
-        lfs_file_open(lfs, file, "littlefs", LFS_O_RDONLY)
+        lfs_file_open(lfs, file, "littlefs", LFS_O_RDONLY).await
     );
 
     // dir open littlefs, which shouldn't exist
     let dir = &mut LfsDir::default();
-    assert_err!(Error::NoEntry, lfs_dir_open(lfs, dir, "littlefs"));
+    assert_err!(Error::NoEntry, lfs_dir_open(lfs, dir, "littlefs").await);
 
     // rename littlefs, which shouldn't exist
-    assert_err!(Error::NoEntry, lfs_rename(lfs, "littlefs", "coffee"));
+    assert_err!(Error::NoEntry, lfs_rename(lfs, "littlefs", "coffee").await);
 
     // remove littlefs, which shouldn't exist
-    assert_err!(Error::NoEntry, lfs_remove(lfs, "littlefs"));
+    assert_err!(Error::NoEntry, lfs_remove(lfs, "littlefs").await);
 
     // stat littlefs, which shouldn't exist
-    assert_err!(Error::NoEntry, lfs_stat(lfs, "littlefs", info));
-    assert_err!(Error::NoEntry, lfs_stat(lfs, "coffee", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "littlefs", info).await);
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "coffee", info).await);
 
     assert_ok!(lfs_unmount(lfs));
 }
