@@ -1825,9 +1825,31 @@ fn test_paths_magic_noent(cfg: &LfsConfig) {
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
 
-    assert_ok!(lfs_mkdir(lfs, "a"));
-    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_err!(Error::NoEntry, lfs_stat(lfs, "a/b", info));
+    // stat littlefs, which shouldn't exist
+    let info = &mut LfsInfo::default();
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "littlefs", info));
+
+    // file open littlefs, which shouldn't exist
+    let file = &mut LfsFile::default();
+    assert_err!(
+        Error::NoEntry,
+        lfs_file_open(lfs, file, "littlefs", LFS_O_RDONLY)
+    );
+
+    // dir open littlefs, which shouldn't exist
+    let dir = &mut LfsDir::default();
+    assert_err!(Error::NoEntry, lfs_dir_open(lfs, dir, "littlefs"));
+
+    // rename littlefs, which shouldn't exist
+    assert_err!(Error::NoEntry, lfs_rename(lfs, "littlefs", "coffee"));
+
+    // remove littlefs, which shouldn't exist
+    assert_err!(Error::NoEntry, lfs_remove(lfs, "littlefs"));
+
+    // stat littlefs, which shouldn't exist
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "littlefs", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "coffee", info));
+
     assert_ok!(lfs_unmount(lfs));
 }
 
