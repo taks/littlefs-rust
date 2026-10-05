@@ -135,14 +135,8 @@ pub fn lfs_getattr(
 
 /// Set custom attributes. Per lfs.h lfs_setattr (lfs.c:6471-6475).
 #[inline]
-pub fn lfs_setattr(
-    lfs: &mut Lfs,
-    path: &str,
-    r#type: u8,
-    buffer: &[u8],
-    size: usize,
-) -> Result<(), Error> {
-    crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer, size)
+pub fn lfs_setattr(lfs: &mut Lfs, path: &str, r#type: u8, buffer: &[u8]) -> Result<(), Error> {
+    crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer)
 }
 
 /// Remove a custom attribute. Per lfs.h lfs_removeattr (lfs.c:6487-6491).

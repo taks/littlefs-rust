@@ -40,9 +40,9 @@ fn test_attrs_get_set(cfg: &LfsConfig) {
     assert_ok!(lfs_mount(lfs, cfg));
     let mut buffer = [0u8; 1024];
 
-    assert_ok!(lfs_setattr(lfs, "hello", b'A', b"aaaa", 4));
-    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"bbbbbb", 6));
-    assert_ok!(lfs_setattr(lfs, "hello", b'C', b"ccccc", 5));
+    assert_ok!(lfs_setattr(lfs, "hello", b'A', b"aaaa"));
+    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"bbbbbb"));
+    assert_ok!(lfs_setattr(lfs, "hello", b'C', b"ccccc"));
 
     let n = lfs_getattr(lfs, "hello", b'A', &mut buffer[..4]);
     assert_eq!(n, Ok(4));
@@ -54,7 +54,7 @@ fn test_attrs_get_set(cfg: &LfsConfig) {
     assert_eq!(&buffer[4..10], b"bbbbbb");
     assert_eq!(&buffer[10..15], b"ccccc");
 
-    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"", 0));
+    assert_ok!(lfs_setattr(lfs, "hello", b'B', b""));
     let n = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]);
     assert_eq!(n, Ok(0));
     assert_eq!(&buffer[4..10], b"\0\0\0\0\0\0");
@@ -63,14 +63,14 @@ fn test_attrs_get_set(cfg: &LfsConfig) {
     let err = lfs_getattr(lfs, "hello", b'B', &mut buffer[4..10]);
     assert_err!(Error::NoAttribute, err);
 
-    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"dddddd", 6));
-    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"eee", 3));
+    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"dddddd"));
+    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"eee"));
 
     let oversized = vec![0u8; ATTR_MAX + 1];
-    let err = lfs_setattr(lfs, "hello", b'A', &oversized, ATTR_MAX + 1);
+    let err = lfs_setattr(lfs, "hello", b'A', &oversized);
     assert_err!(Error::NoSpace, err);
 
-    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"fffffffff", 9));
+    assert_ok!(lfs_setattr(lfs, "hello", b'B', b"fffffffff"));
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, cfg));
@@ -110,9 +110,9 @@ fn test_attrs_get_set_root(cfg: &LfsConfig) {
     assert_ok!(lfs_mount(lfs, cfg));
     let mut buffer = [0u8; 1024];
 
-    assert_ok!(lfs_setattr(lfs, "/", b'A', b"aaaa", 4));
-    assert_ok!(lfs_setattr(lfs, "/", b'B', b"bbbbbb", 6));
-    assert_ok!(lfs_setattr(lfs, "/", b'C', b"ccccc", 5));
+    assert_ok!(lfs_setattr(lfs, "/", b'A', b"aaaa"));
+    assert_ok!(lfs_setattr(lfs, "/", b'B', b"bbbbbb"));
+    assert_ok!(lfs_setattr(lfs, "/", b'C', b"ccccc"));
 
     let n = lfs_getattr(lfs, "/", b'A', &mut buffer[..4]);
     assert_eq!(n, Ok(4));
@@ -124,9 +124,9 @@ fn test_attrs_get_set_root(cfg: &LfsConfig) {
     assert_eq!(&buffer[4..10], b"bbbbbb");
     assert_eq!(&buffer[10..15], b"ccccc");
 
-    assert_ok!(lfs_setattr(lfs, "/", b'B', b"", 0));
+    assert_ok!(lfs_setattr(lfs, "/", b'B', b""));
     assert_ok!(lfs_removeattr(lfs, "/", b'B'));
-    assert_ok!(lfs_setattr(lfs, "/", b'B', b"fffffffff", 9));
+    assert_ok!(lfs_setattr(lfs, "/", b'B', b"fffffffff"));
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, cfg));
@@ -270,8 +270,8 @@ fn test_attrs_deferred_file(cfg: &LfsConfig) {
     assert_ok!(lfs_unmount(lfs));
 
     assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_setattr(lfs, "hello/hello", b'B', b"fffffffff", 9));
-    assert_ok!(lfs_setattr(lfs, "hello/hello", b'C', b"ccccc", 5));
+    assert_ok!(lfs_setattr(lfs, "hello/hello", b'B', b"fffffffff"));
+    assert_ok!(lfs_setattr(lfs, "hello/hello", b'C', b"ccccc"));
 
     let mut buffer = [0u8; 1024];
     let n = lfs_getattr(lfs, "hello/hello", b'B', &mut buffer[..9]);

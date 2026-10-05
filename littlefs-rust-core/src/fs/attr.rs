@@ -170,17 +170,11 @@ pub fn lfs_commitattr(
 /// }
 /// #endif
 /// ```
-pub fn lfs_setattr_(
-    lfs: &mut Lfs,
-    path: &str,
-    r#type: u8,
-    buffer: &[u8],
-    size: usize,
-) -> Result<(), Error> {
-    if size > lfs.attr_max as usize {
+pub fn lfs_setattr_(lfs: &mut Lfs, path: &str, r#type: u8, buffer: &[u8]) -> Result<(), Error> {
+    if buffer.len() > lfs.attr_max as usize {
         return crate::lfs_err!(Err(Error::NoSpace));
     }
-    lfs_commitattr(lfs, path, r#type, buffer, size)
+    lfs_commitattr(lfs, path, r#type, buffer, buffer.len())
 }
 
 /// Per lfs.c lfs_removeattr_ (lines 4176-4196)
