@@ -9,17 +9,20 @@
 //! ```rust
 //! use littlefs_rust::{Config, Filesystem, RamStorage};
 //!
-//! let mut storage = RamStorage::<512, 128>::new();
-//! let config = Config::new(512, 128);
+//! #[tokio::main]
+//! async fn main() {
+//!     let mut storage = RamStorage::<512, 128>::new();
+//!     let config = Config::new(512, 128);
 //!
-//! Filesystem::format(&mut storage, &config).unwrap();
-//! let fs = Filesystem::mount(storage, config).await.map_err(|(e, _)| e).unwrap();
+//!     Filesystem::format(&mut storage, &config).await.unwrap();
+//!     let fs = Filesystem::mount(storage, config).await.map_err(|(e, _)| e).unwrap();
 //!
-//! fs.write_file("/hello.txt", b"Hello, littlefs!").unwrap();
-//! let data = fs.read_to_vec("/hello.txt").unwrap();
-//! assert_eq!(data, b"Hello, littlefs!");
+//!     fs.write_file("/hello.txt", b"Hello, littlefs!").await.unwrap();
+//!     let data = fs.read_to_vec("/hello.txt").await.unwrap();
+//!     assert_eq!(data, b"Hello, littlefs!");
 //!
-//! fs.unmount().unwrap();
+//!      fs.unmount().unwrap();
+//! }
 //! ```
 //!
 //! # Architecture
