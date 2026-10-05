@@ -219,60 +219,136 @@ async fn test_move_create_delete_same(cfg: &LfsConfig<'_>) {
     assert_ok!(lfs_format(lfs, cfg).await);
     assert_ok!(lfs_mount(lfs, cfg).await);
 
-    let f1 = "1.move_me";
+    // littlefs keeps files sorted, so we know the order these will be in
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, f1, LFS_O_WRONLY | LFS_O_CREAT).await);
+    assert_ok!(lfs_file_open(lfs, file, "/1.move_me", LFS_O_WRONLY | LFS_O_CREAT).await);
     assert_ok!(lfs_file_close(lfs, file).await);
 
-    let f0 = "0.before";
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, f0, LFS_O_WRONLY | LFS_O_CREAT).await);
-    let n = lfs_file_write(lfs, file, b"test.1").await;
-    assert_eq!(n, Ok(6));
+    assert_ok!(lfs_file_open(lfs, file, "/0.before", LFS_O_WRONLY | LFS_O_CREAT).await);
+    assert_eq!(lfs_file_write(lfs, file, b"test.1\0").await, Ok(7));
     assert_ok!(lfs_file_close(lfs, file).await);
 
-    let f2 = "2.in_between";
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, f2, LFS_O_WRONLY | LFS_O_CREAT).await);
-    let n = lfs_file_write(lfs, file, b"test.2").await;
-    assert_eq!(n, Ok(6));
+    assert_ok!(lfs_file_open(lfs, file, "/2.in_between", LFS_O_WRONLY | LFS_O_CREAT).await);
+    assert_eq!(lfs_file_write(lfs, file, b"test.2\0").await, Ok(7));
     assert_ok!(lfs_file_close(lfs, file).await);
 
-    let f4 = "4.after";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, f4, LFS_O_WRONLY | LFS_O_CREAT).await);
-    let n = lfs_file_write(lfs, file, b"test.3").await;
-    assert_eq!(n, Ok(6));
+    assert_ok!(lfs_file_open(lfs, file, "/4.after", LFS_O_WRONLY | LFS_O_CREAT).await);
+    assert_eq!(lfs_file_write(lfs, file, b"test.3\0").await, Ok(7));
     assert_ok!(lfs_file_close(lfs, file).await);
 
-    let fa = &mut LfsFile::default();
-    let fb = &mut LfsFile::default();
-    let fc = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, fa, f0, LFS_O_WRONLY | LFS_O_TRUNC).await);
-    assert_ok!(lfs_file_open(lfs, fb, f2, LFS_O_WRONLY | LFS_O_TRUNC).await);
-    assert_ok!(lfs_file_open(lfs, fc, f4, LFS_O_WRONLY | LFS_O_TRUNC).await);
-    let _ = lfs_file_write(lfs, fa, b"test.4").await;
-    let _ = lfs_file_write(lfs, fb, b"test.5").await;
-    let _ = lfs_file_write(lfs, fc, b"test.6").await;
+    let mut files = [LfsFile::default(), LfsFile::default(), LfsFile::default()];
+    assert_ok!(lfs_file_open(lfs, &mut files[0], "0.before", LFS_O_WRONLY | LFS_O_TRUNC).await);
+    assert_ok!(
+        lfs_file_open(
+            lfs,
+            &mut files[1],
+            "2.in_between",
+            LFS_O_WRONLY | LFS_O_TRUNC
+        )
+        .await
+    );
+    assert_ok!(lfs_file_open(lfs, &mut files[2], "4.after", LFS_O_WRONLY | LFS_O_TRUNC).await);
+    assert_eq!(lfs_file_write(lfs, &mut files[0], b"test.4\0").await, Ok(7));
+    assert_eq!(lfs_file_write(lfs, &mut files[1], b"test.5\0").await, Ok(7));
+    assert_eq!(lfs_file_write(lfs, &mut files[2], b"test.6\0").await, Ok(7));
 
-    assert_ok!(lfs_rename(lfs, "1.move_me", "3.move_me").await);
+    // rename file while everything is open, this triggers both
+    // a create and delete simultaneously
+    assert_ok!(lfs_rename(lfs, "/1.move_me", "/3.move_me").await);
 
-    assert_ok!(lfs_file_close(lfs, fa).await);
-    assert_ok!(lfs_file_close(lfs, fb).await);
-    assert_ok!(lfs_file_close(lfs, fc).await);
+    assert_ok!(lfs_file_close(lfs, &mut files[0]).await);
+    assert_ok!(lfs_file_close(lfs, &mut files[1]).await);
+    assert_ok!(lfs_file_close(lfs, &mut files[2]).await);
 
-    let names = dir_entry_names(lfs, cfg, "/").await.unwrap();
-    assert!(names.contains(&"0.before".to_string()));
-    assert!(names.contains(&"2.in_between".to_string()));
-    assert!(names.contains(&"3.move_me".to_string()));
-    assert!(names.contains(&"4.after".to_string()));
+    // check that nothing was corrupted
+    let dir = &mut LfsDir::default();
+    let info = &mut LfsInfo::default();
+    assert_ok!(lfs_dir_open(lfs, dir, "/").await);
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), ".");
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "..");
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "0.before");
+    assert_eq!(info.size, 7);
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "2.in_between");
+    assert_eq!(info.size, 7);
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "3.move_me");
+    assert_eq!(info.size, 0);
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "4.after");
+    assert_eq!(info.size, 7);
 
-    let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, "0.before", LFS_O_RDONLY).await);
+    assert_ok!(lfs_file_open(lfs, file, "/0.before", LFS_O_RDONLY).await);
     let mut buf = [0u8; 16];
-    let n = lfs_file_read(lfs, file, &mut buf).await;
-    assert_eq!(n, Ok(6));
-    assert_eq!(&buf[..6], b"test.4");
+    assert_eq!(lfs_file_read(lfs, file, &mut buf).await, Ok(7));
+    assert_eq!(&buf[..7], b"test.4\0");
+    assert_ok!(lfs_file_close(lfs, file).await);
+    assert_ok!(lfs_file_open(lfs, file, "/2.in_between", LFS_O_RDONLY).await);
+    assert_eq!(lfs_file_read(lfs, file, &mut buf).await, Ok(7));
+    assert_eq!(&buf[..7], b"test.5\0");
+    assert_ok!(lfs_file_close(lfs, file).await);
+    assert_ok!(lfs_file_open(lfs, file, "/4.after", LFS_O_RDONLY).await);
+    assert_eq!(lfs_file_read(lfs, file, &mut buf).await, Ok(7));
+    assert_eq!(&buf[..7], b"test.6\0");
+    assert_ok!(lfs_file_close(lfs, file).await);
+
+    // now move back
+    assert_ok!(lfs_file_open(lfs, &mut files[0], "0.before", LFS_O_WRONLY | LFS_O_TRUNC).await);
+    assert_ok!(
+        lfs_file_open(
+            lfs,
+            &mut files[1],
+            "2.in_between",
+            LFS_O_WRONLY | LFS_O_TRUNC
+        )
+        .await
+    );
+    assert_ok!(lfs_file_open(lfs, &mut files[2], "4.after", LFS_O_WRONLY | LFS_O_TRUNC).await);
+    assert_eq!(lfs_file_write(lfs, &mut files[0], b"test.7\0").await, Ok(7));
+    assert_eq!(lfs_file_write(lfs, &mut files[1], b"test.8\0").await, Ok(7));
+    assert_eq!(lfs_file_write(lfs, &mut files[2], b"test.9\0").await, Ok(7));
+
+    // rename file while everything is open, this triggers both
+    // a create and delete simultaneously
+    assert_ok!(lfs_rename(lfs, "/3.move_me", "/1.move_me").await);
+    assert_ok!(lfs_file_close(lfs, &mut files[0]).await);
+    assert_ok!(lfs_file_close(lfs, &mut files[1]).await);
+    assert_ok!(lfs_file_close(lfs, &mut files[2]).await);
+
+    // and check that nothing was corrupted again
+    assert_ok!(lfs_dir_open(lfs, dir, "/").await);
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), ".");
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "..");
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "0.before");
+    assert_eq!(info.size, 7);
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "1.move_me");
+    assert_eq!(info.size, 0);
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "2.in_between");
+    assert_eq!(info.size, 7);
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "4.after");
+    assert_eq!(info.size, 7);
+
+    assert_ok!(lfs_file_open(lfs, file, "/0.before", LFS_O_RDONLY).await);
+    assert_eq!(lfs_file_read(lfs, file, &mut buf).await, Ok(7));
+    assert_eq!(&buf[..7], b"test.7\0");
+    assert_ok!(lfs_file_close(lfs, file).await);
+    assert_ok!(lfs_file_open(lfs, file, "/2.in_between", LFS_O_RDONLY).await);
+    assert_eq!(lfs_file_read(lfs, file, &mut buf).await, Ok(7));
+    assert_eq!(&buf[..7], b"test.8\0");
+    assert_ok!(lfs_file_close(lfs, file).await);
+    assert_ok!(lfs_file_open(lfs, file, "/4.after", LFS_O_RDONLY).await);
+    assert_eq!(lfs_file_read(lfs, file, &mut buf).await, Ok(7));
+    assert_eq!(&buf[..7], b"test.9\0");
     assert_ok!(lfs_file_close(lfs, file).await);
 
     assert_ok!(lfs_unmount(lfs));
