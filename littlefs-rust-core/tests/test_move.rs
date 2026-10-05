@@ -251,9 +251,9 @@ async fn test_move_create_delete_same(cfg: &LfsConfig<'_>) {
     assert_ok!(lfs_file_open(lfs, fa, f0, LFS_O_WRONLY | LFS_O_TRUNC).await);
     assert_ok!(lfs_file_open(lfs, fb, f2, LFS_O_WRONLY | LFS_O_TRUNC).await);
     assert_ok!(lfs_file_open(lfs, fc, f4, LFS_O_WRONLY | LFS_O_TRUNC).await);
-    let _ = lfs_file_write(lfs, fa, b"test.4");
-    let _ = lfs_file_write(lfs, fb, b"test.5");
-    let _ = lfs_file_write(lfs, fc, b"test.6");
+    let _ = lfs_file_write(lfs, fa, b"test.4").await;
+    let _ = lfs_file_write(lfs, fb, b"test.5").await;
+    let _ = lfs_file_write(lfs, fc, b"test.6").await;
 
     assert_ok!(lfs_rename(lfs, "1.move_me", "3.move_me").await);
 
