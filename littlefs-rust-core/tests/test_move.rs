@@ -54,67 +54,68 @@ async fn test_move_nop<'a>(cfg: &LfsConfig<'a>) {
 // --- test_move_file ---
 // Cross-dir rename a/hello -> c/hello
 #[lfs_test]
-fn test_move_file(cfg: &LfsConfig) {
+#[tokio::test]
+async fn test_move_file(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "a"));
-    assert_ok!(lfs_mkdir(lfs, "b"));
-    assert_ok!(lfs_mkdir(lfs, "c"));
-    assert_ok!(lfs_mkdir(lfs, "d"));
+    assert_ok!(lfs_mkdir(lfs, "a").await);
+    assert_ok!(lfs_mkdir(lfs, "b").await);
+    assert_ok!(lfs_mkdir(lfs, "c").await);
+    assert_ok!(lfs_mkdir(lfs, "d").await);
 
     let a_hello = "a/hello";
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(
-        lfs,
-        file,
-        a_hello,
-        LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC,
-    ));
-    let n1 = lfs_file_write(lfs, file, b"hola\n");
-    assert_eq!(n1, Ok(5));
-    let n2 = lfs_file_write(lfs, file, b"bonjour\n");
-    assert_eq!(n2, Ok(8));
-    let n3 = lfs_file_write(lfs, file, b"ohayo\n");
-    assert_eq!(n3, Ok(6));
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_open(lfs, file, a_hello, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC).await);
+
+    assert_eq!(lfs_file_write(lfs, file, b"hola\n").await, Ok(5));
+    assert_eq!(lfs_file_write(lfs, file, b"bonjour\n").await, Ok(8));
+    assert_eq!(lfs_file_write(lfs, file, b"ohayo\n").await, Ok(6));
+    assert_ok!(lfs_file_close(lfs, file).await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    assert_ok!(lfs_rename(lfs, "a/hello", "c/hello"));
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    assert_ok!(lfs_rename(lfs, "a/hello", "c/hello").await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
-    let a_names = dir_entry_names(lfs, cfg, "a").unwrap();
+    assert_ok!(lfs_mount(lfs, cfg).await);
+    let a_names = dir_entry_names(lfs, cfg, "a").await.unwrap();
     assert_eq!(a_names.len(), 0);
-    let c_names = dir_entry_names(lfs, cfg, "c").unwrap();
-    assert_eq!(c_names.len(), 1);
-    assert_eq!(c_names[0], "hello");
 
-    let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok!(lfs_stat(lfs, "c/hello", info));
+    let dir = &mut LfsDir::default();
+    let info = &mut LfsInfo::default();
+    assert_ok!(lfs_dir_open(lfs, dir, "c").await);
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
+    assert_eq!(info.name_str(), "hello");
     assert_eq!(info.size, 5 + 8 + 6);
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
 
-    let info_dummy = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    let err_a = lfs_stat(lfs, "a/hello", info_dummy);
-    assert_err!(Error::NoEntry, err_a);
-    let err_b = lfs_stat(lfs, "b/hello", info_dummy);
-    assert_err!(Error::NoEntry, err_b);
+    assert_err!(
+        Error::NoEntry,
+        lfs_file_open(lfs, file, "a/hello", LFS_O_RDONLY).await
+    );
+    assert_err!(
+        Error::NoEntry,
+        lfs_file_open(lfs, file, "b/hello", LFS_O_RDONLY).await
+    );
 
     let file = &mut LfsFile::default();
-    assert_ok!(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, file, "c/hello", LFS_O_RDONLY).await);
     let mut buf = [0u8; 32];
-    let n = lfs_file_read(lfs, file, &mut buf);
+    let n = lfs_file_read(lfs, file, &mut buf).await;
     assert_eq!(n, Ok(5 + 8 + 6));
     assert_eq!(&buf[..5], b"hola\n");
     assert_eq!(&buf[5..13], b"bonjour\n");
     assert_eq!(&buf[13..19], b"ohayo\n");
-    assert_ok!(lfs_file_close(lfs, file));
+    assert_ok!(lfs_file_close(lfs, file).await);
 
-    let file_dummy = &mut LfsFile::default();
-    let err_d = lfs_file_open(lfs, file_dummy, "d/hello", LFS_O_RDONLY);
-    assert_err!(Error::NoEntry, err_d);
+    assert_err!(
+        Error::NoEntry,
+        lfs_file_open(lfs, file, "d/hello", LFS_O_RDONLY).await
+    );
     assert_ok!(lfs_unmount(lfs));
 }
 
