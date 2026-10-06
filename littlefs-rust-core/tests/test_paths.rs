@@ -183,10 +183,11 @@ async fn test_paths_root<'a>(cfg: &LfsConfig<'a>) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_redundant_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_redundant_slashes(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
     let create_paths = &[
@@ -273,12 +274,13 @@ fn test_paths_redundant_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_trailing_slashes(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "coffee"));
+    assert_ok!(lfs_mkdir(lfs, "coffee").await);
     if dir_mode {
         for s in &[
             "coffee/drip/",
@@ -288,7 +290,7 @@ fn test_paths_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
             "coffee/vietnamese/////",
             "coffee/thai//////",
         ] {
-            assert_ok!(lfs_mkdir(lfs, s));
+            assert_ok!(lfs_mkdir(lfs, s).await);
         }
     } else {
         for s in &[
@@ -308,13 +310,10 @@ fn test_paths_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
         for name in PATHS {
             let path = &format!("coffee/{name}");
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await
+            );
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
     }
 
@@ -329,7 +328,7 @@ fn test_paths_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
     for (i, path_str) in stat_slashes.iter().enumerate() {
         let path = path_str;
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        let err = lfs_stat(lfs, path, info);
+        let err = lfs_stat(lfs, path, info).await;
         if dir_mode {
             assert_ok!(err);
             assert_eq!(info.name_str(), PATHS[i]);
@@ -339,7 +338,7 @@ fn test_paths_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
         }
     }
 
-    assert_ok!(lfs_mkdir(lfs, "espresso"));
+    assert_ok!(lfs_mkdir(lfs, "espresso").await);
     if dir_mode {
         let renames = &[
             ("coffee/drip//////", "espresso/espresso/"),
@@ -369,10 +368,11 @@ fn test_paths_trailing_slashes(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_dots(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_dots(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     assert_ok!(lfs_mkdir(lfs, "coffee"));
     let create_paths = &[
@@ -452,7 +452,7 @@ fn test_paths_dots(cfg: &LfsConfig, #[case] dir_mode: bool) {
         "/././././espresso/././././cappuccino",
         "/./././././espresso/./././././mocha",
     ] {
-        assert_ok!(lfs_remove(lfs, s));
+        assert_ok!(lfs_remove(lfs, s).await);
     }
     assert_ok!(lfs_unmount(lfs));
 }
@@ -460,7 +460,8 @@ fn test_paths_dots(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_trailing_dots(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_trailing_dots(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -558,15 +559,16 @@ fn test_paths_trailing_dots(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_dotdots(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "no"));
-    assert_ok!(lfs_mkdir(lfs, "no/no"));
-    assert_ok!(lfs_mkdir(lfs, "coffee"));
-    assert_ok!(lfs_mkdir(lfs, "coffee/no"));
+    assert_ok!(lfs_mkdir(lfs, "no").await);
+    assert_ok!(lfs_mkdir(lfs, "no/no").await);
+    assert_ok!(lfs_mkdir(lfs, "coffee").await);
+    assert_ok!(lfs_mkdir(lfs, "coffee/no").await);
     let create_paths = &[
         "/coffee/drip",
         "/no/../coffee/coldbrew",
@@ -652,7 +654,8 @@ fn test_paths_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_trailing_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_trailing_dotdots(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -777,42 +780,46 @@ fn test_paths_trailing_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_dot_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_dot_dotdots(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "no"));
-    assert_ok!(lfs_mkdir(lfs, "no/no"));
-    assert_ok!(lfs_mkdir(lfs, "coffee"));
-    assert_ok!(lfs_mkdir(lfs, "coffee/no"));
+    assert_ok!(lfs_mkdir(lfs, "no").await);
+    assert_ok!(lfs_mkdir(lfs, "no/no").await);
+    assert_ok!(lfs_mkdir(lfs, "coffee").await);
+    assert_ok!(lfs_mkdir(lfs, "coffee/no").await);
 
     if dir_mode {
-        assert_ok!(lfs_mkdir(lfs, "/coffee/drip"));
-        assert_ok!(lfs_mkdir(lfs, "/no/./../coffee/coldbrew"));
-        assert_ok!(lfs_mkdir(lfs, "/coffee/no/./../turkish"));
-        assert_ok!(lfs_mkdir(lfs, "/no/no/./.././../coffee/tubruk"));
-        assert_ok!(lfs_mkdir(lfs, "/no/no/./.././../coffee/no/./../vietnamese"));
-        assert_ok!(lfs_mkdir(
-            lfs,
-            "/no/no/./.././../no/no/./.././../coffee/thai",
-        ));
+        assert_ok!(lfs_mkdir(lfs, "/coffee/drip").await);
+        assert_ok!(lfs_mkdir(lfs, "/no/./../coffee/coldbrew").await);
+        assert_ok!(lfs_mkdir(lfs, "/coffee/no/./../turkish").await);
+        assert_ok!(lfs_mkdir(lfs, "/no/no/./.././../coffee/tubruk").await);
+        assert_ok!(lfs_mkdir(lfs, "/no/no/./.././../coffee/no/./../vietnamese").await);
+        assert_ok!(lfs_mkdir(lfs, "/no/no/./.././../no/no/./.././../coffee/thai",).await);
     } else {
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            "/coffee/drip",
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_ok!(lfs_file_close(lfs, file));
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            "/no/./../coffee/coldbrew",
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(
+            lfs_file_open(
+                lfs,
+                file,
+                "/coffee/drip",
+                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+            )
+            .await
+        );
+        assert_ok!(lfs_file_close(lfs, file).await);
+        assert_ok!(
+            lfs_file_open(
+                lfs,
+                file,
+                "/no/./../coffee/coldbrew",
+                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+            )
+            .await
+        );
+        assert_ok!(lfs_file_close(lfs, file).await);
         for path in [
             "/coffee/no/./../turkish",
             "/no/no/./.././../coffee/tubruk",
@@ -820,23 +827,14 @@ fn test_paths_dot_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
             "/no/no/./.././../no/no/./.././../coffee/thai",
         ] {
             let f = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                f,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ));
-            assert_ok!(lfs_file_close(lfs, f));
+            assert_ok!(lfs_file_open(lfs, f, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL).await);
+            assert_ok!(lfs_file_close(lfs, f).await);
         }
     }
 
     // stat paths
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok!(lfs_stat(
-        lfs,
-        "/no/no/./.././../no/no/./.././../coffee/drip",
-        info,
-    ));
+    assert_ok!(lfs_stat(lfs, "/no/no/./.././../no/no/./.././../coffee/drip", info,).await);
     assert_eq!(info.name_str(), "drip");
     assert_eq!(
         info.type_,
@@ -844,11 +842,7 @@ fn test_paths_dot_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
     );
 
     let info2 = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    assert_ok!(lfs_stat(
-        lfs,
-        "/no/no/./.././../coffee/no/./../coldbrew",
-        info2,
-    ));
+    assert_ok!(lfs_stat(lfs, "/no/no/./.././../coffee/no/./../coldbrew", info2,).await);
     assert_eq!(info2.name_str(), "coldbrew");
     assert_eq!(
         info2.type_,
@@ -862,7 +856,7 @@ fn test_paths_dot_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
         ("/coffee/thai", "thai"),
     ] {
         let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
         assert_eq!(info.name_str(), expected_name);
         assert_eq!(
             info.type_,
@@ -883,11 +877,11 @@ fn test_paths_dot_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
             assert_err!(Error::IsDir, lfs_file_open(lfs, file, path, LFS_O_RDONLY));
             assert_err!(
                 Error::IsDir,
-                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT),
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await,
             );
             assert_err!(
                 Error::Exists,
-                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL).await,
             );
         }
     } else {
@@ -900,8 +894,8 @@ fn test_paths_dot_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
             "/no/no/./.././../coffee/no/./../vietnamese",
             "/no/no/./.././../no/no/./.././../coffee/thai",
         ] {
-            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
     }
 
@@ -911,7 +905,8 @@ fn test_paths_dot_dotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_dotdotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_dotdotdots(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg));
     assert_ok!(lfs_mount(lfs, cfg));
@@ -955,7 +950,7 @@ fn test_paths_dotdotdots(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[case::dirs(true)]
 #[case::files(false)]
 #[tokio::test]
-async fn test_paths_noent_trailing_slashes<'a>(cfg: &LfsConfig<'a>, #[case] dir_mode: bool) {
+async fn test_paths_noent_trailing_slashes(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg).await);
     assert_ok!(lfs_mount(lfs, cfg).await);
@@ -1344,10 +1339,11 @@ async fn test_paths_noent_trailing_dotdots(cfg: &LfsConfig<'_>, #[case] dir_mode
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_utf8_ipa(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_utf8_ipa(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let parent = "ˈkɔ.fi";
     let children = [
@@ -1358,26 +1354,23 @@ fn test_paths_utf8_ipa(cfg: &LfsConfig, #[case] dir_mode: bool) {
         "kaː˨˩fe˧˧ɗaː˧˥",
         "ʔoː˧.lia̯ŋ˦˥",
     ];
-    assert_ok!(lfs_mkdir(lfs, parent));
+    assert_ok!(lfs_mkdir(lfs, parent).await);
     for name in children {
         let path = &format!("{parent}/{name}");
         if dir_mode {
-            assert_ok!(lfs_mkdir(lfs, path));
+            assert_ok!(lfs_mkdir(lfs, path).await);
         } else {
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await
+            );
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
     }
     for name in children {
         let path = &format!("{parent}/{name}");
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
         assert_eq!(info.name_str(), name);
         assert_eq!(
             info.type_,
@@ -1388,27 +1381,30 @@ fn test_paths_utf8_ipa(cfg: &LfsConfig, #[case] dir_mode: bool) {
         for name in children {
             let path = &format!("{parent}/{name}");
             let file = &mut LfsFile::default();
-            assert_err!(Error::IsDir, lfs_file_open(lfs, file, path, LFS_O_RDONLY));
             assert_err!(
                 Error::IsDir,
-                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT),
+                lfs_file_open(lfs, file, path, LFS_O_RDONLY).await
+            );
+            assert_err!(
+                Error::IsDir,
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await,
             );
             assert_err!(
                 Error::Exists,
-                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL).await,
             );
         }
     } else {
         for name in children {
             let path = &format!("{parent}/{name}");
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-            assert_ok!(lfs_file_close(lfs, file));
-            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
+            assert_ok!(lfs_file_close(lfs, file).await);
+            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await);
+            assert_ok!(lfs_file_close(lfs, file).await);
             assert_err!(
                 Error::Exists,
-                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL),
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL).await,
             );
         }
     }
@@ -1421,33 +1417,31 @@ fn test_paths_utf8_ipa(cfg: &LfsConfig, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_oopsallspaces(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_oopsallspaces(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let root = " ";
     let children = [" ", "  ", "   ", "    ", "     ", "      "];
-    assert_ok!(lfs_mkdir(lfs, root));
+    assert_ok!(lfs_mkdir(lfs, root).await);
     for name in children {
         let path = &format!("{root}/{name}");
         if dir_mode {
-            assert_ok!(lfs_mkdir(lfs, path));
+            assert_ok!(lfs_mkdir(lfs, path).await);
         } else {
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(
-                lfs,
-                file,
-                path,
-                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-            ));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,).await
+            );
+            assert_ok!(lfs_file_close(lfs, file).await);
         }
     }
     for name in children.iter() {
         let path = &format!("{root}/{name}");
         let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-        assert_ok!(lfs_stat(lfs, path, info));
+        assert_ok!(lfs_stat(lfs, path, info).await);
         assert_eq!(info.name_str(), *name);
         assert_eq!(
             info.type_,
@@ -1458,32 +1452,36 @@ fn test_paths_oopsallspaces(cfg: &LfsConfig, #[case] dir_mode: bool) {
         for name in children {
             let path = &format!("{root}/{name}");
             let file = &mut LfsFile::default();
-            assert_err!(Error::IsDir, lfs_file_open(lfs, file, path, LFS_O_RDONLY));
             assert_err!(
                 Error::IsDir,
-                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT),
+                lfs_file_open(lfs, file, path, LFS_O_RDONLY).await
+            );
+            assert_err!(
+                Error::IsDir,
+                lfs_file_open(lfs, file, path, LFS_O_WRONLY | LFS_O_CREAT).await,
             );
             let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-            assert_ok!(lfs_dir_open(lfs, dir, path));
+            assert_ok!(lfs_dir_open(lfs, dir, path).await);
             assert_ok!(lfs_dir_close(lfs, dir));
         }
     } else {
         for name in children {
             let path = &format!("{root}/{name}");
             let file = &mut LfsFile::default();
-            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY));
-            assert_ok!(lfs_file_close(lfs, file));
+            assert_ok!(lfs_file_open(lfs, file, path, LFS_O_RDONLY).await);
+            assert_ok!(lfs_file_close(lfs, file).await);
             assert_err!(
                 Error::NotDir,
                 lfs_dir_open(
                     lfs,
                     unsafe { &mut *core::mem::MaybeUninit::<LfsDir>::zeroed().as_mut_ptr() },
                     path,
-                ),
+                )
+                .await,
             );
         }
     }
-    assert_ok!(lfs_mkdir(lfs, "  "));
+    assert_ok!(lfs_mkdir(lfs, "  ").await);
     let renames = [
         (" / ", "  /      "),
         (" /  ", "  /     "),
@@ -1495,13 +1493,13 @@ fn test_paths_oopsallspaces(cfg: &LfsConfig, #[case] dir_mode: bool) {
     for (old, new) in renames {
         let old_path = old;
         let new_path = new;
-        assert_ok!(lfs_rename(lfs, old_path, new_path));
+        assert_ok!(lfs_rename(lfs, old_path, new_path).await);
     }
     for (_, new) in renames {
-        assert_ok!(lfs_remove(lfs, new));
+        assert_ok!(lfs_remove(lfs, new).await);
     }
-    assert_ok!(lfs_remove(lfs, "  "));
-    assert_ok!(lfs_remove(lfs, root));
+    assert_ok!(lfs_remove(lfs, "  ").await);
+    assert_ok!(lfs_remove(lfs, root).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -1732,13 +1730,14 @@ async fn test_paths_oopsallffs(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_leading_dots(cfg: &LfsConfig, #[case] _dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_leading_dots(cfg: &LfsConfig<'_>, #[case] _dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_err!(Error::Invalid, lfs_stat(lfs, "..", info));
+    assert_err!(Error::Invalid, lfs_stat(lfs, "..", info).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -1871,32 +1870,36 @@ async fn test_paths_magic_noent(cfg: &LfsConfig<'_>) {
 #[lfs_test]
 #[case::dirs(true)]
 #[case::files(false)]
-fn test_paths_magic_conflict(cfg: &LfsConfig, #[case] dir_mode: bool) {
+#[tokio::test]
+async fn test_paths_magic_conflict(cfg: &LfsConfig<'_>, #[case] dir_mode: bool) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     if dir_mode {
-        assert_ok!(lfs_mkdir(lfs, "littlefs"));
+        assert_ok!(lfs_mkdir(lfs, "littlefs").await);
     } else {
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            "littlefs",
-            LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
-        ));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(
+            lfs_file_open(
+                lfs,
+                file,
+                "littlefs",
+                LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL,
+            )
+            .await
+        );
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
     let info = &mut unsafe { core::mem::MaybeUninit::<LfsInfo>::zeroed().assume_init() };
-    assert_ok!(lfs_stat(lfs, "littlefs", info));
+    assert_ok!(lfs_stat(lfs, "littlefs", info).await);
     assert_eq!(info.name_str(), "littlefs");
-    assert_ok!(lfs_rename(lfs, "littlefs", "coffee"));
-    assert_ok!(lfs_rename(lfs, "coffee", "littlefs"));
-    assert_ok!(lfs_stat(lfs, "littlefs", info));
-    assert_err!(Error::NoEntry, lfs_stat(lfs, "coffee", info));
-    assert_ok!(lfs_remove(lfs, "littlefs"));
-    assert_err!(Error::NoEntry, lfs_stat(lfs, "littlefs", info));
+    assert_ok!(lfs_rename(lfs, "littlefs", "coffee").await);
+    assert_ok!(lfs_rename(lfs, "coffee", "littlefs").await);
+    assert_ok!(lfs_stat(lfs, "littlefs", info).await);
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "coffee", info).await);
+    assert_ok!(lfs_remove(lfs, "littlefs").await);
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "littlefs", info).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
@@ -1941,7 +1944,7 @@ async fn test_paths_utf8(cfg: &LfsConfig<'_>) {
 
 #[lfs_test]
 #[tokio::test]
-async fn test_paths_spaces<'a>(cfg: &LfsConfig<'a>) {
+async fn test_paths_spaces(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg).await);
     assert_ok!(lfs_mount(lfs, cfg).await);
@@ -1955,7 +1958,7 @@ async fn test_paths_spaces<'a>(cfg: &LfsConfig<'a>) {
 
 #[lfs_test]
 #[tokio::test]
-async fn test_paths_nonprintable<'a>(cfg: &LfsConfig<'a>) {
+async fn test_paths_nonprintable(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg).await);
     assert_ok!(lfs_mount(lfs, cfg).await);

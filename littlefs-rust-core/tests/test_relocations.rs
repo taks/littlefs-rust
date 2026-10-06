@@ -99,13 +99,14 @@ async fn test_relocations_outdated_head<'a>(
 
 // --- test_relocations_nonreentrant ---
 // mkdir/remove cycles, no power-loss.
+#[cfg(feature = "slow_tests")]
 #[lfs_test]
 #[case(6, 1, 2000)]
 #[case(26, 1, 2000)]
 #[case(3, 3, 2000)]
-#[cfg(feature = "slow_tests")]
-fn test_relocations_nonreentrant(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_relocations_nonreentrant(
+    cfg: &LfsConfig<'_>,
     #[case] files: usize,
     #[case] depth: usize,
     #[case] cycles: usize,
@@ -115,8 +116,8 @@ fn test_relocations_nonreentrant(
         return;
     }
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let mut prng: u32 = 1;
     for _ in 0..cycles {
@@ -131,18 +132,18 @@ fn test_relocations_nonreentrant(
         }
         // if it does not exist, we create it, else we destroy
         let info = &mut LfsInfo::default();
-        let res = lfs_stat(lfs, &full_path, info);
+        let res = lfs_stat(lfs, &full_path, info).await;
         assert!(res.is_ok() || res == Err(Error::NoEntry));
         if res == Err(Error::NoEntry) {
             // create each directory in turn, ignore if dir already exists
             for d in 0..depth {
                 assert_matches!(
-                    lfs_mkdir(lfs, &full_path[..(2 * d + 2)]),
+                    lfs_mkdir(lfs, &full_path[..(2 * d + 2)]).await,
                     Ok(()) | Err(Error::Exists)
                 );
             }
             for d in 0..depth {
-                assert_ok!(lfs_stat(lfs, &full_path[..(2 * d + 2)], info));
+                assert_ok!(lfs_stat(lfs, &full_path[..(2 * d + 2)], info).await);
                 assert_eq!(info.name_str(), &full_path[(2 * d + 1)..(2 * d + 2)]);
                 assert_eq!(info.type_, LfsType::DIR);
             }
@@ -151,7 +152,7 @@ fn test_relocations_nonreentrant(
             let mut d = depth - 1;
             loop {
                 assert_matches!(
-                    lfs_remove(lfs, &full_path[..(2 * d + 2)]),
+                    lfs_remove(lfs, &full_path[..(2 * d + 2)]).await,
                     Ok(()) | Err(Error::NotEmpty)
                 );
                 if d == 0 {
@@ -160,7 +161,7 @@ fn test_relocations_nonreentrant(
                 d -= 1;
             }
 
-            assert_eq!(lfs_stat(lfs, &full_path, info), Err(Error::NoEntry));
+            assert_eq!(lfs_stat(lfs, &full_path, info).await, Err(Error::NoEntry));
         }
     }
 
