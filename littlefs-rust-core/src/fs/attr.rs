@@ -178,12 +178,11 @@ pub async fn lfs_setattr_<S: Storage>(
     path: &str,
     r#type: u8,
     buffer: &[u8],
-    size: usize,
 ) -> Result<(), Error> {
-    if size > lfs.attr_max as usize {
+    if buffer.len() > lfs.attr_max as usize {
         return crate::lfs_err!(Err(Error::NoSpace));
     }
-    lfs_commitattr(lfs, path, r#type, buffer, size).await
+    lfs_commitattr(lfs, path, r#type, buffer, buffer.len()).await
 }
 
 /// Per lfs.c lfs_removeattr_ (lines 4176-4196)

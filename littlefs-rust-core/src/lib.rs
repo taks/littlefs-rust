@@ -148,9 +148,8 @@ pub async fn lfs_setattr<S: Storage>(
     path: &str,
     r#type: u8,
     buffer: &[u8],
-    size: usize,
 ) -> Result<(), Error> {
-    crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer, size).await
+    crate::fs::attr::lfs_setattr_(lfs, path, r#type, buffer).await
 }
 
 /// Remove a custom attribute. Per lfs.h lfs_removeattr (lfs.c:6487-6491).
