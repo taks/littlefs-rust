@@ -217,8 +217,8 @@ async fn test_interspersed_remove_inconveniently(
     #[values(10, 100)] size: usize,
 ) {
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
     let mut files: [LfsFile; 3] = Default::default();
 
@@ -226,24 +226,9 @@ async fn test_interspersed_remove_inconveniently(
     let path_f = "f";
     let path_g = "g";
 
-    assert_ok!(lfs_file_open(
-        lfs,
-        &mut files[0],
-        path_e,
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    assert_ok!(lfs_file_open(
-        lfs,
-        &mut files[1],
-        path_f,
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
-    assert_ok!(lfs_file_open(
-        lfs,
-        &mut files[2],
-        path_g,
-        LFS_O_WRONLY | LFS_O_CREAT,
-    ));
+    assert_ok!(lfs_file_open(lfs, &mut files[0], path_e, LFS_O_WRONLY | LFS_O_CREAT,).await);
+    assert_ok!(lfs_file_open(lfs, &mut files[1], path_f, LFS_O_WRONLY | LFS_O_CREAT,).await);
+    assert_ok!(lfs_file_open(lfs, &mut files[2], path_g, LFS_O_WRONLY | LFS_O_CREAT,).await);
 
     // Write SIZE/2 bytes to each
     for _i in 0..(size / 2) {
@@ -253,7 +238,7 @@ async fn test_interspersed_remove_inconveniently(
     }
 
     // Remove "f" while it's still open
-    assert_ok!(lfs_remove(lfs, path_f));
+    assert_ok!(lfs_remove(lfs, path_f).await);
 
     // Write another SIZE/2 bytes to all three
     for _i in 0..(size / 2) {
@@ -262,14 +247,14 @@ async fn test_interspersed_remove_inconveniently(
         assert_eq!(lfs_file_write(lfs, &mut files[2], b"g").await, Ok(1));
     }
 
-    assert_ok!(lfs_file_close(lfs, &mut files[0]));
-    assert_ok!(lfs_file_close(lfs, &mut files[1]));
-    assert_ok!(lfs_file_close(lfs, &mut files[2]));
+    assert_ok!(lfs_file_close(lfs, &mut files[0]).await);
+    assert_ok!(lfs_file_close(lfs, &mut files[1]).await);
+    assert_ok!(lfs_file_close(lfs, &mut files[2]).await);
 
     // Verify directory: "e" and "g" present, "f" absent
     let root = "/";
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok!(lfs_dir_open(lfs, dir, root));
+    assert_ok!(lfs_dir_open(lfs, dir, root).await);
 
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
 
@@ -296,18 +281,24 @@ async fn test_interspersed_remove_inconveniently(
 
     // Read "e" and "g", verify SIZE bytes
     let mut files_r: [LfsFile; 2] = Default::default();
-    assert_ok!(lfs_file_open(lfs, &mut files_r[0], path_e, LFS_O_RDONLY));
-    assert_ok!(lfs_file_open(lfs, &mut files_r[1], path_g, LFS_O_RDONLY));
+    assert_ok!(lfs_file_open(lfs, &mut files_r[0], path_e, LFS_O_RDONLY).await);
+    assert_ok!(lfs_file_open(lfs, &mut files_r[1], path_g, LFS_O_RDONLY).await);
 
     for _i in 0..size {
         let mut buffer = [0u8; 1];
-        assert_eq!(lfs_file_read(lfs, &mut files_r[0], &mut buffer).await, Ok(1));
+        assert_eq!(
+            lfs_file_read(lfs, &mut files_r[0], &mut buffer).await,
+            Ok(1)
+        );
         assert_eq!(buffer[0], b'e');
-        assert_eq!(lfs_file_read(lfs, &mut files_r[1], &mut buffer).await, Ok(1));
+        assert_eq!(
+            lfs_file_read(lfs, &mut files_r[1], &mut buffer).await,
+            Ok(1)
+        );
         assert_eq!(buffer[0], b'g');
     }
-    assert_ok!(lfs_file_close(lfs, &mut files_r[0]));
-    assert_ok!(lfs_file_close(lfs, &mut files_r[1]));
+    assert_ok!(lfs_file_close(lfs, &mut files_r[0]).await);
+    assert_ok!(lfs_file_close(lfs, &mut files_r[1]).await);
 
     assert_ok!(lfs_unmount(lfs));
 }
