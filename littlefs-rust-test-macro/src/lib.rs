@@ -14,7 +14,7 @@ pub fn lfs_test(
 ) -> proc_macro::TokenStream {
     let mut input_fn = syn::parse_macro_input!(input as ItemFn);
     if input_fn.sig.asyncness.is_none() {
-        return proc_macro::TokenStream::new();
+        // return proc_macro::TokenStream::new();
     }
 
     let f_name = format!("{}_", input_fn.sig.ident);

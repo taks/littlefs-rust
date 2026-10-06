@@ -494,68 +494,69 @@ async fn test_dirs_file_rename(cfg: &LfsConfig<'_>) {
 /// defines.N = [5, 25], N < BLOCK_COUNT/2, reentrant, POWERLOSS_BEHAVIOR = [NOOP, OOO]
 #[lfs_test]
 #[cfg(feature = "slow_tests")]
-fn test_dirs_file_reentrant(
-    cfg: &LfsConfig,
+#[tokio::test]
+async fn test_dirs_file_reentrant(
+    cfg: &LfsConfig<'_>,
     #[values(false, true)] reentrant: bool,
     #[values(5, 25)] n: usize,
 ) {
     let lfs = &mut Lfs::default();
 
-    let err = lfs_mount(lfs, cfg);
+    let err = lfs_mount(lfs, cfg).await;
     if err.is_err() {
-        assert_ok!(lfs_format(lfs, cfg));
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
+        assert_ok!(lfs_mount(lfs, cfg).await);
     }
 
     let file = &mut LfsFile::default();
     for i in 0..n {
         let path = &format!("hi{i:03}");
-        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_CREAT | LFS_O_WRONLY));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_open(lfs, file, path, LFS_O_CREAT | LFS_O_WRONLY).await);
+        assert_ok!(lfs_file_close(lfs, file).await);
     }
     for i in 0..n {
         let path = &format!("hello{i:03}");
-        assert_matches!(lfs_remove(lfs, path), Ok(()) | Err(Error::NoEntry));
+        assert_matches!(lfs_remove(lfs, path).await, Ok(()) | Err(Error::NoEntry));
     }
 
     let dir = &mut LfsDir::default();
-    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH).await);
     let info = &mut LfsInfo::default();
-    let _ = lfs_dir_read(lfs, dir, info);
-    let _ = lfs_dir_read(lfs, dir, info);
+    let _ = lfs_dir_read(lfs, dir, info).await;
+    let _ = lfs_dir_read(lfs, dir, info).await;
     for i in 0..n {
         let expected = format!("hi{i:03}");
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
 
         assert_eq!(info.type_, LfsType::REG);
         assert_eq!(info.name_str(), expected);
     }
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     for i in 0..n {
         let old = &format!("hi{i:03}");
         let new = &format!("hello{i:03}");
-        assert_ok!(lfs_rename(lfs, old, new));
+        assert_ok!(lfs_rename(lfs, old, new).await);
     }
 
-    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH));
+    assert_ok!(lfs_dir_open(lfs, dir, ROOT_PATH).await);
 
-    let _ = lfs_dir_read(lfs, dir, info);
-    let _ = lfs_dir_read(lfs, dir, info);
+    let _ = lfs_dir_read(lfs, dir, info).await;
+    let _ = lfs_dir_read(lfs, dir, info).await;
     for i in 0..n {
         let expected = format!("hello{i:03}");
-        assert_eq!(lfs_dir_read(lfs, dir, info), Ok(true));
+        assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(true));
 
         assert_eq!(info.type_, LfsType::REG);
         assert_eq!(info.name_str(), expected);
     }
-    assert_eq!(lfs_dir_read(lfs, dir, info), Ok(false));
+    assert_eq!(lfs_dir_read(lfs, dir, info).await, Ok(false));
     assert_ok!(lfs_dir_close(lfs, dir));
 
     for i in 0..n {
         let path = &format!("hello{i:03}");
-        assert_ok!(lfs_remove(lfs, path));
+        assert_ok!(lfs_remove(lfs, path).await);
     }
 
     assert_ok!(lfs_unmount(lfs));
@@ -622,31 +623,34 @@ async fn test_dirs_nested(cfg: &LfsConfig<'_>) {
 /// defines.N = [10, 100], if = 'N < BLOCK_COUNT/2'
 /// Create parent dir with N subdirs, remove children during dir iteration, then parent.
 #[lfs_test]
-fn test_dirs_recursive_remove(cfg: &LfsConfig, #[values(10, 100)] n: usize) {
+#[tokio::test]
+async fn test_dirs_recursive_remove(cfg: &LfsConfig<'_>, #[values(10, 100)] n: usize) {
     if n >= (cfg.block_count / 2) as usize {
         return;
     }
 
     let lfs = &mut Lfs::default();
-    assert_ok!(lfs_format(lfs, cfg));
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_format(lfs, cfg).await);
+    assert_ok!(lfs_mount(lfs, cfg).await);
 
-    assert_ok!(lfs_mkdir(lfs, "prickly-pear"));
+    assert_ok!(lfs_mkdir(lfs, "prickly-pear").await);
     for i in 0..n {
         let path = &format!("prickly-pear/cactus{i:03}");
-        assert_ok!(lfs_mkdir(lfs, path));
+        assert_ok!(lfs_mkdir(lfs, path).await);
     }
 
-    let names = dir_entry_names(lfs, cfg, "prickly-pear").expect("prickly-pear dir_entry_names");
+    let names = dir_entry_names(lfs, cfg, "prickly-pear")
+        .await
+        .expect("prickly-pear dir_entry_names");
     assert_eq!(names.len(), n, "N={n} subdir count");
 
-    assert_err!(Error::NotEmpty, lfs_remove(lfs, "prickly-pear"));
+    assert_err!(Error::NotEmpty, lfs_remove(lfs, "prickly-pear").await);
 
     let dir = &mut unsafe { core::mem::MaybeUninit::<LfsDir>::zeroed().assume_init() };
-    assert_ok!(lfs_dir_open(lfs, dir, "prickly-pear"));
+    assert_ok!(lfs_dir_open(lfs, dir, "prickly-pear").await);
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
     loop {
-        let rc = lfs_dir_read(lfs, dir, info);
+        let rc = lfs_dir_read(lfs, dir, info).await;
         if rc == Ok(false) {
             break;
         }
@@ -654,19 +658,17 @@ fn test_dirs_recursive_remove(cfg: &LfsConfig, #[values(10, 100)] n: usize) {
         if info.name[0] == b'.' {
             continue;
         }
-        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-        let name = core::str::from_utf8(&info.name[..nul]).unwrap();
-        let child_path = &format!("prickly-pear/{name}");
-        assert_ok!(lfs_remove(lfs, child_path));
+        let child_path = &format!("prickly-pear/{}", info.name_str());
+        assert_ok!(lfs_remove(lfs, child_path).await);
     }
     assert_ok!(lfs_dir_close(lfs, dir));
 
-    assert_ok!(lfs_remove(lfs, "prickly-pear"));
+    assert_ok!(lfs_remove(lfs, "prickly-pear").await);
     assert_ok!(lfs_unmount(lfs));
 
-    assert_ok!(lfs_mount(lfs, cfg));
+    assert_ok!(lfs_mount(lfs, cfg).await);
     let info = &mut unsafe { core::mem::zeroed::<LfsInfo>() };
-    assert_err!(Error::NoEntry, lfs_stat(lfs, "prickly-pear", info));
+    assert_err!(Error::NoEntry, lfs_stat(lfs, "prickly-pear", info).await);
     assert_ok!(lfs_unmount(lfs));
 }
 
