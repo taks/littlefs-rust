@@ -170,7 +170,7 @@ pub async fn lfs_mkdir_<S: Storage>(lfs: &mut super::lfs::Lfs<S>, path: &str) ->
 
             cwd.type_ = 0;
             cwd.id = 0;
-            lfs.mlist = &cwd as *const _ as *mut _;
+            lfs.mlist = &raw mut cwd;
 
             lfs_pair_tole32(&mut dir.pair);
             let attrs2 = [LfsMattr {

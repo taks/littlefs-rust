@@ -156,7 +156,7 @@ pub async fn lfs_remove_<S: Storage>(
 
             dir.type_ = 0;
             dir.id = 0;
-            lfs.mlist = &mut dir as *mut _;
+            lfs.mlist = &raw mut dir;
         }
 
         let attrs = [LfsMattr {
