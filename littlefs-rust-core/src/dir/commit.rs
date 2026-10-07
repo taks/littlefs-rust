@@ -1891,7 +1891,7 @@ fn relocatingcommit_fixmlist(
     while let Some(d_ref) = unsafe { d.as_mut() } {
         if !lfs_pair_cmp(&d_ref.m.pair, &oldpair) {
             d_ref.m = *dir;
-            if !core::ptr::eq(&d_ref.m.pair as *const _, pair as *const _) {
+            if !core::ptr::eq(&raw const d_ref.m.pair, pair as *const _) {
                 for attr in attrs_slice.iter() {
                     let tag = attr.tag;
                     if (lfs_tag_type3(tag)) == LFS_TYPE_DELETE

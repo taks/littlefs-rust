@@ -151,7 +151,7 @@ pub fn lfs_remove_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
 
             dir.type_ = 0;
             dir.id = 0;
-            lfs.mlist = &mut dir as *mut _;
+            lfs.mlist = &raw mut dir;
         }
 
         let attrs = [LfsMattr {

@@ -301,7 +301,7 @@ pub fn lfs_rename_(lfs: &mut super::lfs::Lfs, oldpath: &str, newpath: &str) -> R
 
             prevdir.type_ = 0;
             prevdir.id = 0;
-            lfs.mlist = &prevdir as *const _ as *mut _;
+            lfs.mlist = &raw mut prevdir;
         }
 
         if !samepair {

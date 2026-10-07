@@ -169,7 +169,7 @@ pub fn lfs_mkdir_(lfs: &mut super::lfs::Lfs, path: &str) -> Result<(), Error> {
 
             cwd.type_ = 0;
             cwd.id = 0;
-            lfs.mlist = &cwd as *const _ as *mut _;
+            lfs.mlist = &raw mut cwd;
 
             lfs_pair_tole32(&mut dir.pair);
             let attrs2 = [LfsMattr {
