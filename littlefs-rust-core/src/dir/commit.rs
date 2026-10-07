@@ -603,7 +603,7 @@ pub async fn lfs_dir_drop<S: Storage>(
     use crate::tag::lfs_mktag;
     use crate::util::lfs_pair_tole32;
 
-    lfs_dir_getgstate(lfs, tail, &mut lfs.gdelta.borrow_mut()).await?;
+    lfs_dir_getgstate(lfs, tail, unsafe { &mut *lfs.gdelta.get() }).await?;
 
     let tail_ref = tail;
     let mut tail_pair = tail_ref.tail;
@@ -2181,7 +2181,7 @@ pub async fn lfs_dir_orphaningcommit<'a, S: Storage>(
     }
 
     if state == crate::error::LFS_OK_DROPPED {
-        lfs_dir_getgstate(lfs, dir, &mut lfs.gdelta.borrow_mut()).await?;
+        lfs_dir_getgstate(lfs, dir, unsafe { &mut *lfs.gdelta.get() }).await?;
 
         let plpair = pdir.pair;
         lfs_pair_tole32(&mut dir.tail);

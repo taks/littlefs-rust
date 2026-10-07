@@ -1,6 +1,6 @@
 //! Main filesystem type. Per lfs.h typedef struct lfs.
 
-use core::cell::{RefCell, UnsafeCell};
+use core::cell::UnsafeCell;
 use core::fmt::Debug;
 use core::ptr::NonNull;
 
@@ -22,7 +22,7 @@ pub struct Lfs<S> {
     pub seed: u32,
     pub gstate: LfsGstate,
     pub gdisk: LfsGstate,
-    pub gdelta: RefCell<LfsGstate>,
+    pub gdelta: UnsafeCell<LfsGstate>,
     pub lookahead: LfsLookahead,
     pub cfg: NonNull<LfsConfig<S>>,
     pub block_count: u32,

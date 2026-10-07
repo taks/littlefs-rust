@@ -319,7 +319,7 @@ fn build_inner_borrowed<'a, S: Storage>(
     }
 }
 
-fn wire_context_borrowed<'a, S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
+fn wire_context_borrowed<S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
     inner.config.context = unsafe { core::mem::transmute(inner.storage as *mut SS<S>) };
     inner.config.read_buffer = Some(NonNull::from_ref(&inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_ref(&inner._prog_buf));

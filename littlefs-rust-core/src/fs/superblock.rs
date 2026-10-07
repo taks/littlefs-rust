@@ -413,11 +413,9 @@ pub async fn lfs_fs_deorphan<S: Storage>(
                     lfs_debug!("Fixing orphan 0x{:x}, 0x{:x}", pdir.tail[0], pdir.tail[1]);
 
                     lfs_pass_err!(
-                        crate::dir::fetch::lfs_dir_getgstate(
-                            lfs,
-                            &dir,
-                            &mut lfs.gdelta.borrow_mut()
-                        )
+                        crate::dir::fetch::lfs_dir_getgstate(lfs, &dir, unsafe {
+                            &mut *lfs.gdelta.get()
+                        })
                         .await
                     )?;
 
