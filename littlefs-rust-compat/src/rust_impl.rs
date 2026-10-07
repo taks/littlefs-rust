@@ -2,7 +2,7 @@
 
 use std::mem::MaybeUninit;
 
-use littlefs_rust_core::{Error, LfsFile, lfs_type::OpenFlags};
+use littlefs_rust_core::{Error, LfsFile, Storage, lfs_type::OpenFlags};
 
 use crate::storage::{SharedStorage, prng_verify, test_prng};
 
@@ -15,21 +15,24 @@ const LFS_O_EXCL: i32 = 0x0200;
 
 // ── Operation-level helpers (phase 2) ───────────────────────────────────
 
-pub fn format(storage: &mut SharedStorage) -> Result<(), Error> {
+pub async fn format(storage: &mut SharedStorage) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    littlefs_rust_core::lfs_format(lfs, &env.config)?;
-    littlefs_rust_core::lfs_mount(lfs, &env.config)?;
+    littlefs_rust_core::lfs_format(lfs, &env.config).await?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
     littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(())
 }
 
-pub fn mount_dir_names(storage: &mut SharedStorage, path: &str) -> Result<Vec<String>, Error> {
+pub async fn mount_dir_names(
+    storage: &mut SharedStorage,
+    path: &str,
+) -> Result<Vec<String>, Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    littlefs_rust_core::lfs_mount(lfs, &env.config)?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
     let names = dir_names_mounted(lfs, path)?;
     littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(names)
@@ -144,7 +147,7 @@ pub fn format_create_write_unmount(
     Ok(())
 }
 
-pub fn format_nested_dir_file_unmount(
+pub async fn format_nested_dir_file_unmount(
     storage: &mut SharedStorage,
     parent: &str,
     child: &str,
@@ -164,7 +167,7 @@ pub fn format_nested_dir_file_unmount(
     Ok(())
 }
 
-pub fn format_mkdir_file_rmdir_unmount(
+pub async fn format_mkdir_file_rmdir_unmount(
     storage: &mut SharedStorage,
     dir_name: &str,
     file_name: &str,
@@ -172,13 +175,13 @@ pub fn format_mkdir_file_rmdir_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
-    mkdir_mounted(lfs, dir_name)?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config)).await?;
+    (littlefs_rust_core::lfs_mount(lfs, &env.config)).await?;
+    mkdir_mounted(lfs, dir_name).await?;
     let file_path = format!("{dir_name}/{file_name}");
-    create_empty_file_mounted(lfs, &file_path)?;
-    (littlefs_rust_core::lfs_remove(lfs, &file_path))?;
-    (littlefs_rust_core::lfs_remove(lfs, dir_name))?;
+    create_empty_file_mounted(lfs, &file_path).await?;
+    (littlefs_rust_core::lfs_remove(lfs, &file_path)).await?;
+    (littlefs_rust_core::lfs_remove(lfs, dir_name)).await?;
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
@@ -208,20 +211,20 @@ pub fn format_only(storage: &mut SharedStorage) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn format_create_n_dirs(storage: &mut SharedStorage, count: usize) -> Result<(), Error> {
+pub async fn format_create_n_dirs(storage: &mut SharedStorage, count: usize) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config)).await?;
+    (littlefs_rust_core::lfs_mount(lfs, &env.config)).await?;
     for i in 0..count {
-        mkdir_mounted(lfs, &format!("dir{i}"))?;
+        mkdir_mounted(lfs, &format!("dir{i}")).await?;
     }
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
 
-pub fn format_create_n_files_prng(
+pub async fn format_create_n_files_prng(
     storage: &mut SharedStorage,
     count: usize,
     size: u32,
@@ -230,16 +233,16 @@ pub fn format_create_n_files_prng(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config)).await?;
+    (littlefs_rust_core::lfs_mount(lfs, &env.config)).await?;
     for i in 0..count {
-        write_prng_file_mounted(lfs, &format!("file{i}"), size, chunk, (i + 1) as u32)?;
+        write_prng_file_mounted(lfs, &format!("file{i}"), size, chunk, (i + 1) as u32).await?;
     }
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
 
-pub fn format_create_n_dirs_with_files_prng(
+pub async fn format_create_n_dirs_with_files_prng(
     storage: &mut SharedStorage,
     count: usize,
     size: u32,
@@ -248,23 +251,26 @@ pub fn format_create_n_dirs_with_files_prng(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config)).await?;
+    (littlefs_rust_core::lfs_mount(lfs, &env.config)).await?;
     for i in 0..count {
         let dir = format!("dir{i}");
-        mkdir_mounted(lfs, &dir)?;
-        write_prng_file_mounted(lfs, &format!("{dir}/file"), size, chunk, (i + 1) as u32)?;
+        mkdir_mounted(lfs, &dir).await?;
+        write_prng_file_mounted(lfs, &format!("{dir}/file"), size, chunk, (i + 1) as u32).await?;
     }
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
 
-pub fn mount_verify_n_empty_dirs(storage: &mut SharedStorage, count: usize) -> Result<(), Error> {
+pub async fn mount_verify_n_empty_dirs(
+    storage: &mut SharedStorage,
+    count: usize,
+) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
-    let root = dir_names_mounted(lfs, "/")?;
+    (littlefs_rust_core::lfs_mount(lfs, &env.config)).await?;
+    let root = dir_names_mounted(lfs, "/").await?;
     assert_eq!(
         root.len(),
         count,
@@ -274,7 +280,7 @@ pub fn mount_verify_n_empty_dirs(storage: &mut SharedStorage, count: usize) -> R
     for i in 0..count {
         let name = format!("dir{i}");
         assert!(root.contains(&name), "missing {name}");
-        let contents = dir_names_mounted(lfs, &name)?;
+        let contents = dir_names_mounted(lfs, &name).await?;
         assert!(
             contents.is_empty(),
             "dir {name} should be empty, got {contents:?}"
@@ -284,7 +290,7 @@ pub fn mount_verify_n_empty_dirs(storage: &mut SharedStorage, count: usize) -> R
     Ok(())
 }
 
-pub fn mount_verify_n_files_prng(
+pub async fn mount_verify_n_files_prng(
     storage: &mut SharedStorage,
     count: usize,
     size: u32,
@@ -293,8 +299,8 @@ pub fn mount_verify_n_files_prng(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
-    let root = dir_names_mounted(lfs, "/")?;
+    (littlefs_rust_core::lfs_mount(lfs, &env.config)).await?;
+    let root = dir_names_mounted(lfs, "/").await?;
     assert_eq!(
         root.len(),
         count,
@@ -303,7 +309,7 @@ pub fn mount_verify_n_files_prng(
     );
     for i in 0..count {
         let path = format!("file{i}");
-        let data = read_file_mounted(lfs, &path)?;
+        let data = read_file_mounted(lfs, &path).await?;
         assert_eq!(data.len(), size as usize, "file {path} size mismatch");
         prng_verify(&data, (i + 1) as u32);
     }
@@ -311,7 +317,7 @@ pub fn mount_verify_n_files_prng(
     Ok(())
 }
 
-pub fn mount_verify_n_dirs_with_files_prng(
+pub async fn mount_verify_n_dirs_with_files_prng(
     storage: &mut SharedStorage,
     count: usize,
     size: u32,
@@ -320,8 +326,8 @@ pub fn mount_verify_n_dirs_with_files_prng(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
-    let root = dir_names_mounted(lfs, "/")?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
+    let root = dir_names_mounted(lfs, "/").await?;
     assert_eq!(
         root.len(),
         count,
@@ -330,9 +336,9 @@ pub fn mount_verify_n_dirs_with_files_prng(
     );
     for i in 0..count {
         let dir = format!("dir{i}");
-        let contents = dir_names_mounted(lfs, &dir)?;
+        let contents = dir_names_mounted(lfs, &dir).await?;
         assert_eq!(contents.len(), 1, "dir {dir} should have 1 file");
-        let data = read_file_mounted(lfs, &format!("{dir}/file"))?;
+        let data = read_file_mounted(lfs, &format!("{dir}/file")).await?;
         assert_eq!(data.len(), size as usize);
         prng_verify(&data, (i + 1) as u32);
     }
@@ -340,7 +346,7 @@ pub fn mount_verify_n_dirs_with_files_prng(
     Ok(())
 }
 
-pub fn mount_create_dirs_and_list(
+pub async fn mount_create_dirs_and_list(
     storage: &mut SharedStorage,
     start: usize,
     count: usize,
@@ -349,11 +355,11 @@ pub fn mount_create_dirs_and_list(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
     for i in start..(start + count) {
-        mkdir_mounted(lfs, &format!("dir{i}"))?;
+        mkdir_mounted(lfs, &format!("dir{i}")).await?;
     }
-    let root = dir_names_mounted(lfs, "/")?;
+    let root = dir_names_mounted(lfs, "/").await?;
     assert_eq!(
         root.len(),
         expected,
@@ -364,7 +370,7 @@ pub fn mount_create_dirs_and_list(
     Ok(root)
 }
 
-pub fn mount_create_files_prng_and_verify_all(
+pub async fn mount_create_files_prng_and_verify_all(
     storage: &mut SharedStorage,
     start: usize,
     count: usize,
@@ -375,11 +381,11 @@ pub fn mount_create_files_prng_and_verify_all(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
     for i in start..(start + count) {
-        write_prng_file_mounted(lfs, &format!("file{i}"), size, chunk, (i + 1) as u32)?;
+        write_prng_file_mounted(lfs, &format!("file{i}"), size, chunk, (i + 1) as u32).await?;
     }
-    let root = dir_names_mounted(lfs, "/")?;
+    let root = dir_names_mounted(lfs, "/").await?;
     assert_eq!(
         root.len(),
         total,
@@ -387,7 +393,7 @@ pub fn mount_create_files_prng_and_verify_all(
         root.len()
     );
     for i in 0..total {
-        let data = read_file_mounted(lfs, &format!("file{i}"))?;
+        let data = read_file_mounted(lfs, &format!("file{i}")).await?;
         assert_eq!(data.len(), size as usize);
         prng_verify(&data, (i + 1) as u32);
     }
@@ -395,7 +401,7 @@ pub fn mount_create_files_prng_and_verify_all(
     Ok(())
 }
 
-pub fn mount_create_dirs_files_prng_and_verify_all(
+pub async fn mount_create_dirs_files_prng_and_verify_all(
     storage: &mut SharedStorage,
     start: usize,
     count: usize,
@@ -406,13 +412,13 @@ pub fn mount_create_dirs_files_prng_and_verify_all(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
     for i in start..(start + count) {
         let dir = format!("dir{i}");
-        mkdir_mounted(lfs, &dir)?;
-        write_prng_file_mounted(lfs, &format!("{dir}/file"), size, chunk, (i + 1) as u32)?;
+        mkdir_mounted(lfs, &dir).await?;
+        write_prng_file_mounted(lfs, &format!("{dir}/file"), size, chunk, (i + 1) as u32).await?;
     }
-    let root = dir_names_mounted(lfs, "/")?;
+    let root = dir_names_mounted(lfs, "/").await?;
     assert_eq!(
         root.len(),
         total,
@@ -421,21 +427,27 @@ pub fn mount_create_dirs_files_prng_and_verify_all(
     );
     for i in 0..total {
         let dir = format!("dir{i}");
-        let data = read_file_mounted(lfs, &format!("{dir}/file"))?;
+        let data = read_file_mounted(lfs, &format!("{dir}/file")).await?;
         assert_eq!(data.len(), size as usize);
         prng_verify(&data, (i + 1) as u32);
     }
-    (littlefs_rust_core::lfs_unmount(lfs))?;
+    littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(())
 }
 
 // ── Internal helpers ────────────────────────────────────────────────────
 
-fn mkdir_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<(), Error> {
-    littlefs_rust_core::lfs_mkdir(lfs, path)
+async fn mkdir_mounted<S: Storage>(
+    lfs: &mut littlefs_rust_core::Lfs<S>,
+    path: &str,
+) -> Result<(), Error> {
+    littlefs_rust_core::lfs_mkdir(lfs, path).await
 }
 
-fn create_empty_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<(), Error> {
+async fn create_empty_file_mounted<S: Storage>(
+    lfs: &mut littlefs_rust_core::Lfs<S>,
+    path: &str,
+) -> Result<(), Error> {
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let mut file = LfsFile::default();
     littlefs_rust_core::lfs_file_open(
@@ -443,25 +455,22 @@ fn create_empty_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> R
         &mut file,
         path,
         OpenFlags::from_bits_retain(flags as u32),
-    )?;
-    littlefs_rust_core::lfs_file_close(lfs, &mut file)
+    )
+    .await?;
+    littlefs_rust_core::lfs_file_close(lfs, &mut file).await
 }
 
-fn write_file_mounted(
-    lfs: &mut littlefs_rust_core::Lfs,
+async fn write_file_mounted<S: Storage>(
+    lfs: &mut littlefs_rust_core::Lfs<S>,
     path: &str,
     content: &[u8],
 ) -> Result<(), Error> {
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let file = &mut littlefs_rust_core::LfsFile::default();
-    (littlefs_rust_core::lfs_file_open(
-        lfs,
-        file,
-        path,
-        OpenFlags::from_bits_retain(flags as u32),
-    ))?;
-    let n = littlefs_rust_core::lfs_file_write(lfs, file, content);
-    (littlefs_rust_core::lfs_file_close(lfs, file))?;
+    littlefs_rust_core::lfs_file_open(lfs, file, path, OpenFlags::from_bits_retain(flags as u32))
+        .await?;
+    let n = littlefs_rust_core::lfs_file_write(lfs, file, content).await;
+    littlefs_rust_core::lfs_file_close(lfs, file).await?;
     if let Err(err) = n {
         return Err(err);
     }
@@ -469,8 +478,8 @@ fn write_file_mounted(
     Ok(())
 }
 
-fn write_prng_file_mounted(
-    lfs: &mut littlefs_rust_core::Lfs,
+async fn write_prng_file_mounted<S: Storage>(
+    lfs: &mut littlefs_rust_core::Lfs<S>,
     path: &str,
     size: u32,
     chunk: u32,
@@ -478,12 +487,8 @@ fn write_prng_file_mounted(
 ) -> Result<(), Error> {
     let flags = LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
     let file = &mut littlefs_rust_core::LfsFile::default();
-    (littlefs_rust_core::lfs_file_open(
-        lfs,
-        file,
-        path,
-        OpenFlags::from_bits_retain(flags as u32),
-    ))?;
+    littlefs_rust_core::lfs_file_open(lfs, file, path, OpenFlags::from_bits_retain(flags as u32))
+        .await?;
 
     let mut prng = seed;
     let mut buf = vec![0u8; chunk as usize];
@@ -493,23 +498,26 @@ fn write_prng_file_mounted(
         for slot in buf[..c as usize].iter_mut() {
             *slot = (test_prng(&mut prng) & 0xff) as u8;
         }
-        let n = littlefs_rust_core::lfs_file_write(lfs, file, &buf[..c as usize]);
+        let n = littlefs_rust_core::lfs_file_write(lfs, file, &buf[..c as usize]).await;
         assert_eq!(n.unwrap(), c as u32, "short write at offset {i}");
         i += c;
     }
-    littlefs_rust_core::lfs_file_close(lfs, file)
+    littlefs_rust_core::lfs_file_close(lfs, file).await
 }
 
-fn read_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<Vec<u8>, Error> {
+async fn read_file_mounted<S: Storage>(
+    lfs: &mut littlefs_rust_core::Lfs<S>,
+    path: &str,
+) -> Result<Vec<u8>, Error> {
     let file = &mut littlefs_rust_core::LfsFile::default();
-    (littlefs_rust_core::lfs_file_open(lfs, file, path, OpenFlags::READ))?;
+    littlefs_rust_core::lfs_file_open(lfs, file, path, OpenFlags::READ).await?;
 
     let mut buf = Vec::new();
     let mut chunk = [0u8; 256];
     loop {
-        let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut chunk);
+        let n = littlefs_rust_core::lfs_file_read(lfs, file, &mut chunk).await;
         if let Err(err) = n {
-            let _ = littlefs_rust_core::lfs_file_close(lfs, file);
+            let _ = littlefs_rust_core::lfs_file_close(lfs, file).await;
             return Err(err);
         }
         if n == Ok(0) {
@@ -517,18 +525,21 @@ fn read_file_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<Ve
         }
         buf.extend_from_slice(&chunk[..(n.unwrap()) as usize]);
     }
-    (littlefs_rust_core::lfs_file_close(lfs, file))?;
+    littlefs_rust_core::lfs_file_close(lfs, file).await?;
     Ok(buf)
 }
 
-fn dir_names_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<Vec<String>, Error> {
+async fn dir_names_mounted<S: Storage>(
+    lfs: &mut littlefs_rust_core::Lfs<S>,
+    path: &str,
+) -> Result<Vec<String>, Error> {
     let dir = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsDir>::zeroed().assume_init() };
-    (littlefs_rust_core::lfs_dir_open(lfs, dir, path))?;
+    (littlefs_rust_core::lfs_dir_open(lfs, dir, path).await)?;
 
     let mut names = Vec::new();
     let info = &mut unsafe { MaybeUninit::<littlefs_rust_core::LfsInfo>::zeroed().assume_init() };
     loop {
-        let res = littlefs_rust_core::lfs_dir_read(lfs, dir, info);
+        let res = littlefs_rust_core::lfs_dir_read(lfs, dir, info).await;
         if res == Ok(false) {
             break;
         }
@@ -536,12 +547,9 @@ fn dir_names_mounted(lfs: &mut littlefs_rust_core::Lfs, path: &str) -> Result<Ve
             let _ = littlefs_rust_core::lfs_dir_close(lfs, dir);
             return Err(err);
         }
-        let nul = info.name.iter().position(|&b| b == 0).unwrap_or(256);
-        let name = core::str::from_utf8(&info.name[..nul])
-            .unwrap_or("")
-            .to_string();
+        let name = info.name_str();
         if name != "." && name != ".." {
-            names.push(name);
+            names.push(name.to_string());
         }
     }
     let _ = littlefs_rust_core::lfs_dir_close(lfs, dir);
