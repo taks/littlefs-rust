@@ -608,12 +608,16 @@ async fn test_superblocks_grow(
 /// KNOWN_BLOCK_COUNT = [true, false]. Shrink via lfs_fs_grow to smaller size.
 #[cfg(feature = "shrink")]
 #[lfs_test]
-fn test_superblocks_shrink(cfg: &LfsConfig, #[values(true, false)] known_block_count: bool) {
+#[tokio::test]
+async fn test_superblocks_shrink(
+    cfg: &LfsConfig<'_>,
+    #[values(true, false)] known_block_count: bool,
+) {
     let block_count = cfg.block_count;
     for block_count_2 in [block_count / 2, block_count / 4, 2] {
         let lfs = &mut Lfs::default();
 
-        assert_ok!(lfs_format(lfs, cfg));
+        assert_ok!(lfs_format(lfs, cfg).await);
 
         let cfg = &mut LfsConfig {
             block_count: if known_block_count {
@@ -624,98 +628,101 @@ fn test_superblocks_shrink(cfg: &LfsConfig, #[values(true, false)] known_block_c
             ..*cfg
         };
 
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, block_count);
         assert_ok!(lfs_unmount(lfs));
 
         // same size is a noop
-        assert_ok!(lfs_mount(lfs, cfg));
-        assert_ok!(lfs_fs_grow(lfs, block_count));
+        assert_ok!(lfs_mount(lfs, cfg).await);
+        assert_ok!(lfs_fs_grow(lfs, block_count).await);
         let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, block_count);
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, block_count);
         assert_ok!(lfs_unmount(lfs));
 
         // shrink to BLOCK_COUNT_2
-        assert_ok!(lfs_mount(lfs, cfg));
-        assert_ok!(lfs_fs_grow(lfs, block_count_2));
+        assert_ok!(lfs_mount(lfs, cfg).await);
+        assert_ok!(lfs_fs_grow(lfs, block_count_2).await);
         let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, block_count_2);
         assert_ok!(lfs_unmount(lfs));
 
         cfg.block_count = if known_block_count { block_count_2 } else { 0 };
 
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, block_count_2);
         assert_ok!(lfs_unmount(lfs));
 
         // mounting with the previous (larger) size should fail
         cfg.block_count = block_count;
-        assert_eq!(lfs_mount(lfs, cfg), Err(Error::Invalid));
+        assert_eq!(lfs_mount(lfs, cfg).await, Err(Error::Invalid));
 
         cfg.block_count = if known_block_count { block_count_2 } else { 0 };
 
         // same size is a noop
-        assert_ok!(lfs_mount(lfs, cfg));
-        assert_ok!(lfs_fs_grow(lfs, block_count_2));
+        assert_ok!(lfs_mount(lfs, cfg).await);
+        assert_ok!(lfs_fs_grow(lfs, block_count_2).await);
         let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, block_count_2);
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, block_count_2);
         assert_ok!(lfs_unmount(lfs));
 
         // write and read back a file
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, block_count_2);
         let test_path = "test";
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(
-            lfs,
-            file,
-            test_path,
-            LFS_O_CREAT | LFS_O_EXCL | LFS_O_WRONLY,
-        ));
-        assert_eq!(lfs_file_write(lfs, file, b"hello!"), Ok(6));
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(
+            lfs_file_open(
+                lfs,
+                file,
+                test_path,
+                LFS_O_CREAT | LFS_O_EXCL | LFS_O_WRONLY,
+            )
+            .await
+        );
+        assert_eq!(lfs_file_write(lfs, file, b"hello!").await, Ok(6));
+        assert_ok!(lfs_file_close(lfs, file).await);
         assert_ok!(lfs_unmount(lfs));
 
-        assert_ok!(lfs_mount(lfs, cfg));
+        assert_ok!(lfs_mount(lfs, cfg).await);
         let fsinfo = &mut unsafe { core::mem::MaybeUninit::<LfsFsinfo>::zeroed().assume_init() };
-        assert_ok!(lfs_fs_stat(lfs, fsinfo));
+        assert_ok!(lfs_fs_stat(lfs, fsinfo).await);
         assert_eq!(fsinfo.block_size, cfg.block_size);
         assert_eq!(fsinfo.block_count, block_count_2);
         let file = &mut LfsFile::default();
-        assert_ok!(lfs_file_open(lfs, file, test_path, LFS_O_RDONLY));
+        assert_ok!(lfs_file_open(lfs, file, test_path, LFS_O_RDONLY).await);
         let mut buf = [0u8; 256];
-        assert_eq!(lfs_file_read(lfs, file, &mut buf), Ok(6));
+        assert_eq!(lfs_file_read(lfs, file, &mut buf).await, Ok(6));
         assert_eq!(&buf[..6], b"hello!");
-        assert_ok!(lfs_file_close(lfs, file));
+        assert_ok!(lfs_file_close(lfs, file).await);
         assert_ok!(lfs_unmount(lfs));
     }
 }
