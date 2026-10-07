@@ -33,33 +33,36 @@ pub async fn mount_dir_names(
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
     littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
-    let names = dir_names_mounted(lfs, path)?;
+    let names = dir_names_mounted(lfs, path).await?;
     littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(names)
 }
 
-pub fn mount_read_file(storage: &mut SharedStorage, path: &str) -> Result<Vec<u8>, Error> {
+pub async fn mount_read_file(storage: &mut SharedStorage, path: &str) -> Result<Vec<u8>, Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    littlefs_rust_core::lfs_mount(lfs, &env.config)?;
-    let data = read_file_mounted(lfs, path)?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
+    let data = read_file_mounted(lfs, path).await?;
     littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(data)
 }
 
-pub fn format_mkdir_unmount(storage: &mut SharedStorage, dir_name: &str) -> Result<(), Error> {
+pub async fn format_mkdir_unmount(
+    storage: &mut SharedStorage,
+    dir_name: &str,
+) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    littlefs_rust_core::lfs_format(lfs, &env.config)?;
-    littlefs_rust_core::lfs_mount(lfs, &env.config)?;
-    mkdir_mounted(lfs, dir_name)?;
+    littlefs_rust_core::lfs_format(lfs, &env.config).await?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
+    mkdir_mounted(lfs, dir_name).await?;
     littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(())
 }
 
-pub fn format_mkdir_file_unmount(
+pub async fn format_mkdir_file_unmount(
     storage: &mut SharedStorage,
     dir_name: &str,
     file_name: &str,
@@ -67,15 +70,15 @@ pub fn format_mkdir_file_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    littlefs_rust_core::lfs_format(lfs, &env.config)?;
-    littlefs_rust_core::lfs_mount(lfs, &env.config)?;
-    mkdir_mounted(lfs, dir_name)?;
-    create_empty_file_mounted(lfs, file_name)?;
+    littlefs_rust_core::lfs_format(lfs, &env.config).await?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
+    mkdir_mounted(lfs, dir_name).await?;
+    create_empty_file_mounted(lfs, file_name).await?;
     littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(())
 }
 
-pub fn format_file_mkdir_unmount(
+pub async fn format_file_mkdir_unmount(
     storage: &mut SharedStorage,
     file_name: &str,
     dir_name: &str,
@@ -83,28 +86,28 @@ pub fn format_file_mkdir_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    littlefs_rust_core::lfs_format(lfs, &env.config)?;
-    littlefs_rust_core::lfs_mount(lfs, &env.config)?;
-    create_empty_file_mounted(lfs, file_name)?;
-    mkdir_mounted(lfs, dir_name)?;
+    littlefs_rust_core::lfs_format(lfs, &env.config).await?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
+    create_empty_file_mounted(lfs, file_name).await?;
+    mkdir_mounted(lfs, dir_name).await?;
     littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(())
 }
 
-pub fn format_create_three_unmount(storage: &mut SharedStorage) -> Result<(), Error> {
+pub async fn format_create_three_unmount(storage: &mut SharedStorage) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    littlefs_rust_core::lfs_format(lfs, &env.config)?;
-    littlefs_rust_core::lfs_mount(lfs, &env.config)?;
+    littlefs_rust_core::lfs_format(lfs, &env.config).await?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
     for name in ["aaa", "zzz", "mmm"] {
-        create_empty_file_mounted(lfs, name)?;
+        create_empty_file_mounted(lfs, name).await?;
     }
     littlefs_rust_core::lfs_unmount(lfs)?;
     Ok(())
 }
 
-pub fn format_create_rename_unmount(
+pub async fn format_create_rename_unmount(
     storage: &mut SharedStorage,
     old_name: &str,
     new_name: &str,
@@ -112,27 +115,30 @@ pub fn format_create_rename_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    littlefs_rust_core::lfs_format(lfs, &env.config)?;
-    littlefs_rust_core::lfs_mount(lfs, &env.config)?;
-    create_empty_file_mounted(lfs, old_name)?;
-    (littlefs_rust_core::lfs_rename(lfs, old_name, new_name))?;
+    littlefs_rust_core::lfs_format(lfs, &env.config).await?;
+    littlefs_rust_core::lfs_mount(lfs, &env.config).await?;
+    create_empty_file_mounted(lfs, old_name).await?;
+    (littlefs_rust_core::lfs_rename(lfs, old_name, new_name)).await?;
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
 
-pub fn format_create_remove_unmount(storage: &mut SharedStorage, path: &str) -> Result<(), Error> {
+pub async fn format_create_remove_unmount(
+    storage: &mut SharedStorage,
+    path: &str,
+) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
-    create_empty_file_mounted(lfs, path)?;
-    (littlefs_rust_core::lfs_remove(lfs, path))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config)).await?;
+    (littlefs_rust_core::lfs_mount(lfs, &env.config)).await?;
+    create_empty_file_mounted(lfs, path).await?;
+    (littlefs_rust_core::lfs_remove(lfs, path)).await?;
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
 
-pub fn format_create_write_unmount(
+pub async fn format_create_write_unmount(
     storage: &mut SharedStorage,
     path: &str,
     content: &[u8],
@@ -140,9 +146,9 @@ pub fn format_create_write_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
-    write_file_mounted(lfs, path, content)?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config)).await?;
+    (littlefs_rust_core::lfs_mount(lfs, &env.config)).await?;
+    write_file_mounted(lfs, path, content).await?;
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
@@ -156,13 +162,13 @@ pub async fn format_nested_dir_file_unmount(
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
-    mkdir_mounted(lfs, parent)?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config)).await?;
+    (littlefs_rust_core::lfs_mount(lfs, &env.config)).await?;
+    mkdir_mounted(lfs, parent).await?;
     let child_path = format!("{parent}/{child}");
-    mkdir_mounted(lfs, &child_path)?;
+    mkdir_mounted(lfs, &child_path).await?;
     let file_path = format!("{child_path}/{file_name}");
-    create_empty_file_mounted(lfs, &file_path)?;
+    create_empty_file_mounted(lfs, &file_path).await?;
     (littlefs_rust_core::lfs_unmount(lfs))?;
     Ok(())
 }
@@ -186,12 +192,15 @@ pub async fn format_mkdir_file_rmdir_unmount(
     Ok(())
 }
 
-pub fn mount_mkdir_expect_exist(storage: &mut SharedStorage, path: &str) -> Result<(), Error> {
+pub async fn mount_mkdir_expect_exist(
+    storage: &mut SharedStorage,
+    path: &str,
+) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
 
-    (littlefs_rust_core::lfs_mount(lfs, &env.config))?;
-    let res = littlefs_rust_core::lfs_mkdir(lfs, path);
+    (littlefs_rust_core::lfs_mount(lfs, &env.config)).await?;
+    let res = littlefs_rust_core::lfs_mkdir(lfs, path).await;
     (littlefs_rust_core::lfs_unmount(lfs))?;
     if res == Err(Error::Exists) {
         Ok(())
@@ -204,10 +213,10 @@ pub fn mount_mkdir_expect_exist(storage: &mut SharedStorage, path: &str) -> Resu
 
 // ── Compat-level helpers (phase 3) ──────────────────────────────────────
 
-pub fn format_only(storage: &mut SharedStorage) -> Result<(), Error> {
+pub async fn format_only(storage: &mut SharedStorage) -> Result<(), Error> {
     let env = storage.build_rust_env();
     let lfs = &mut littlefs_rust_core::Lfs::default();
-    (littlefs_rust_core::lfs_format(lfs, &env.config))?;
+    (littlefs_rust_core::lfs_format(lfs, &env.config)).await?;
     Ok(())
 }
 

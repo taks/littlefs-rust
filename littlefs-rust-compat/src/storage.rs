@@ -204,15 +204,15 @@ impl SharedStorage {
 }
 
 impl littlefs_rust_core::Storage for SharedStorage {
-    fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
+    async fn read(&mut self, block: u32, offset: u32, buf: &mut [u8]) -> Result<(), Error> {
         self.read_impl(block, offset, buf)
     }
 
-    fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
+    async fn write(&mut self, block: u32, offset: u32, data: &[u8]) -> Result<(), Error> {
         self.prog_impl(block, offset, data)
     }
 
-    fn erase(&mut self, block: u32) -> Result<(), Error> {
+    async fn erase(&mut self, block: u32) -> Result<(), Error> {
         self.erase_impl(block)
     }
 }
@@ -220,7 +220,7 @@ impl littlefs_rust_core::Storage for SharedStorage {
 /// Owned config + buffers for the Rust (littlefs-rust-core) side.
 /// Buffers must outlive any lfs_* calls using this config.
 pub struct RustEnv {
-    pub config: littlefs_rust_core::LfsConfig,
+    pub config: littlefs_rust_core::LfsConfig<SharedStorage>,
     _read_buf: Vec<u8>,
     _prog_buf: Vec<u8>,
     _lookahead_buf: Vec<u8>,
