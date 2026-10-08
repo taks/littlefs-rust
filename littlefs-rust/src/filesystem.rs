@@ -86,7 +86,7 @@ fn build_inner<S: Storage>(storage: S, config: &Config) -> FsInner<S> {
 /// Wire `config.context` to point at `inner.storage`. Must be called after
 /// `inner` is at its final address (i.e., inside the `RefCell`).
 fn wire_context<S: Storage>(inner: &mut FsInner<S>) {
-    inner.config.context = unsafe { core::mem::transmute(&mut inner.storage as *mut SS<S>) };
+    inner.config.context = Some(NonNull::from_mut(&mut inner.storage));
     inner.config.read_buffer = Some(NonNull::from_mut(&mut inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_mut(&mut inner._prog_buf));
     inner.config.lookahead_buffer = Some(NonNull::from_mut(&mut inner._lookahead_buf));
@@ -320,7 +320,7 @@ fn build_inner_borrowed<'a, S: Storage>(
 }
 
 fn wire_context_borrowed<S: Storage>(inner: &mut BorrowedFsInner<'_, S>) {
-    inner.config.context = unsafe { core::mem::transmute(inner.storage as *mut SS<S>) };
+    inner.config.context = Some(NonNull::from_mut(inner.storage));
     inner.config.read_buffer = Some(NonNull::from_ref(&inner._read_buf));
     inner.config.prog_buffer = Some(NonNull::from_ref(&inner._prog_buf));
     inner.config.lookahead_buffer = Some(NonNull::from_ref(&inner._lookahead_buf));
