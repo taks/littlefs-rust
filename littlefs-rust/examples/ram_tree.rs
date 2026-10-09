@@ -72,5 +72,5 @@ async fn main() {
     let size = fs.fs_size().await.expect("fs_size");
     println!("\nFilesystem uses {} blocks", size);
 
-    fs.unmount().expect("unmount");
+    fs.unmount().await.expect("unmount");
 }

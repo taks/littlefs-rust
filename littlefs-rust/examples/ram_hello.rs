@@ -30,7 +30,7 @@ async fn main() {
     println!("{}", core::str::from_utf8(&data).unwrap());
 
     // Unmount returns ownership of the storage back to the caller.
-    let storage = fs.unmount().expect("unmount failed");
+    let storage = fs.unmount().await.expect("unmount failed");
     println!(
         "Storage: {} blocks x {} bytes = {} bytes total",
         storage.block_count(),

@@ -1,9 +1,10 @@
 use alloc::boxed::Box;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::cell::RefCell;
 use core::mem::ManuallyDrop;
 use core::ptr::NonNull;
+use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
+use embassy_sync::mutex::Mutex;
 use littlefs_rust_core::Error;
 use littlefs_rust_core::lfs_type::OpenFlags;
 
@@ -39,7 +40,7 @@ pub(crate) struct FsInner<S: Storage> {
 /// appropriate for single-threaded embedded use. If you need cross-thread
 /// access, wrap it in a `Mutex`.
 pub struct Filesystem<S: Storage> {
-    pub(crate) inner: RefCell<Box<FsInner<S>>>,
+    pub(crate) inner: Mutex<CriticalSectionRawMutex, Box<FsInner<S>>>,
 }
 
 // ── FsInner construction ────────────────────────────────────────────────────
@@ -118,7 +119,7 @@ impl<S: Storage> Filesystem<S> {
         }
         inner.mounted = true;
         Ok(Filesystem {
-            inner: RefCell::new(inner),
+            inner: Mutex::new(inner),
         })
     }
 
@@ -126,9 +127,9 @@ impl<S: Storage> Filesystem<S> {
     ///
     /// Prefer this over dropping when you need to check for errors or reuse
     /// the storage.
-    pub fn unmount(self) -> Result<S, Error> {
+    pub async fn unmount(self) -> Result<S, Error> {
         let this = ManuallyDrop::new(self);
-        let mut inner = this.inner.borrow_mut();
+        let mut inner = this.inner.lock().await;
         let rc = if inner.mounted {
             inner.mounted = false;
             littlefs_rust_core::lfs_unmount(&mut inner.lfs)
@@ -143,8 +144,8 @@ impl<S: Storage> Filesystem<S> {
         Ok(fs_inner.storage.0)
     }
 
-    pub(crate) fn cache_size(&self) -> u32 {
-        self.inner.borrow().config.cache_size
+    pub(crate) async fn cache_size(&self) -> u32 {
+        self.inner.lock().await.config.cache_size
     }
 
     // ── File access ─────────────────────────────────────────────────────
@@ -162,7 +163,7 @@ impl<S: Storage> Filesystem<S> {
     /// Read an entire file into a `Vec<u8>`.
     pub async fn read_to_vec(&self, path: &str) -> Result<Vec<u8>, Error> {
         let mut file = self.open(path, OpenFlags::READ).await?;
-        let size = file.size() as usize;
+        let size = file.size().await as usize;
         let mut buf = vec![0u8; size];
         if size > 0 {
             let n = file.read(&mut buf).await?;
@@ -191,19 +192,19 @@ impl<S: Storage> Filesystem<S> {
 
     /// Create a directory. Fails if it already exists.
     pub async fn mkdir(&self, path: &str) -> Result<(), Error> {
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.inner.lock().await;
         littlefs_rust_core::lfs_mkdir(&mut inner.lfs, path).await
     }
 
     /// Remove a file or empty directory.
     pub async fn remove(&self, path: &str) -> Result<(), Error> {
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.inner.lock().await;
         littlefs_rust_core::lfs_remove(&mut inner.lfs, path).await
     }
 
     /// Rename or move a file or directory.
     pub async fn rename(&self, from: &str, to: &str) -> Result<(), Error> {
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.inner.lock().await;
         littlefs_rust_core::lfs_rename(&mut inner.lfs, from, to).await
     }
 
@@ -211,7 +212,7 @@ impl<S: Storage> Filesystem<S> {
     pub async fn stat(&self, path: &str) -> Result<Metadata, Error> {
         let mut info = unsafe { core::mem::zeroed::<LfsInfo>() };
         {
-            let mut inner = self.inner.borrow_mut();
+            let mut inner = self.inner.lock().await;
             littlefs_rust_core::lfs_stat(&mut inner.lfs, path, &mut info).await?;
         }
         let entry = dir_entry_from_info(&info);
@@ -245,20 +246,20 @@ impl<S: Storage> Filesystem<S> {
 
     /// Return the number of allocated blocks.
     pub async fn fs_size(&self) -> Result<u32, Error> {
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.inner.lock().await;
         littlefs_rust_core::lfs_fs_size(&mut inner.lfs).await
     }
 
     /// Run garbage collection to reclaim unused blocks.
     pub async fn gc(&mut self) -> Result<(), Error> {
-        let mut inner = self.inner.borrow_mut();
+        let mut inner = self.inner.lock().await;
         littlefs_rust_core::lfs_fs_gc(&mut inner.lfs).await
     }
 }
 
 impl<S: Storage> Drop for Filesystem<S> {
     fn drop(&mut self) {
-        if let Ok(mut inner) = self.inner.try_borrow_mut()
+        if let Ok(mut inner) = self.inner.try_lock()
             && inner.mounted
         {
             let _ = littlefs_rust_core::lfs_unmount(&mut inner.lfs);

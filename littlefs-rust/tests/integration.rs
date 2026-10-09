@@ -25,7 +25,7 @@ async fn test_format_mount_unmount() {
         .await
         .map_err(|(e, _)| e)
         .unwrap();
-    let _storage = fs.unmount().unwrap();
+    let _storage = fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -78,7 +78,7 @@ async fn test_write_read_roundtrip() {
     assert_eq!(&buf[..n as usize], data);
     file.close().await.unwrap();
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -105,7 +105,7 @@ async fn test_multiple_open_files() {
     assert_eq!(data_a, b"aaa");
     assert_eq!(data_b, b"bbb");
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -120,11 +120,11 @@ async fn test_seek_tell_size() {
     file.close().await.unwrap();
 
     let mut file = fs.open("/data.bin", OpenFlags::READ).await.unwrap();
-    assert_eq!(file.size(), 10);
-    assert_eq!(file.tell(), 0);
+    assert_eq!(file.size().await, 10);
+    assert_eq!(file.tell().await, 0);
 
     file.seek(SeekFrom::Start(5)).await.unwrap();
-    assert_eq!(file.tell(), 5);
+    assert_eq!(file.tell().await, 5);
 
     let mut buf = [0u8; 5];
     let n = file.read(&mut buf).await.unwrap();
@@ -132,10 +132,10 @@ async fn test_seek_tell_size() {
     assert_eq!(&buf, b"56789");
 
     file.seek(SeekFrom::End(-3)).await.unwrap();
-    assert_eq!(file.tell(), 7);
+    assert_eq!(file.tell().await, 7);
 
     file.close().await.unwrap();
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -151,13 +151,13 @@ async fn test_truncate() {
 
     let mut file = fs.open("/trunc.txt", OpenFlags::WRITE).await.unwrap();
     file.truncate(5).await.unwrap();
-    assert_eq!(file.size(), 5);
+    assert_eq!(file.size().await, 5);
     file.close().await.unwrap();
 
     let data = fs.read_to_vec("/trunc.txt").await.unwrap();
     assert_eq!(data, b"hello");
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -176,7 +176,7 @@ async fn test_file_drop_closes() {
     let data = fs.read_to_vec("/drop.txt").await.unwrap();
     assert_eq!(data, b"dropped");
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -185,7 +185,7 @@ async fn test_open_nonexistent_fails() {
     let result = fs.open("/nope.txt", OpenFlags::READ).await;
     assert!(result.is_err());
     assert_eq!(result.err().unwrap(), Error::NoEntry);
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -204,7 +204,7 @@ async fn test_mkdir_and_list() {
         assert_eq!(entry.file_type, FileType::Dir);
     }
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -217,7 +217,7 @@ async fn test_remove_file() {
     fs.remove("/temp.txt").await.unwrap();
     assert!(!fs.exists("/temp.txt").await);
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -230,7 +230,7 @@ async fn test_remove_dir() {
     fs.remove("/empty").await.unwrap();
     assert!(!fs.exists("/empty").await);
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -244,7 +244,7 @@ async fn test_rename() {
     let data = fs.read_to_vec("/new.txt").await.unwrap();
     assert_eq!(data, b"content");
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -260,7 +260,7 @@ async fn test_stat() {
     let meta = fs.stat("/subdir").await.unwrap();
     assert_eq!(meta.file_type, FileType::Dir);
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -269,7 +269,7 @@ async fn test_exists() {
     assert!(!fs.exists("/nope").await);
     fs.write_file("/yes.txt", b"y").await.unwrap();
     assert!(fs.exists("/yes.txt").await);
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -295,7 +295,7 @@ async fn test_read_dir_iterator() {
     assert!(!names.contains(&".".into()));
     assert!(!names.contains(&"..".into()));
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -316,7 +316,7 @@ async fn test_read_dir_interleaved_with_file_ops() {
         }
     }
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -327,7 +327,7 @@ async fn test_read_to_vec() {
     let data = fs.read_to_vec("/hello.txt").await.unwrap();
     assert_eq!(data, b"Hello!");
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -338,7 +338,7 @@ async fn test_read_to_vec_empty() {
     let data = fs.read_to_vec("/empty.txt").await.unwrap();
     assert!(data.is_empty());
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -350,7 +350,7 @@ async fn test_write_file_overwrites() {
     let data = fs.read_to_vec("/f.txt").await.unwrap();
     assert_eq!(data, b"second");
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -363,7 +363,7 @@ async fn test_fs_size() {
     let s2 = fs.fs_size().await.unwrap();
     assert!(s2 > s1);
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }
 
 #[tokio::test]
@@ -381,5 +381,5 @@ async fn test_nested_dirs() {
     let data = fs.read_to_vec("/a/b/file.txt").await.unwrap();
     assert_eq!(data, b"nested");
 
-    fs.unmount().unwrap();
+    fs.unmount().await.unwrap();
 }

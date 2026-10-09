@@ -21,7 +21,7 @@
 //!     let data = fs.read_to_vec("/hello.txt").await.unwrap();
 //!     assert_eq!(data, b"Hello, littlefs!");
 //!
-//!      fs.unmount().unwrap();
+//!      fs.unmount().await.unwrap();
 //! }
 //! ```
 //!

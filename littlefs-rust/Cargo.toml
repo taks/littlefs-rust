@@ -19,11 +19,13 @@ littlefs-rust-core = { version = "0.1", path = "../littlefs-rust-core", default-
 bitflags = "2"
 
 embassy-futures = { version = "0.1" }
+embassy-sync = { version = "0.8" }
 
 [dev-dependencies]
 divan = { version = "5.0.1", package = "codspeed-divan-compat" }
 env_logger = "0.10"
 tokio = { version = "1.53.1", features = ["full"] }
+critical-section = { version = "^1.1", features = ["std"]}
 
 [[bench]]
 name = "filesystem"
