@@ -20,7 +20,7 @@ use littlefs_rust_test_macro::lfs_test;
 // Upstream: write rev+1 to one block of dir pair; mount picks higher rev, read/write still works.
 #[lfs_test]
 #[tokio::test]
-async fn test_powerloss_only_rev<'a>(cfg: &LfsConfig<'a>) {
+async fn test_powerloss_only_rev(cfg: &LfsConfig<'_>) {
     let lfs = &mut Lfs::default();
     assert_ok!(lfs_format(lfs, cfg).await);
     assert_ok!(lfs_mount(lfs, cfg).await);
@@ -70,17 +70,24 @@ async fn test_powerloss_only_rev<'a>(cfg: &LfsConfig<'a>) {
     // Partial write: rev+1 in block
     let block_size = cfg.block_size as usize;
     let mut block_buf = vec![0u8; block_size];
-    let _ = unsafe {
+    assert_ok!(unsafe {
         cfg.context
             .unwrap()
             .as_mut()
             .read(pair[1], 0, &mut block_buf)
-    };
+            .await
+    });
 
     block_buf[0..4].copy_from_slice(&(rev + 1).to_le_bytes());
 
-    let _ = unsafe { cfg.context.unwrap().as_mut().erase(pair[1]) };
-    let _ = unsafe { cfg.context.unwrap().as_mut().write(pair[1], 0, &block_buf) };
+    assert_ok!(unsafe { cfg.context.unwrap().as_mut().erase(pair[1]).await });
+    assert_ok!(unsafe {
+        cfg.context
+            .unwrap()
+            .as_mut()
+            .write(pair[1], 0, &block_buf)
+            .await
+    });
 
     assert_ok!(lfs_mount(lfs, cfg).await);
 
